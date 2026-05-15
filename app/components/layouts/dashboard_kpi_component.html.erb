@@ -1,0 +1,12 @@
+<div class="kpi-grid grid grid-cols-3 gap-4">
+  <% @kpis.each do |kpi| %>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+        <%= kpi[:label] %>
+      </div>
+      <div class="text-2xl font-bold text-indigo-700">
+        <%= kpi[:value] %>
+      </div>
+    </div>
+  <% end %>
+</div>

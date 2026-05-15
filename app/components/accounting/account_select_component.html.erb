@@ -1,0 +1,8 @@
+<select name="<%= @name %>"<% if @disabled %> disabled<% end %>>
+  <% if @prompt %>
+    <option value=""><%= @prompt %></option>
+  <% end %>
+  <% @accounts.each do |account| %>
+    <option value="<%= account.id %>"<% if account.id == @selected %> selected<% end %>><%= account_option_label(account) %></option>
+  <% end %>
+</select>

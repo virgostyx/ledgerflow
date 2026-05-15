@@ -1,0 +1,19 @@
+<div class="space-y-1">
+  <label for="<%= @name %>" class="block text-sm font-medium text-gray-700">
+    <%= @label %>
+    <% if @required %><span class="text-red-500 ml-1">*</span><% end %>
+  </label>
+  <input
+    type="<%= @type %>"
+    name="<%= @name %>"
+    id="<%= @name %>"
+    class="<%= input_classes %>"
+    <% if @value %>value="<%= @value %>"<% end %>
+    <% if @placeholder %>placeholder="<%= @placeholder %>"<% end %>
+    <% if @required %>required<% end %>
+    <% if @disabled %>disabled<% end %>
+  >
+  <% if @error %>
+    <p class="text-red-600 text-xs mt-1"><%= @error %></p>
+  <% end %>
+</div>

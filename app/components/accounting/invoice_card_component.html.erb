@@ -1,0 +1,11 @@
+<div class="bg-white rounded-lg border border-gray-200 p-4">
+  <div class="flex items-center justify-between">
+    <span class="font-mono text-sm font-medium text-indigo-700"><%= invoice_number %></span>
+    <%= render Ui::BadgeComponent.new(label: status_label, variant: status_variant) %>
+  </div>
+  <div class="mt-2 text-sm text-gray-700"><%= partner_name %></div>
+  <div class="mt-1 flex items-center justify-between text-sm">
+    <span class="text-gray-500"><%= formatted_date %></span>
+    <span class="font-mono font-medium"><%= formatted_total %></span>
+  </div>
+</div>

@@ -1,0 +1,42 @@
+<%= form_with model: invoice, scope: :accounting_invoice,
+              url: invoice.persisted? ? accounting_invoice_path(invoice) : accounting_invoices_path do |f| %>
+  <% if invoice.errors.any? %>
+    <div>
+      <% invoice.errors.full_messages.each do |msg| %>
+        <p><%= msg %></p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :invoice_type, 'Type' %>
+    <%= f.select :invoice_type, Accounting::Invoice.invoice_types.keys.map { |k| [k == 'customer' ? 'Client' : 'Fournisseur', k] } %>
+  </div>
+
+  <div>
+    <%= f.label :invoice_date, 'Date de facture' %>
+    <%= f.date_field :invoice_date %>
+  </div>
+
+  <div>
+    <%= f.label :due_date, 'Échéance' %>
+    <%= f.date_field :due_date %>
+  </div>
+
+  <div>
+    <%= f.label :partner_id, 'Partenaire' %>
+    <%= f.collection_select :partner_id, Accounting::Partner.active.order(:name), :id, :name, prompt: 'Choisir...' %>
+  </div>
+
+  <div>
+    <%= f.label :fiscal_year_id, 'Exercice' %>
+    <%= f.collection_select :fiscal_year_id, Accounting::FiscalYear.where(status: :open).order(:year), :id, :year %>
+  </div>
+
+  <div>
+    <%= f.label :description, 'Description' %>
+    <%= f.text_area :description %>
+  </div>
+
+  <%= f.submit %>
+<% end %>

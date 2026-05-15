@@ -1,0 +1,33 @@
+<h1>Partenaires</h1>
+
+<% if policy(Accounting::Partner).create? %>
+  <%= link_to 'Nouveau partenaire', new_accounting_partner_path %>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Nom</th>
+      <th>Type</th>
+      <th>N° TVA</th>
+      <th>Pays</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @partners.each do |partner| %>
+      <tr>
+        <td><%= partner.name %></td>
+        <td><%= partner.partner_type %></td>
+        <td><%= partner.vat_number %></td>
+        <td><%= partner.country %></td>
+        <td>
+          <%= link_to 'Voir', accounting_partner_path(partner) %>
+          <% if policy(partner).update? %>
+            <%= link_to 'Modifier', edit_accounting_partner_path(partner) %>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

@@ -1,0 +1,66 @@
+fr:
+  errors:
+    not_authorized: "Vous n'êtes pas autorisé à effectuer cette action."
+
+  accounting:
+    errors:
+      dual_side:         "Impossible d'avoir débit ET crédit positifs simultanément."
+      zero_side:         "L'écriture doit comporter un montant au débit ou au crédit."
+      unbalanced_entry:  "Écriture déséquilibrée : débit %{debit} ≠ crédit %{credit}."
+
+    partners:
+      created: "Partenaire créé avec succès."
+      updated: "Partenaire mis à jour."
+      deleted: "Partenaire supprimé."
+
+    journal_entries:
+      created:  "Écriture enregistrée en brouillon."
+      updated:  "Écriture mise à jour."
+      posted:   "Écriture validée et comptabilisée."
+      reverse_not_implemented: "La contre-passation n'est pas encore implémentée."
+
+    invoices:
+      created: "Facture créée."
+      updated: "Facture mise à jour."
+      deleted: "Facture supprimée."
+      posted:  "Facture validée et comptabilisée."
+      errors:
+        already_posted: "Cette facture est déjà validée."
+        no_lines:       "La facture doit comporter au moins une ligne."
+        no_journal:     "Aucun journal actif de type %{type} trouvé."
+
+  activerecord:
+    errors:
+      models:
+        accounting/partner:
+          attributes:
+            vat_number:
+              invalid: "doit être au format BE suivi de 10 chiffres (ex: BE0123456789)"
+            iban:
+              invalid: "doit être au format belge BE suivi de 14 chiffres"
+
+  devise:
+    sessions:
+      signed_in:  "Connexion réussie."
+      signed_out: "Déconnexion réussie."
+      already_signed_out: "Déjà déconnecté."
+      new:
+        sign_in: "Se connecter"
+    failure:
+      invalid:           "Email ou mot de passe invalide."
+      locked:            "Votre compte est verrouillé."
+      inactive_account:  "Votre compte est désactivé. Contactez l'administrateur."
+      timeout:           "Votre session a expiré. Reconnectez-vous."
+      unauthenticated:   "Vous devez vous connecter pour accéder à cette page."
+    passwords:
+      send_instructions:     "Vous recevrez un email avec les instructions sous peu."
+      updated:               "Mot de passe mis à jour. Vous êtes connecté."
+      updated_not_active:    "Mot de passe mis à jour."
+      send_paranoia_instructions: "Si votre email existe, vous recevrez les instructions."
+    registrations:
+      signed_up:         "Bienvenue ! Votre compte a été créé."
+      updated:           "Votre compte a été mis à jour."
+      destroyed:         "Votre compte a été supprimé."
+    unlocks:
+      send_instructions: "Vous recevrez un email avec les instructions de déverrouillage."
+      unlocked:          "Votre compte a été déverrouillé."

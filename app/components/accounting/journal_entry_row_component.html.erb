@@ -1,0 +1,6 @@
+<tr>
+  <td><%= @entry.reference %></td>
+  <td><%= formatted_date %></td>
+  <td><%= @entry.description %></td>
+  <td><%= render Accounting::StatusBadgeComponent.new(status: @entry.status.to_sym) %></td>
+</tr>

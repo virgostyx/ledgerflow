@@ -1,0 +1,8 @@
+<div class="flex items-center gap-4">
+  <span>
+    <%= render Accounting::MoneyDisplayComponent.new(amount: total_debit) %>
+  </span>
+  <span class="<%= balance_css_class %>">
+    <%= balanced? ? '✓' : '✗' %>
+  </span>
+</div>

@@ -1,0 +1,52 @@
+<%= form_with model: partner, scope: :accounting_partner,
+              url: partner.persisted? ? accounting_partner_path(partner) : accounting_partners_path do |f| %>
+  <% if partner.errors.any? %>
+    <div>
+      <% partner.errors.full_messages.each do |msg| %>
+        <p><%= msg %></p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :name, 'Nom' %>
+    <%= f.text_field :name %>
+  </div>
+
+  <div>
+    <%= f.label :partner_type, 'Type' %>
+    <%= f.select :partner_type, Accounting::Partner.partner_types.keys.map { |k| [k.humanize, k] } %>
+  </div>
+
+  <div>
+    <%= f.label :vat_number, 'N° TVA' %>
+    <%= f.text_field :vat_number, placeholder: 'BE0123456789' %>
+  </div>
+
+  <div>
+    <%= f.label :email, 'Email' %>
+    <%= f.email_field :email %>
+  </div>
+
+  <div>
+    <%= f.label :phone, 'Téléphone' %>
+    <%= f.text_field :phone %>
+  </div>
+
+  <div>
+    <%= f.label :iban, 'IBAN' %>
+    <%= f.text_field :iban, placeholder: 'BE68539007547034' %>
+  </div>
+
+  <div>
+    <%= f.label :country, 'Pays' %>
+    <%= f.text_field :country %>
+  </div>
+
+  <div>
+    <%= f.label :active, 'Actif' %>
+    <%= f.check_box :active %>
+  </div>
+
+  <%= f.submit %>
+<% end %>

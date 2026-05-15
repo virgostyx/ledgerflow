@@ -1,0 +1,32 @@
+<h2 class="text-xl font-semibold text-gray-900 mb-6">Se connecter</h2>
+
+<%= form_with url: user_session_path, html: { class: 'space-y-4' } do |f| %>
+  <div class="space-y-1">
+    <%= f.label :email, 'Adresse email',
+          class: 'block text-sm font-medium text-gray-700' %>
+    <%= f.email_field :email,
+          autofocus: true, autocomplete: 'email',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500',
+          placeholder: 'vous@example.com' %>
+  </div>
+
+  <div class="space-y-1">
+    <%= f.label :password, 'Mot de passe',
+          class: 'block text-sm font-medium text-gray-700' %>
+    <%= f.password_field :password,
+          autocomplete: 'current-password',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500' %>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <label class="flex items-center gap-2 text-sm text-gray-600">
+      <%= f.check_box :remember_me, class: 'rounded border-gray-300 text-indigo-600' %>
+      Se souvenir de moi
+    </label>
+    <%= link_to 'Mot de passe oublié ?', new_user_password_path,
+          class: 'text-sm text-indigo-600 hover:text-indigo-700' %>
+  </div>
+
+  <%= f.submit 'Se connecter',
+        class: 'w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors cursor-pointer' %>
+<% end %>

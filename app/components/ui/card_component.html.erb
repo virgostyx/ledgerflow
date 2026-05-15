@@ -1,0 +1,11 @@
+<div class="<%= wrapper_classes %>">
+  <% if @title %>
+    <div class="mb-4">
+      <h3 class="text-lg font-semibold text-indigo-700"><%= @title %></h3>
+      <% if @subtitle %>
+        <p class="text-sm text-gray-500 mt-0.5"><%= @subtitle %></p>
+      <% end %>
+    </div>
+  <% end %>
+  <%= content %>
+</div>

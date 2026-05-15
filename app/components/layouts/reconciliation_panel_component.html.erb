@@ -1,0 +1,17 @@
+<div>
+  <h3 class="text-base font-semibold text-gray-900 mb-4"><%= @account_label %></h3>
+
+  <div class="divide-y divide-gray-100">
+    <% @transactions.each do |tx| %>
+      <div class="flex items-center justify-between py-3 <%= tx[:reconciled] ? 'reconciled opacity-50' : 'unreconciled' %>">
+        <div>
+          <div class="text-sm font-medium text-gray-900"><%= tx[:label] %></div>
+          <div class="text-xs text-gray-500"><%= Accounting::DatePresenter.new(tx[:date]).format %></div>
+        </div>
+        <div class="font-mono text-sm <%= tx[:amount] >= 0 ? 'text-emerald-600' : 'text-red-600' %>">
+          <%= tx[:amount] >= 0 ? '+' : '−' %><%= formatted_amount(tx[:amount]) %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

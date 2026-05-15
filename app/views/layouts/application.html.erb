@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <title><%= content_for(:title) || "LedgerFlow" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= yield :head %>
+    <link rel="icon" href="/icon.png" type="image/png">
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="min-h-screen bg-gray-50 flex">
+    <%# Sidebar %>
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
+      <div class="p-4 border-b border-gray-100">
+        <div class="flex items-center gap-2">
+          <span class="text-xl text-indigo-700">◈</span>
+          <span class="font-bold text-indigo-700">LedgerFlow</span>
+        </div>
+      </div>
+
+      <nav class="flex-1 p-3 space-y-1">
+        <%= yield :sidebar_nav %>
+      </nav>
+
+      <div class="p-3 border-t border-gray-100 space-y-1">
+        <div class="text-xs text-gray-400 px-3 py-1"><%= current_user&.full_name %></div>
+        <%= button_to 'Déconnexion', destroy_user_session_path, method: :delete,
+              class: 'w-full text-left text-sm text-gray-500 hover:text-red-600 px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors' %>
+      </div>
+    </aside>
+
+    <%# Contenu principal %>
+    <div class="flex-1 flex flex-col min-h-screen">
+      <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+        <div class="text-sm text-gray-500"><%= yield :breadcrumb %></div>
+        <div class="flex items-center gap-3"><%= yield :actions %></div>
+      </header>
+
+      <main class="flex-1 p-6">
+        <% if notice %>
+          <div class="mb-4 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm"><%= notice %></div>
+        <% end %>
+        <% if alert %>
+          <div class="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm"><%= alert %></div>
+        <% end %>
+        <%= yield %>
+      </main>
+
+      <footer class="px-6 py-2 border-t border-gray-100 text-xs text-gray-400">
+        LedgerFlow
+      </footer>
+    </div>
+  </body>
+</html>

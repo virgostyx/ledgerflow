@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <title>LedgerFlow — Comptabilité belge</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="bg-white text-gray-900">
+    <nav class="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl text-indigo-700">◈</span>
+        <span class="text-lg font-bold text-indigo-700">LedgerFlow</span>
+      </div>
+      <%= link_to 'Se connecter', new_user_session_path,
+            class: 'bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors' %>
+    </nav>
+
+    <main>
+      <%= yield %>
+    </main>
+
+    <footer class="border-t border-gray-100 px-6 py-4 text-center text-xs text-gray-400">
+      © <%= Date.current.year %> CaC Management BV — LedgerFlow v<%= LedgerflowVersion::VERSION rescue '0.1.0' %>
+    </footer>
+  </body>
+</html>
