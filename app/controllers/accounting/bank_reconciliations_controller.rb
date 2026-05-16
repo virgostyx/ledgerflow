@@ -11,7 +11,7 @@ class Accounting::BankReconciliationsController < ApplicationController
   def update
     authorize :bank_reconciliation, policy_class: Accounting::BankReconciliationsPolicy
 
-    if reconcile_params[:camt_file].present?
+    if bank_params[:camt_file].present?
       handle_camt_import
     else
       handle_reconciliation
@@ -21,8 +21,8 @@ class Accounting::BankReconciliationsController < ApplicationController
   private
 
   def handle_camt_import
-    bank_account = Accounting::BankAccount.find(reconcile_params[:bank_account_id])
-    xml = reconcile_params[:camt_file].read
+    bank_account = Accounting::BankAccount.find(bank_params[:bank_account_id])
+    xml = bank_params[:camt_file]&.read
     result = Accounting::ImportCamtStatement.call(xml: xml, bank_account: bank_account)
 
     if result.success?
@@ -35,14 +35,14 @@ class Accounting::BankReconciliationsController < ApplicationController
   end
 
   def handle_reconciliation
-    transaction = Accounting::BankTransaction.find(reconcile_params[:bank_transaction_id])
+    transaction = Accounting::BankTransaction.find(bank_params[:bank_transaction_id])
     fiscal_year = Accounting::FiscalYear.find_by(status: :open)
 
     result = Accounting::ReconcileBankTransaction.call(
       transaction: transaction,
-      account_id:  reconcile_params[:account_id],
+      account_id:  bank_params[:account_id],
       fiscal_year: fiscal_year,
-      label:       reconcile_params[:label]
+      label:       bank_params[:label]
     )
 
     if result.success?
@@ -53,10 +53,7 @@ class Accounting::BankReconciliationsController < ApplicationController
     end
   end
 
-  def reconcile_params
-    params.require(:bank_reconciliation).permit(
-      :bank_transaction_id, :account_id, :label,
-      :bank_account_id, :camt_file
-    )
+  def bank_params
+    @bank_params ||= params.fetch(:bank_reconciliation, {})
   end
 end
