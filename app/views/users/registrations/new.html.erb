@@ -1,0 +1,54 @@
+<h2 class="text-xl font-semibold text-gray-900 mb-6">Créer un compte</h2>
+
+<%= form_with model: resource, url: registration_path(resource_name), html: { class: 'space-y-4' } do |f| %>
+  <% if resource.errors.any? %>
+    <div class="p-3 bg-red-50 text-red-700 rounded-lg text-sm space-y-1">
+      <% resource.errors.full_messages.each do |msg| %>
+        <div>• <%= msg %></div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="space-y-1">
+    <%= f.label :full_name, 'Nom complet',
+          class: 'block text-sm font-medium text-gray-700' %>
+    <%= f.text_field :full_name,
+          autofocus: true, autocomplete: 'name',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500',
+          placeholder: 'Jean Dupont' %>
+  </div>
+
+  <div class="space-y-1">
+    <%= f.label :email, 'Adresse email',
+          class: 'block text-sm font-medium text-gray-700' %>
+    <%= f.email_field :email,
+          autocomplete: 'email',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500',
+          placeholder: 'vous@example.com' %>
+  </div>
+
+  <div class="space-y-1">
+    <%= f.label :password, 'Mot de passe',
+          class: 'block text-sm font-medium text-gray-700' %>
+    <%= f.password_field :password,
+          autocomplete: 'new-password',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500' %>
+    <p class="text-xs text-gray-400">12 caractères minimum</p>
+  </div>
+
+  <div class="space-y-1">
+    <%= f.label :password_confirmation, 'Confirmer le mot de passe',
+          class: 'block text-sm font-medium text-gray-700' %>
+    <%= f.password_field :password_confirmation,
+          autocomplete: 'new-password',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500' %>
+  </div>
+
+  <%= f.submit "S'inscrire",
+        class: 'w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors cursor-pointer' %>
+<% end %>
+
+<div class="mt-4 text-center">
+  <%= link_to 'Déjà un compte ? Se connecter', new_user_session_path,
+        class: 'text-sm text-indigo-600 hover:text-indigo-700' %>
+</div>

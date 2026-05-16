@@ -30,3 +30,9 @@
   <%= f.submit 'Se connecter',
         class: 'w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors cursor-pointer' %>
 <% end %>
+
+<div class="mt-4 text-center text-sm text-gray-500">
+  Pas encore de compte ?
+  <%= link_to "Créer un compte", new_user_registration_path,
+        class: 'text-indigo-600 hover:text-indigo-700 font-medium' %>
+</div>
