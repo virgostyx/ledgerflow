@@ -16,8 +16,8 @@ RSpec.describe Ui::SpinnerComponent, type: :component do
     expect(page).to have_css('.h-8.w-8')
   end
 
-  it 'uses indigo color by default' do
+  it 'uses primary color by default' do
     render_inline(described_class.new)
-    expect(page).to have_css('.text-indigo-600')
+    expect(page).to have_css('.text-primary-600')
   end
 end

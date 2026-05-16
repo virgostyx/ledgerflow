@@ -5,31 +5,39 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
   </head>
 
   <body class="min-h-screen bg-gray-50 flex">
     <div class="flex flex-col items-center justify-center flex-1 px-4 py-12">
       <div class="mb-8 text-center">
-        <span class="text-4xl text-indigo-700">◈</span>
-        <h1 class="text-2xl font-bold text-indigo-700">LedgerFlow</h1>
+        <span class="text-4xl text-primary-700">◈</span>
+        <h1 class="text-2xl font-bold text-primary-700">LedgerFlow</h1>
         <p class="text-sm text-gray-500">Compliant accounting • Belgium</p>
       </div>
 
       <div class="bg-white shadow-sm ring-1 ring-gray-200 rounded-xl p-8 w-full max-w-md">
         <% if notice %>
-          <div class="mb-4 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm"><%= notice %></div>
+          <div class="mb-4">
+            <%= render FlashMessageComponent.new(type: :notice, message: notice) %>
+          </div>
         <% end %>
         <% if alert %>
-          <div class="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm"><%= alert %></div>
+          <div class="mb-4">
+            <%= render FlashMessageComponent.new(type: :alert, message: alert) %>
+          </div>
         <% end %>
         <%= yield %>
       </div>
     </div>
 
-    <div class="hidden lg:flex flex-col justify-center bg-indigo-700 w-96 p-12 text-white">
+    <div class="hidden lg:flex flex-col justify-center bg-primary-700 w-96 p-12 text-white">
       <h2 class="text-xl font-semibold mb-6">Belgian-compliant accounting</h2>
-      <ul class="space-y-4 text-indigo-100 text-sm">
+      <ul class="space-y-4 text-primary-100 text-sm">
         <li class="flex items-start gap-2">
           <span class="mt-0.5">✓</span>
           <span>PCMN chart of accounts — NPOs &amp; Foundations</span>

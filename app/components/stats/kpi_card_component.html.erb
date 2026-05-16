@@ -1,0 +1,40 @@
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
+     role="article"
+     aria-label="<%= title %> statistics">
+  <div class="flex items-start justify-between">
+
+    <%# Left: title / value / subtitle / trend %>
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-medium text-gray-600 mb-1"><%= title %></p>
+
+      <p class="text-3xl font-bold <%= color_config[:text] %> mb-2 truncate">
+        <%= value %>
+      </p>
+
+      <% if subtitle %>
+        <p class="text-xs text-gray-500 mb-2"><%= subtitle %></p>
+      <% end %>
+
+      <% if trend %>
+        <div class="flex items-center gap-1 text-sm <%= trend_color_class %>">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="<%= trend_icon_path %>"/>
+          </svg>
+          <span class="font-medium"><%= trend[:value] %></span>
+          <span class="text-gray-400 text-xs">vs. last month</span>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Right: icon square %>
+    <div class="shrink-0 ml-4">
+      <div class="<%= color_config[:bg] %> rounded-lg p-3">
+        <svg class="w-6 h-6 <%= color_config[:icon] %>" fill="none" stroke="currentColor"
+             stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="<%= icon_path %>"/>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+</div>

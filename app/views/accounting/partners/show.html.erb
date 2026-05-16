@@ -1,15 +1,46 @@
-<h1><%= @partner.name %></h1>
-
-<dl>
-  <dt>Type</dt>        <dd><%= @partner.partner_type %></dd>
-  <dt>VAT number</dt>  <dd><%= @partner.vat_number %></dd>
-  <dt>Email</dt>       <dd><%= @partner.email %></dd>
-  <dt>Phone</dt>       <dd><%= @partner.phone %></dd>
-  <dt>IBAN</dt>        <dd><%= @partner.iban %></dd>
-  <dt>Country</dt>     <dd><%= @partner.country %></dd>
-</dl>
-
-<% if policy(@partner).update? %>
-  <%= link_to 'Edit', edit_accounting_partner_path(@partner) %>
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Partners', path: accounting_partners_path },
+    { label: @partner.name }
+  ]) %>
 <% end %>
-<%= link_to 'Back', accounting_partners_path %>
+
+<%= render Ui::PageHeaderComponent.new(
+      title: @partner.name,
+      description: @partner.partner_type.capitalize,
+      back_path: accounting_partners_path,
+      back_text: 'Partners'
+    ) do |header| %>
+  <% if policy(@partner).update? %>
+    <% header.with_actions do %>
+      <%= link_to 'Edit', edit_accounting_partner_path(@partner),
+            class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<div class="bg-white rounded-lg border border-gray-200 p-6 max-w-xl">
+  <dl class="grid grid-cols-2 gap-x-8 gap-y-4">
+    <div>
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">VAT number</dt>
+      <dd class="mt-1 text-sm font-mono text-gray-900"><%= @partner.vat_number.presence || '—' %></dd>
+    </div>
+    <div>
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Country</dt>
+      <dd class="mt-1 text-sm text-gray-900"><%= @partner.country %></dd>
+    </div>
+    <div>
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Email</dt>
+      <dd class="mt-1 text-sm text-gray-900"><%= @partner.email.presence || '—' %></dd>
+    </div>
+    <div>
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</dt>
+      <dd class="mt-1 text-sm text-gray-900"><%= @partner.phone.presence || '—' %></dd>
+    </div>
+    <div class="col-span-2">
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">IBAN</dt>
+      <dd class="mt-1 text-sm font-mono text-gray-900"><%= @partner.iban.presence || '—' %></dd>
+    </div>
+  </dl>
+</div>

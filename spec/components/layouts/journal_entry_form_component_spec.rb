@@ -30,11 +30,11 @@ RSpec.describe Layouts::JournalEntryFormComponent, type: :component do
   end
 
   it 'affiche le bouton Ajouter une ligne' do
-    expect(page).to have_button('Ajouter une ligne')
+    expect(page).to have_button('Add a line')
   end
 
   it 'affiche le bouton Valider' do
-    expect(page).to have_button('Valider', disabled: true)
+    expect(page).to have_button('Save', disabled: true)
   end
 
   it 'inclut un template pour les nouvelles lignes' do

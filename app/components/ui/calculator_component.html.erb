@@ -1,0 +1,103 @@
+<div data-controller="calculator" class="fixed bottom-20 right-6 z-50">
+
+  <%# Panel %>
+  <div data-calculator-target="panel"
+       class="hidden absolute bottom-full right-0 mb-3 w-72 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+
+    <%# Header %>
+    <div class="flex items-center justify-between px-4 py-3 bg-primary-600 text-white">
+      <div class="flex items-center gap-2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+             stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+          <rect x="4" y="2" width="16" height="20" rx="2"/>
+          <rect x="7" y="5" width="10" height="4" rx="1"/>
+          <circle cx="8"  cy="13" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="12" cy="13" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="16" cy="13" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="8"  cy="17" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="16" cy="17" r="1" fill="currentColor" stroke="none"/>
+        </svg>
+        <span class="text-sm font-semibold">Calculator</span>
+      </div>
+      <button data-action="click->calculator#close"
+              class="text-primary-200 hover:text-white transition-colors"
+              aria-label="Close">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <%# Display %>
+    <div class="bg-gray-900 px-4 py-3 select-none">
+      <div class="flex items-center justify-between mb-1">
+        <span data-calculator-target="memoryIndicator" class="hidden text-primary-400 text-xs font-bold tracking-wide">M</span>
+        <div data-calculator-target="expression" class="text-gray-400 text-xs text-right flex-1 truncate"></div>
+      </div>
+      <div data-calculator-target="display" class="text-white text-3xl font-light text-right truncate">0</div>
+    </div>
+
+    <%# Button grid %>
+    <div class="grid grid-cols-4 gap-px bg-gray-200">
+      <button data-action="click->calculator#memoryClear"    class="bg-gray-100 hover:bg-gray-200 text-gray-500 py-2.5 text-xs font-semibold tracking-wide transition-colors">MC</button>
+      <button data-action="click->calculator#memoryRecall"   class="bg-gray-100 hover:bg-gray-200 text-gray-500 py-2.5 text-xs font-semibold tracking-wide transition-colors">MR</button>
+      <button data-action="click->calculator#memoryAdd"      class="bg-gray-100 hover:bg-gray-200 text-gray-500 py-2.5 text-xs font-semibold tracking-wide transition-colors">M+</button>
+      <button data-action="click->calculator#memorySubtract" class="bg-gray-100 hover:bg-gray-200 text-gray-500 py-2.5 text-xs font-semibold tracking-wide transition-colors">M−</button>
+
+      <button data-action="click->calculator#reset"      class="bg-gray-50 hover:bg-gray-100 text-gray-600 py-4 text-sm font-medium transition-colors">C</button>
+      <button data-action="click->calculator#clearEntry" class="bg-gray-50 hover:bg-gray-100 text-gray-600 py-4 text-sm font-medium transition-colors">CE</button>
+      <button data-action="click->calculator#backspace"  class="bg-gray-50 hover:bg-gray-100 text-gray-600 py-4 text-sm font-medium transition-colors">⌫</button>
+      <button data-action="click->calculator#operation" data-calc-op="/" class="bg-gray-50 hover:bg-primary-50 text-primary-600 py-4 text-base font-semibold transition-colors">÷</button>
+
+      <button data-action="click->calculator#input" data-calc-value="7" class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">7</button>
+      <button data-action="click->calculator#input" data-calc-value="8" class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">8</button>
+      <button data-action="click->calculator#input" data-calc-value="9" class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">9</button>
+      <button data-action="click->calculator#operation" data-calc-op="*" class="bg-gray-50 hover:bg-primary-50 text-primary-600 py-4 text-base font-semibold transition-colors">×</button>
+
+      <button data-action="click->calculator#input" data-calc-value="4" class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">4</button>
+      <button data-action="click->calculator#input" data-calc-value="5" class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">5</button>
+      <button data-action="click->calculator#input" data-calc-value="6" class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">6</button>
+      <button data-action="click->calculator#operation" data-calc-op="-" class="bg-gray-50 hover:bg-primary-50 text-primary-600 py-4 text-base font-semibold transition-colors">−</button>
+
+      <button data-action="click->calculator#input" data-calc-value="1" class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">1</button>
+      <button data-action="click->calculator#input" data-calc-value="2" class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">2</button>
+      <button data-action="click->calculator#input" data-calc-value="3" class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">3</button>
+      <button data-action="click->calculator#operation" data-calc-op="+" class="bg-gray-50 hover:bg-primary-50 text-primary-600 py-4 text-base font-semibold transition-colors">+</button>
+
+      <button data-action="click->calculator#input" data-calc-value="0" class="col-span-2 bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">0</button>
+      <button data-action="click->calculator#input" data-calc-value="." class="bg-white hover:bg-gray-50 text-gray-800 py-4 text-base font-medium transition-colors">.</button>
+      <button data-action="click->calculator#equals" class="bg-primary-600 hover:bg-primary-700 text-white py-4 text-base font-semibold transition-colors">=</button>
+    </div>
+
+    <%# Copy to clipboard %>
+    <div class="px-3 py-2 bg-gray-50 border-t border-gray-100">
+      <button data-action="click->calculator#copy"
+              class="w-full py-2 px-3 text-sm text-primary-600 hover:text-primary-800 hover:bg-primary-50 rounded-lg transition-colors font-medium flex items-center justify-center gap-2">
+        <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+        </svg>
+        <span data-calculator-target="copyText">Copy result</span>
+      </button>
+      <p class="text-center text-xs text-gray-400 mt-1">Esc to close · C to clear</p>
+    </div>
+  </div>
+
+  <%# FAB %>
+  <button data-action="click->calculator#toggle"
+          class="p-3 rounded-full bg-primary-600 text-white shadow-lg hover:bg-primary-700
+                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
+          aria-label="Open calculator">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+         stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+      <rect x="4" y="2" width="16" height="20" rx="2"/>
+      <rect x="7" y="5" width="10" height="4" rx="1"/>
+      <circle cx="8"  cy="13" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="12" cy="13" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="16" cy="13" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="8"  cy="17" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="16" cy="17" r="1" fill="currentColor" stroke="none"/>
+    </svg>
+  </button>
+</div>

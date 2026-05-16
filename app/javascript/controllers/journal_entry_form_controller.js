@@ -65,15 +65,15 @@ export default class extends Controller {
     const indicator = this.balanceIndicatorTarget
 
     if (!hasValues) {
-      indicator.innerHTML = '<span class="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">En attente</span>'
+      indicator.innerHTML = '<span class="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">Pending</span>'
       return
     }
 
     if (balanced) {
-      indicator.innerHTML = '<span class="bg-emerald-100 text-emerald-700 text-xs font-medium px-2 py-1 rounded-full">Équilibré</span>'
+      indicator.innerHTML = '<span class="bg-emerald-100 text-emerald-700 text-xs font-medium px-2 py-1 rounded-full">Balanced</span>'
     } else {
-      const formatted = diff.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      indicator.innerHTML = `<span class="bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-full">Déséquilibré (${formatted})</span>`
+      const formatted = diff.toLocaleString("en-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      indicator.innerHTML = `<span class="bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded-full">Unbalanced (${formatted})</span>`
     }
   }
 

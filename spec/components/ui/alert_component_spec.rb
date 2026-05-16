@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Ui::AlertComponent, type: :component do
   it 'renders an info alert' do
     render_inline(described_class.new(message: 'Information', variant: :info))
-    expect(page).to have_css('.bg-indigo-50', text: 'Information')
+    expect(page).to have_css('.bg-primary-50', text: 'Information')
   end
 
   it 'renders a success alert' do
@@ -24,5 +24,10 @@ RSpec.describe Ui::AlertComponent, type: :component do
   it 'renders with a title' do
     render_inline(described_class.new(message: 'Détail', title: 'Titre alerte', variant: :info))
     expect(page).to have_css('.font-semibold', text: 'Titre alerte')
+  end
+
+  it 'exposes the variant text color via text_class' do
+    component = described_class.new(message: 'OK', variant: :success)
+    expect(component.text_class).to eq('text-emerald-700')
   end
 end

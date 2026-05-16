@@ -20,4 +20,28 @@ RSpec.describe Ui::CardComponent, type: :component do
     render_inline(described_class.new(flat: true)) { 'Corps' }
     expect(page).not_to have_css('.shadow-sm')
   end
+
+  it 'renders a header slot above the content' do
+    render_inline(described_class.new) do |c|
+      c.with_header { 'Card header' }
+      'Card body'
+    end
+    expect(page).to have_text('Card header')
+    expect(page).to have_text('Card body')
+    expect(page.find('.border-b')).to have_text('Card header')
+  end
+
+  it 'renders a footer slot below the content' do
+    render_inline(described_class.new) do |c|
+      c.with_footer { 'Card footer' }
+      'Card body'
+    end
+    expect(page).to have_text('Card footer')
+    expect(page.find('.border-t')).to have_text('Card footer')
+  end
+
+  it 'renders without shadow when shadow: false' do
+    render_inline(described_class.new(shadow: false)) { 'Corps' }
+    expect(page).not_to have_css('.shadow-sm')
+  end
 end

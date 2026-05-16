@@ -26,6 +26,6 @@ RSpec.describe Accounting::JournalEntryRowComponent, type: :component do
 
   it 'affiche le badge de statut' do
     render_inline(described_class.new(entry: entry))
-    expect(page).to have_text('Brouillon')
+    expect(page).to have_text('Draft')
   end
 end

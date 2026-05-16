@@ -10,6 +10,6 @@ class Ui::SpinnerComponent < ViewComponent::Base
   end
 
   def css_classes
-    "animate-spin text-indigo-600 #{SIZES[@size]}"
+    "animate-spin text-primary-600 #{SIZES[@size]}"
   end
 end

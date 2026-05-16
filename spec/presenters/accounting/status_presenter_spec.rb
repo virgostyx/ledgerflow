@@ -3,19 +3,19 @@ require 'rails_helper'
 RSpec.describe Accounting::StatusPresenter, type: :presenter do
   describe '#label' do
     it 'retourne Brouillon pour draft' do
-      expect(described_class.new(:draft).label).to eq('Brouillon')
+      expect(described_class.new(:draft).label).to eq('Draft')
     end
 
     it 'retourne Validé pour posted' do
-      expect(described_class.new(:posted).label).to eq('Validé')
+      expect(described_class.new(:posted).label).to eq('Posted')
     end
 
     it 'retourne Annulé pour reversed' do
-      expect(described_class.new(:reversed).label).to eq('Annulé')
+      expect(described_class.new(:reversed).label).to eq('Cancelled')
     end
 
     it 'accepte une chaîne en plus d un symbole' do
-      expect(described_class.new('draft').label).to eq('Brouillon')
+      expect(described_class.new('draft').label).to eq('Draft')
     end
   end
 

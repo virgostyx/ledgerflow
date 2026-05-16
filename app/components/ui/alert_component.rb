@@ -1,6 +1,6 @@
 class Ui::AlertComponent < ViewComponent::Base
   VARIANTS = {
-    info:    { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
+    info:    { bg: "bg-primary-50", text: "text-primary-700", border: "border-primary-200" },
     success: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
     warning: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
     danger:  { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" }

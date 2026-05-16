@@ -1,11 +1,11 @@
 class Accounting::InvoicePresenter
-  TYPE_LABELS = { "customer" => "Client", "supplier" => "Fournisseur" }.freeze
+  TYPE_LABELS = { "customer" => "Customer", "supplier" => "Supplier" }.freeze
 
   STATUS_LABELS = {
-    "draft"     => "Brouillon",
-    "posted"    => "Validée",
-    "paid"      => "Payée",
-    "cancelled" => "Annulée"
+    "draft"     => "Draft",
+    "posted"    => "Posted",
+    "paid"      => "Paid",
+    "cancelled" => "Cancelled"
   }.freeze
 
   STATUS_VARIANTS = {
@@ -20,7 +20,7 @@ class Accounting::InvoicePresenter
   end
 
   def invoice_number_or_draft
-    @invoice.invoice_number.presence || "Brouillon"
+    @invoice.invoice_number.presence || "Draft"
   end
 
   def formatted_date

@@ -23,27 +23,27 @@ RSpec.describe 'Workflow : Création et validation d une écriture', type: :syst
         execute_script(
           "document.querySelector('[name=\"accounting_journal_entry[lines_attributes][0][account_id]\"]').value = '#{account_604.id}'"
         )
-        fill_in 'Débit', with: '1210.00'
+        fill_in 'Debit', with: '1210.00'
       end
 
-      click_button 'Ajouter une ligne'
+      click_button 'Add a line'
       expect(page).to have_css('.entry-lines', count: 2)
 
       execute_script(
         "document.querySelectorAll('.entry-lines')[1].querySelector('[name*=\"account_id\"]').value = '#{account_440.id}'"
       )
       within all('.entry-lines').last do
-        fill_in 'Crédit', with: '1210.00'
+        fill_in 'Credit', with: '1210.00'
       end
     end
 
-    expect(page).to have_css('.balance-indicator .bg-emerald-100', text: 'Équilibré')
-    expect(page).to have_button('Valider', disabled: false)
+    expect(page).to have_css('.balance-indicator .bg-emerald-100', text: 'Balanced')
+    expect(page).to have_button('Save', disabled: false)
 
-    click_button 'Valider'
+    click_button 'Save'
 
-    expect(page).to have_css('.bg-emerald-100', text: 'Validé')
-    expect(page).not_to have_button('Modifier')
+    expect(page).to have_css('.bg-emerald-100', text: 'Posted')
+    expect(page).not_to have_button('Edit')
   end
 
   it 'désactive le bouton Valider quand l écriture est déséquilibrée' do
@@ -51,11 +51,11 @@ RSpec.describe 'Workflow : Création et validation d une écriture', type: :syst
 
     within '[data-controller="journal-entry-form"]' do
       within '.entry-lines', match: :first do
-        fill_in 'Débit', with: '500.00'
+        fill_in 'Debit', with: '500.00'
       end
     end
 
-    expect(page).to have_css('.balance-indicator .bg-red-100', text: 'Déséquilibré')
-    expect(page).to have_button('Valider', disabled: true)
+    expect(page).to have_css('.balance-indicator .bg-red-100', text: 'Unbalanced')
+    expect(page).to have_button('Save', disabled: true)
   end
 end

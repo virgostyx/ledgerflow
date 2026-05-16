@@ -1,34 +1,60 @@
-<h1 class="text-lg font-semibold text-indigo-700 mb-4">Journal Entries</h1>
-
-<% if policy(Accounting::JournalEntry).create? %>
-  <%= link_to 'New entry', new_accounting_journal_entry_path,
-        class: 'inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 mb-4' %>
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Journal Entries' }
+  ]) %>
 <% end %>
 
-<table class="w-full text-sm">
-  <thead class="bg-gray-50 border-b border-gray-200">
-    <tr>
-      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Reference</th>
-      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Journal</th>
-      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
-      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
-      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Status</th>
-      <th class="px-4 py-3"></th>
-    </tr>
-  </thead>
-  <tbody class="divide-y divide-gray-100">
-    <% @entries.each do |entry| %>
-      <% presenter = Accounting::StatusPresenter.new(entry.status) %>
-      <tr class="hover:bg-gray-50">
-        <td class="px-4 py-3 font-mono text-indigo-700"><%= entry.reference || '—' %></td>
-        <td class="px-4 py-3 text-gray-500"><%= entry.journal.code %></td>
-        <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(entry.entry_date).format %></td>
-        <td class="px-4 py-3 text-gray-700"><%= entry.description %></td>
-        <td class="px-4 py-3"><%= render Accounting::StatusBadgeComponent.new(status: entry.status.to_sym) %></td>
-        <td class="px-4 py-3">
-          <%= link_to 'View', accounting_journal_entry_path(entry), class: 'text-indigo-600 hover:underline text-sm' %>
-        </td>
-      </tr>
+<%= render Ui::PageHeaderComponent.new(title: 'Journal Entries') do |header| %>
+  <% if policy(Accounting::JournalEntry).create? %>
+    <% header.with_actions do %>
+      <%= link_to 'New entry', new_accounting_journal_entry_path,
+            class: 'inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
     <% end %>
-  </tbody>
-</table>
+  <% end %>
+<% end %>
+
+<% if @entries.empty? %>
+  <%= render Ui::EmptyStateComponent.new(
+        title: 'No journal entries yet',
+        description: 'Create your first journal entry to get started.',
+        icon: :document
+      ) do |state| %>
+    <% if policy(Accounting::JournalEntry).create? %>
+      <% state.with_actions do %>
+        <%= link_to 'New entry', new_accounting_journal_entry_path,
+              class: 'inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
+      <% end %>
+    <% end %>
+  <% end %>
+<% else %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Journal</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @entries.each do |entry| %>
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-3 font-mono text-sm text-primary-700"><%= entry.reference || '—' %></td>
+            <td class="px-4 py-3 text-gray-500"><%= entry.journal.code %></td>
+            <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(entry.entry_date).format %></td>
+            <td class="px-4 py-3 text-gray-700 max-w-xs truncate"><%= entry.description %></td>
+            <td class="px-4 py-3"><%= render Accounting::StatusBadgeComponent.new(status: entry.status.to_sym) %></td>
+            <td class="px-4 py-3 text-right">
+              <%= link_to 'View', accounting_journal_entry_path(entry),
+                    class: 'text-primary-600 hover:text-primary-800 text-sm font-medium' %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

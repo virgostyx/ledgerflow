@@ -1,0 +1,32 @@
+<div
+  data-controller="flash"
+  data-flash-duration-value="<%= duration %>"
+  data-action="mouseenter->flash#pause mouseleave->flash#resume"
+  class="relative overflow-hidden w-full <%= config[:bg] %> <%= config[:border] %> <%= config[:text] %> border rounded-lg shadow-sm p-4 flex items-start gap-3 opacity-0 translate-y-[-1rem] transition-all duration-500 ease-out"
+>
+  <div class="<%= config[:icon_bg] %> rounded-lg p-2 flex-shrink-0">
+    <svg class="w-5 h-5 <%= config[:icon_color] %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= config[:icon_path] %>"/>
+    </svg>
+  </div>
+
+  <div class="flex-1 pt-0.5">
+    <p class="text-sm font-medium"><%= message %></p>
+  </div>
+
+  <button
+    data-action="click->flash#close"
+    class="flex-shrink-0 <%= config[:text] %> hover:opacity-70 transition-opacity"
+    type="button"
+    aria-label="Dismiss"
+  >
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  </button>
+
+  <div
+    data-flash-target="progressBar"
+    class="absolute bottom-0 left-0 h-1 w-full <%= config[:progress_color] %>"
+  ></div>
+</div>

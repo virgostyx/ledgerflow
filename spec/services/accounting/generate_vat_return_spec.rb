@@ -77,4 +77,18 @@ RSpec.describe Accounting::GenerateVatReturn, type: :service do
       expect(result[:vat_declaration].grids).to eq({})
     end
   end
+
+  describe '.call — unexpected error' do
+    it 'returns a failure context with the error message' do
+      allow(ApplicationRecord).to receive(:transaction).and_raise(StandardError, 'DB connection lost')
+      result = described_class.call(
+        fiscal_year_id: fiscal_year.id,
+        period_start:   Date.new(2025, 1, 1),
+        period_end:     Date.new(2025, 3, 31),
+        period_type:    :quarterly
+      )
+      expect(result).to be_failure
+      expect(result.message).to include('DB connection lost')
+    end
+  end
 end

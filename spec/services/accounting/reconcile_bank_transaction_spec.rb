@@ -106,4 +106,21 @@ RSpec.describe Accounting::ReconcileBankTransaction, type: :service do
       expect(result).to be_failure
     end
   end
+
+  describe '.call — unexpected error' do
+    let!(:transaction) do
+      create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('100.00'))
+    end
+
+    it 'returns a failure context with the error message' do
+      allow(ApplicationRecord).to receive(:transaction).and_raise(StandardError, 'unexpected DB error')
+      result = described_class.call(
+        transaction: transaction,
+        account_id:  counterpart.id,
+        fiscal_year: fiscal_year
+      )
+      expect(result).to be_failure
+      expect(result.message).to include('unexpected DB error')
+    end
+  end
 end

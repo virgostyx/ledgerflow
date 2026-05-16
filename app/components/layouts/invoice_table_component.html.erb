@@ -12,7 +12,7 @@
     <% @invoices.each do |invoice| %>
       <% p = presenter_for(invoice) %>
       <tr class="hover:bg-gray-50">
-        <td class="px-4 py-3 font-mono text-indigo-700"><%= p.invoice_number_or_draft %></td>
+        <td class="px-4 py-3 font-mono text-primary-700"><%= p.invoice_number_or_draft %></td>
         <td class="px-4 py-3 text-gray-700"><%= invoice.partner.name %></td>
         <td class="px-4 py-3 text-gray-500"><%= p.formatted_date %></td>
         <td class="px-4 py-3 text-right font-mono font-medium"><%= p.formatted_total %></td>

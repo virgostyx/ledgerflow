@@ -1,0 +1,30 @@
+<div data-controller="filter-panel"
+     data-filter-panel-open-value="<%= open_by_default? %>">
+  <button type="button"
+          data-action="click->filter-panel#toggle"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700
+                 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50
+                 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors">
+    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
+    </svg>
+    Filters
+    <% if @active_count > 0 %>
+      <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold
+                   text-white bg-primary-600 rounded-full">
+        <%= @active_count %>
+      </span>
+    <% end %>
+    <svg data-filter-panel-target="chevron"
+         class="w-4 h-4 text-gray-400 transition-transform duration-200"
+         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </button>
+
+  <div data-filter-panel-target="panel"
+       class="<%= open_by_default? ? '' : 'hidden' %> mt-3 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+    <%= fields %>
+  </div>
+</div>

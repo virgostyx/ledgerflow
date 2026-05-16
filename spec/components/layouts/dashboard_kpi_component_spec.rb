@@ -3,25 +3,31 @@ require 'rails_helper'
 RSpec.describe Layouts::DashboardKpiComponent, type: :component do
   let(:kpis) do
     [
-      { label: 'Factures à valider', value: 5,                  icon: 'document-text' },
-      { label: 'Solde trésorerie',   value: '12 345,00 €',      icon: 'banknotes' },
-      { label: 'Écritures brouillon', value: 3,                 icon: 'book-open' }
+      { title: 'Invoices to validate', value: 5,              icon: :document_text, color: :amber  },
+      { title: 'Treasury balance',     value: '€12,345.00',   icon: :banknotes,     color: :green  },
+      { title: 'Draft entries',        value: 3,              icon: :book_open,     color: :primary }
     ]
   end
 
   before { render_inline(described_class.new(kpis: kpis)) }
 
-  it 'affiche le label de chaque KPI' do
-    expect(page).to have_text('Factures à valider')
-    expect(page).to have_text('Solde trésorerie')
+  it 'renders the title of each KPI' do
+    expect(page).to have_text('Invoices to validate')
+    expect(page).to have_text('Treasury balance')
+    expect(page).to have_text('Draft entries')
   end
 
-  it 'affiche les valeurs' do
+  it 'renders the values' do
     expect(page).to have_text('5')
-    expect(page).to have_text('12 345,00 €')
+    expect(page).to have_text('€12,345.00')
+    expect(page).to have_text('3')
   end
 
-  it 'affiche une grille de KPIs' do
-    expect(page).to have_css('.kpi-grid')
+  it 'renders a responsive grid wrapper' do
+    expect(page).to have_css('.grid')
+  end
+
+  it 'renders each KPI as a Stats::KpiCardComponent' do
+    expect(page).to have_css('[role="article"]', count: 3)
   end
 end

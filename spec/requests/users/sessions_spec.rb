@@ -8,7 +8,7 @@ RSpec.describe 'Users::Sessions', type: :request do
     it 'retourne 200 et affiche le formulaire de connexion' do
       get new_user_session_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('Se connecter')
+      expect(response.body).to include('Sign in')
     end
   end
 

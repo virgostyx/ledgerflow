@@ -5,18 +5,22 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
   <body class="bg-white text-gray-900">
     <nav class="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <span class="text-2xl text-indigo-700">◈</span>
-        <span class="text-lg font-bold text-indigo-700">LedgerFlow</span>
+        <span class="text-2xl text-primary-700">◈</span>
+        <span class="text-lg font-bold text-primary-700">LedgerFlow</span>
       </div>
       <%= link_to 'Sign in', new_user_session_path,
-            class: 'bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors' %>
+            class: 'bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors' %>
     </nav>
 
     <main>

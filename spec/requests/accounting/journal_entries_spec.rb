@@ -43,17 +43,17 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
 
       it 'crée une écriture' do
         expect {
-          post accounting_journal_entries_path, params: valid_params.merge(commit: 'Valider')
+          post accounting_journal_entries_path, params: valid_params.merge(commit: 'Save')
         }.to change(Accounting::JournalEntry, :count).by(1)
       end
 
       it 'valide l écriture' do
-        post accounting_journal_entries_path, params: valid_params.merge(commit: 'Valider')
+        post accounting_journal_entries_path, params: valid_params.merge(commit: 'Save')
         expect(Accounting::JournalEntry.last).to be_posted
       end
 
       it 'redirige vers l écriture' do
-        post accounting_journal_entries_path, params: valid_params.merge(commit: 'Valider')
+        post accounting_journal_entries_path, params: valid_params.merge(commit: 'Save')
         expect(response).to redirect_to(accounting_journal_entry_path(Accounting::JournalEntry.last))
       end
     end

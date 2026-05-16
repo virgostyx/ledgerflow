@@ -1,10 +1,436 @@
-/*
- * This is a manifest file that'll be compiled into application.css.
- *
- * With Propshaft, assets are served efficiently without preprocessing steps. You can still include
- * application-wide styles in this file, but keep in mind that CSS precedence will follow the standard
- * cascading order, meaning styles declared later in the document or manifest will override earlier ones,
- * depending on specificity.
- *
- * Consider organizing styles into separate files for maintainability.
- */
+/* ============================================================
+   LEDGERFLOW — Custom Stylesheet
+   Loaded alongside the Tailwind build via stylesheet_link_tag.
+   ============================================================ */
+
+/* ── Design Tokens (CSS variables) ─────────────────────────── */
+
+:root {
+  /* Primary (Orange) */
+  --lf-primary-50:  #fff7ed;
+  --lf-primary-100: #ffedd5;
+  --lf-primary-200: #fed7aa;
+  --lf-primary-300: #fdba74;
+  --lf-primary-400: #fb923c;
+  --lf-primary-500: #f97316;
+  --lf-primary-600: #ea580c;
+  --lf-primary-700: #c2410c;
+  --lf-primary-800: #9a3412;
+  --lf-primary-900: #7c2d12;
+
+  /* Gray */
+  --lf-gray-50:  #f9fafb;
+  --lf-gray-100: #f3f4f6;
+  --lf-gray-200: #e5e7eb;
+  --lf-gray-300: #d1d5db;
+  --lf-gray-400: #9ca3af;
+  --lf-gray-500: #6b7280;
+  --lf-gray-600: #4b5563;
+  --lf-gray-700: #374151;
+  --lf-gray-800: #1f2937;
+  --lf-gray-900: #111827;
+
+  /* Success (Emerald) */
+  --lf-success-50:  #f0fdf4;
+  --lf-success-100: #dcfce7;
+  --lf-success-500: #22c55e;
+  --lf-success-600: #16a34a;
+  --lf-success-700: #15803d;
+
+  /* Warning (Amber) */
+  --lf-warning-50:  #fffbeb;
+  --lf-warning-100: #fef3c7;
+  --lf-warning-500: #f59e0b;
+  --lf-warning-600: #d97706;
+  --lf-warning-700: #b45309;
+
+  /* Danger (Red) */
+  --lf-danger-50:  #fef2f2;
+  --lf-danger-100: #fee2e2;
+  --lf-danger-500: #ef4444;
+  --lf-danger-600: #dc2626;
+  --lf-danger-700: #b91c1c;
+
+  /* Info (Blue) */
+  --lf-info-50:  #eff6ff;
+  --lf-info-100: #dbeafe;
+  --lf-info-500: #3b82f6;
+  --lf-info-600: #2563eb;
+  --lf-info-700: #1d4ed8;
+
+  /* Spacing */
+  --lf-spacing-xs:  0.25rem;
+  --lf-spacing-sm:  0.5rem;
+  --lf-spacing-md:  1rem;
+  --lf-spacing-lg:  1.5rem;
+  --lf-spacing-xl:  2rem;
+  --lf-spacing-2xl: 3rem;
+  --lf-spacing-3xl: 4rem;
+
+  /* Typography */
+  --lf-text-xs:   0.75rem;
+  --lf-text-sm:   0.875rem;
+  --lf-text-base: 1rem;
+  --lf-text-lg:   1.125rem;
+  --lf-text-xl:   1.25rem;
+  --lf-text-2xl:  1.5rem;
+  --lf-text-3xl:  1.875rem;
+  --lf-text-4xl:  2.25rem;
+
+  /* Borders */
+  --lf-radius-sm:   0.25rem;
+  --lf-radius-md:   0.375rem;
+  --lf-radius-lg:   0.5rem;
+  --lf-radius-xl:   0.75rem;
+  --lf-radius-2xl:  1rem;
+  --lf-radius-full: 9999px;
+
+  /* Shadows */
+  --lf-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --lf-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --lf-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --lf-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* Z-index */
+  --lf-z-dropdown:       1000;
+  --lf-z-sticky:         1020;
+  --lf-z-fixed:          1030;
+  --lf-z-modal-backdrop: 1040;
+  --lf-z-modal:          1050;
+  --lf-z-popover:        1060;
+  --lf-z-tooltip:        1070;
+
+  /* Transitions */
+  --lf-transition-fast:   150ms;
+  --lf-transition-base:   300ms;
+  --lf-transition-slow:   500ms;
+  --lf-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Floating Labels ────────────────────────────────────────── */
+
+/* Label floats up when field has value or is focused */
+.floating {
+  transform: translateY(-1.25rem) scale(0.75) !important;
+  color: #ea580c !important; /* primary-600 */
+}
+
+/* Hide placeholder until field is focused (prevents overlap with floating label) */
+[data-controller*="floating-label"] input::placeholder,
+[data-controller*="floating-label"] input::-webkit-input-placeholder,
+[data-controller*="floating-label"] input::-moz-placeholder,
+[data-controller*="floating-label"] input:-ms-input-placeholder,
+[data-controller*="floating-label"] textarea::placeholder,
+[data-controller*="floating-label"] textarea::-webkit-input-placeholder,
+[data-controller*="floating-label"] textarea::-moz-placeholder,
+[data-controller*="floating-label"] textarea:-ms-input-placeholder {
+  opacity: 0 !important;
+  color: transparent !important;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Show placeholder subtly when field is focused */
+[data-controller*="floating-label"] input:focus::placeholder,
+[data-controller*="floating-label"] textarea:focus::placeholder {
+  opacity: 0.5 !important;
+  color: #9ca3af !important; /* gray-400 */
+}
+
+/* Label color on focus */
+[data-controller*="floating-label"] input:focus + label,
+[data-controller*="floating-label"] textarea:focus + label,
+[data-controller*="floating-label"] select:focus + label {
+  color: #ea580c; /* primary-600 */
+}
+
+/* Error state */
+input.border-danger-500 + label,
+input.border-red-500 + label {
+  color: #dc2626; /* danger-600 */
+}
+
+/* Label transition */
+label[data-floating-label-target="label"] {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Focus ring for floating label inputs */
+[data-controller*="floating-label"] input:focus,
+[data-controller*="floating-label"] textarea:focus,
+[data-controller*="floating-label"] select:focus {
+  outline: none;
+  ring-width: 2px;
+  border-color: transparent;
+}
+
+/* Password toggle */
+button[data-password-toggle-target="icon"] {
+  cursor: pointer;
+  transition: color 0.2s ease-in-out;
+}
+
+button[data-password-toggle-target="icon"]:hover {
+  color: #ea580c; /* primary-600 */
+}
+
+/* ── Animations ─────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes gradient {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 15s ease infinite;
+}
+
+/* ── Card effects ────────────────────────────────────────────── */
+
+.card-hover {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Button utilities ────────────────────────────────────────── */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 2rem;
+  border: 1px solid transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  color: white;
+  background-color: #ea580c;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+  background-color: #c2410c;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 2rem;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  color: #374151;
+  background-color: white;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.btn-secondary:hover {
+  background-color: #f9fafb;
+}
+
+/* ── Loading spinner ─────────────────────────────────────────── */
+
+.lf-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: lf-spin 0.6s linear infinite;
+}
+
+@keyframes lf-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Music Player ────────────────────────────────────────────── */
+
+@keyframes vinyl-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.music-vinyl-spin {
+  animation: vinyl-spin 4s linear infinite;
+}
+
+@keyframes eq-bounce {
+  0%, 100% { height: 4px; }
+  50%       { height: 14px; }
+}
+
+.music-eq-bar {
+  display: inline-block;
+  height: 4px;
+  animation: eq-bounce 0.8s ease-in-out infinite;
+}
+
+/* Volume slider — webkit */
+.music-volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+}
+
+.music-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #a78bfa;
+  margin-top: -4px;
+  cursor: pointer;
+}
+
+/* Volume slider — moz */
+.music-volume-slider::-moz-range-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+}
+
+.music-volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: #a78bfa;
+  cursor: pointer;
+}
+
+/* ── Smooth scroll ───────────────────────────────────────────── */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Accessible focus ────────────────────────────────────────── */
+
+*:focus-visible {
+  outline: 2px solid #ea580c; /* primary-600 */
+  outline-offset: 2px;
+}
+
+/* ── Custom scrollbar ────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f3f4f6; /* gray-100 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db; /* gray-300 */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af; /* gray-400 */
+}
+
+/* ── Text selection ──────────────────────────────────────────── */
+
+::selection {
+  background-color: rgba(234, 88, 12, 0.15); /* primary-600 at 15% */
+  color: inherit;
+}
+
+::-moz-selection {
+  background-color: rgba(234, 88, 12, 0.15);
+  color: inherit;
+}
+
+/* ── Print styles ────────────────────────────────────────────── */
+
+@media print {
+  nav,
+  aside,
+  header,
+  footer,
+  .no-print,
+  button:not(.print-visible) {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th,
+  td {
+    border: 1px solid #d1d5db;
+    padding: 4pt 8pt;
+    text-align: left;
+  }
+
+  thead {
+    background-color: #f3f4f6 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* Force black on colored text for ink saving */
+  [class*="text-primary"],
+  [class*="text-success"],
+  [class*="text-danger"],
+  [class*="text-warning"],
+  [class*="text-info"] {
+    color: black !important;
+  }
+
+  /* Page breaks */
+  .page-break-before { page-break-before: always; }
+  .page-break-after  { page-break-after: always; }
+  .no-page-break     { page-break-inside: avoid; }
+
+  /* Remove shadows */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}
+
+/* ── Mobile nav transition ───────────────────────────────────── */
+
+@media (max-width: 640px) {
+  [data-navbar-target="menu"] {
+    transition: all 0.3s ease-in-out;
+  }
+}

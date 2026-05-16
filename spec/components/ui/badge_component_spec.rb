@@ -23,7 +23,17 @@ RSpec.describe Ui::BadgeComponent, type: :component do
 
   it 'renders with primary variant' do
     render_inline(described_class.new(label: 'Info', variant: :primary))
-    expect(page).to have_css('span.bg-indigo-100', text: 'Info')
+    expect(page).to have_css('span.bg-primary-100', text: 'Info')
+  end
+
+  it 'renders with info variant' do
+    render_inline(described_class.new(label: 'Info', variant: :info))
+    expect(page).to have_css('span.bg-blue-100', text: 'Info')
+  end
+
+  it 'renders with gray variant' do
+    render_inline(described_class.new(label: 'N/A', variant: :gray))
+    expect(page).to have_css('span.bg-gray-200', text: 'N/A')
   end
 
   it 'raises on unknown variant' do

@@ -34,6 +34,6 @@ RSpec.describe Accounting::InvoiceCardComponent, type: :component do
   end
 
   it 'affiche le badge de statut' do
-    expect(page).to have_text('Validée')
+    expect(page).to have_text('Posted')
   end
 end

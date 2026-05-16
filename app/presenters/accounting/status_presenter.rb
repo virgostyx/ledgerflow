@@ -1,8 +1,8 @@
 class Accounting::StatusPresenter
   LABELS = {
-    draft:    "Brouillon",
-    posted:   "Validé",
-    reversed: "Annulé"
+    draft:    "Draft",
+    posted:   "Posted",
+    reversed: "Cancelled"
   }.freeze
 
   BADGE_VARIANTS = {

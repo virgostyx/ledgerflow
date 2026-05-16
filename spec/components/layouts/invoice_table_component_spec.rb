@@ -29,8 +29,8 @@ RSpec.describe Layouts::InvoiceTableComponent, type: :component do
   end
 
   it 'affiche les statuts' do
-    expect(page).to have_text('Validée')
-    expect(page).to have_text('Brouillon')
+    expect(page).to have_text('Posted')
+    expect(page).to have_text('Draft')
   end
 
   it 'affiche un tableau' do

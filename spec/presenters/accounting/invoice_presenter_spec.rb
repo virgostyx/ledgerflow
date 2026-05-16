@@ -15,7 +15,7 @@ RSpec.describe Accounting::InvoicePresenter, type: :presenter do
     it 'retourne Brouillon quand pas de numéro' do
       invoice = build(:invoice, invoice_number: nil)
       presenter = described_class.new(invoice)
-      expect(presenter.invoice_number_or_draft).to eq('Brouillon')
+      expect(presenter.invoice_number_or_draft).to eq('Draft')
     end
   end
 
@@ -53,21 +53,21 @@ RSpec.describe Accounting::InvoicePresenter, type: :presenter do
     it 'retourne Client pour customer' do
       invoice = build(:invoice, invoice_type: :customer)
       presenter = described_class.new(invoice)
-      expect(presenter.type_label).to eq('Client')
+      expect(presenter.type_label).to eq('Customer')
     end
 
     it 'retourne Fournisseur pour supplier' do
       invoice = build(:invoice, invoice_type: :supplier)
       presenter = described_class.new(invoice)
-      expect(presenter.type_label).to eq('Fournisseur')
+      expect(presenter.type_label).to eq('Supplier')
     end
   end
 
   describe '#status_label' do
-    it { expect(described_class.new(build(:invoice, status: :draft)).status_label).to eq('Brouillon') }
-    it { expect(described_class.new(build(:invoice, status: :posted)).status_label).to eq('Validée') }
-    it { expect(described_class.new(build(:invoice, status: :paid)).status_label).to eq('Payée') }
-    it { expect(described_class.new(build(:invoice, status: :cancelled)).status_label).to eq('Annulée') }
+    it { expect(described_class.new(build(:invoice, status: :draft)).status_label).to eq('Draft') }
+    it { expect(described_class.new(build(:invoice, status: :posted)).status_label).to eq('Posted') }
+    it { expect(described_class.new(build(:invoice, status: :paid)).status_label).to eq('Paid') }
+    it { expect(described_class.new(build(:invoice, status: :cancelled)).status_label).to eq('Cancelled') }
   end
 
   describe '#status_badge_variant' do

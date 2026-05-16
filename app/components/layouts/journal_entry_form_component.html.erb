@@ -123,7 +123,7 @@
 
   <%# Add line button %>
   <button type="button"
-          class="text-sm text-indigo-600 hover:text-indigo-800 font-medium mb-6"
+          class="text-sm text-primary-600 hover:text-primary-800 font-medium mb-6"
           data-action="click->journal-entry-form#addLine">
     + Add a line
   </button>
@@ -138,7 +138,7 @@
   <%# Submit %>
   <div class="flex gap-3">
     <%= f.submit 'Save', name: 'commit', value: 'Save',
-          class: 'px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed',
+          class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed',
           disabled: true,
           data: { journal_entry_form_target: 'submitButton' } %>
     <%= link_to 'Cancel', accounting_journal_entries_path,
