@@ -1,31 +1,175 @@
-# Files in the config/locales directory are used for internationalization and
-# are automatically loaded by Rails. If you want to use locales other than
-# English, add the necessary files in this directory.
-#
-# To use the locales, use `I18n.t`:
-#
-#     I18n.t "hello"
-#
-# In views, this is aliased to just `t`:
-#
-#     <%= t("hello") %>
-#
-# To use a different locale, set it with `I18n.locale`:
-#
-#     I18n.locale = :es
-#
-# This would use the information in config/locales/es.yml.
-#
-# To learn more about the API, please read the Rails Internationalization guide
-# at https://guides.rubyonrails.org/i18n.html.
-#
-# Be aware that YAML interprets the following case-insensitive strings as
-# booleans: `true`, `false`, `on`, `off`, `yes`, `no`. Therefore, these strings
-# must be quoted to be interpreted as strings. For example:
-#
-#     en:
-#       "yes": yup
-#       enabled: "ON"
-
 en:
-  hello: "Hello world"
+  date:
+    formats:
+      default: "%d/%m/%Y"
+      short:   "%d/%m/%Y"
+      long:    "%B %d, %Y"
+    day_names:        [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
+    abbr_day_names:   [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+    month_names:      [~, January, February, March, April, May, June, July, August, September, October, November, December]
+    abbr_month_names: [~, Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+
+  time:
+    formats:
+      default: "%d/%m/%Y %H:%M"
+      short:   "%d/%m/%Y %H:%M"
+      long:    "%B %d, %Y %H:%M"
+
+  errors:
+    not_authorized: "You are not authorized to perform this action."
+
+  accounting:
+    errors:
+      dual_side:          "Cannot have both debit AND credit positive at the same time."
+      zero_side:          "The entry must have an amount in either debit or credit."
+      unbalanced_entry:   "Unbalanced entry: debit %{debit} ≠ credit %{credit}."
+      already_reconciled: "This transaction has already been reconciled."
+
+    partners:
+      created: "Partner created successfully."
+      updated: "Partner updated."
+      deleted: "Partner deleted."
+
+    journal_entries:
+      created:  "Entry saved as draft."
+      updated:  "Entry updated."
+      posted:   "Entry posted and recorded."
+      reverse_not_implemented: "Reversal is not yet implemented."
+
+    bank_reconciliation:
+      imported:   "Statement imported: %{count} transaction(s) created."
+      reconciled: "Transaction reconciled successfully."
+
+    vat_declarations:
+      created: "VAT declaration generated successfully."
+
+    invoices:
+      created: "Invoice created."
+      updated: "Invoice updated."
+      deleted: "Invoice deleted."
+      posted:  "Invoice validated and posted."
+      errors:
+        already_posted: "This invoice has already been posted."
+        no_lines:       "The invoice must have at least one line."
+        no_journal:     "No active journal of type %{type} found."
+
+    fiscal_years:
+      index:
+        title: "Fiscal Years"
+      show:
+        title: "Fiscal Year %{year}"
+      new:           "New Fiscal Year"
+      edit:          "Edit Fiscal Year"
+      created:       "Fiscal year created successfully."
+      updated:       "Fiscal year updated."
+      closed:        "Fiscal year closed successfully."
+      close_action:  "Close Fiscal Year"
+      close_confirm: "Confirm closing this fiscal year? This action is irreversible."
+      back:          "← Back to Fiscal Years"
+      cancel:        "Cancel"
+      year:          "Year"
+      period:        "Period"
+      status:        "Status"
+      start_date:    "Start Date"
+      end_date:      "End Date"
+      closed_at:     "Closed On"
+      show:          "View"
+      statuses:
+        open:        "Open"
+        pre_closing: "Pre-closing"
+        closed:      "Closed"
+      closing_entry_description: "Closing entry for fiscal year %{year}"
+      closing_label: "Fiscal year close"
+      errors:
+        open_entries:   "%{count} draft entry/entries must be posted before closing."
+        already_closed: "This fiscal year is already closed."
+        missing_setup:  "Closing journal (active misc) or account 699000 not found."
+
+    reports:
+      filter:      "Filter"
+      export_csv:  "Export CSV"
+      export_xlsx: "Export Excel"
+      no_data:     "No data for this period."
+      totals:      "Totals"
+      date_from:   "From"
+      date_to:     "To"
+      trial_balance:
+        title: "Trial Balance"
+        as_of: "As of"
+      balance_sheet:
+        title:       "Balance Sheet"
+        assets:      "Assets"
+        liabilities: "Liabilities & Equity"
+      income_statement:
+        title:    "Income Statement"
+        charges:  "Expenses"
+        produits: "Revenue"
+        profit:   "Profit"
+        loss:     "Loss"
+      general_ledger:
+        title:                 "General Ledger"
+        account:               "Account"
+        select_account:        "— Select an account —"
+        select_account_prompt: "Please select an account to display the general ledger."
+      analytic:
+        title:          "Analytics by Project"
+        project_id:     "Project"
+        project_prefix: "Project"
+        charges:        "Expenses"
+        produits:       "Revenue"
+        solde:          "Balance"
+      csv:
+        code:            "Code"
+        label:           "Label"
+        debit:           "Debit"
+        credit:          "Credit"
+        balance:         "Balance"
+        date:            "Date"
+        reference:       "Reference"
+        running_balance: "Running Balance"
+
+  peppol:
+    invoices:
+      sent: "Invoice sent via Peppol network."
+    errors:
+      invoice_not_posted: "Only posted invoices can be sent via Peppol."
+      hmac_invalid:       "Invalid HMAC signature."
+
+  activerecord:
+    errors:
+      messages:
+        record_invalid: "Validation failed: %{errors}"
+        invalid:        "is not valid"
+      models:
+        accounting/partner:
+          attributes:
+            vat_number:
+              invalid: "must be in BE format followed by 10 digits (e.g. BE0123456789)"
+            iban:
+              invalid: "must be in Belgian BE format followed by 14 digits"
+
+  devise:
+    sessions:
+      signed_in:          "Signed in successfully."
+      signed_out:         "Signed out successfully."
+      already_signed_out: "Already signed out."
+      new:
+        sign_in: "Sign in"
+    failure:
+      invalid:          "Invalid email or password."
+      locked:           "Your account is locked."
+      inactive_account: "Your account is inactive. Please contact the administrator."
+      timeout:          "Your session has expired. Please sign in again."
+      unauthenticated:  "You need to sign in to access this page."
+    passwords:
+      send_instructions:          "You will receive password reset instructions shortly."
+      updated:                    "Password updated. You are now signed in."
+      updated_not_active:         "Password updated."
+      send_paranoia_instructions: "If your email exists, you will receive the instructions."
+    registrations:
+      signed_up: "Welcome! Your account has been created."
+      updated:   "Your account has been updated."
+      destroyed: "Your account has been deleted."
+    unlocks:
+      send_instructions: "You will receive account unlock instructions shortly."
+      unlocked:          "Your account has been unlocked."

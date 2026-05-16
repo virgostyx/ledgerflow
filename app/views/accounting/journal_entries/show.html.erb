@@ -1,16 +1,16 @@
 <div class="flex items-center justify-between mb-6">
   <div>
-    <h1 class="text-lg font-semibold text-indigo-700"><%= @entry.reference || 'Brouillon' %></h1>
+    <h1 class="text-lg font-semibold text-indigo-700"><%= @entry.reference || 'Draft' %></h1>
     <p class="text-sm text-gray-500"><%= @entry.journal.label_fr %> — <%= Accounting::DatePresenter.new(@entry.entry_date).format %></p>
   </div>
   <div class="flex items-center gap-3">
     <%= render Accounting::StatusBadgeComponent.new(status: @entry.status.to_sym) %>
     <% if @entry.draft? && policy(@entry).post? %>
-      <%= button_to 'Valider', post_entry_accounting_journal_entry_path(@entry), method: :post,
+      <%= button_to 'Post', post_entry_accounting_journal_entry_path(@entry), method: :post,
             class: 'px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700' %>
     <% end %>
     <% if @entry.draft? && policy(@entry).update? %>
-      <%= link_to 'Modifier', edit_accounting_journal_entry_path(@entry),
+      <%= link_to 'Edit', edit_accounting_journal_entry_path(@entry),
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50' %>
     <% end %>
   </div>
@@ -21,10 +21,10 @@
 <table class="w-full text-sm mb-6">
   <thead class="bg-gray-50 border-b border-gray-200">
     <tr>
-      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Compte</th>
-      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Libellé</th>
-      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Débit</th>
-      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Crédit</th>
+      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Account</th>
+      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Label</th>
+      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Debit</th>
+      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Credit</th>
     </tr>
   </thead>
   <tbody class="divide-y divide-gray-100">
@@ -39,4 +39,4 @@
   </tbody>
 </table>
 
-<%= link_to '← Retour', accounting_journal_entries_path, class: 'text-sm text-gray-600 hover:text-gray-900' %>
+<%= link_to '← Back', accounting_journal_entries_path, class: 'text-sm text-gray-600 hover:text-gray-900' %>

@@ -1,15 +1,15 @@
 <h1><%= @partner.name %></h1>
 
 <dl>
-  <dt>Type</dt>       <dd><%= @partner.partner_type %></dd>
-  <dt>N° TVA</dt>     <dd><%= @partner.vat_number %></dd>
-  <dt>Email</dt>      <dd><%= @partner.email %></dd>
-  <dt>Téléphone</dt>  <dd><%= @partner.phone %></dd>
-  <dt>IBAN</dt>       <dd><%= @partner.iban %></dd>
-  <dt>Pays</dt>       <dd><%= @partner.country %></dd>
+  <dt>Type</dt>        <dd><%= @partner.partner_type %></dd>
+  <dt>VAT number</dt>  <dd><%= @partner.vat_number %></dd>
+  <dt>Email</dt>       <dd><%= @partner.email %></dd>
+  <dt>Phone</dt>       <dd><%= @partner.phone %></dd>
+  <dt>IBAN</dt>        <dd><%= @partner.iban %></dd>
+  <dt>Country</dt>     <dd><%= @partner.country %></dd>
 </dl>
 
 <% if policy(@partner).update? %>
-  <%= link_to 'Modifier', edit_accounting_partner_path(@partner) %>
+  <%= link_to 'Edit', edit_accounting_partner_path(@partner) %>
 <% end %>
-<%= link_to 'Retour', accounting_partners_path %>
+<%= link_to 'Back', accounting_partners_path %>

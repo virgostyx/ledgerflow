@@ -1,18 +1,18 @@
-<h1>Factures</h1>
+<h1>Invoices</h1>
 
 <% if policy(Accounting::Invoice).create? %>
-  <%= link_to 'Nouvelle facture', new_accounting_invoice_path %>
+  <%= link_to 'New invoice', new_accounting_invoice_path %>
 <% end %>
 
 <table>
   <thead>
     <tr>
-      <th>Numéro</th>
+      <th>Number</th>
       <th>Type</th>
-      <th>Partenaire</th>
+      <th>Partner</th>
       <th>Date</th>
-      <th>Total TTC</th>
-      <th>Statut</th>
+      <th>Total incl. VAT</th>
+      <th>Status</th>
       <th></th>
     </tr>
   </thead>
@@ -27,9 +27,9 @@
         <td><%= presenter.formatted_total %></td>
         <td><%= presenter.status_label %></td>
         <td>
-          <%= link_to 'Voir', accounting_invoice_path(invoice) %>
+          <%= link_to 'View', accounting_invoice_path(invoice) %>
           <% if policy(invoice).update? %>
-            <%= link_to 'Modifier', edit_accounting_invoice_path(invoice) %>
+            <%= link_to 'Edit', edit_accounting_invoice_path(invoice) %>
           <% end %>
         </td>
       </tr>

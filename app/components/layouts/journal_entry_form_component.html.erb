@@ -24,10 +24,10 @@
 
   <%# Column headers %>
   <div class="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 mb-2 px-1">
-    <div class="col-span-3">Compte</div>
-    <div class="col-span-4">Libellé</div>
-    <div class="col-span-2 text-right">Débit</div>
-    <div class="col-span-2 text-right">Crédit</div>
+    <div class="col-span-3">Account</div>
+    <div class="col-span-4">Label</div>
+    <div class="col-span-2 text-right">Debit</div>
+    <div class="col-span-2 text-right">Credit</div>
     <div class="col-span-1"></div>
   </div>
 
@@ -37,8 +37,8 @@
       <div class="entry-lines grid grid-cols-12 gap-2 mb-2 items-center">
         <div class="col-span-3 relative" data-controller="account-search"
              data-account-search-accounts-value="<%= accounts_json %>">
-          <label class="sr-only">Compte</label>
-          <input type="text" placeholder="Compte"
+          <label class="sr-only">Account</label>
+          <input type="text" placeholder="Account"
                  value="<%= lf.object.account&.code %>"
                  class="block w-full rounded border-gray-300 text-sm"
                  data-account-search-target="input"
@@ -48,21 +48,21 @@
                class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
         </div>
         <div class="col-span-4">
-          <label class="sr-only">Libellé</label>
-          <%= lf.text_field :label, placeholder: 'Libellé', class: 'block w-full rounded border-gray-300 text-sm' %>
+          <label class="sr-only">Label</label>
+          <%= lf.text_field :label, placeholder: 'Label', class: 'block w-full rounded border-gray-300 text-sm' %>
         </div>
         <div class="col-span-2">
-          <label class="sr-only">Débit</label>
-          <%= lf.number_field :debit, step: '0.01', min: 0, placeholder: '0,00',
-                'aria-label': 'Débit',
+          <label class="sr-only">Debit</label>
+          <%= lf.number_field :debit, step: '0.01', min: 0, placeholder: '0.00',
+                'aria-label': 'Debit',
                 class: 'block w-full rounded border-gray-300 text-sm text-right font-mono',
                 data: { journal_entry_form_target: 'debitInput',
                         action: 'input->journal-entry-form#computeBalance' } %>
         </div>
         <div class="col-span-2">
-          <label class="sr-only">Crédit</label>
-          <%= lf.number_field :credit, step: '0.01', min: 0, placeholder: '0,00',
-                'aria-label': 'Crédit',
+          <label class="sr-only">Credit</label>
+          <%= lf.number_field :credit, step: '0.01', min: 0, placeholder: '0.00',
+                'aria-label': 'Credit',
                 class: 'block w-full rounded border-gray-300 text-sm text-right font-mono',
                 data: { journal_entry_form_target: 'creditInput',
                         action: 'input->journal-entry-form#computeBalance' } %>
@@ -80,8 +80,8 @@
     <div class="entry-lines grid grid-cols-12 gap-2 mb-2 items-center">
       <div class="col-span-3 relative" data-controller="account-search"
            data-account-search-accounts-value="<%= accounts_json %>">
-        <label class="sr-only">Compte</label>
-        <input type="text" placeholder="Compte"
+        <label class="sr-only">Account</label>
+        <input type="text" placeholder="Account"
                class="block w-full rounded border-gray-300 text-sm"
                data-account-search-target="input"
                data-action="input->account-search#filter blur->account-search#hideDelayed">
@@ -91,24 +91,24 @@
              class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
       </div>
       <div class="col-span-4">
-        <label class="sr-only">Libellé</label>
-        <input type="text" placeholder="Libellé"
+        <label class="sr-only">Label</label>
+        <input type="text" placeholder="Label"
                name="accounting_journal_entry[lines_attributes][NEW_INDEX][label]"
                class="block w-full rounded border-gray-300 text-sm">
       </div>
       <div class="col-span-2">
-        <label class="sr-only">Débit</label>
-        <input type="number" step="0.01" min="0" placeholder="0,00"
-               aria-label="Débit" value="0"
+        <label class="sr-only">Debit</label>
+        <input type="number" step="0.01" min="0" placeholder="0.00"
+               aria-label="Debit" value="0"
                name="accounting_journal_entry[lines_attributes][NEW_INDEX][debit]"
                class="block w-full rounded border-gray-300 text-sm text-right font-mono"
                data-journal-entry-form-target="debitInput"
                data-action="input->journal-entry-form#computeBalance">
       </div>
       <div class="col-span-2">
-        <label class="sr-only">Crédit</label>
-        <input type="number" step="0.01" min="0" placeholder="0,00"
-               aria-label="Crédit" value="0"
+        <label class="sr-only">Credit</label>
+        <input type="number" step="0.01" min="0" placeholder="0.00"
+               aria-label="Credit" value="0"
                name="accounting_journal_entry[lines_attributes][NEW_INDEX][credit]"
                class="block w-full rounded border-gray-300 text-sm text-right font-mono"
                data-journal-entry-form-target="creditInput"
@@ -125,23 +125,23 @@
   <button type="button"
           class="text-sm text-indigo-600 hover:text-indigo-800 font-medium mb-6"
           data-action="click->journal-entry-form#addLine">
-    + Ajouter une ligne
+    + Add a line
   </button>
 
   <%# Balance indicator %>
   <div class="flex items-center justify-between mb-4">
     <div class="balance-indicator" data-journal-entry-form-target="balanceIndicator">
-      <span class="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">En attente</span>
+      <span class="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">Pending</span>
     </div>
   </div>
 
   <%# Submit %>
   <div class="flex gap-3">
-    <%= f.submit 'Valider', name: 'commit', value: 'Valider',
+    <%= f.submit 'Save', name: 'commit', value: 'Save',
           class: 'px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed',
           disabled: true,
           data: { journal_entry_form_target: 'submitButton' } %>
-    <%= link_to 'Annuler', accounting_journal_entries_path,
+    <%= link_to 'Cancel', accounting_journal_entries_path,
           class: 'px-4 py-2 text-sm text-gray-600 hover:text-gray-800' %>
   </div>
 <% end %>

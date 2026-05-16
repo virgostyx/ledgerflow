@@ -10,26 +10,26 @@
 
   <div>
     <%= f.label :invoice_type, 'Type' %>
-    <%= f.select :invoice_type, Accounting::Invoice.invoice_types.keys.map { |k| [k == 'customer' ? 'Client' : 'Fournisseur', k] } %>
+    <%= f.select :invoice_type, Accounting::Invoice.invoice_types.keys.map { |k| [k == 'customer' ? 'Customer' : 'Supplier', k] } %>
   </div>
 
   <div>
-    <%= f.label :invoice_date, 'Date de facture' %>
+    <%= f.label :invoice_date, 'Invoice date' %>
     <%= f.date_field :invoice_date %>
   </div>
 
   <div>
-    <%= f.label :due_date, 'Échéance' %>
+    <%= f.label :due_date, 'Due date' %>
     <%= f.date_field :due_date %>
   </div>
 
   <div>
-    <%= f.label :partner_id, 'Partenaire' %>
-    <%= f.collection_select :partner_id, Accounting::Partner.active.order(:name), :id, :name, prompt: 'Choisir...' %>
+    <%= f.label :partner_id, 'Partner' %>
+    <%= f.collection_select :partner_id, Accounting::Partner.active.order(:name), :id, :name, prompt: 'Select...' %>
   </div>
 
   <div>
-    <%= f.label :fiscal_year_id, 'Exercice' %>
+    <%= f.label :fiscal_year_id, 'Fiscal year' %>
     <%= f.collection_select :fiscal_year_id, Accounting::FiscalYear.where(status: :open).order(:year), :id, :year %>
   </div>
 

@@ -1,20 +1,20 @@
-<h2 class="text-xl font-semibold text-gray-900 mb-2">Mot de passe oublié</h2>
-<p class="text-sm text-gray-500 mb-6">Entrez votre email pour recevoir les instructions.</p>
+<h2 class="text-xl font-semibold text-gray-900 mb-2">Forgot your password?</h2>
+<p class="text-sm text-gray-500 mb-6">Enter your email to receive reset instructions.</p>
 
 <%= form_with url: user_password_path, html: { class: 'space-y-4' } do |f| %>
   <div class="space-y-1">
-    <%= f.label :email, 'Adresse email',
+    <%= f.label :email, 'Email address',
           class: 'block text-sm font-medium text-gray-700' %>
     <%= f.email_field :email,
           autofocus: true, autocomplete: 'email',
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500' %>
   </div>
 
-  <%= f.submit 'Envoyer les instructions',
+  <%= f.submit 'Send instructions',
         class: 'w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors cursor-pointer' %>
 <% end %>
 
 <div class="mt-4 text-center">
-  <%= link_to '← Retour à la connexion', new_user_session_path,
+  <%= link_to '← Back to sign in', new_user_session_path,
         class: 'text-sm text-indigo-600 hover:text-indigo-700' %>
 </div>

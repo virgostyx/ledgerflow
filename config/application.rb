@@ -30,6 +30,6 @@ module Ledgerflow
     # Use structure.sql to preserve PG triggers/functions that schema.rb drops.
     config.active_record.schema_format = :sql
 
-    config.i18n.default_locale = :fr
+    config.i18n.default_locale = :en
   end
 end

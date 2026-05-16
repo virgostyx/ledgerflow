@@ -1,16 +1,16 @@
-<h1>Partenaires</h1>
+<h1>Partners</h1>
 
 <% if policy(Accounting::Partner).create? %>
-  <%= link_to 'Nouveau partenaire', new_accounting_partner_path %>
+  <%= link_to 'New partner', new_accounting_partner_path %>
 <% end %>
 
 <table>
   <thead>
     <tr>
-      <th>Nom</th>
+      <th>Name</th>
       <th>Type</th>
-      <th>N° TVA</th>
-      <th>Pays</th>
+      <th>VAT number</th>
+      <th>Country</th>
       <th></th>
     </tr>
   </thead>
@@ -22,9 +22,9 @@
         <td><%= partner.vat_number %></td>
         <td><%= partner.country %></td>
         <td>
-          <%= link_to 'Voir', accounting_partner_path(partner) %>
+          <%= link_to 'View', accounting_partner_path(partner) %>
           <% if policy(partner).update? %>
-            <%= link_to 'Modifier', edit_accounting_partner_path(partner) %>
+            <%= link_to 'Edit', edit_accounting_partner_path(partner) %>
           <% end %>
         </td>
       </tr>

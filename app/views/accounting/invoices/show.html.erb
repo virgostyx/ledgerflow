@@ -3,22 +3,22 @@
 <h1><%= presenter.invoice_number_or_draft %></h1>
 
 <dl>
-  <dt>Type</dt>       <dd><%= presenter.type_label %></dd>
-  <dt>Statut</dt>     <dd><%= presenter.status_label %></dd>
-  <dt>Partenaire</dt> <dd><%= @invoice.partner.name %></dd>
-  <dt>Date</dt>       <dd><%= presenter.formatted_date %></dd>
-  <dt>Échéance</dt>   <dd><%= presenter.formatted_due_date %></dd>
-  <dt>HT</dt>         <dd><%= Accounting::MoneyPresenter.new(@invoice.subtotal_excl_vat).format %></dd>
-  <dt>TVA</dt>        <dd><%= Accounting::MoneyPresenter.new(@invoice.vat_amount).format %></dd>
-  <dt>Total TTC</dt>  <dd><%= presenter.formatted_total %></dd>
+  <dt>Type</dt>          <dd><%= presenter.type_label %></dd>
+  <dt>Status</dt>        <dd><%= presenter.status_label %></dd>
+  <dt>Partner</dt>       <dd><%= @invoice.partner.name %></dd>
+  <dt>Date</dt>          <dd><%= presenter.formatted_date %></dd>
+  <dt>Due date</dt>      <dd><%= presenter.formatted_due_date %></dd>
+  <dt>Excl. VAT</dt>     <dd><%= Accounting::MoneyPresenter.new(@invoice.subtotal_excl_vat).format %></dd>
+  <dt>VAT</dt>           <dd><%= Accounting::MoneyPresenter.new(@invoice.vat_amount).format %></dd>
+  <dt>Total incl. VAT</dt> <dd><%= presenter.formatted_total %></dd>
 </dl>
 
 <% if @invoice.draft? && policy(@invoice).post? %>
-  <%= button_to 'Valider la facture', validate_invoice_accounting_invoice_path(@invoice), method: :post %>
+  <%= button_to 'Post invoice', validate_invoice_accounting_invoice_path(@invoice), method: :post %>
 <% end %>
 
 <% if policy(@invoice).update? && @invoice.draft? %>
-  <%= link_to 'Modifier', edit_accounting_invoice_path(@invoice) %>
+  <%= link_to 'Edit', edit_accounting_invoice_path(@invoice) %>
 <% end %>
 
-<%= link_to 'Retour', accounting_invoices_path %>
+<%= link_to 'Back', accounting_invoices_path %>
