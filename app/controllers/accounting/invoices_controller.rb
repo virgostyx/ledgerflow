@@ -1,5 +1,5 @@
 class Accounting::InvoicesController < ApplicationController
-  before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice ]
+  before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :send_peppol ]
 
   def index
     @invoices = policy_scope(Accounting::Invoice).order(invoice_date: :desc)
@@ -57,6 +57,18 @@ class Accounting::InvoicesController < ApplicationController
 
     if result.success?
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.posted")
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: result.message
+    end
+  end
+
+  def send_peppol
+    authorize @invoice, :send_peppol?
+
+    result = Peppol::SendInvoice.call(invoice: @invoice)
+
+    if result.success?
+      redirect_to accounting_invoice_path(@invoice), notice: t("peppol.invoices.sent")
     else
       redirect_to accounting_invoice_path(@invoice), alert: result.message
     end

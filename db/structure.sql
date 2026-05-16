@@ -134,6 +134,83 @@ ALTER SEQUENCE public.accounting_audit_logs_id_seq OWNED BY public.accounting_au
 
 
 --
+-- Name: accounting_bank_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_bank_accounts (
+    id bigint NOT NULL,
+    journal_id bigint NOT NULL,
+    iban character varying NOT NULL,
+    bic character varying,
+    label_fr character varying NOT NULL,
+    currency character varying DEFAULT 'EUR'::character varying NOT NULL,
+    balance numeric(15,2) DEFAULT 0.0 NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_bank_accounts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_bank_accounts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_bank_accounts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_bank_accounts_id_seq OWNED BY public.accounting_bank_accounts.id;
+
+
+--
+-- Name: accounting_bank_transactions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_bank_transactions (
+    id bigint NOT NULL,
+    bank_account_id bigint NOT NULL,
+    journal_entry_id bigint,
+    transaction_date date NOT NULL,
+    value_date date,
+    amount numeric(15,2) NOT NULL,
+    currency character varying DEFAULT 'EUR'::character varying NOT NULL,
+    description character varying,
+    reference character varying,
+    status integer DEFAULT 0 NOT NULL,
+    raw_data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_bank_transactions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_bank_transactions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_bank_transactions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_bank_transactions_id_seq OWNED BY public.accounting_bank_transactions.id;
+
+
+--
 -- Name: accounting_fiscal_years; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -235,7 +312,9 @@ CREATE TABLE public.accounting_invoices (
     fiscal_year_id bigint NOT NULL,
     journal_entry_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    peppol_id character varying,
+    peppol_status integer DEFAULT 0 NOT NULL
 );
 
 
@@ -428,6 +507,42 @@ ALTER SEQUENCE public.accounting_partners_id_seq OWNED BY public.accounting_part
 
 
 --
+-- Name: accounting_vat_declarations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_vat_declarations (
+    id bigint NOT NULL,
+    fiscal_year_id bigint NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    period_type integer DEFAULT 0 NOT NULL,
+    period_start date NOT NULL,
+    period_end date NOT NULL,
+    grids jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_vat_declarations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_vat_declarations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_vat_declarations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_vat_declarations_id_seq OWNED BY public.accounting_vat_declarations.id;
+
+
+--
 -- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -544,6 +659,20 @@ ALTER TABLE ONLY public.accounting_audit_logs ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: accounting_bank_accounts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_accounts ALTER COLUMN id SET DEFAULT nextval('public.accounting_bank_accounts_id_seq'::regclass);
+
+
+--
+-- Name: accounting_bank_transactions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_transactions ALTER COLUMN id SET DEFAULT nextval('public.accounting_bank_transactions_id_seq'::regclass);
+
+
+--
 -- Name: accounting_fiscal_years id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -593,6 +722,13 @@ ALTER TABLE ONLY public.accounting_partners ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: accounting_vat_declarations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_vat_declarations ALTER COLUMN id SET DEFAULT nextval('public.accounting_vat_declarations_id_seq'::regclass);
+
+
+--
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -620,6 +756,22 @@ ALTER TABLE ONLY public.accounting_accounts
 
 ALTER TABLE ONLY public.accounting_audit_logs
     ADD CONSTRAINT accounting_audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_bank_accounts accounting_bank_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_accounts
+    ADD CONSTRAINT accounting_bank_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_bank_transactions accounting_bank_transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_transactions
+    ADD CONSTRAINT accounting_bank_transactions_pkey PRIMARY KEY (id);
 
 
 --
@@ -679,6 +831,14 @@ ALTER TABLE ONLY public.accounting_partners
 
 
 --
+-- Name: accounting_vat_declarations accounting_vat_declarations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_vat_declarations
+    ADD CONSTRAINT accounting_vat_declarations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ar_internal_metadata ar_internal_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -715,6 +875,13 @@ ALTER TABLE ONLY public.versions
 --
 
 CREATE UNIQUE INDEX idx_accounting_fiscal_years_one_open ON public.accounting_fiscal_years USING btree (status) WHERE (status = 0);
+
+
+--
+-- Name: idx_bank_transactions_on_account_and_ref; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_bank_transactions_on_account_and_ref ON public.accounting_bank_transactions USING btree (bank_account_id, reference) WHERE (reference IS NOT NULL);
 
 
 --
@@ -771,6 +938,34 @@ CREATE INDEX index_accounting_audit_logs_on_created_at ON public.accounting_audi
 --
 
 CREATE INDEX index_accounting_audit_logs_on_user_id ON public.accounting_audit_logs USING btree (user_id);
+
+
+--
+-- Name: index_accounting_bank_accounts_on_iban; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_bank_accounts_on_iban ON public.accounting_bank_accounts USING btree (iban);
+
+
+--
+-- Name: index_accounting_bank_accounts_on_journal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_accounts_on_journal_id ON public.accounting_bank_accounts USING btree (journal_id);
+
+
+--
+-- Name: index_accounting_bank_transactions_on_bank_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_transactions_on_bank_account_id ON public.accounting_bank_transactions USING btree (bank_account_id);
+
+
+--
+-- Name: index_accounting_bank_transactions_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_transactions_on_journal_entry_id ON public.accounting_bank_transactions USING btree (journal_entry_id);
 
 
 --
@@ -841,6 +1036,13 @@ CREATE INDEX index_accounting_invoices_on_journal_entry_id ON public.accounting_
 --
 
 CREATE INDEX index_accounting_invoices_on_partner_id ON public.accounting_invoices USING btree (partner_id);
+
+
+--
+-- Name: index_accounting_invoices_on_peppol_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_invoices_on_peppol_id ON public.accounting_invoices USING btree (peppol_id) WHERE (peppol_id IS NOT NULL);
 
 
 --
@@ -949,6 +1151,13 @@ CREATE UNIQUE INDEX index_accounting_partners_on_vat_number_unique ON public.acc
 
 
 --
+-- Name: index_accounting_vat_declarations_on_fiscal_year_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_vat_declarations_on_fiscal_year_id ON public.accounting_vat_declarations USING btree (fiscal_year_id);
+
+
+--
 -- Name: index_users_on_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -999,6 +1208,14 @@ ALTER TABLE ONLY public.accounting_invoice_lines
 
 
 --
+-- Name: accounting_vat_declarations fk_rails_14867a239f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_vat_declarations
+    ADD CONSTRAINT fk_rails_14867a239f FOREIGN KEY (fiscal_year_id) REFERENCES public.accounting_fiscal_years(id);
+
+
+--
 -- Name: accounting_journal_entries fk_rails_15d7ff9705; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1012,6 +1229,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 ALTER TABLE ONLY public.accounting_journal_entry_lines
     ADD CONSTRAINT fk_rails_1e6c3311fa FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id);
+
+
+--
+-- Name: accounting_bank_accounts fk_rails_215e10200e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_accounts
+    ADD CONSTRAINT fk_rails_215e10200e FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
 
 
 --
@@ -1055,6 +1280,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: accounting_bank_transactions fk_rails_b1db769153; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_transactions
+    ADD CONSTRAINT fk_rails_b1db769153 FOREIGN KEY (bank_account_id) REFERENCES public.accounting_bank_accounts(id);
+
+
+--
 -- Name: accounting_invoice_lines fk_rails_d08162bbbf; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1071,12 +1304,24 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 
 --
+-- Name: accounting_bank_transactions fk_rails_f5872c5e07; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_transactions
+    ADD CONSTRAINT fk_rails_f5872c5e07 FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id);
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260515200000'),
+('20260515195133'),
+('20260515195131'),
+('20260515194227'),
 ('20260515140000'),
 ('20260515130001'),
 ('20260515130000'),

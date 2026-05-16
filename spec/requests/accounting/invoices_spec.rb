@@ -96,6 +96,48 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     end
   end
 
+  describe 'POST /accounting/invoices/:id/send_peppol' do
+    context 'facture validée (posted)' do
+      let(:invoice) do
+        inv = create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year,
+                     invoice_number: "VTE2025/0001", invoice_date: Date.current)
+        account = create(:account, code: "700000")
+        create(:invoice_line, invoice: inv, account: account,
+               description: "Service", quantity: 1, unit_price: "100.00", vat_rate: "21.00", position: 1)
+        inv.compute_totals; inv.save!
+        inv
+      end
+
+      before do
+        stub_request(:post, %r{#{Regexp.escape(DIGITEAL_API_URL)}/api/invoices})
+          .to_return(
+            status: 201,
+            body: { 'id' => 'PEPPOL-TEST-001', 'status' => 'queued' }.to_json,
+            headers: { 'Content-Type' => 'application/json' }
+          )
+      end
+
+      it 'envoie la facture et redirige' do
+        post send_peppol_accounting_invoice_path(invoice)
+        expect(response).to redirect_to(accounting_invoice_path(invoice))
+      end
+
+      it 'met à jour peppol_status' do
+        post send_peppol_accounting_invoice_path(invoice)
+        expect(invoice.reload.peppol_status).to eq('queued')
+      end
+    end
+
+    context 'facture brouillon' do
+      let!(:invoice) { create(:invoice, :draft, partner: partner, fiscal_year: fiscal_year) }
+
+      it 'redirige avec alerte' do
+        post send_peppol_accounting_invoice_path(invoice)
+        expect(response).to redirect_to(accounting_invoice_path(invoice))
+      end
+    end
+  end
+
   describe 'DELETE /accounting/invoices/:id' do
     context 'facture brouillon' do
       let!(:invoice) { create(:invoice, :draft, partner: partner, fiscal_year: fiscal_year) }

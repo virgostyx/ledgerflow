@@ -5,6 +5,7 @@ abort("The Rails environment is running in production mode!") if Rails.env.produ
 require 'rspec/rails'
 require 'view_component/test_helpers'
 require 'view_component/system_test_helpers'
+require 'webmock/rspec'
 
 require 'simplecov'
 SimpleCov.start 'rails' do
@@ -28,6 +29,7 @@ RSpec.configure do |config|
 
   config.before(:suite) { Faker::Config.locale = :en }
 
+  config.include ActiveSupport::Testing::TimeHelpers
   config.include ViewComponent::TestHelpers,    type: :component
   config.include Capybara::RSpecMatchers,       type: :component
   config.include FactoryBot::Syntax::Methods

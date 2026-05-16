@@ -1,0 +1,55 @@
+<div class="mx-auto max-w-3xl px-4 py-8">
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900">
+      <%= t("accounting.fiscal_years.show.title", year: @fiscal_year.year) %>
+    </h1>
+    <div class="flex gap-2">
+      <% if policy(@fiscal_year).update? && @fiscal_year.open? %>
+        <%= link_to t("accounting.fiscal_years.edit"), edit_accounting_fiscal_year_path(@fiscal_year),
+                    class: "btn-secondary" %>
+      <% end %>
+      <% if policy(@fiscal_year).close? && @fiscal_year.open? %>
+        <%= button_to t("accounting.fiscal_years.close_action"),
+                      close_accounting_fiscal_year_path(@fiscal_year),
+                      method: :post,
+                      data: { turbo_confirm: t("accounting.fiscal_years.close_confirm") },
+                      class: "btn-danger" %>
+      <% end %>
+    </div>
+  </div>
+
+  <dl class="grid grid-cols-2 gap-4">
+    <div class="rounded-lg bg-gray-50 p-4">
+      <dt class="text-sm font-medium text-gray-500"><%= t("accounting.fiscal_years.year") %></dt>
+      <dd class="mt-1 text-lg font-semibold text-gray-900"><%= @fiscal_year.year %></dd>
+    </div>
+    <div class="rounded-lg bg-gray-50 p-4">
+      <dt class="text-sm font-medium text-gray-500"><%= t("accounting.fiscal_years.status") %></dt>
+      <dd class="mt-1">
+        <span class="inline-flex rounded-full px-3 py-1 text-sm font-medium
+          <%= @fiscal_year.open? ? 'bg-emerald-100 text-emerald-800' : @fiscal_year.pre_closing? ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600' %>">
+          <%= t("accounting.fiscal_years.statuses.#{@fiscal_year.status}") %>
+        </span>
+      </dd>
+    </div>
+    <div class="rounded-lg bg-gray-50 p-4">
+      <dt class="text-sm font-medium text-gray-500"><%= t("accounting.fiscal_years.start_date") %></dt>
+      <dd class="mt-1 font-semibold text-gray-900"><%= l(@fiscal_year.start_date) %></dd>
+    </div>
+    <div class="rounded-lg bg-gray-50 p-4">
+      <dt class="text-sm font-medium text-gray-500"><%= t("accounting.fiscal_years.end_date") %></dt>
+      <dd class="mt-1 font-semibold text-gray-900"><%= l(@fiscal_year.end_date) %></dd>
+    </div>
+    <% if @fiscal_year.closed? %>
+      <div class="rounded-lg bg-gray-50 p-4">
+        <dt class="text-sm font-medium text-gray-500"><%= t("accounting.fiscal_years.closed_at") %></dt>
+        <dd class="mt-1 font-semibold text-gray-900"><%= l(@fiscal_year.closed_at) %></dd>
+      </div>
+    <% end %>
+  </dl>
+
+  <div class="mt-6">
+    <%= link_to t("accounting.fiscal_years.back"), accounting_fiscal_years_path,
+                class: "text-indigo-600 hover:underline text-sm" %>
+  </div>
+</div>

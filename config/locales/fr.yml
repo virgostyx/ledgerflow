@@ -1,4 +1,20 @@
 fr:
+  date:
+    formats:
+      default: "%d/%m/%Y"
+      short:   "%d/%m/%Y"
+      long:    "%d %B %Y"
+    day_names:        [dimanche, lundi, mardi, mercredi, jeudi, vendredi, samedi]
+    abbr_day_names:   [dim, lun, mar, mer, jeu, ven, sam]
+    month_names:      [~, janvier, février, mars, avril, mai, juin, juillet, août, septembre, octobre, novembre, décembre]
+    abbr_month_names: [~, jan., fév., mars, avr., mai, juin, juil., août, sept., oct., nov., déc.]
+
+  time:
+    formats:
+      default: "%d/%m/%Y %H:%M"
+      short:   "%d/%m/%Y %H:%M"
+      long:    "%d %B %Y %H:%M"
+
   errors:
     not_authorized: "Vous n'êtes pas autorisé à effectuer cette action."
 
@@ -6,7 +22,8 @@ fr:
     errors:
       dual_side:         "Impossible d'avoir débit ET crédit positifs simultanément."
       zero_side:         "L'écriture doit comporter un montant au débit ou au crédit."
-      unbalanced_entry:  "Écriture déséquilibrée : débit %{debit} ≠ crédit %{credit}."
+      unbalanced_entry:   "Écriture déséquilibrée : débit %{debit} ≠ crédit %{credit}."
+      already_reconciled: "Cette transaction a déjà été lettrée."
 
     partners:
       created: "Partenaire créé avec succès."
@@ -19,6 +36,13 @@ fr:
       posted:   "Écriture validée et comptabilisée."
       reverse_not_implemented: "La contre-passation n'est pas encore implémentée."
 
+    bank_reconciliation:
+      imported:   "Relevé importé : %{count} transaction(s) créée(s)."
+      reconciled: "Transaction lettrée avec succès."
+
+    vat_declarations:
+      created: "Déclaration TVA générée avec succès."
+
     invoices:
       created: "Facture créée."
       updated: "Facture mise à jour."
@@ -29,8 +53,93 @@ fr:
         no_lines:       "La facture doit comporter au moins une ligne."
         no_journal:     "Aucun journal actif de type %{type} trouvé."
 
+    fiscal_years:
+      index:
+        title: "Exercices comptables"
+      show:
+        title: "Exercice %{year}"
+      new:        "Nouvel exercice"
+      edit:       "Modifier l'exercice"
+      created:    "Exercice créé avec succès."
+      updated:    "Exercice mis à jour."
+      closed:     "Exercice clôturé avec succès."
+      close_action:  "Clôturer l'exercice"
+      close_confirm: "Confirmer la clôture de l'exercice ? Cette opération est irréversible."
+      back:       "← Retour aux exercices"
+      cancel:     "Annuler"
+      year:       "Année"
+      period:     "Période"
+      status:     "Statut"
+      start_date: "Date de début"
+      end_date:   "Date de fin"
+      closed_at:  "Clôturé le"
+      show:       "Voir"
+      statuses:
+        open:        "Ouvert"
+        pre_closing: "Pré-clôture"
+        closed:      "Clôturé"
+      closing_entry_description: "Écriture de clôture exercice %{year}"
+      closing_label: "Clôture exercice"
+      errors:
+        open_entries:   "%{count} écriture(s) brouillon à valider avant clôture."
+        already_closed: "Cet exercice est déjà clôturé."
+        missing_setup:  "Journal de clôture (misc actif) ou compte 699000 introuvable."
+
+    reports:
+      filter:       "Filtrer"
+      export_csv:   "Exporter CSV"
+      export_xlsx:  "Exporter Excel"
+      no_data:      "Aucune donnée pour cette période."
+      totals:       "Totaux"
+      date_from:    "Du"
+      date_to:      "Au"
+      trial_balance:
+        title:  "Balance des comptes"
+        as_of:  "Au"
+      balance_sheet:
+        title:       "Bilan"
+        assets:      "Actif"
+        liabilities: "Passif & Fonds propres"
+      income_statement:
+        title:    "Compte de résultats"
+        charges:  "Charges"
+        produits: "Produits"
+        profit:   "Bénéfice"
+        loss:     "Perte"
+      general_ledger:
+        title:                 "Grand livre"
+        account:               "Compte"
+        select_account:        "— Choisir un compte —"
+        select_account_prompt: "Veuillez sélectionner un compte pour afficher le grand livre."
+      analytic:
+        title:          "Analytique par projet"
+        project_id:     "Projet"
+        project_prefix: "Projet"
+        charges:        "Charges"
+        produits:       "Produits"
+        solde:          "Solde"
+      csv:
+        code:            "Code"
+        label:           "Libellé"
+        debit:           "Débit"
+        credit:          "Crédit"
+        balance:         "Solde"
+        date:            "Date"
+        reference:       "Référence"
+        running_balance: "Solde cumulé"
+
+  peppol:
+    invoices:
+      sent: "Facture envoyée sur le réseau Peppol."
+    errors:
+      invoice_not_posted: "Seules les factures validées peuvent être envoyées via Peppol."
+      hmac_invalid:       "Signature HMAC invalide."
+
   activerecord:
     errors:
+      messages:
+        record_invalid: "La validation a échoué : %{errors}"
+        invalid:        "n'est pas valide"
       models:
         accounting/partner:
           attributes:

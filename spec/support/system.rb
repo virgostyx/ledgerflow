@@ -21,6 +21,7 @@ RSpec.configure do |config|
   config.before(:each, type: :system) do
     Warden.test_mode!
     driven_by :rack_test
+    WebMock.disable_net_connect!(allow_localhost: true)
   end
 
   config.before(:each, type: :system, js: true) do

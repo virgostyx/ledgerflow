@@ -1,0 +1,42 @@
+<div class="mx-auto max-w-5xl px-4 py-8">
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900"><%= t("accounting.fiscal_years.index.title") %></h1>
+    <%= link_to t("accounting.fiscal_years.new"), new_accounting_fiscal_year_path,
+                class: "btn-primary" if policy(Accounting::FiscalYear).create? %>
+  </div>
+
+  <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= t("accounting.fiscal_years.year") %></th>
+        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= t("accounting.fiscal_years.period") %></th>
+        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= t("accounting.fiscal_years.status") %></th>
+        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= t("accounting.fiscal_years.closed_at") %></th>
+        <th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100 bg-white">
+      <% @fiscal_years.each do |fy| %>
+        <tr>
+          <td class="px-4 py-3 font-semibold"><%= fy.year %></td>
+          <td class="px-4 py-3">
+            <%= l(fy.start_date, format: :short) %> → <%= l(fy.end_date, format: :short) %>
+          </td>
+          <td class="px-4 py-3">
+            <span class="inline-flex rounded-full px-2 py-1 text-xs font-medium
+              <%= fy.open? ? 'bg-emerald-100 text-emerald-800' : fy.pre_closing? ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600' %>">
+              <%= t("accounting.fiscal_years.statuses.#{fy.status}") %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-gray-500">
+            <%= fy.closed_at ? l(fy.closed_at, format: :short) : "—" %>
+          </td>
+          <td class="px-4 py-3 text-right">
+            <%= link_to t("accounting.fiscal_years.show"), accounting_fiscal_year_path(fy),
+                        class: "text-indigo-600 hover:underline text-sm" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

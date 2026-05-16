@@ -1,0 +1,29 @@
+wb = xlsx_package.workbook
+wb.add_worksheet(name: I18n.t("accounting.reports.trial_balance.title")) do |sheet|
+  sheet.add_row [
+    I18n.t("accounting.reports.csv.code"),
+    I18n.t("accounting.reports.csv.label"),
+    I18n.t("accounting.reports.csv.debit"),
+    I18n.t("accounting.reports.csv.credit"),
+    I18n.t("accounting.reports.csv.balance")
+  ], b: true
+
+  @rows.each do |row|
+    sheet.add_row [
+      row.code,
+      row.label_fr,
+      row.total_debit.to_f,
+      row.total_credit.to_f,
+      row.balance.to_f
+    ], types: [:string, :string, :float, :float, :float]
+  end
+
+  total_row_idx = @rows.length + 2
+  sheet.add_row [
+    I18n.t("accounting.reports.totals"),
+    "",
+    @rows.sum(&:total_debit).to_f,
+    @rows.sum(&:total_credit).to_f,
+    ""
+  ], b: true, types: [:string, :string, :float, :float, :string]
+end

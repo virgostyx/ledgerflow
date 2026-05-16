@@ -1,0 +1,34 @@
+<%= form_with model: fiscal_year,
+                url: fiscal_year.persisted? ? accounting_fiscal_year_path(fiscal_year) : accounting_fiscal_years_path,
+                class: "space-y-4" do |f| %>
+  <% if fiscal_year.errors.any? %>
+    <div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
+      <ul class="list-disc list-inside">
+        <% fiscal_year.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :year, t("accounting.fiscal_years.year"), class: "block text-sm font-medium text-gray-700" %>
+    <%= f.number_field :year, class: "mt-1 form-input w-32", min: 2020, max: 2099 %>
+  </div>
+
+  <div>
+    <%= f.label :start_date, t("accounting.fiscal_years.start_date"), class: "block text-sm font-medium text-gray-700" %>
+    <%= f.date_field :start_date, class: "mt-1 form-input" %>
+  </div>
+
+  <div>
+    <%= f.label :end_date, t("accounting.fiscal_years.end_date"), class: "block text-sm font-medium text-gray-700" %>
+    <%= f.date_field :end_date, class: "mt-1 form-input" %>
+  </div>
+
+  <div class="flex gap-3">
+    <%= f.submit class: "btn-primary" %>
+    <%= link_to t("accounting.fiscal_years.cancel"), accounting_fiscal_years_path,
+                class: "btn-secondary" %>
+  </div>
+<% end %>

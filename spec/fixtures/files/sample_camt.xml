@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>MSG-001</MsgId>
+      <CreDtTm>2025-01-31T10:00:00</CreDtTm>
+    </GrpHdr>
+    <Stmt>
+      <Id>ST-2025-001</Id>
+      <CreDtTm>2025-01-31T10:00:00</CreDtTm>
+      <Acct>
+        <Id><IBAN>BE71096123456769</IBAN></Id>
+      </Acct>
+      <Ntry>
+        <Amt Ccy="EUR">1210.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <BookgDt><Dt>2025-01-15</Dt></BookgDt>
+        <ValDt><Dt>2025-01-15</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>E2E-001</EndToEndId></Refs>
+            <RmtInf><Ustrd>Paiement client ABC</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">500.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <BookgDt><Dt>2025-01-20</Dt></BookgDt>
+        <ValDt><Dt>2025-01-20</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>E2E-002</EndToEndId></Refs>
+            <RmtInf><Ustrd>Paiement fournisseur XYZ</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

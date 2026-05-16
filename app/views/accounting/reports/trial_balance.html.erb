@@ -1,0 +1,62 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900"><%= t("accounting.reports.trial_balance.title") %></h1>
+    <div class="flex gap-2">
+      <%= link_to t("accounting.reports.export_csv"),
+            accounting_reports_trial_balance_path(fiscal_year_id: @fiscal_year.id,
+                                                  as_of: @as_of, format: :csv),
+            class: "btn-secondary text-sm" %>
+      <%= link_to t("accounting.reports.export_xlsx"),
+            accounting_reports_trial_balance_path(fiscal_year_id: @fiscal_year.id,
+                                                  as_of: @as_of, format: :xlsx),
+            class: "btn-secondary text-sm" %>
+    </div>
+  </div>
+
+  <%= form_with url: accounting_reports_trial_balance_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
+    <%= hidden_field_tag :fiscal_year_id, @fiscal_year.id %>
+    <div>
+      <%= f.label :as_of, t("accounting.reports.trial_balance.as_of"), class: "block text-sm font-medium text-gray-700" %>
+      <%= f.date_field :as_of, value: @as_of, class: "mt-1 form-input" %>
+    </div>
+    <%= f.submit t("accounting.reports.filter"), class: "btn-primary" %>
+  <% end %>
+
+  <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("accounting.reports.csv.code") %></th>
+        <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("accounting.reports.csv.label") %></th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.csv.debit") %></th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.csv.credit") %></th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.csv.balance") %></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100 bg-white">
+      <% @rows.each do |row| %>
+        <tr>
+          <td class="px-4 py-2 font-mono"><%= row.code %></td>
+          <td class="px-4 py-2"><%= row.label_fr %></td>
+          <td class="px-4 py-2 text-right"><%= number_to_currency(row.total_debit, unit: "€") %></td>
+          <td class="px-4 py-2 text-right"><%= number_to_currency(row.total_credit, unit: "€") %></td>
+          <td class="px-4 py-2 text-right font-semibold"><%= number_to_currency(row.balance, unit: "€") %></td>
+        </tr>
+      <% end %>
+      <% if @rows.empty? %>
+        <tr>
+          <td colspan="5" class="px-4 py-6 text-center text-gray-400">
+            <%= t("accounting.reports.no_data") %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+    <tfoot class="bg-gray-50 font-bold">
+      <tr>
+        <td colspan="2" class="px-4 py-2"><%= t("accounting.reports.totals") %></td>
+        <td class="px-4 py-2 text-right"><%= number_to_currency(@rows.sum(&:total_debit), unit: "€") %></td>
+        <td class="px-4 py-2 text-right"><%= number_to_currency(@rows.sum(&:total_credit), unit: "€") %></td>
+        <td class="px-4 py-2 text-right"></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>

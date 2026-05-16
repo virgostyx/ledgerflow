@@ -1,0 +1,74 @@
+<h1 class="text-lg font-semibold text-indigo-700 mb-4">Lettrage bancaire</h1>
+
+<%# Import CAMT.053 %>
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+  <h2 class="text-sm font-semibold text-gray-700 mb-3">Importer un relevé (CAMT.053)</h2>
+  <%= form_with url: accounting_bank_reconciliation_path, method: :patch,
+                multipart: true, class: 'flex gap-3 items-end' do |f| %>
+    <div>
+      <%= label_tag :bank_account_id, 'Compte bancaire', class: 'block text-xs text-gray-500 mb-1' %>
+      <%= select_tag 'bank_reconciliation[bank_account_id]',
+            options_from_collection_for_select(@bank_accounts, :id, :label_fr),
+            class: 'rounded border-gray-300 text-sm' %>
+    </div>
+    <div>
+      <%= label_tag :camt_file, 'Fichier CAMT.053', class: 'block text-xs text-gray-500 mb-1' %>
+      <%= file_field_tag 'bank_reconciliation[camt_file]',
+            accept: '.xml,application/xml',
+            class: 'text-sm' %>
+    </div>
+    <%= submit_tag 'Importer',
+          class: 'px-3 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700' %>
+  <% end %>
+</div>
+
+<%# Pending transactions %>
+<div class="bg-white rounded-lg shadow overflow-hidden">
+  <h2 class="text-sm font-semibold text-gray-700 p-4 border-b border-gray-200">
+    Transactions en attente (<%= @pending_transactions.count %>)
+  </h2>
+
+  <% if @pending_transactions.any? %>
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Montant</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Contrepartie</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @pending_transactions.each do |tx| %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 text-gray-500">
+              <%= Accounting::DatePresenter.new(tx.transaction_date).format %>
+            </td>
+            <td class="px-4 py-3 text-gray-700"><%= tx.description %></td>
+            <td class="px-4 py-3 text-right font-mono <%= tx.credit? ? 'text-emerald-700' : 'text-red-700' %>">
+              <%= Accounting::MoneyPresenter.new(tx.amount).format %>
+            </td>
+            <td class="px-4 py-3">
+              <%= form_with url: accounting_bank_reconciliation_path, method: :patch,
+                            class: 'flex gap-2 items-center' do |f| %>
+                <%= hidden_field_tag 'bank_reconciliation[bank_transaction_id]', tx.id %>
+                <%= select_tag 'bank_reconciliation[account_id]',
+                      options_from_collection_for_select(@accounts, :id,
+                        ->(a) { "#{a.code} — #{a.label_fr}" }),
+                      prompt: 'Choisir un compte',
+                      class: 'rounded border-gray-300 text-xs' %>
+            </td>
+            <td class="px-4 py-3">
+                <%= submit_tag 'Lettrer',
+                      class: 'px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700' %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="px-4 py-6 text-sm text-gray-500">Aucune transaction en attente.</p>
+  <% end %>
+</div>

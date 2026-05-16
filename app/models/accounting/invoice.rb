@@ -5,8 +5,9 @@ class Accounting::Invoice < ApplicationRecord
   include Accounting::MonetaryPrecision
   include Accounting::FiscalYearScoped
 
-  enum :invoice_type, { customer: 0, supplier: 1 }
-  enum :status,       { draft: 0, posted: 1, paid: 2, cancelled: 3 }
+  enum :invoice_type,   { customer: 0, supplier: 1 }
+  enum :status,         { draft: 0, posted: 1, paid: 2, cancelled: 3 }
+  enum :peppol_status,  { not_sent: 0, queued: 1, delivered: 2, failed: 3 }
 
   belongs_to :partner,      class_name: "Accounting::Partner"
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true

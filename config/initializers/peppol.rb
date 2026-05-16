@@ -1,0 +1,7 @@
+DIGITEAL_API_URL    = ENV.fetch("DIGITEAL_API_URL",    "https://api.digiteal.eu")
+DIGITEAL_API_KEY    = ENV.fetch("DIGITEAL_API_KEY",    "test-digiteal-key")
+DIGITEAL_HMAC_SECRET = ENV.fetch("DIGITEAL_HMAC_SECRET", "test-hmac-secret")
+
+PEPPOL_COMPANY_NAME    = ENV.fetch("PEPPOL_COMPANY_NAME",    "LedgerFlow ASBL")
+PEPPOL_COMPANY_VAT     = ENV.fetch("PEPPOL_COMPANY_VAT",     "BE0000000000")
+PEPPOL_COMPANY_COUNTRY = ENV.fetch("PEPPOL_COMPANY_COUNTRY", "BE")

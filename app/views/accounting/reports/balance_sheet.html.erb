@@ -1,0 +1,64 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900"><%= t("accounting.reports.balance_sheet.title") %></h1>
+
+  <% assets     = @rows.select { |r| r.account_type == "asset" } %>
+  <% liabilities = @rows.select { |r| r.account_type.in?(%w[liability equity]) } %>
+
+  <div class="grid grid-cols-2 gap-8">
+    <div>
+      <h2 class="mb-3 text-lg font-semibold text-indigo-700"><%= t("accounting.reports.balance_sheet.assets") %></h2>
+      <table class="min-w-full text-sm divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-3 py-2 text-left text-gray-600"><%= t("accounting.reports.csv.code") %></th>
+            <th class="px-3 py-2 text-left text-gray-600"><%= t("accounting.reports.csv.label") %></th>
+            <th class="px-3 py-2 text-right text-gray-600"><%= t("accounting.reports.csv.balance") %></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+          <% assets.each do |row| %>
+            <tr>
+              <td class="px-3 py-2 font-mono"><%= row.code %></td>
+              <td class="px-3 py-2"><%= row.label_fr %></td>
+              <td class="px-3 py-2 text-right"><%= number_to_currency(row.balance, unit: "€") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot class="bg-gray-50 font-bold">
+          <tr>
+            <td colspan="2" class="px-3 py-2"><%= t("accounting.reports.totals") %></td>
+            <td class="px-3 py-2 text-right"><%= number_to_currency(assets.sum(&:balance), unit: "€") %></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div>
+      <h2 class="mb-3 text-lg font-semibold text-emerald-700"><%= t("accounting.reports.balance_sheet.liabilities") %></h2>
+      <table class="min-w-full text-sm divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-3 py-2 text-left text-gray-600"><%= t("accounting.reports.csv.code") %></th>
+            <th class="px-3 py-2 text-left text-gray-600"><%= t("accounting.reports.csv.label") %></th>
+            <th class="px-3 py-2 text-right text-gray-600"><%= t("accounting.reports.csv.balance") %></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+          <% liabilities.each do |row| %>
+            <tr>
+              <td class="px-3 py-2 font-mono"><%= row.code %></td>
+              <td class="px-3 py-2"><%= row.label_fr %></td>
+              <td class="px-3 py-2 text-right"><%= number_to_currency(row.balance, unit: "€") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot class="bg-gray-50 font-bold">
+          <tr>
+            <td colspan="2" class="px-3 py-2"><%= t("accounting.reports.totals") %></td>
+            <td class="px-3 py-2 text-right"><%= number_to_currency(liabilities.sum(&:balance), unit: "€") %></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>

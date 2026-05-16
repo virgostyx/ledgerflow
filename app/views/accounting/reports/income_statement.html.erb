@@ -1,0 +1,60 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900"><%= t("accounting.reports.income_statement.title") %></h1>
+
+  <% charges = @rows.select { |r| r.account_type == "expense" } %>
+  <% produits = @rows.select { |r| r.account_type == "revenue" } %>
+  <% total_charges = charges.sum(&:balance) %>
+  <% total_produits = produits.sum(&:balance) %>
+  <% resultat = total_produits - total_charges %>
+
+  <div class="grid grid-cols-2 gap-8">
+    <div>
+      <h2 class="mb-3 text-lg font-semibold text-red-700"><%= t("accounting.reports.income_statement.charges") %></h2>
+      <table class="min-w-full text-sm divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-100 bg-white">
+          <% charges.each do |row| %>
+            <tr>
+              <td class="px-3 py-2 font-mono"><%= row.code %></td>
+              <td class="px-3 py-2"><%= row.label_fr %></td>
+              <td class="px-3 py-2 text-right"><%= number_to_currency(row.balance, unit: "€") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot class="bg-gray-50 font-bold">
+          <tr>
+            <td colspan="2" class="px-3 py-2"><%= t("accounting.reports.totals") %></td>
+            <td class="px-3 py-2 text-right"><%= number_to_currency(total_charges, unit: "€") %></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div>
+      <h2 class="mb-3 text-lg font-semibold text-emerald-700"><%= t("accounting.reports.income_statement.produits") %></h2>
+      <table class="min-w-full text-sm divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-100 bg-white">
+          <% produits.each do |row| %>
+            <tr>
+              <td class="px-3 py-2 font-mono"><%= row.code %></td>
+              <td class="px-3 py-2"><%= row.label_fr %></td>
+              <td class="px-3 py-2 text-right"><%= number_to_currency(row.balance, unit: "€") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot class="bg-gray-50 font-bold">
+          <tr>
+            <td colspan="2" class="px-3 py-2"><%= t("accounting.reports.totals") %></td>
+            <td class="px-3 py-2 text-right"><%= number_to_currency(total_produits, unit: "€") %></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="mt-8 rounded-lg p-4 <%= resultat >= 0 ? 'bg-emerald-50' : 'bg-red-50' %>">
+    <span class="font-bold text-lg">
+      <%= t("accounting.reports.income_statement.#{resultat >= 0 ? 'profit' : 'loss'}") %>:
+      <%= number_to_currency(resultat.abs, unit: "€") %>
+    </span>
+  </div>
+</div>
