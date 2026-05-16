@@ -1,13 +1,14 @@
 <h2 class="text-xl font-semibold text-gray-900 mb-2">Forgot your password?</h2>
 <p class="text-sm text-gray-500 mb-6">Enter your email to receive reset instructions.</p>
 
-<%= form_with url: user_password_path, html: { class: 'space-y-4' } do |f| %>
-  <div class="space-y-1">
-    <%= f.label :email, 'Email address',
-          class: 'block text-sm font-medium text-gray-700' %>
+<%= form_with url: user_password_path, html: { class: 'space-y-6' } do |f| %>
+  <div class="relative" data-controller="floating-label">
     <%= f.email_field :email,
           autofocus: true, autocomplete: 'email',
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500' %>
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          placeholder: ' ',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :email, 'Email address', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
   <%= f.submit 'Send instructions',

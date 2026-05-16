@@ -1,15 +1,21 @@
-<div class="space-y-1">
-  <label for="<%= @name %>" class="block text-sm font-medium text-gray-700"><%= @label %></label>
-  <select name="<%= @name %>" id="<%= @name %>"
-          class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500">
-    <% if @prompt %>
-      <option value=""><%= @prompt %></option>
-    <% end %>
-    <% @options.each do |label, value| %>
-      <option value="<%= value %>" <%= "selected" if value.to_s == @selected.to_s %>><%= label %></option>
-    <% end %>
-  </select>
+<div>
+  <div class="relative" data-controller="floating-label">
+    <select name="<%= @name %>" id="<%= @name %>"
+            class="block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500"
+            data-floating-label-target="input"
+            data-action="focus->floating-label#focus blur->floating-label#blur">
+      <% if @prompt %>
+        <option value=""><%= @prompt %></option>
+      <% end %>
+      <% @options.each do |label, value| %>
+        <option value="<%= value %>" <%= "selected" if value.to_s == @selected.to_s %>><%= label %></option>
+      <% end %>
+    </select>
+    <label for="<%= @name %>" class="lf-floating-label" data-floating-label-target="label">
+      <%= @label %>
+    </label>
+  </div>
   <% if @error %>
-    <p class="text-red-600 text-xs mt-1"><%= @error %></p>
+    <p class="text-red-600 text-xs mt-1 px-1"><%= @error %></p>
   <% end %>
 </div>

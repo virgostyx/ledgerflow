@@ -109,7 +109,39 @@
 
 /* ── Floating Labels ────────────────────────────────────────── */
 
-/* Label floats up when field has value or is focused */
+/* Base: label sits at vertical center of field (acts as placeholder) */
+.lf-floating-label {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.875rem;
+  color: #6b7280;
+  pointer-events: none;
+  transition: all 0.2s ease-in-out;
+  transform-origin: left center;
+  padding: 0;
+  z-index: 10;
+}
+
+/* Stimulus floating-label controller states */
+.floating-active {
+  top: 0 !important;
+  transform: translateY(-50%) scale(0.8) !important;
+  color: #ea580c !important; /* primary-600 */
+  background: white !important;
+  padding: 0 0.25rem !important;
+}
+
+.floating-inactive {
+  top: 50% !important;
+  transform: translateY(-50%) scale(1) !important;
+  color: #6b7280 !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Legacy .floating class */
 .floating {
   transform: translateY(-1.25rem) scale(0.75) !important;
   color: #ea580c !important; /* primary-600 */

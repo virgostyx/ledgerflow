@@ -5,20 +5,26 @@
 
   <%# Header fields %>
   <div class="grid grid-cols-3 gap-4 mb-6">
-    <div>
-      <%= f.label :journal_id, 'Journal', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+    <div class="relative" data-controller="floating-label">
       <%= f.collection_select :journal_id, @journals, :id,
             ->(j) { "#{j.code} — #{j.label_fr}" },
             { include_blank: false },
-            { class: 'block w-full rounded-md border-gray-300 text-sm' } %>
+            { class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+              data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } } %>
+      <%= f.label :journal_id, 'Journal', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
-    <div>
-      <%= f.label :entry_date, 'Date', class: 'block text-sm font-medium text-gray-700 mb-1' %>
-      <%= f.date_field :entry_date, class: 'block w-full rounded-md border-gray-300 text-sm' %>
+    <div class="relative" data-controller="floating-label">
+      <%= f.date_field :entry_date,
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+      <%= f.label :entry_date, 'Date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
-    <div>
-      <%= f.label :description, 'Description', class: 'block text-sm font-medium text-gray-700 mb-1' %>
-      <%= f.text_field :description, class: 'block w-full rounded-md border-gray-300 text-sm' %>
+    <div class="relative" data-controller="floating-label">
+      <%= f.text_field :description,
+            placeholder: ' ',
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+      <%= f.label :description, 'Description', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
   </div>
 

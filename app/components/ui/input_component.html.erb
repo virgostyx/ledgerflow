@@ -1,19 +1,22 @@
-<div class="space-y-1">
-  <label for="<%= @name %>" class="block text-sm font-medium text-gray-700">
-    <%= @label %>
-    <% if @required %><span class="text-red-500 ml-1">*</span><% end %>
-  </label>
-  <input
-    type="<%= @type %>"
-    name="<%= @name %>"
-    id="<%= @name %>"
-    class="<%= input_classes %>"
-    <% if @value %>value="<%= @value %>"<% end %>
-    <% if @placeholder %>placeholder="<%= @placeholder %>"<% end %>
-    <% if @required %>required<% end %>
-    <% if @disabled %>disabled<% end %>
-  >
+<div>
+  <div class="relative" data-controller="floating-label">
+    <input
+      type="<%= @type %>"
+      name="<%= @name %>"
+      id="<%= @name %>"
+      class="<%= input_classes %>"
+      placeholder=" "
+      data-floating-label-target="input"
+      data-action="focus->floating-label#focus blur->floating-label#blur"
+      <% if @value %>value="<%= @value %>"<% end %>
+      <% if @required %>required<% end %>
+      <% if @disabled %>disabled<% end %>
+    >
+    <label for="<%= @name %>" class="lf-floating-label" data-floating-label-target="label">
+      <%= @label %><% if @required %><span class="text-red-500 ml-0.5">*</span><% end %>
+    </label>
+  </div>
   <% if @error %>
-    <p class="text-red-600 text-xs mt-1"><%= @error %></p>
+    <p class="text-red-600 text-xs mt-1 px-1"><%= @error %></p>
   <% end %>
 </div>

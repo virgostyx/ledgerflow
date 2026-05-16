@@ -1,21 +1,22 @@
 <h2 class="text-xl font-semibold text-gray-900 mb-6">Sign in</h2>
 
-<%= form_with url: user_session_path, scope: :user, html: { class: 'space-y-4' } do |f| %>
-  <div class="space-y-1">
-    <%= f.label :email, 'Email address',
-          class: 'block text-sm font-medium text-gray-700' %>
+<%= form_with url: user_session_path, scope: :user, html: { class: 'space-y-6' } do |f| %>
+  <div class="relative" data-controller="floating-label">
     <%= f.email_field :email,
           autofocus: true, autocomplete: 'email',
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500',
-          placeholder: 'you@example.com' %>
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          placeholder: ' ',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :email, 'Email address', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
-  <div class="space-y-1">
-    <%= f.label :password, 'Password',
-          class: 'block text-sm font-medium text-gray-700' %>
+  <div class="relative" data-controller="floating-label">
     <%= f.password_field :password,
           autocomplete: 'current-password',
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500' %>
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          placeholder: ' ',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :password, 'Password', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
   <div class="flex items-center justify-between">

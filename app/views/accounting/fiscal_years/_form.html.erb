@@ -1,6 +1,6 @@
 <%= form_with model: fiscal_year,
                 url: fiscal_year.persisted? ? accounting_fiscal_year_path(fiscal_year) : accounting_fiscal_years_path,
-                class: "space-y-4" do |f| %>
+                html: { class: "space-y-6 max-w-sm" } do |f| %>
   <% if fiscal_year.errors.any? %>
     <div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
       <ul class="list-disc list-inside">
@@ -11,22 +11,29 @@
     </div>
   <% end %>
 
-  <div>
-    <%= f.label :year, t("accounting.fiscal_years.year"), class: "block text-sm font-medium text-gray-700" %>
-    <%= f.number_field :year, class: "mt-1 form-input w-32", min: 2020, max: 2099 %>
+  <div class="relative" data-controller="floating-label">
+    <%= f.number_field :year,
+          min: 2020, max: 2099,
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :year, t("accounting.fiscal_years.year"), class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
-  <div>
-    <%= f.label :start_date, t("accounting.fiscal_years.start_date"), class: "block text-sm font-medium text-gray-700" %>
-    <%= f.date_field :start_date, class: "mt-1 form-input" %>
+  <div class="relative" data-controller="floating-label">
+    <%= f.date_field :start_date,
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :start_date, t("accounting.fiscal_years.start_date"), class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
-  <div>
-    <%= f.label :end_date, t("accounting.fiscal_years.end_date"), class: "block text-sm font-medium text-gray-700" %>
-    <%= f.date_field :end_date, class: "mt-1 form-input" %>
+  <div class="relative" data-controller="floating-label">
+    <%= f.date_field :end_date,
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :end_date, t("accounting.fiscal_years.end_date"), class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
-  <div class="flex gap-3">
+  <div class="flex gap-3 pt-2">
     <%= f.submit class: "btn-primary" %>
     <%= link_to t("accounting.fiscal_years.cancel"), accounting_fiscal_years_path,
                 class: "btn-secondary" %>
