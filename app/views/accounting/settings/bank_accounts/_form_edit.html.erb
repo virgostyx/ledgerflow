@@ -1,0 +1,66 @@
+<%# Form for editing an existing bank account (IBAN and journal are locked) %>
+<%= form_with model: bank_account,
+      url: accounting_settings_bank_account_path(bank_account),
+      class: "space-y-5" do |f| %>
+
+  <% if bank_account.errors.any? %>
+    <div class="rounded-md bg-danger-50 border border-danger-200 p-4">
+      <ul class="list-disc list-inside text-sm text-danger-700 space-y-1">
+        <% bank_account.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="grid grid-cols-2 gap-5">
+    <div class="rounded-md bg-gray-50 border border-gray-200 p-4">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">IBAN (locked)</p>
+      <p class="text-sm font-mono text-gray-700"><%= bank_account.iban.gsub(/(.{4})/, '\1 ').strip %></p>
+    </div>
+    <div class="rounded-md bg-gray-50 border border-gray-200 p-4">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Journal (locked)</p>
+      <p class="text-sm font-mono text-gray-700"><%= bank_account.journal.code %></p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-5">
+    <div>
+      <%= f.label :label_fr, "Account Label", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :label_fr,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+    </div>
+
+    <div>
+      <%= f.label :label_nl, "Label (NL)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :label_nl,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: "optional" %>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :bic, "BIC / SWIFT", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :bic,
+          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+  </div>
+
+  <div>
+    <%= f.label :notes, "Notes", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_area :notes, rows: 2,
+          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <%= f.check_box :active, class: "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" %>
+    <%= f.label :active, "Active", class: "text-sm font-medium text-gray-700" %>
+  </div>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit "Update Bank Account",
+          class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer" %>
+    <%= link_to "Cancel", accounting_settings_bank_accounts_path,
+          class: "px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors" %>
+  </div>
+
+<% end %>

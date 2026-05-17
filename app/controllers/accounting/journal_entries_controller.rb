@@ -14,6 +14,7 @@ class Accounting::JournalEntriesController < ApplicationController
     @entry.fiscal_year = Accounting::FiscalYear.find_by(status: :open)
     @journals   = Accounting::Journal.active.order(:code)
     @accounts   = Accounting::Account.where(is_leaf: true).order(:code)
+    @axes       = Accounting::AnalyticalAxis.active.ordered.includes(analytical_accounts: [])
     authorize @entry
   end
 
@@ -40,6 +41,7 @@ class Accounting::JournalEntriesController < ApplicationController
 
     @journals = Accounting::Journal.active.order(:code)
     @accounts = Accounting::Account.where(is_leaf: true).order(:code)
+    @axes     = Accounting::AnalyticalAxis.active.ordered.includes(analytical_accounts: [])
     render :new, status: :unprocessable_content
   end
 
@@ -47,6 +49,7 @@ class Accounting::JournalEntriesController < ApplicationController
     authorize @entry
     @journals = Accounting::Journal.active.order(:code)
     @accounts = Accounting::Account.where(is_leaf: true).order(:code)
+    @axes     = Accounting::AnalyticalAxis.active.ordered.includes(analytical_accounts: [])
   end
 
   def update
@@ -57,6 +60,7 @@ class Accounting::JournalEntriesController < ApplicationController
     else
       @journals = Accounting::Journal.active.order(:code)
       @accounts = Accounting::Account.where(is_leaf: true).order(:code)
+      @axes     = Accounting::AnalyticalAxis.active.ordered.includes(analytical_accounts: [])
       render :edit, status: :unprocessable_content
     end
   end
@@ -87,7 +91,10 @@ class Accounting::JournalEntriesController < ApplicationController
   def entry_params
     params.require(:accounting_journal_entry).permit(
       :journal_id, :fiscal_year_id, :entry_date, :description,
-      lines_attributes: [ :id, :account_id, :debit, :credit, :label, :vat_code, :vat_amount, :_destroy ]
+      lines_attributes: [
+        :id, :account_id, :debit, :credit, :label, :vat_code, :vat_amount, :_destroy,
+        analytical_annotations_attributes: [ :id, :analytical_axis_id, :analytical_account_id, :_destroy ]
+      ]
     )
   end
 end

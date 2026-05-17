@@ -1,0 +1,66 @@
+<% content_for :breadcrumb do %>
+  <span class="text-gray-400">Settings</span>
+<% end %>
+
+<div class="max-w-3xl">
+  <%= render Ui::PageHeaderComponent.new(
+        title: "Settings",
+        description: "Configure your accounting environment"
+      ) %>
+
+  <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+    <%= link_to accounting_settings_journals_path,
+          class: "group flex items-start gap-4 p-5 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all" do %>
+      <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+        <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-gray-900">Journals</p>
+        <p class="text-sm text-gray-500 mt-0.5">Manage purchase, sale, bank, and cash journals</p>
+      </div>
+    <% end %>
+
+    <%= link_to accounting_settings_bank_accounts_path,
+          class: "group flex items-start gap-4 p-5 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all" do %>
+      <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+        <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-gray-900">Bank Accounts</p>
+        <p class="text-sm text-gray-500 mt-0.5">Link IBAN accounts to their bank journals</p>
+      </div>
+    <% end %>
+
+    <%= link_to accounting_settings_accounts_path,
+          class: "group flex items-start gap-4 p-5 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all" do %>
+      <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+        <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-gray-900">Chart of Accounts</p>
+        <p class="text-sm text-gray-500 mt-0.5">Browse and customize the PCMN account tree</p>
+      </div>
+    <% end %>
+
+    <%= link_to accounting_settings_analytical_axes_path,
+          class: "group flex items-start gap-4 p-5 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all" do %>
+      <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+        <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-gray-900">Analytical Accounts</p>
+        <p class="text-sm text-gray-500 mt-0.5">Configure axes (projects, activities, funding sources)</p>
+      </div>
+    <% end %>
+
+  </div>
+</div>

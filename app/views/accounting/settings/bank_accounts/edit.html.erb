@@ -1,0 +1,16 @@
+<% content_for :breadcrumb do %>
+  <%= link_to "Settings", accounting_settings_root_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <%= link_to "Bank Accounts", accounting_settings_bank_accounts_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <span class="text-gray-700 font-medium">Edit</span>
+<% end %>
+
+<div class="max-w-2xl">
+  <%= render Ui::PageHeaderComponent.new(
+        title: "Edit Bank Account — #{@bank_account.journal.code}"
+      ) %>
+  <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
+    <%= render "form_edit", bank_account: @bank_account %>
+  </div>
+</div>

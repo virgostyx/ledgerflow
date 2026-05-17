@@ -1,0 +1,14 @@
+<% content_for :breadcrumb do %>
+  <%= link_to "Settings", accounting_settings_root_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <%= link_to "Journals", accounting_settings_journals_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <span class="text-gray-700 font-medium">New Journal</span>
+<% end %>
+
+<div class="max-w-2xl">
+  <%= render Ui::PageHeaderComponent.new(title: "New Journal") %>
+  <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
+    <%= render "form", journal: @journal %>
+  </div>
+</div>

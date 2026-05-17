@@ -1,0 +1,85 @@
+<%# Form for creating a new bank account (also creates the bank journal) %>
+<%= form_with url: accounting_settings_bank_accounts_path,
+      scope: :bank_account_form,
+      class: "space-y-5" do |f| %>
+
+  <% if flash[:alert] %>
+    <div class="rounded-md bg-danger-50 border border-danger-200 p-4">
+      <p class="text-sm text-danger-700"><%= flash[:alert] %></p>
+    </div>
+  <% end %>
+
+  <div class="rounded-md bg-blue-50 border border-blue-200 p-4">
+    <p class="text-sm text-blue-700">
+      Creating a bank account will automatically create the associated bank journal.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-2 gap-5">
+    <div>
+      <%= f.label :label_fr, "Account Label", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :label_fr,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: "e.g. ING Current Account" %>
+    </div>
+
+    <div>
+      <%= f.label :label_nl, "Label (NL)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :label_nl,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: "e.g. ING Zichtrekening (optional)" %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-5">
+    <div>
+      <%= f.label :journal_code, "Journal Code", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :journal_code,
+            maxlength: 5,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: "e.g. ING1" %>
+      <p class="mt-1 text-xs text-gray-400">Unique code for the bank journal (max 5 chars).</p>
+    </div>
+
+    <div>
+      <%= f.label :default_account_id, "Counterpart Account (55xxxx)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= render Accounting::AccountSelectComponent.new(
+            accounts: @accounts_55,
+            name:     "bank_account_form[default_account_id]",
+            selected: nil,
+            prompt:   "— Select a 55xxxx account —"
+          ) %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-5">
+    <div>
+      <%= f.label :iban, "IBAN", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :iban,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: "BE71 0961 2345 6769" %>
+    </div>
+
+    <div>
+      <%= f.label :bic, "BIC / SWIFT", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :bic,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: "BBRUBEBB" %>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :notes, "Notes", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_area :notes, rows: 2,
+          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+          placeholder: "Internal notes (optional)" %>
+  </div>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit "Create Bank Account",
+          class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer" %>
+    <%= link_to "Cancel", accounting_settings_bank_accounts_path,
+          class: "px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors" %>
+  </div>
+
+<% end %>

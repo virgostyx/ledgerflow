@@ -1,0 +1,67 @@
+<%= form_with model: axis,
+      url: accounting_settings_analytical_axis_path(axis),
+      method: :patch,
+      class: "space-y-5" do |f| %>
+
+  <% if axis.errors.any? %>
+    <div class="rounded-md bg-danger-50 border border-danger-200 p-4">
+      <ul class="list-disc list-inside text-sm text-danger-700 space-y-1">
+        <% axis.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="rounded-md bg-gray-50 border border-gray-200 p-3 text-sm text-gray-500">
+    Code: <span class="font-mono font-semibold text-gray-700"><%= axis.code %></span>
+    — the axis code is fixed and cannot be changed.
+  </div>
+
+  <div class="grid grid-cols-2 gap-5">
+    <div>
+      <%= f.label :label_fr, "Label (FR)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :label_fr,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+    </div>
+
+    <div>
+      <%= f.label :label_nl, "Label (NL)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :label_nl,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: "Dutch label (optional)" %>
+    </div>
+  </div>
+
+  <div>
+    <p class="block text-sm font-medium text-gray-700 mb-2">Required for account classes</p>
+    <p class="text-xs text-gray-400 mb-3">When a journal entry line uses an account in one of these classes, this axis must be filled in.</p>
+    <div class="flex flex-wrap gap-3">
+      <% (1..7).each do |klass| %>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <%= check_box_tag "accounting_analytical_axis[required_for_account_classes][]",
+                klass,
+                axis.required_for_account_classes.include?(klass),
+                id: "axis_class_#{klass}",
+                class: "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" %>
+          <span class="text-sm text-gray-700">Class <%= klass %></span>
+        </label>
+      <% end %>
+    </div>
+    <%# hidden field ensures an empty array is submitted when all checkboxes are unchecked %>
+    <%= hidden_field_tag "accounting_analytical_axis[required_for_account_classes][]", "" %>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <%= f.check_box :active, class: "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" %>
+    <%= f.label :active, "Active", class: "text-sm font-medium text-gray-700" %>
+  </div>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit "Update Axis",
+          class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer" %>
+    <%= link_to "Cancel", accounting_settings_analytical_axes_path,
+          class: "px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors" %>
+  </div>
+
+<% end %>

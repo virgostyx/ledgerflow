@@ -58,6 +58,35 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
       end
     end
 
+    context 'avec des annotations analytiques' do
+      let!(:axis)         { create(:analytical_axis, :proj) }
+      let!(:anal_account) { create(:analytical_account, analytical_axis: axis,
+                                   code: 'PROJ-001', label_fr: 'Project Alpha') }
+
+      it 'crée les annotations avec l écriture' do
+        expect {
+          post accounting_journal_entries_path, params: {
+            commit: 'Save',
+            accounting_journal_entry: {
+              journal_id:     journal.id,
+              fiscal_year_id: fiscal_year.id,
+              entry_date:     Date.current,
+              description:    'Charges projet',
+              lines_attributes: {
+                '0' => {
+                  account_id: account_604.id, debit: '500.00', credit: '0', label: 'Projet',
+                  analytical_annotations_attributes: {
+                    '0' => { analytical_axis_id: axis.id, analytical_account_id: anal_account.id }
+                  }
+                },
+                '1' => { account_id: account_440.id, debit: '0', credit: '500.00', label: 'Fournisseur' }
+              }
+            }
+          }
+        }.to change(Accounting::AnalyticalAnnotation, :count).by(1)
+      end
+    end
+
     context 'sans date' do
       it 'retourne 422' do
         post accounting_journal_entries_path, params: {

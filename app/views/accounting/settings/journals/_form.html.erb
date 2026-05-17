@@ -1,0 +1,79 @@
+<%= form_with model: journal,
+      url: journal.persisted? ? accounting_settings_journal_path(journal) : accounting_settings_journals_path,
+      class: "space-y-5" do |f| %>
+
+  <% if journal.errors.any? %>
+    <div class="rounded-md bg-danger-50 border border-danger-200 p-4">
+      <ul class="list-disc list-inside text-sm text-danger-700 space-y-1">
+        <% journal.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="grid grid-cols-2 gap-5">
+    <div>
+      <%= f.label :code, "Code", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :code,
+            maxlength: 5,
+            disabled: journal.persisted? && !journal.destroyable?,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 disabled:text-gray-400",
+            placeholder: "e.g. ACH" %>
+      <% if journal.persisted? && !journal.destroyable? %>
+        <p class="mt-1 text-xs text-gray-400">Code cannot be changed after entries have been recorded.</p>
+      <% end %>
+    </div>
+
+    <div>
+      <%= f.label :label_fr, "Label", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :label_fr,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: "e.g. Achats" %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-5">
+    <div>
+      <%= f.label :journal_type, "Journal Type", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.select :journal_type,
+            Accounting::Journal.journal_types.keys.map { |t| [t.capitalize, t] },
+            { prompt: "— Select a type —" },
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+    </div>
+
+    <div>
+      <%= f.label :sequence_prefix, "Sequence Prefix", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :sequence_prefix,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: "e.g. ACH" %>
+      <p class="mt-1 text-xs text-gray-400">Used to generate entry references (e.g. ACH2026/0001).</p>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :default_account_id, "Counterpart Account", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= render Accounting::AccountSelectComponent.new(
+          accounts: @accounts,
+          name:     "accounting_journal[default_account_id]",
+          selected: journal.default_account_id,
+          prompt:   "— Select an account —"
+        ) %>
+    <p class="mt-1 text-xs text-gray-400">
+      Required for bank (55xxxx), cash (57xxxx), purchase (44xxxx), and sale (40xxxx) journals.
+    </p>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <%= f.check_box :active, class: "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" %>
+    <%= f.label :active, "Active", class: "text-sm font-medium text-gray-700" %>
+  </div>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit journal.persisted? ? "Update Journal" : "Create Journal",
+          class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer" %>
+    <%= link_to "Cancel", accounting_settings_journals_path,
+          class: "px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors" %>
+  </div>
+
+<% end %>

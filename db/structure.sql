@@ -73,6 +73,7 @@ CREATE TABLE public.accounting_accounts (
     balance_credit numeric(15,2) DEFAULT 0.0,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    custom boolean DEFAULT false NOT NULL,
     CONSTRAINT chk_account_class CHECK (((account_class >= 1) AND (account_class <= 7)))
 );
 
@@ -94,6 +95,109 @@ CREATE SEQUENCE public.accounting_accounts_id_seq
 --
 
 ALTER SEQUENCE public.accounting_accounts_id_seq OWNED BY public.accounting_accounts.id;
+
+
+--
+-- Name: accounting_analytical_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_analytical_accounts (
+    id bigint NOT NULL,
+    analytical_axis_id bigint NOT NULL,
+    code character varying(20) NOT NULL,
+    label_fr character varying NOT NULL,
+    label_nl character varying,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_analytical_accounts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_analytical_accounts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_analytical_accounts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_analytical_accounts_id_seq OWNED BY public.accounting_analytical_accounts.id;
+
+
+--
+-- Name: accounting_analytical_annotations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_analytical_annotations (
+    id bigint NOT NULL,
+    journal_entry_line_id bigint NOT NULL,
+    analytical_axis_id bigint NOT NULL,
+    analytical_account_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_analytical_annotations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_analytical_annotations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_analytical_annotations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_analytical_annotations_id_seq OWNED BY public.accounting_analytical_annotations.id;
+
+
+--
+-- Name: accounting_analytical_axes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_analytical_axes (
+    id bigint NOT NULL,
+    code character varying(10) NOT NULL,
+    label_fr character varying NOT NULL,
+    label_nl character varying,
+    active boolean DEFAULT true NOT NULL,
+    required_for_account_classes integer[] DEFAULT '{}'::integer[],
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_analytical_axes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_analytical_axes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_analytical_axes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_analytical_axes_id_seq OWNED BY public.accounting_analytical_axes.id;
 
 
 --
@@ -147,7 +251,9 @@ CREATE TABLE public.accounting_bank_accounts (
     balance numeric(15,2) DEFAULT 0.0 NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    label_nl character varying,
+    notes text
 );
 
 
@@ -652,6 +758,27 @@ ALTER TABLE ONLY public.accounting_accounts ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: accounting_analytical_accounts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_accounts ALTER COLUMN id SET DEFAULT nextval('public.accounting_analytical_accounts_id_seq'::regclass);
+
+
+--
+-- Name: accounting_analytical_annotations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_annotations ALTER COLUMN id SET DEFAULT nextval('public.accounting_analytical_annotations_id_seq'::regclass);
+
+
+--
+-- Name: accounting_analytical_axes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_axes ALTER COLUMN id SET DEFAULT nextval('public.accounting_analytical_axes_id_seq'::regclass);
+
+
+--
 -- Name: accounting_audit_logs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -748,6 +875,30 @@ ALTER TABLE ONLY public.versions ALTER COLUMN id SET DEFAULT nextval('public.ver
 
 ALTER TABLE ONLY public.accounting_accounts
     ADD CONSTRAINT accounting_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_analytical_accounts accounting_analytical_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_accounts
+    ADD CONSTRAINT accounting_analytical_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_analytical_annotations accounting_analytical_annotations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_annotations
+    ADD CONSTRAINT accounting_analytical_annotations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_analytical_axes accounting_analytical_axes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_axes
+    ADD CONSTRAINT accounting_analytical_axes_pkey PRIMARY KEY (id);
 
 
 --
@@ -885,6 +1036,20 @@ CREATE UNIQUE INDEX idx_bank_transactions_on_account_and_ref ON public.accountin
 
 
 --
+-- Name: idx_on_analytical_account_id_5dc54f9ad9; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_analytical_account_id_5dc54f9ad9 ON public.accounting_analytical_annotations USING btree (analytical_account_id);
+
+
+--
+-- Name: idx_on_journal_entry_line_id_307850d4ba; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_journal_entry_line_id_307850d4ba ON public.accounting_analytical_annotations USING btree (journal_entry_line_id);
+
+
+--
 -- Name: index_accounting_accounts_on_account_class; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -910,6 +1075,27 @@ CREATE UNIQUE INDEX index_accounting_accounts_on_code ON public.accounting_accou
 --
 
 CREATE INDEX index_accounting_accounts_on_parent_id ON public.accounting_accounts USING btree (parent_id);
+
+
+--
+-- Name: index_accounting_analytical_accounts_on_analytical_axis_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_analytical_accounts_on_analytical_axis_id ON public.accounting_analytical_accounts USING btree (analytical_axis_id);
+
+
+--
+-- Name: index_accounting_analytical_annotations_on_analytical_axis_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_analytical_annotations_on_analytical_axis_id ON public.accounting_analytical_annotations USING btree (analytical_axis_id);
+
+
+--
+-- Name: index_accounting_analytical_axes_on_code; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_analytical_axes_on_code ON public.accounting_analytical_axes USING btree (code);
 
 
 --
@@ -951,7 +1137,7 @@ CREATE UNIQUE INDEX index_accounting_bank_accounts_on_iban ON public.accounting_
 -- Name: index_accounting_bank_accounts_on_journal_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_accounting_bank_accounts_on_journal_id ON public.accounting_bank_accounts USING btree (journal_id);
+CREATE UNIQUE INDEX index_accounting_bank_accounts_on_journal_id ON public.accounting_bank_accounts USING btree (journal_id);
 
 
 --
@@ -1158,6 +1344,20 @@ CREATE INDEX index_accounting_vat_declarations_on_fiscal_year_id ON public.accou
 
 
 --
+-- Name: index_analytical_accounts_on_axis_and_code; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_analytical_accounts_on_axis_and_code ON public.accounting_analytical_accounts USING btree (analytical_axis_id, code);
+
+
+--
+-- Name: index_analytical_annotations_on_line_and_axis; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_analytical_annotations_on_line_and_axis ON public.accounting_analytical_annotations USING btree (journal_entry_line_id, analytical_axis_id);
+
+
+--
 -- Name: index_users_on_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1248,6 +1448,22 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: accounting_analytical_annotations fk_rails_4883ca45d6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_annotations
+    ADD CONSTRAINT fk_rails_4883ca45d6 FOREIGN KEY (journal_entry_line_id) REFERENCES public.accounting_journal_entry_lines(id);
+
+
+--
+-- Name: accounting_analytical_accounts fk_rails_59baa8ed4d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_accounts
+    ADD CONSTRAINT fk_rails_59baa8ed4d FOREIGN KEY (analytical_axis_id) REFERENCES public.accounting_analytical_axes(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_6f6e1949f4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1277,6 +1493,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 ALTER TABLE ONLY public.accounting_invoices
     ADD CONSTRAINT fk_rails_9602ee956d FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
+-- Name: accounting_analytical_annotations fk_rails_addec3672a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_annotations
+    ADD CONSTRAINT fk_rails_addec3672a FOREIGN KEY (analytical_account_id) REFERENCES public.accounting_analytical_accounts(id);
 
 
 --
@@ -1312,12 +1536,25 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 
 --
+-- Name: accounting_analytical_annotations fk_rails_fec4fb0e51; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_annotations
+    ADD CONSTRAINT fk_rails_fec4fb0e51 FOREIGN KEY (analytical_axis_id) REFERENCES public.accounting_analytical_axes(id);
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260517095526'),
+('20260517095525'),
+('20260517095504'),
+('20260517093633'),
+('20260517091153'),
 ('20260515200000'),
 ('20260515195133'),
 ('20260515195131'),

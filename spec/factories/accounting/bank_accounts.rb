@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :bank_account, class: 'Accounting::BankAccount' do
-    association :journal, factory: :journal, strategy: :create
+    association :journal, factory: [ :journal, :bank ], strategy: :create
 
     sequence(:iban) do |n|
       account = "0001234#{n.to_s.rjust(5, '0')}"

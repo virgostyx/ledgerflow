@@ -53,6 +53,31 @@ en:
         no_lines:       "The invoice must have at least one line."
         no_journal:     "No active journal of type %{type} found."
 
+    settings:
+      journals:
+        created:          "Journal created successfully."
+        updated:          "Journal updated."
+        deleted:          "Journal deleted."
+        toggled:          "Journal status updated."
+        not_destroyable:  "This journal cannot be deleted because it has existing entries."
+        not_deactivatable: "This journal cannot be deactivated because it has draft entries."
+      bank_accounts:
+        created:          "Bank account created successfully."
+        updated:          "Bank account updated."
+        deleted:          "Bank account deleted."
+        not_destroyable:  "This bank account cannot be deleted because it has transactions."
+      accounts:
+        created:          "Account created successfully."
+        updated:          "Account updated."
+        not_destroyable:  "This account cannot be deleted."
+      analytical_axes:
+        updated:          "Analytical axis updated."
+      analytical_accounts:
+        created:          "Analytical account created successfully."
+        updated:          "Analytical account updated."
+        deleted:          "Analytical account deleted."
+        not_destroyable:  "This account cannot be deleted because it has annotations."
+
     fiscal_years:
       index:
         title: "Fiscal Years"
@@ -140,6 +165,9 @@ en:
       messages:
         record_invalid: "Validation failed: %{errors}"
         invalid:        "is not valid"
+        immutable:      "cannot be changed after creation"
+        must_follow_parent_hierarchy: "must start with the parent account code"
+        must_belong_to_axis:          "must belong to the selected axis"
       models:
         accounting/partner:
           attributes:

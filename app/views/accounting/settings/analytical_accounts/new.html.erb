@@ -1,0 +1,15 @@
+<% content_for :breadcrumb do %>
+  <%= link_to "Settings", accounting_settings_root_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <%= link_to "Analytical Axes", accounting_settings_analytical_axes_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <span class="text-gray-700 font-medium">New Account — <%= @axis.code %></span>
+<% end %>
+
+<div class="max-w-2xl">
+  <%= render Ui::PageHeaderComponent.new(title: "New Analytical Account") %>
+  <p class="mt-1 text-sm text-gray-500">Axis: <span class="font-mono font-medium"><%= @axis.code %></span> — <%= @axis.label_fr %></p>
+  <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
+    <%= render "form", account: @account, axis: @axis %>
+  </div>
+</div>

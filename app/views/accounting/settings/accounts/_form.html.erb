@@ -1,0 +1,84 @@
+<%= form_with model: account,
+      url: account.persisted? ? accounting_settings_account_path(account) : accounting_settings_accounts_path,
+      class: "space-y-5" do |f| %>
+
+  <% if account.errors.any? %>
+    <div class="rounded-md bg-danger-50 border border-danger-200 p-4">
+      <ul class="list-disc list-inside text-sm text-danger-700 space-y-1">
+        <% account.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <% if account.new_record? %>
+    <%= f.hidden_field :parent_id, value: parent&.id %>
+
+    <div>
+      <%= f.label :code, "Account Code", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :code,
+            maxlength: 10,
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+            placeholder: parent ? "#{parent.code}..." : "e.g. 6040001" %>
+      <% if parent %>
+        <p class="mt-1 text-xs text-gray-400">Must start with <span class="font-mono"><%= parent.code %></span></p>
+      <% end %>
+    </div>
+
+    <div class="grid grid-cols-2 gap-5">
+      <div>
+        <%= f.label :account_type, "Account Type", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.select :account_type,
+              Accounting::Account.account_types.keys.map { |t| [t.capitalize, t] },
+              { selected: parent&.account_type },
+              class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+      </div>
+
+      <div>
+        <%= f.label :normal_balance, "Normal Balance", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.select :normal_balance,
+              [ [ "Debit", "debit" ], [ "Credit", "credit" ] ],
+              { selected: parent&.normal_balance },
+              class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+      </div>
+    </div>
+
+    <%= f.hidden_field :account_class, value: parent&.account_class %>
+  <% else %>
+    <div class="rounded-md bg-gray-50 border border-gray-200 p-3 text-sm text-gray-500">
+      <span class="font-mono font-medium text-gray-700"><%= account.code %></span>
+      — code cannot be changed after creation.
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :label_fr, "Label (FR)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :label_fr,
+          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+          placeholder: "French label" %>
+  </div>
+
+  <div>
+    <%= f.label :label_nl, "Label (NL)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :label_nl,
+          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+          placeholder: "Dutch label (optional)" %>
+  </div>
+
+  <% if account.persisted? %>
+    <div class="flex items-center gap-3">
+      <%= f.check_box :active, class: "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" %>
+      <%= f.label :active, "Active", class: "text-sm font-medium text-gray-700" %>
+    </div>
+  <% end %>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit account.persisted? ? "Update Account" : "Create Account",
+          class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer" %>
+    <%= link_to "Cancel",
+          accounting_settings_accounts_path(account_class: account.persisted? ? account.account_class : parent&.account_class),
+          class: "px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors" %>
+  </div>
+
+<% end %>

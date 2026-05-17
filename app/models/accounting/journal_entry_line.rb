@@ -8,6 +8,13 @@ class Accounting::JournalEntryLine < ApplicationRecord
   belongs_to :account,       class_name: "Accounting::Account"
   belongs_to :partner,       class_name: "Accounting::Partner",
                               foreign_key: :partner_id, optional: true
+  has_many   :analytical_annotations, class_name: "Accounting::AnalyticalAnnotation",
+             foreign_key: :journal_entry_line_id, inverse_of: :journal_entry_line,
+             dependent: :destroy
+
+  accepts_nested_attributes_for :analytical_annotations,
+    allow_destroy: true,
+    reject_if: proc { |attrs| attrs["analytical_account_id"].blank? && attrs["id"].blank? }
 
   MONETARY_COLUMNS = %w[debit credit vat_amount amount_currency].freeze
 

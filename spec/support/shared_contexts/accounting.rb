@@ -9,6 +9,8 @@ RSpec.shared_context 'with_pcmn_accounts' do
   let!(:account_411) { create(:account, code: '411000', label_fr: 'TVA à récupérer') }
   let!(:account_700) { create(:account, code: '700000', label_fr: 'Ventes') }
   let!(:account_451) { create(:account, code: '451000', label_fr: 'TVA à reverser') }
+  let!(:account_550) { create(:account, code: '550000', label_fr: 'ING Compte courant', account_class: 5) }
+  let!(:account_570) { create(:account, code: '570000', label_fr: 'Caisse principale', account_class: 5) }
 end
 
 RSpec.shared_context 'with_authenticated_api' do

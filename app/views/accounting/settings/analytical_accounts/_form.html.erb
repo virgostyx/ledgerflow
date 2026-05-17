@@ -1,0 +1,51 @@
+<%= form_with model: account,
+      url: account.persisted? ? accounting_settings_analytical_account_path(account)
+                              : accounting_settings_analytical_axis_analytical_accounts_path(axis),
+      class: "space-y-5" do |f| %>
+
+  <% if account.errors.any? %>
+    <div class="rounded-md bg-danger-50 border border-danger-200 p-4">
+      <ul class="list-disc list-inside text-sm text-danger-700 space-y-1">
+        <% account.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :code, "Code", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :code,
+          maxlength: 20,
+          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+          placeholder: "e.g. #{axis.code}-001" %>
+  </div>
+
+  <div>
+    <%= f.label :label_fr, "Label (FR)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :label_fr,
+          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+  </div>
+
+  <div>
+    <%= f.label :label_nl, "Label (NL)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :label_nl,
+          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
+          placeholder: "Dutch label (optional)" %>
+  </div>
+
+  <% if account.persisted? %>
+    <div class="flex items-center gap-3">
+      <%= f.check_box :active, class: "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" %>
+      <%= f.label :active, "Active", class: "text-sm font-medium text-gray-700" %>
+    </div>
+  <% end %>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= f.submit account.persisted? ? "Update Account" : "Create Account",
+          class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer" %>
+    <%= link_to "Cancel", accounting_settings_analytical_axes_path,
+          class: "px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors" %>
+  </div>
+
+<% end %>

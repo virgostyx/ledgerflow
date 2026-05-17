@@ -40,4 +40,33 @@ RSpec.describe Layouts::JournalEntryFormComponent, type: :component do
   it 'inclut un template pour les nouvelles lignes' do
     expect(page).to have_css('template', visible: :all)
   end
+
+  context 'with analytical axes' do
+    let(:axis)         { create(:analytical_axis, :proj) }
+    let(:anal_account) { create(:analytical_account, analytical_axis: axis,
+                                code: 'PROJ-001', label_fr: 'Project Alpha') }
+
+    before do
+      anal_account
+      render_inline(described_class.new(
+        entry: entry, journals: journals, accounts: accounts, axes: [ axis ]
+      ))
+    end
+
+    it 'renders an axis section per line' do
+      expect(page).to have_css('.analytical-axes-row')
+    end
+
+    it 'renders a select for each axis' do
+      expect(page).to have_css('select[data-axis-id]')
+    end
+
+    it 'renders analytical accounts as options' do
+      expect(page).to have_css('option', text: 'Project Alpha', visible: :all)
+    end
+
+    it 'includes the axes JSON on the form element' do
+      expect(page).to have_css('[data-journal-entry-form-axes-value]')
+    end
+  end
 end

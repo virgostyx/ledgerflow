@@ -45,6 +45,18 @@ Rails.application.routes.draw do
         get :general_ledger
         get :analytic_by_project
       end
+
+      namespace :settings do
+        root to: "dashboard#index"
+        resources :journals do
+          member { patch :toggle_active }
+        end
+        resources :bank_accounts
+        resources :accounts, only: [ :index, :show, :new, :create, :edit, :update ]
+        resources :analytical_axes do
+          resources :analytical_accounts, shallow: true
+        end
+      end
     end
   end
 
