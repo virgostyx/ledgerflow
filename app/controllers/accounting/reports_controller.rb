@@ -75,6 +75,35 @@ class Accounting::ReportsController < ApplicationController
     ).call
   end
 
+  def analytic_by_axis
+    authorize :report, :analytic_by_axis?, policy_class: Accounting::ReportPolicy
+
+    @axes = Accounting::AnalyticalAxis.active.ordered
+    @axis = Accounting::AnalyticalAxis.find_by(id: params[:axis_id])
+    @rows = @axis ? Accounting::AnalyticByAxisQuery.new(fiscal_year: @fiscal_year, axis: @axis).call : []
+  end
+
+  def analytic_cross
+    authorize :report, :analytic_cross?, policy_class: Accounting::ReportPolicy
+
+    @axes     = Accounting::AnalyticalAxis.active.ordered
+    @row_axis = Accounting::AnalyticalAxis.find_by(id: params[:row_axis_id])
+    @col_axis = Accounting::AnalyticalAxis.find_by(id: params[:col_axis_id])
+
+    if @row_axis && @col_axis && @row_axis != @col_axis
+      raw_results  = Accounting::AnalyticCrossQuery.new(
+        fiscal_year: @fiscal_year, row_axis: @row_axis, col_axis: @col_axis
+      ).call
+      @row_accounts = raw_results.map(&:row_account).uniq.sort_by(&:code)
+      @col_accounts = raw_results.map(&:col_account).uniq.sort_by(&:code)
+      @matrix       = raw_results.index_by { |r| [ r.row_account.id, r.col_account.id ] }
+    else
+      @row_accounts = []
+      @col_accounts = []
+      @matrix       = {}
+    end
+  end
+
   private
 
   def set_fiscal_year

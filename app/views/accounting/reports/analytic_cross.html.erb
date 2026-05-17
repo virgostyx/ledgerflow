@@ -1,0 +1,85 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900"><%= t("accounting.reports.analytic_cross.title") %></h1>
+
+  <%= form_with url: accounting_reports_analytic_cross_path, method: :get, class: "mb-6 flex gap-4 items-end flex-wrap" do |f| %>
+    <%= hidden_field_tag :fiscal_year_id, @fiscal_year.id %>
+    <div>
+      <%= f.label :row_axis_id, t("accounting.reports.analytic_cross.row_axis"), class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :row_axis_id,
+            @axes.map { |a| [ "#{a.code} — #{a.label_fr}", a.id ] },
+            { include_blank: t("accounting.reports.analytic_cross.select_axis"), selected: @row_axis&.id },
+            class: "mt-1 form-select w-48" %>
+    </div>
+    <div>
+      <%= f.label :col_axis_id, t("accounting.reports.analytic_cross.col_axis"), class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :col_axis_id,
+            @axes.map { |a| [ "#{a.code} — #{a.label_fr}", a.id ] },
+            { include_blank: t("accounting.reports.analytic_cross.select_axis"), selected: @col_axis&.id },
+            class: "mt-1 form-select w-48" %>
+    </div>
+    <%= f.submit t("accounting.reports.filter"), class: "btn-primary" %>
+  <% end %>
+
+  <% if @row_axis && @col_axis && @row_axis == @col_axis %>
+    <p class="text-amber-600 text-sm"><%= t("accounting.reports.analytic_cross.same_axis_warn") %></p>
+  <% elsif @row_axis.nil? || @col_axis.nil? %>
+    <p class="text-gray-500 text-sm"><%= t("accounting.reports.analytic_cross.select_axis") %></p>
+  <% elsif @row_accounts.empty? %>
+    <p class="text-gray-500 text-sm"><%= t("accounting.reports.no_data") %></p>
+  <% else %>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-3 py-2 text-left font-medium text-gray-600">
+              <%= @row_axis.code %> \ <%= @col_axis.code %>
+            </th>
+            <% @col_accounts.each do |col| %>
+              <th class="px-3 py-2 text-right font-medium text-gray-600">
+                <%= col.code %><br>
+                <span class="font-normal text-gray-400 text-xs"><%= col.label_fr %></span>
+              </th>
+            <% end %>
+            <th class="px-3 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.analytic_cross.totals") %></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+          <% @row_accounts.each do |row_acct| %>
+            <tr>
+              <td class="px-3 py-2">
+                <span class="font-semibold"><%= row_acct.code %></span>
+                <span class="text-gray-500 text-xs ml-1"><%= row_acct.label_fr %></span>
+              </td>
+              <% row_total = BigDecimal("0") %>
+              <% @col_accounts.each do |col_acct| %>
+                <% cell = @matrix[[row_acct.id, col_acct.id]] %>
+                <% row_total += cell.solde if cell %>
+                <td class="px-3 py-2 text-right <%= cell && cell.solde >= 0 ? 'text-emerald-700' : 'text-red-700' %>">
+                  <%= cell ? number_to_currency(cell.solde, unit: "€") : "—" %>
+                </td>
+              <% end %>
+              <td class="px-3 py-2 text-right font-bold <%= row_total >= 0 ? 'text-emerald-700' : 'text-red-700' %>">
+                <%= number_to_currency(row_total, unit: "€") %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot class="bg-gray-50 font-bold">
+          <tr>
+            <td class="px-3 py-2"><%= t("accounting.reports.totals") %></td>
+            <% @col_accounts.each do |col_acct| %>
+              <% col_total = @row_accounts.sum { |ra| @matrix[[ra.id, col_acct.id]]&.solde || BigDecimal("0") } %>
+              <td class="px-3 py-2 text-right <%= col_total >= 0 ? 'text-emerald-700' : 'text-red-700' %>">
+                <%= number_to_currency(col_total, unit: "€") %>
+              </td>
+            <% end %>
+            <% grand_total = @matrix.values.sum(&:solde) %>
+            <td class="px-3 py-2 text-right <%= grand_total >= 0 ? 'text-emerald-700' : 'text-red-700' %>">
+              <%= number_to_currency(grand_total, unit: "€") %>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  <% end %>
+</div>

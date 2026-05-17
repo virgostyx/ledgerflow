@@ -4,4 +4,6 @@ class Accounting::ReportPolicy < ApplicationPolicy
   def income_statement? = trial_balance?
   def general_ledger?   = trial_balance?
   def analytic_by_project? = trial_balance?
+  def analytic_by_axis?    = trial_balance?
+  def analytic_cross?      = trial_balance?
 end

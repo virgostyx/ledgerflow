@@ -125,4 +125,55 @@ RSpec.describe "Accounting::Reports", type: :request do
       expect(response).to have_http_status(:ok)
     end
   end
+
+  describe "GET /accounting/reports/analytic_by_axis" do
+    let!(:axis) { create(:analytical_axis, :proj) }
+
+    it "retourne 200 sans axis_id (formulaire vide)" do
+      get accounting_reports_analytic_by_axis_path(fiscal_year_id: fiscal_year.id)
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "retourne 200 avec un axis_id" do
+      get accounting_reports_analytic_by_axis_path(
+        fiscal_year_id: fiscal_year.id, axis_id: axis.id
+      )
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "retourne 200 avec un axis_id invalide (tableau vide)" do
+      get accounting_reports_analytic_by_axis_path(
+        fiscal_year_id: fiscal_year.id, axis_id: 0
+      )
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe "GET /accounting/reports/analytic_cross" do
+    let!(:proj_axis) { create(:analytical_axis, :proj) }
+    let!(:act_axis)  { create(:analytical_axis, :act) }
+
+    it "retourne 200 sans axes sélectionnés" do
+      get accounting_reports_analytic_cross_path(fiscal_year_id: fiscal_year.id)
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "retourne 200 avec deux axes distincts" do
+      get accounting_reports_analytic_cross_path(
+        fiscal_year_id: fiscal_year.id,
+        row_axis_id: proj_axis.id,
+        col_axis_id: act_axis.id
+      )
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "retourne 200 quand les deux axes sont identiques" do
+      get accounting_reports_analytic_cross_path(
+        fiscal_year_id: fiscal_year.id,
+        row_axis_id: proj_axis.id,
+        col_axis_id: proj_axis.id
+      )
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end

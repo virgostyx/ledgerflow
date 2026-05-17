@@ -44,6 +44,8 @@ Rails.application.routes.draw do
         get :income_statement
         get :general_ledger
         get :analytic_by_project
+        get :analytic_by_axis
+        get :analytic_cross
       end
 
       namespace :settings do

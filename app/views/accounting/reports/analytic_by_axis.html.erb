@@ -1,0 +1,57 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900"><%= t("accounting.reports.analytic_by_axis.title") %></h1>
+
+  <%= form_with url: accounting_reports_analytic_by_axis_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
+    <%= hidden_field_tag :fiscal_year_id, @fiscal_year.id %>
+    <div>
+      <%= f.label :axis_id, t("accounting.reports.analytic_by_axis.axis"), class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :axis_id,
+            @axes.map { |a| [ "#{a.code} — #{a.label_fr}", a.id ] },
+            { include_blank: t("accounting.reports.analytic_by_axis.select_axis"), selected: @axis&.id },
+            class: "mt-1 form-select w-56" %>
+    </div>
+    <%= f.submit t("accounting.reports.filter"), class: "btn-primary" %>
+  <% end %>
+
+  <% if @axis.nil? %>
+    <p class="text-gray-500 text-sm"><%= t("accounting.reports.analytic_by_axis.select_axis") %></p>
+  <% elsif @rows.empty? %>
+    <p class="text-gray-500 text-sm"><%= t("accounting.reports.no_data") %></p>
+  <% else %>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("accounting.reports.analytic_by_axis.account") %></th>
+          <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.analytic_by_axis.charges") %></th>
+          <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.analytic_by_axis.produits") %></th>
+          <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.analytic_by_axis.solde") %></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @rows.each do |row| %>
+          <tr>
+            <td class="px-4 py-2">
+              <span class="font-semibold"><%= row.analytical_account.code %></span>
+              <span class="text-gray-500 ml-1"><%= row.analytical_account.label_fr %></span>
+            </td>
+            <td class="px-4 py-2 text-right text-red-700"><%= number_to_currency(row.charges, unit: "€") %></td>
+            <td class="px-4 py-2 text-right text-emerald-700"><%= number_to_currency(row.produits, unit: "€") %></td>
+            <td class="px-4 py-2 text-right font-bold <%= row.solde >= 0 ? 'text-emerald-700' : 'text-red-700' %>">
+              <%= number_to_currency(row.solde, unit: "€") %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot class="bg-gray-50 font-bold">
+        <tr>
+          <td class="px-4 py-2"><%= t("accounting.reports.totals") %></td>
+          <td class="px-4 py-2 text-right text-red-700"><%= number_to_currency(@rows.sum(&:charges), unit: "€") %></td>
+          <td class="px-4 py-2 text-right text-emerald-700"><%= number_to_currency(@rows.sum(&:produits), unit: "€") %></td>
+          <td class="px-4 py-2 text-right <%= @rows.sum(&:solde) >= 0 ? 'text-emerald-700' : 'text-red-700' %>">
+            <%= number_to_currency(@rows.sum(&:solde), unit: "€") %>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  <% end %>
+</div>
