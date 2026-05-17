@@ -3,8 +3,8 @@ require 'rails_helper'
 RSpec.describe Accounting::ReconcileBankTransaction, type: :service do
   include_context 'with_open_fiscal_year'
 
-  let!(:bank_account_record) { create(:account, code: '512000', label_fr: 'Banque ING',
-                                      account_type: :asset, normal_balance: :debit) }
+  let!(:bank_account_record) { create(:account, code: '550000', label_fr: 'Banque ING',
+                                      account_class: 5, account_type: :asset, normal_balance: :debit) }
   let!(:bank_journal)  { create(:journal, :bank, default_account: bank_account_record) }
   let!(:bank_account)  { create(:bank_account, journal: bank_journal) }
   let!(:counterpart)   { create(:account, code: '400000', label_fr: 'Clients',

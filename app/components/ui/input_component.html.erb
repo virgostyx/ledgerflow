@@ -5,7 +5,7 @@
       name="<%= @name %>"
       id="<%= @name %>"
       class="<%= input_classes %>"
-      placeholder=" "
+      placeholder="<%= @placeholder.presence || " " %>"
       data-floating-label-target="input"
       data-action="focus->floating-label#focus blur->floating-label#blur"
       <% if @value %>value="<%= @value %>"<% end %>

@@ -80,10 +80,14 @@ fr:
         closed:      "Clôturé"
       closing_entry_description: "Écriture de clôture exercice %{year}"
       closing_label: "Clôture exercice"
+      opening_entry_description: "Report à nouveau exercice %{year}"
+      opening_entry_label: "Report à nouveau"
       errors:
-        open_entries:   "%{count} écriture(s) brouillon à valider avant clôture."
-        already_closed: "Cet exercice est déjà clôturé."
-        missing_setup:  "Journal de clôture (misc actif) ou compte 699000 introuvable."
+        open_entries:          "%{count} écriture(s) brouillon à valider avant clôture."
+        already_closed:        "Cet exercice est déjà clôturé."
+        missing_setup:         "Journal de clôture (misc actif) ou compte 699000 introuvable."
+        missing_carry_account: "Compte %{code} (report à nouveau) introuvable. Veuillez créer le compte %{code} avant d'ouvrir un nouvel exercice."
+        missing_opening_journal: "Aucun journal divers actif trouvé. Veuillez en créer un avant d'ouvrir un nouvel exercice."
 
     reports:
       filter:       "Filtrer"

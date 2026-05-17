@@ -105,10 +105,14 @@ en:
         closed:      "Closed"
       closing_entry_description: "Closing entry for fiscal year %{year}"
       closing_label: "Fiscal year close"
+      opening_entry_description: "Opening balance from fiscal year %{year}"
+      opening_entry_label: "Opening balance carry-forward"
       errors:
-        open_entries:   "%{count} draft entry/entries must be posted before closing."
-        already_closed: "This fiscal year is already closed."
-        missing_setup:  "Closing journal (active misc) or account 699000 not found."
+        open_entries:        "%{count} draft entry/entries must be posted before closing."
+        already_closed:      "This fiscal year is already closed."
+        missing_setup:       "Closing journal (active misc) or account 699000 not found."
+        missing_carry_account: "Account %{code} (carry-forward) not found. Please create account %{code} before opening a new fiscal year."
+        missing_opening_journal: "No active misc journal found. Please create one before opening a new fiscal year."
 
     reports:
       filter:      "Filter"
