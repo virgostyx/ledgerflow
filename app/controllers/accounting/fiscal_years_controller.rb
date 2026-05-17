@@ -19,6 +19,10 @@ class Accounting::FiscalYearsController < ApplicationController
     authorize @fiscal_year
 
     if @fiscal_year.save
+      Accounting::CarryForwardBalances.call(
+        new_fiscal_year: @fiscal_year,
+        closed_by:       current_user
+      )
       redirect_to accounting_fiscal_year_path(@fiscal_year),
                   notice: t("accounting.fiscal_years.created")
     else

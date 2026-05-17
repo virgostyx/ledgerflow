@@ -76,6 +76,66 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
            params: { accounting_fiscal_year: { year: nil } }
       expect(response).to have_http_status(:unprocessable_content)
     end
+
+    context "with previous closed year and carry-forward prerequisites" do
+      let!(:misc_journal) do
+        create(:journal, code: "OUV", label_fr: "Ouverture",
+               journal_type: :misc, sequence_prefix: "OUV")
+      end
+      let!(:carry_account) do
+        create(:account, code: "130000", label_fr: "Résultat reporté",
+               account_type: :equity, normal_balance: :credit, account_class: 1)
+      end
+      let!(:asset_account) do
+        create(:account, code: "550900", label_fr: "Test bank",
+               account_type: :asset, normal_balance: :debit, account_class: 5)
+      end
+      let!(:payable_account) do
+        create(:account, code: "440900", label_fr: "Test payable",
+               account_type: :liability, normal_balance: :credit, account_class: 4)
+      end
+
+      before do
+        entry = create(:journal_entry, :draft,
+                       journal: create(:journal, :purchase),
+                       fiscal_year: fiscal_year,
+                       entry_date: fiscal_year.start_date + 10)
+        ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+        create(:journal_entry_line, journal_entry: entry, account: asset_account,
+               debit: BigDecimal("1000.00"), credit: BigDecimal("0"))
+        create(:journal_entry_line, journal_entry: entry, account: payable_account,
+               debit: BigDecimal("0"), credit: BigDecimal("1000.00"))
+        entry.post!
+      end
+
+      it "creates a carry-forward opening entry in the new fiscal year" do
+        post accounting_fiscal_years_path,
+             params: { accounting_fiscal_year: valid_attrs }
+        new_fy = Accounting::FiscalYear.find_by(year: 2027)
+        expect(Accounting::JournalEntry.where(fiscal_year: new_fy)).to exist
+      end
+
+      it "redirects to the new fiscal year" do
+        post accounting_fiscal_years_path,
+             params: { accounting_fiscal_year: valid_attrs }
+        new_fy = Accounting::FiscalYear.find_by(year: 2027)
+        expect(response).to redirect_to(accounting_fiscal_year_path(new_fy))
+      end
+    end
+
+    context "when no previous closed year exists (first fiscal year)" do
+      before do
+        Accounting::FiscalYear.where.not(id: fiscal_year.id).destroy_all
+      end
+
+      it "creates the fiscal year without a carry-forward entry" do
+        expect {
+          post accounting_fiscal_years_path,
+               params: { accounting_fiscal_year: valid_attrs }
+        }.to change(Accounting::JournalEntry, :count).by(0)
+        expect(Accounting::FiscalYear.find_by(year: 2027)).to be_present
+      end
+    end
   end
 
   describe "DELETE /accounting/fiscal_years/:id" do
