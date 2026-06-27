@@ -179,7 +179,7 @@
       <%# Footer %>
       <footer class="px-6 py-2 border-t border-gray-100 text-xs text-gray-400 flex items-center justify-between">
         <span>LedgerFlow</span>
-        <span>© <%= Date.current.year %> CaC Management BV</span>
+        <span>© <%= Date.current.year %> LedgerFlow — Free to use</span>
       </footer>
 
     </div>
@@ -193,6 +193,23 @@
 
     <%# ── Confirm modal (global singleton) ──────────────────────────────────── %>
     <%= render Ui::ConfirmModalComponent.new %>
+
+    <%# ── Cookie consent banner ──────────────────────────────────────────────── %>
+    <%= render Ui::CookieBannerComponent.new %>
+
+    <%# ── Buy Me a Coffee donation widget ───────────────────────────────────── %>
+    <script
+      data-name="BMC-Widget"
+      data-cfasync="false"
+      src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
+      data-id="virgostyx"
+      data-description="Support LedgerFlow!"
+      data-message="If LedgerFlow saves you time, a coffee is always welcome ☕"
+      data-color="#40DCA5"
+      data-position="Right"
+      data-x_margin="18"
+      data-y_margin="18"
+    ></script>
 
   </body>
 </html>

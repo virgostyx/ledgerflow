@@ -1,0 +1,38 @@
+<div
+  data-controller="cookie-banner"
+  class="fixed bottom-0 left-0 right-0 z-40 translate-y-full transition-transform duration-300 ease-out"
+  role="region"
+  aria-label="Cookie policy">
+  <div class="bg-white border-t border-gray-200 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div class="flex items-start gap-3 flex-1 min-w-0">
+          <svg class="h-6 w-6 text-primary-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+          </svg>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-900">Cookie usage</p>
+            <p class="text-sm text-gray-600 mt-0.5">
+              LedgerFlow only uses strictly necessary cookies for the application to work
+              (session, CSRF security). No advertising or third-party tracking cookies are set.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 flex-shrink-0 self-end sm:self-auto">
+          <button
+            type="button"
+            data-action="cookie-banner#refuse"
+            class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150">
+            Refuse
+          </button>
+          <button
+            type="button"
+            data-action="cookie-banner#accept"
+            class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-150">
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

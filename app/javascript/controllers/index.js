@@ -44,3 +44,6 @@ application.register("modal-trigger", ModalTriggerController)
 
 import FloatingLabelController from "controllers/floating_label_controller"
 application.register("floating-label", FloatingLabelController)
+
+import CookieBannerController from "controllers/cookie_banner_controller"
+application.register("cookie-banner", CookieBannerController)
