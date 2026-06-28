@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::MonetaryPrecision, type: :model do
+  include_context 'with entity'
+
   # Testé via Accounting::Account qui inclut le concern (champs balance_debit/credit)
   subject(:account) { build(:account) }
 

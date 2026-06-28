@@ -31,6 +31,9 @@ gem "pundit"
 gem "jwt"
 gem "bcrypt", "~> 3.1.7"
 
+# Multi-tenancy
+gem "acts_as_tenant"
+
 # Logique métier
 gem "light-service"
 gem "aasm"

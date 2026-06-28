@@ -1,6 +1,8 @@
 class Accounting::Invoice < ApplicationRecord
   self.table_name = "accounting_invoices"
 
+  acts_as_tenant :entity
+
   include AASM
   include Accounting::MonetaryPrecision
   include Accounting::FiscalYearScoped

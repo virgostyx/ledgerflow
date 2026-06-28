@@ -6,6 +6,9 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
   let(:accountant) { create(:user, role: :accountant) }
   let(:manager)    { create(:user, role: :manager) }
 
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+  let!(:manager_membership)    { create(:user_entity, :manager,    user: manager,    entity: entity) }
+
   let!(:bank_account_record) { create(:account, code: '550000', label_fr: 'Banque ING',
                                       account_class: 5, account_type: :asset, normal_balance: :debit) }
   let!(:bank_journal)  { create(:journal, :bank, default_account: bank_account_record) }

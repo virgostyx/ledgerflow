@@ -1,13 +1,26 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::FiscalYear, type: :model do
+  include_context 'with entity'
+
   describe 'validations' do
     subject { build(:fiscal_year) }
 
     it { should validate_presence_of(:year) }
     it { should validate_presence_of(:start_date) }
     it { should validate_presence_of(:end_date) }
-    it { should validate_uniqueness_of(:year) }
+    it 'rejects a duplicate year within the same entity' do
+      create(:fiscal_year, year: 2020, start_date: Date.new(2020, 1, 1), end_date: Date.new(2020, 12, 31), status: :closed)
+      dup = build(:fiscal_year, year: 2020, start_date: Date.new(2020, 1, 1), end_date: Date.new(2020, 12, 31), status: :closed)
+      expect(dup).not_to be_valid
+    end
+
+    it 'allows the same year in a different entity' do
+      create(:fiscal_year, year: 2020, start_date: Date.new(2020, 1, 1), end_date: Date.new(2020, 12, 31), status: :closed)
+      ActsAsTenant.with_tenant(create(:entity)) do
+        expect(build(:fiscal_year, year: 2020, start_date: Date.new(2020, 1, 1), end_date: Date.new(2020, 12, 31), status: :closed)).to be_valid
+      end
+    end
 
     it 'est invalide si start_date >= end_date' do
       fy = build(:fiscal_year, start_date: Date.new(2025, 12, 31),

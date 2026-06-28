@@ -19,7 +19,8 @@ class Accounting::AuditLog < ApplicationRecord
       user_id:        user&.id,
       user_email:     user&.email,
       payload:        payload,
-      ip_address:     ip_address
+      ip_address:     ip_address,
+      entity_id:      ActsAsTenant.current_tenant&.id
     )
   end
 end

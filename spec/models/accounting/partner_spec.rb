@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::Partner, type: :model do
+  include_context 'with entity'
+
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:partner_type) }

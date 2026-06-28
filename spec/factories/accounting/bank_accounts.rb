@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :bank_account, class: 'Accounting::BankAccount' do
+    entity  { ActsAsTenant.current_tenant || create(:entity) }
     association :journal, factory: [ :journal, :bank ], strategy: :create
 
     sequence(:iban) do |n|

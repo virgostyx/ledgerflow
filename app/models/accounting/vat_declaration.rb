@@ -1,6 +1,8 @@
 class Accounting::VatDeclaration < ApplicationRecord
   self.table_name = "accounting_vat_declarations"
 
+  acts_as_tenant :entity
+
   belongs_to :fiscal_year, class_name: "Accounting::FiscalYear"
 
   enum :status,      { draft: 0, submitted: 1, accepted: 2 }

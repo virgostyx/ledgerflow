@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::AccountPresenter, type: :presenter do
+  include_context 'with entity'
+
   let(:account) { build(:account, code: '604000', label_fr: 'Services et biens divers') }
 
   describe '#full_label' do

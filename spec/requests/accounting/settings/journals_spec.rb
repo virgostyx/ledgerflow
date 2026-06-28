@@ -7,6 +7,9 @@ RSpec.describe "Accounting::Settings::Journals", type: :request do
   let(:admin)     { create(:user, role: :admin) }
   let(:manager)   { create(:user, role: :manager) }
 
+  let!(:admin_membership)   { create(:user_entity, :admin,   user: admin,   entity: entity) }
+  let!(:manager_membership) { create(:user_entity, :manager, user: manager, entity: entity) }
+
   let!(:journal) { create(:journal, :purchase, default_account: account_440) }
 
   before { sign_in admin }

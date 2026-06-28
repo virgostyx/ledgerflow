@@ -7,6 +7,9 @@ RSpec.describe 'Accounting::Invoices', type: :request do
   let(:admin)      { create(:user, role: :admin) }
   let(:partner)    { create(:partner) }
 
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+  let!(:admin_membership)      { create(:user_entity, :admin,      user: admin,      entity: entity) }
+
   before { sign_in accountant }
 
   describe 'GET /accounting/invoices' do

@@ -1,6 +1,8 @@
 class Accounting::JournalEntry < ApplicationRecord
   self.table_name = "accounting_journal_entries"
 
+  acts_as_tenant :entity
+
   include Accounting::Statusable
   include Accounting::Immutable
   include Accounting::Auditable
@@ -17,7 +19,7 @@ class Accounting::JournalEntry < ApplicationRecord
 
   validates :entry_date, presence: true
   validates :reference,  presence: true, unless: :draft?
-  validates :reference,  uniqueness: { case_sensitive: false }, allow_nil: true
+  validates :reference,  uniqueness: { scope: :entity_id, case_sensitive: false }, allow_nil: true
 
   scope :for_fiscal_year, ->(fy) { where(fiscal_year: fy) }
 end

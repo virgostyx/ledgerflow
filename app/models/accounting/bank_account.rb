@@ -1,12 +1,14 @@
 class Accounting::BankAccount < ApplicationRecord
   self.table_name = "accounting_bank_accounts"
 
+  acts_as_tenant :entity
+
   belongs_to :journal, class_name: "Accounting::Journal"
   has_many :transactions, class_name: "Accounting::BankTransaction",
            foreign_key: :bank_account_id, dependent: :destroy
 
   validates :label_fr,   presence: true
-  validates :iban,       presence: true, uniqueness: true
+  validates :iban,       presence: true, uniqueness: { scope: :entity_id }
   validates :currency,   presence: true, inclusion: { in: %w[EUR] }
   validates :journal_id, uniqueness: true, allow_nil: true
 

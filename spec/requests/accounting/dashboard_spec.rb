@@ -4,6 +4,7 @@ RSpec.describe 'Accounting::Dashboard', type: :request do
   include_context 'with_open_fiscal_year'
 
   let!(:user) { create(:user, role: :accountant) }
+  let!(:user_membership) { create(:user_entity, :accountant, user: user, entity: entity) }
 
   before { sign_in user }
 

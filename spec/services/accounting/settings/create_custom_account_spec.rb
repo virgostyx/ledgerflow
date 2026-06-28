@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Accounting::Settings::CreateCustomAccount, type: :service do
+  include_context 'with entity'
+
   let(:user)    { create(:user, role: :admin) }
   let!(:parent) { create(:account, code: "604000", is_leaf: false, account_class: 6) }
 

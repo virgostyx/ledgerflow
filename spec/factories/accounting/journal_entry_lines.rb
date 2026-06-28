@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :journal_entry_line, class: 'Accounting::JournalEntryLine' do
+    entity  { ActsAsTenant.current_tenant || create(:entity) }
     association :journal_entry
     association :account
 

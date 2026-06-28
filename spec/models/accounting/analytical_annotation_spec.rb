@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Accounting::AnalyticalAnnotation, type: :model do
+  include_context 'with entity'
+
   let(:axis)    { create(:analytical_axis) }
   let(:account) { create(:analytical_account, analytical_axis: axis) }
   let(:line) do

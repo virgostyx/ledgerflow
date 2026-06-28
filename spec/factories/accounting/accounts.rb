@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :account, class: "Accounting::Account" do
+    entity          { ActsAsTenant.current_tenant || create(:entity) }
     sequence(:code) { |n| format("%06d", n) }
     label_fr        { Faker::Company.industry }
     account_class   { 6 }

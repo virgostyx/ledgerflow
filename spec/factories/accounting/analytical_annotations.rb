@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :analytical_annotation, class: "Accounting::AnalyticalAnnotation" do
+    entity             { ActsAsTenant.current_tenant || create(:entity) }
     association :analytical_axis
     association :analytical_account
 

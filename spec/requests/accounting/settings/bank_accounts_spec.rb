@@ -6,6 +6,9 @@ RSpec.describe "Accounting::Settings::BankAccounts", type: :request do
   let(:admin) { create(:user, role: :admin) }
   let(:manager) { create(:user, role: :manager) }
 
+  let!(:admin_membership)   { create(:user_entity, :admin,   user: admin,   entity: entity) }
+  let!(:manager_membership) { create(:user_entity, :manager, user: manager, entity: entity) }
+
   let!(:bank_journal)  { create(:journal, :bank, default_account: account_550) }
   let!(:bank_account)  { create(:bank_account, journal: bank_journal, iban: "BE71096123456769") }
 

@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :invoice_line, class: 'Accounting::InvoiceLine' do
+    entity  { ActsAsTenant.current_tenant || create(:entity) }
     association :invoice, factory: :invoice
     association :account, factory: :account
 

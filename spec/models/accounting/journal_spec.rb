@@ -10,7 +10,17 @@ RSpec.describe Accounting::Journal, type: :model do
     it { should validate_presence_of(:label_fr) }
     it { should validate_presence_of(:journal_type) }
     it { should validate_presence_of(:sequence_prefix) }
-    it { should validate_uniqueness_of(:code) }
+    it 'rejects a duplicate code within the same entity' do
+      create(:journal, code: 'DUPL')
+      expect(build(:journal, code: 'DUPL')).not_to be_valid
+    end
+
+    it 'allows the same code in a different entity' do
+      create(:journal, code: 'DUPL')
+      ActsAsTenant.with_tenant(create(:entity)) do
+        expect(build(:journal, code: 'DUPL')).to be_valid
+      end
+    end
   end
 
   describe "enums" do

@@ -1,6 +1,8 @@
 class Accounting::InvoiceLine < ApplicationRecord
   self.table_name = "accounting_invoice_lines"
 
+  acts_as_tenant :entity
+
   include Accounting::MonetaryPrecision
 
   belongs_to :invoice, class_name: "Accounting::Invoice"

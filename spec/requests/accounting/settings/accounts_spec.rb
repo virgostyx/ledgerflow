@@ -1,8 +1,13 @@
 require "rails_helper"
 
 RSpec.describe "Accounting::Settings::Accounts", type: :request do
+  include_context 'with entity'
+
   let(:admin)   { create(:user, role: :admin) }
   let(:manager) { create(:user, role: :manager) }
+
+  let!(:admin_membership)   { create(:user_entity, :admin,   user: admin,   entity: entity) }
+  let!(:manager_membership) { create(:user_entity, :manager, user: manager, entity: entity) }
 
   let!(:parent_account) do
     create(:account, code: "600000", label_fr: "Charges d'exploitation",

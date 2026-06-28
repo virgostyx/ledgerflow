@@ -8,6 +8,9 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
   let(:manager)    { create(:user, role: :manager) }
   let!(:journal)   { create(:journal, :purchase) }
 
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+  let!(:manager_membership)    { create(:user_entity, :manager,    user: manager,    entity: entity) }
+
   before { sign_in accountant }
 
   describe 'GET /accounting/journal_entries' do

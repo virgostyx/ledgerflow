@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Accounting::Account, type: :model do
+  include_context 'with entity'
+
   describe "validations" do
     subject { build(:account) }
 
@@ -9,7 +11,17 @@ RSpec.describe Accounting::Account, type: :model do
     it { should validate_presence_of(:account_class) }
     it { should validate_presence_of(:account_type) }
     it { should validate_presence_of(:normal_balance) }
-    it { should validate_uniqueness_of(:code).ignoring_case_sensitivity }
+    it 'rejects a duplicate code within the same entity' do
+      create(:account, code: 'DUPL01')
+      expect(build(:account, code: 'DUPL01')).not_to be_valid
+    end
+
+    it 'allows the same code in a different entity' do
+      create(:account, code: 'DUPL01')
+      ActsAsTenant.with_tenant(create(:entity)) do
+        expect(build(:account, code: 'DUPL01')).to be_valid
+      end
+    end
     it { should validate_inclusion_of(:account_class).in_range(1..7) }
   end
 

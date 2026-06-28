@@ -18,6 +18,13 @@ en:
   errors:
     not_authorized: "You are not authorized to perform this action."
 
+  entities:
+    create_first_entity: "Please create your first entity to get started."
+    provisioned:         "Entity created and provisioned successfully. Welcome!"
+    provision_failed:    "Entity provisioning failed. Please try again."
+    switched:            "Switched to %{name}."
+    not_found:           "Entity not found."
+
   accounting:
     errors:
       dual_side:          "Cannot have both debit AND credit positive at the same time."

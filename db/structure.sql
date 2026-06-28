@@ -74,6 +74,7 @@ CREATE TABLE public.accounting_accounts (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     custom boolean DEFAULT false NOT NULL,
+    entity_id bigint NOT NULL,
     CONSTRAINT chk_account_class CHECK (((account_class >= 1) AND (account_class <= 7)))
 );
 
@@ -109,7 +110,8 @@ CREATE TABLE public.accounting_analytical_accounts (
     label_nl character varying,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -142,7 +144,8 @@ CREATE TABLE public.accounting_analytical_annotations (
     analytical_axis_id bigint NOT NULL,
     analytical_account_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -177,7 +180,8 @@ CREATE TABLE public.accounting_analytical_axes (
     active boolean DEFAULT true NOT NULL,
     required_for_account_classes integer[] DEFAULT '{}'::integer[],
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -214,7 +218,8 @@ CREATE TABLE public.accounting_audit_logs (
     payload jsonb DEFAULT '{}'::jsonb,
     ip_address character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint
 );
 
 
@@ -253,7 +258,8 @@ CREATE TABLE public.accounting_bank_accounts (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     label_nl character varying,
-    notes text
+    notes text,
+    entity_id bigint NOT NULL
 );
 
 
@@ -293,7 +299,8 @@ CREATE TABLE public.accounting_bank_transactions (
     status integer DEFAULT 0 NOT NULL,
     raw_data jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -331,6 +338,7 @@ CREATE TABLE public.accounting_fiscal_years (
     closed_by_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL,
     CONSTRAINT chk_fiscal_year_dates CHECK ((start_date < end_date))
 );
 
@@ -372,7 +380,8 @@ CREATE TABLE public.accounting_invoice_lines (
     total_incl_vat numeric(15,2) DEFAULT 0.0 NOT NULL,
     "position" integer DEFAULT 1 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -420,7 +429,8 @@ CREATE TABLE public.accounting_invoices (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     peppol_id character varying,
-    peppol_status integer DEFAULT 0 NOT NULL
+    peppol_status integer DEFAULT 0 NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -463,7 +473,8 @@ CREATE TABLE public.accounting_journal_entries (
     locked_by character varying,
     locked_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -506,6 +517,7 @@ CREATE TABLE public.accounting_journal_entry_lines (
     sort_order integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL,
     CONSTRAINT chk_at_least_one_side CHECK (((debit > (0)::numeric) OR (credit > (0)::numeric))),
     CONSTRAINT chk_credit_non_negative CHECK ((credit >= (0)::numeric)),
     CONSTRAINT chk_debit_non_negative CHECK ((debit >= (0)::numeric)),
@@ -546,7 +558,8 @@ CREATE TABLE public.accounting_journals (
     current_sequence integer DEFAULT 0 NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -589,7 +602,8 @@ CREATE TABLE public.accounting_partners (
     active boolean DEFAULT true NOT NULL,
     notes text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -625,7 +639,8 @@ CREATE TABLE public.accounting_vat_declarations (
     period_end date NOT NULL,
     grids jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    entity_id bigint NOT NULL
 );
 
 
@@ -661,12 +676,87 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: entities; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.entities (
+    id bigint NOT NULL,
+    name character varying NOT NULL,
+    legal_name character varying NOT NULL,
+    vat_number character varying,
+    country character varying DEFAULT 'BE'::character varying NOT NULL,
+    legal_form character varying,
+    address_line1 character varying,
+    address_line2 character varying,
+    city character varying,
+    zip_code character varying,
+    active boolean DEFAULT true NOT NULL,
+    created_by_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: entities_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.entities_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: entities_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.entities_id_seq OWNED BY public.entities.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.schema_migrations (
     version character varying NOT NULL
 );
+
+
+--
+-- Name: user_entities; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_entities (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    role integer DEFAULT 0 NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: user_entities_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.user_entities_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: user_entities_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.user_entities_id_seq OWNED BY public.user_entities.id;
 
 
 --
@@ -727,7 +817,8 @@ CREATE TABLE public.versions (
     item_id bigint NOT NULL,
     item_type character varying NOT NULL,
     event character varying NOT NULL,
-    object text
+    object text,
+    entity_id bigint
 );
 
 
@@ -853,6 +944,20 @@ ALTER TABLE ONLY public.accounting_partners ALTER COLUMN id SET DEFAULT nextval(
 --
 
 ALTER TABLE ONLY public.accounting_vat_declarations ALTER COLUMN id SET DEFAULT nextval('public.accounting_vat_declarations_id_seq'::regclass);
+
+
+--
+-- Name: entities id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entities ALTER COLUMN id SET DEFAULT nextval('public.entities_id_seq'::regclass);
+
+
+--
+-- Name: user_entities id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_entities ALTER COLUMN id SET DEFAULT nextval('public.user_entities_id_seq'::regclass);
 
 
 --
@@ -998,11 +1103,27 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: entities entities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entities
+    ADD CONSTRAINT entities_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: user_entities user_entities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_entities
+    ADD CONSTRAINT user_entities_pkey PRIMARY KEY (id);
 
 
 --
@@ -1022,10 +1143,10 @@ ALTER TABLE ONLY public.versions
 
 
 --
--- Name: idx_accounting_fiscal_years_one_open; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_accounting_fiscal_years_one_open_per_entity; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_accounting_fiscal_years_one_open ON public.accounting_fiscal_years USING btree (status) WHERE (status = 0);
+CREATE UNIQUE INDEX idx_accounting_fiscal_years_one_open_per_entity ON public.accounting_fiscal_years USING btree (entity_id) WHERE (status = 0);
 
 
 --
@@ -1064,10 +1185,17 @@ CREATE INDEX index_accounting_accounts_on_active ON public.accounting_accounts U
 
 
 --
--- Name: index_accounting_accounts_on_code; Type: INDEX; Schema: public; Owner: -
+-- Name: index_accounting_accounts_on_entity_and_code; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_accounting_accounts_on_code ON public.accounting_accounts USING btree (code);
+CREATE UNIQUE INDEX index_accounting_accounts_on_entity_and_code ON public.accounting_accounts USING btree (entity_id, code);
+
+
+--
+-- Name: index_accounting_accounts_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_accounts_on_entity_id ON public.accounting_accounts USING btree (entity_id);
 
 
 --
@@ -1085,6 +1213,13 @@ CREATE INDEX index_accounting_analytical_accounts_on_analytical_axis_id ON publi
 
 
 --
+-- Name: index_accounting_analytical_accounts_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_analytical_accounts_on_entity_id ON public.accounting_analytical_accounts USING btree (entity_id);
+
+
+--
 -- Name: index_accounting_analytical_annotations_on_analytical_axis_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1092,10 +1227,24 @@ CREATE INDEX index_accounting_analytical_annotations_on_analytical_axis_id ON pu
 
 
 --
--- Name: index_accounting_analytical_axes_on_code; Type: INDEX; Schema: public; Owner: -
+-- Name: index_accounting_analytical_annotations_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_accounting_analytical_axes_on_code ON public.accounting_analytical_axes USING btree (code);
+CREATE INDEX index_accounting_analytical_annotations_on_entity_id ON public.accounting_analytical_annotations USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_analytical_axes_on_entity_and_code; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_analytical_axes_on_entity_and_code ON public.accounting_analytical_axes USING btree (entity_id, code);
+
+
+--
+-- Name: index_accounting_analytical_axes_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_analytical_axes_on_entity_id ON public.accounting_analytical_axes USING btree (entity_id);
 
 
 --
@@ -1120,6 +1269,13 @@ CREATE INDEX index_accounting_audit_logs_on_created_at ON public.accounting_audi
 
 
 --
+-- Name: index_accounting_audit_logs_on_entity_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_audit_logs_on_entity_id_and_created_at ON public.accounting_audit_logs USING btree (entity_id, created_at);
+
+
+--
 -- Name: index_accounting_audit_logs_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1127,10 +1283,17 @@ CREATE INDEX index_accounting_audit_logs_on_user_id ON public.accounting_audit_l
 
 
 --
--- Name: index_accounting_bank_accounts_on_iban; Type: INDEX; Schema: public; Owner: -
+-- Name: index_accounting_bank_accounts_on_entity_and_iban; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_accounting_bank_accounts_on_iban ON public.accounting_bank_accounts USING btree (iban);
+CREATE UNIQUE INDEX index_accounting_bank_accounts_on_entity_and_iban ON public.accounting_bank_accounts USING btree (entity_id, iban);
+
+
+--
+-- Name: index_accounting_bank_accounts_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_accounts_on_entity_id ON public.accounting_bank_accounts USING btree (entity_id);
 
 
 --
@@ -1148,6 +1311,13 @@ CREATE INDEX index_accounting_bank_transactions_on_bank_account_id ON public.acc
 
 
 --
+-- Name: index_accounting_bank_transactions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_transactions_on_entity_id ON public.accounting_bank_transactions USING btree (entity_id);
+
+
+--
 -- Name: index_accounting_bank_transactions_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1155,10 +1325,17 @@ CREATE INDEX index_accounting_bank_transactions_on_journal_entry_id ON public.ac
 
 
 --
--- Name: index_accounting_fiscal_years_on_year; Type: INDEX; Schema: public; Owner: -
+-- Name: index_accounting_fiscal_years_on_entity_and_year; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_accounting_fiscal_years_on_year ON public.accounting_fiscal_years USING btree (year);
+CREATE UNIQUE INDEX index_accounting_fiscal_years_on_entity_and_year ON public.accounting_fiscal_years USING btree (entity_id, year);
+
+
+--
+-- Name: index_accounting_fiscal_years_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_fiscal_years_on_entity_id ON public.accounting_fiscal_years USING btree (entity_id);
 
 
 --
@@ -1166,6 +1343,13 @@ CREATE UNIQUE INDEX index_accounting_fiscal_years_on_year ON public.accounting_f
 --
 
 CREATE INDEX index_accounting_invoice_lines_on_account_id ON public.accounting_invoice_lines USING btree (account_id);
+
+
+--
+-- Name: index_accounting_invoice_lines_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoice_lines_on_entity_id ON public.accounting_invoice_lines USING btree (entity_id);
 
 
 --
@@ -1183,6 +1367,20 @@ CREATE INDEX index_accounting_invoice_lines_on_invoice_id_and_position ON public
 
 
 --
+-- Name: index_accounting_invoices_on_entity_and_invoice_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_invoices_on_entity_and_invoice_number ON public.accounting_invoices USING btree (entity_id, invoice_number) WHERE (invoice_number IS NOT NULL);
+
+
+--
+-- Name: index_accounting_invoices_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoices_on_entity_id ON public.accounting_invoices USING btree (entity_id);
+
+
+--
 -- Name: index_accounting_invoices_on_fiscal_year_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1194,13 +1392,6 @@ CREATE INDEX index_accounting_invoices_on_fiscal_year_id ON public.accounting_in
 --
 
 CREATE INDEX index_accounting_invoices_on_invoice_date ON public.accounting_invoices USING btree (invoice_date);
-
-
---
--- Name: index_accounting_invoices_on_invoice_number_unique; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_accounting_invoices_on_invoice_number_unique ON public.accounting_invoices USING btree (invoice_number) WHERE (invoice_number IS NOT NULL);
 
 
 --
@@ -1239,6 +1430,20 @@ CREATE INDEX index_accounting_invoices_on_status ON public.accounting_invoices U
 
 
 --
+-- Name: index_accounting_journal_entries_on_entity_and_reference; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_journal_entries_on_entity_and_reference ON public.accounting_journal_entries USING btree (entity_id, reference) WHERE (reference IS NOT NULL);
+
+
+--
+-- Name: index_accounting_journal_entries_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journal_entries_on_entity_id ON public.accounting_journal_entries USING btree (entity_id);
+
+
+--
 -- Name: index_accounting_journal_entries_on_entry_date; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1267,13 +1472,6 @@ CREATE INDEX index_accounting_journal_entries_on_project_id ON public.accounting
 
 
 --
--- Name: index_accounting_journal_entries_on_reference; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_accounting_journal_entries_on_reference ON public.accounting_journal_entries USING btree (reference);
-
-
---
 -- Name: index_accounting_journal_entries_on_source_type_and_source_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1295,6 +1493,13 @@ CREATE INDEX index_accounting_journal_entry_lines_on_account_id ON public.accoun
 
 
 --
+-- Name: index_accounting_journal_entry_lines_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journal_entry_lines_on_entity_id ON public.accounting_journal_entry_lines USING btree (entity_id);
+
+
+--
 -- Name: index_accounting_journal_entry_lines_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1309,10 +1514,17 @@ CREATE INDEX index_accounting_journal_entry_lines_on_partner_id ON public.accoun
 
 
 --
--- Name: index_accounting_journals_on_code; Type: INDEX; Schema: public; Owner: -
+-- Name: index_accounting_journals_on_entity_and_code; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_accounting_journals_on_code ON public.accounting_journals USING btree (code);
+CREATE UNIQUE INDEX index_accounting_journals_on_entity_and_code ON public.accounting_journals USING btree (entity_id, code);
+
+
+--
+-- Name: index_accounting_journals_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journals_on_entity_id ON public.accounting_journals USING btree (entity_id);
 
 
 --
@@ -1323,6 +1535,20 @@ CREATE INDEX index_accounting_partners_on_active ON public.accounting_partners U
 
 
 --
+-- Name: index_accounting_partners_on_entity_and_vat_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_partners_on_entity_and_vat_number ON public.accounting_partners USING btree (entity_id, vat_number) WHERE (vat_number IS NOT NULL);
+
+
+--
+-- Name: index_accounting_partners_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_partners_on_entity_id ON public.accounting_partners USING btree (entity_id);
+
+
+--
 -- Name: index_accounting_partners_on_partner_type; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1330,10 +1556,10 @@ CREATE INDEX index_accounting_partners_on_partner_type ON public.accounting_part
 
 
 --
--- Name: index_accounting_partners_on_vat_number_unique; Type: INDEX; Schema: public; Owner: -
+-- Name: index_accounting_vat_declarations_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_accounting_partners_on_vat_number_unique ON public.accounting_partners USING btree (vat_number) WHERE (vat_number IS NOT NULL);
+CREATE INDEX index_accounting_vat_declarations_on_entity_id ON public.accounting_vat_declarations USING btree (entity_id);
 
 
 --
@@ -1358,6 +1584,41 @@ CREATE UNIQUE INDEX index_analytical_annotations_on_line_and_axis ON public.acco
 
 
 --
+-- Name: index_entities_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entities_on_created_by_id ON public.entities USING btree (created_by_id);
+
+
+--
+-- Name: index_entities_on_vat_number_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_entities_on_vat_number_unique ON public.entities USING btree (vat_number) WHERE (vat_number IS NOT NULL);
+
+
+--
+-- Name: index_user_entities_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_user_entities_on_entity_id ON public.user_entities USING btree (entity_id);
+
+
+--
+-- Name: index_user_entities_on_user_and_entity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_user_entities_on_user_and_entity ON public.user_entities USING btree (user_id, entity_id);
+
+
+--
+-- Name: index_user_entities_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_user_entities_on_user_id ON public.user_entities USING btree (user_id);
+
+
+--
 -- Name: index_users_on_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1376,6 +1637,13 @@ CREATE UNIQUE INDEX index_users_on_reset_password_token ON public.users USING bt
 --
 
 CREATE UNIQUE INDEX index_users_on_unlock_token ON public.users USING btree (unlock_token);
+
+
+--
+-- Name: index_versions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_versions_on_entity_id ON public.versions USING btree (entity_id);
 
 
 --
@@ -1408,6 +1676,14 @@ ALTER TABLE ONLY public.accounting_invoice_lines
 
 
 --
+-- Name: accounting_analytical_axes fk_rails_13dea0cb3e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_axes
+    ADD CONSTRAINT fk_rails_13dea0cb3e FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_vat_declarations fk_rails_14867a239f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1424,6 +1700,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 
 --
+-- Name: accounting_partners fk_rails_18e4531b08; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_partners
+    ADD CONSTRAINT fk_rails_18e4531b08 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_1e6c3311fa; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1437,6 +1721,22 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 ALTER TABLE ONLY public.accounting_bank_accounts
     ADD CONSTRAINT fk_rails_215e10200e FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: accounting_analytical_annotations fk_rails_2f1aa54d01; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_annotations
+    ADD CONSTRAINT fk_rails_2f1aa54d01 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_accounts fk_rails_3656d9eddb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_accounts
+    ADD CONSTRAINT fk_rails_3656d9eddb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -1464,6 +1764,38 @@ ALTER TABLE ONLY public.accounting_analytical_accounts
 
 
 --
+-- Name: user_entities fk_rails_5adfb6b489; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_entities
+    ADD CONSTRAINT fk_rails_5adfb6b489 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: accounting_bank_transactions fk_rails_5c6e43e656; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_transactions
+    ADD CONSTRAINT fk_rails_5c6e43e656 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_analytical_accounts fk_rails_67d9b95568; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_analytical_accounts
+    ADD CONSTRAINT fk_rails_67d9b95568 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_invoices fk_rails_67f38d74d3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoices
+    ADD CONSTRAINT fk_rails_67f38d74d3 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_6f6e1949f4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1488,11 +1820,35 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: entities fk_rails_828926881c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entities
+    ADD CONSTRAINT fk_rails_828926881c FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: accounting_journal_entries fk_rails_8d8da34615; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entries
+    ADD CONSTRAINT fk_rails_8d8da34615 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_9602ee956d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_invoices
     ADD CONSTRAINT fk_rails_9602ee956d FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
+-- Name: accounting_journals fk_rails_9aaf5b2621; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journals
+    ADD CONSTRAINT fk_rails_9aaf5b2621 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -1504,11 +1860,35 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 
 
 --
+-- Name: accounting_vat_declarations fk_rails_af4787f084; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_vat_declarations
+    ADD CONSTRAINT fk_rails_af4787f084 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_bank_transactions fk_rails_b1db769153; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_bank_transactions
     ADD CONSTRAINT fk_rails_b1db769153 FOREIGN KEY (bank_account_id) REFERENCES public.accounting_bank_accounts(id);
+
+
+--
+-- Name: accounting_bank_accounts fk_rails_bd15e59b6a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_accounts
+    ADD CONSTRAINT fk_rails_bd15e59b6a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_journal_entry_lines fk_rails_ccc90aef29; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entry_lines
+    ADD CONSTRAINT fk_rails_ccc90aef29 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -1525,6 +1905,30 @@ ALTER TABLE ONLY public.accounting_invoice_lines
 
 ALTER TABLE ONLY public.accounting_journal_entries
     ADD CONSTRAINT fk_rails_daa313bbd9 FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: accounting_fiscal_years fk_rails_dd957818bc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_fiscal_years
+    ADD CONSTRAINT fk_rails_dd957818bc FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_invoice_lines fk_rails_df9325f489; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoice_lines
+    ADD CONSTRAINT fk_rails_df9325f489 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: user_entities fk_rails_e74f70b397; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_entities
+    ADD CONSTRAINT fk_rails_e74f70b397 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -1550,6 +1954,14 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260627000008'),
+('20260627000007'),
+('20260627000006'),
+('20260627000005'),
+('20260627000004'),
+('20260627000003'),
+('20260627000002'),
+('20260627000001'),
 ('20260517095526'),
 ('20260517095525'),
 ('20260517095504'),

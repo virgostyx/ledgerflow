@@ -1,0 +1,43 @@
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-lg font-semibold text-indigo-700">My entities</h1>
+      <p class="text-sm text-gray-500 mt-1">Select an entity to switch your accounting context.</p>
+    </div>
+    <%= link_to "New entity", new_entity_path,
+          class: "bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium
+                  rounded-lg px-4 py-2 transition-colors" %>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <% @entities.each do |entity| %>
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5
+                  <%= ActsAsTenant.current_tenant == entity ? 'ring-2 ring-indigo-500' : '' %>">
+        <div class="flex items-start justify-between">
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-gray-900 truncate"><%= entity.name %></p>
+            <p class="text-xs text-gray-400 mt-0.5"><%= entity.legal_form %> — <%= entity.country %></p>
+            <% if entity.vat_number.present? %>
+              <p class="text-xs font-mono text-gray-500 mt-1"><%= entity.vat_number %></p>
+            <% end %>
+          </div>
+          <% if ActsAsTenant.current_tenant == entity %>
+            <span class="ml-2 inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5
+                         text-xs font-medium text-indigo-700">Active</span>
+          <% end %>
+        </div>
+
+        <div class="mt-4">
+          <% if ActsAsTenant.current_tenant == entity %>
+            <%= link_to "Open dashboard", accounting_root_path,
+                  class: "text-sm font-medium text-indigo-600 hover:text-indigo-800" %>
+          <% else %>
+            <%= button_to "Switch to this entity", switch_entity_path(entity), method: :post,
+                  class: "text-sm font-medium text-gray-600 hover:text-indigo-600 bg-transparent
+                          border-0 p-0 cursor-pointer" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

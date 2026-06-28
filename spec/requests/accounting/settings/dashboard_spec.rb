@@ -1,10 +1,17 @@
 require "rails_helper"
 
 RSpec.describe "Accounting::Settings::Dashboard", type: :request do
+  include_context 'with entity'
+
   let(:admin)     { create(:user, role: :admin) }
   let(:accountant) { create(:user, role: :accountant) }
   let(:manager)   { create(:user, role: :manager) }
   let(:auditor)   { create(:user, role: :auditor) }
+
+  let!(:admin_membership)      { create(:user_entity, :admin,      user: admin,      entity: entity) }
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+  let!(:manager_membership)    { create(:user_entity, :manager,    user: manager,    entity: entity) }
+  let!(:auditor_membership)    { create(:user_entity, :auditor,    user: auditor,    entity: entity) }
 
   describe "GET /accounting/settings" do
     context "as admin" do

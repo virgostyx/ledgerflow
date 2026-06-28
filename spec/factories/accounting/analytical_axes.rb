@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :analytical_axis, class: "Accounting::AnalyticalAxis" do
+    entity          { ActsAsTenant.current_tenant || create(:entity) }
     sequence(:code) { |n| "AX#{n}" }
     label_fr { Faker::Lorem.words(number: 2).join(" ").capitalize }
     label_nl { nil }

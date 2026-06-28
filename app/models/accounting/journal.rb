@@ -1,6 +1,8 @@
 class Accounting::Journal < ApplicationRecord
   self.table_name = "accounting_journals"
 
+  acts_as_tenant :entity
+
   COUNTERPART_PREFIXES = {
     "bank"     => "55",
     "cash"     => "57",
@@ -17,7 +19,7 @@ class Accounting::Journal < ApplicationRecord
   has_one :bank_account, class_name: "Accounting::BankAccount",
           foreign_key: :journal_id, dependent: :nullify
 
-  validates :code,            presence: true, uniqueness: true, length: { maximum: 5 }
+  validates :code,            presence: true, uniqueness: { scope: :entity_id }, length: { maximum: 5 }
   validates :label_fr,        presence: true
   validates :journal_type,    presence: true
   validates :sequence_prefix, presence: true

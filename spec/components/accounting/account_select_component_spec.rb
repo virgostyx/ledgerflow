@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::AccountSelectComponent, type: :component do
+  include_context 'with entity'
+
   let(:accounts) do
     [
       build_stubbed(:account, id: 1, code: '604000', label_fr: 'Services divers'),

@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::Invoice, type: :model do
+  include_context 'with entity'
+
   describe 'associations' do
     it { should belong_to(:partner).class_name('Accounting::Partner') }
     it { should belong_to(:fiscal_year).class_name('Accounting::FiscalYear') }

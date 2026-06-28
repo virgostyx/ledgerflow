@@ -1,12 +1,24 @@
 require "rails_helper"
 
 RSpec.describe Accounting::AnalyticalAxis, type: :model do
+  include_context 'with entity'
+
   describe "validations" do
     subject { build(:analytical_axis) }
 
     it { should validate_presence_of(:code) }
     it { should validate_presence_of(:label_fr) }
-    it { should validate_uniqueness_of(:code).case_insensitive }
+    it 'rejects a duplicate code within the same entity (case-insensitive)' do
+      create(:analytical_axis, code: 'PROJ')
+      expect(build(:analytical_axis, code: 'proj')).not_to be_valid
+    end
+
+    it 'allows the same code in a different entity' do
+      create(:analytical_axis, code: 'PROJ')
+      ActsAsTenant.with_tenant(create(:entity)) do
+        expect(build(:analytical_axis, code: 'PROJ')).to be_valid
+      end
+    end
     it { should validate_length_of(:code).is_at_most(10) }
   end
 

@@ -1,9 +1,11 @@
 class Accounting::FiscalYear < ApplicationRecord
   self.table_name = "accounting_fiscal_years"
 
+  acts_as_tenant :entity
+
   enum :status, { open: 0, pre_closing: 1, closed: 2 }
 
-  validates :year,       presence: true, uniqueness: true
+  validates :year,       presence: true, uniqueness: { scope: :entity_id }
   validates :start_date, presence: true
   validates :end_date,   presence: true
   validates :status,     presence: true

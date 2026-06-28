@@ -6,6 +6,9 @@ RSpec.describe 'Accounting::VatDeclarations', type: :request do
   let(:accountant) { create(:user, role: :accountant) }
   let(:manager)    { create(:user, role: :manager) }
 
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+  let!(:manager_membership)    { create(:user_entity, :manager,    user: manager,    entity: entity) }
+
   before { sign_in accountant }
 
   describe 'GET /accounting/vat_declarations' do

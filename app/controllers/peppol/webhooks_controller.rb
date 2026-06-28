@@ -36,19 +36,22 @@ class Peppol::WebhooksController < ApplicationController
   def handle_delivery(payload)
     peppol_id = payload["document_id"]
     status    = payload["status"]
-    invoice   = Accounting::Invoice.find_by(peppol_id: peppol_id)
+
+    invoice = ActsAsTenant.without_tenant { Accounting::Invoice.find_by(peppol_id: peppol_id) }
     return unless invoice
 
     peppol_status = map_peppol_status(status)
-    invoice.update!(peppol_status: peppol_status)
+    ActsAsTenant.with_tenant(invoice.entity) { invoice.update!(peppol_status: peppol_status) }
   end
 
   def handle_incoming(payload)
     ubl_xml     = payload["ubl_xml"]
-    fiscal_year = Accounting::FiscalYear.find_by(status: :open)
+    fiscal_year = ActsAsTenant.without_tenant { Accounting::FiscalYear.find_by(status: :open) }
     return unless fiscal_year && ubl_xml.present?
 
-    Peppol::ReceiveInvoice.call(xml: ubl_xml, fiscal_year: fiscal_year)
+    ActsAsTenant.with_tenant(fiscal_year.entity) do
+      Peppol::ReceiveInvoice.call(xml: ubl_xml, fiscal_year: fiscal_year)
+    end
   end
 
   def map_peppol_status(status)

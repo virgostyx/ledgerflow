@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::AuditLog, type: :model do
+  include_context 'with entity'
+
   let(:account) { create(:account) }
 
   describe 'création' do

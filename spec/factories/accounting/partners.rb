@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :partner, class: 'Accounting::Partner' do
+    entity       { ActsAsTenant.current_tenant || create(:entity) }
     sequence(:name) { |n| "Partenaire #{n}" }
     partner_type { :customer }
     country      { 'BE' }

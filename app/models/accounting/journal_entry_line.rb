@@ -1,6 +1,8 @@
 class Accounting::JournalEntryLine < ApplicationRecord
   self.table_name = "accounting_journal_entry_lines"
 
+  acts_as_tenant :entity
+
   include Accounting::MonetaryPrecision
 
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry",

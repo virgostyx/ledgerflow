@@ -1,10 +1,14 @@
 require "rails_helper"
 
 RSpec.describe "Accounting::Settings::AnalyticalAccounts", type: :request do
+  include_context 'with entity'
+
   let(:admin)   { create(:user, role: :admin) }
   let!(:axis)   { create(:analytical_axis, :proj) }
   let!(:account) { create(:analytical_account, analytical_axis: axis,
                            code: "PROJ-001", label_fr: "Project Alpha") }
+
+  let!(:admin_membership) { create(:user_entity, :admin, user: admin, entity: entity) }
 
   before { sign_in admin }
 

@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::JournalEntryLine, type: :model do
+  include_context 'with entity'
+
   describe 'associations' do
     it { should belong_to(:journal_entry).class_name('Accounting::JournalEntry') }
     it { should belong_to(:account).class_name('Accounting::Account') }

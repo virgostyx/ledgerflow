@@ -7,6 +7,9 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
   let(:admin)     { create(:user, role: :admin) }
   let(:accountant) { create(:user, role: :accountant) }
 
+  let!(:admin_membership)     { create(:user_entity, :admin,      user: admin,      entity: entity) }
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+
   before { sign_in admin }
 
   describe "GET /accounting/fiscal_years" do

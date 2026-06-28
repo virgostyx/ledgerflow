@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::Auditable, type: :model do
+  include_context 'with entity'
+
   # Testé via Accounting::Account qui inclura le concern
   let!(:account) { create(:account, code: 'AUD001', label_fr: 'Compte auditable') }
 

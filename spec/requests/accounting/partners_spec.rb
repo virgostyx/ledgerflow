@@ -1,8 +1,13 @@
 require 'rails_helper'
 
 RSpec.describe 'Accounting::Partners', type: :request do
+  include_context 'with entity'
+
   let(:accountant) { create(:user, role: :accountant) }
   let(:admin)      { create(:user, role: :admin) }
+
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+  let!(:admin_membership)      { create(:user_entity, :admin,      user: admin,      entity: entity) }
 
   before { sign_in accountant }
 

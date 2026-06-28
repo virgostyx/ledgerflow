@@ -1,9 +1,14 @@
 require "rails_helper"
 
 RSpec.describe "Accounting::Settings::AnalyticalAxes", type: :request do
+  include_context 'with entity'
+
   let(:admin)   { create(:user, role: :admin) }
   let(:manager) { create(:user, role: :manager) }
   let!(:axis)   { create(:analytical_axis, :proj) }
+
+  let!(:admin_membership)   { create(:user_entity, :admin,   user: admin,   entity: entity) }
+  let!(:manager_membership) { create(:user_entity, :manager, user: manager, entity: entity) }
 
   before { sign_in admin }
 

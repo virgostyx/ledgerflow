@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::Immutable, type: :model do
+  include_context 'with entity'
+
   let(:entry) { create(:journal_entry, :posted) }
 
   it_behaves_like 'an immutable posted record' do

@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Accounting::AnalyticalAccount, type: :model do
+  include_context 'with entity'
+
   describe "validations" do
     subject { build(:analytical_account) }
 

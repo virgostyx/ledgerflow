@@ -6,6 +6,7 @@ class Api::V1::BaseController < ActionController::API
   def authenticate_api_request!
     token = request.headers["Authorization"]&.split(" ")&.last
     @api_payload = Api::JwtService.decode(token)
+    ActsAsTenant.current_tenant = Entity.find_by(id: @api_payload["entity_id"])
   rescue Api::AuthenticationError
     render json: { error: "Unauthorized" }, status: :unauthorized
   end

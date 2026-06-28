@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :analytical_account, class: "Accounting::AnalyticalAccount" do
+    entity             { ActsAsTenant.current_tenant || create(:entity) }
     association :analytical_axis
 
     sequence(:code)  { |n| "ACC#{n}" }

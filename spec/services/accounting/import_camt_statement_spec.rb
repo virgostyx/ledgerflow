@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::ImportCamtStatement, type: :service do
+  include_context 'with entity'
+
   let!(:bank_journal)  { create(:journal, :bank) }
   let!(:bank_account)  { create(:bank_account, journal: bank_journal, iban: 'BE71096123456769') }
 

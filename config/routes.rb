@@ -9,6 +9,16 @@ Rails.application.routes.draw do
     registrations: "users/registrations"
   }
 
+  # Onboarding (pas de tenant requis — le user vient de s'inscrire)
+  namespace :onboarding do
+    resource :entity, only: %i[new create]
+  end
+
+  # Gestion des entités (tenant switching)
+  resources :entities, only: %i[index new create] do
+    member { post :switch }
+  end
+
   # Application comptable (authentifié)
   authenticate :user do
     namespace :accounting do

@@ -1,6 +1,8 @@
 class Accounting::AnalyticalAccount < ApplicationRecord
   self.table_name = "accounting_analytical_accounts"
 
+  acts_as_tenant :entity
+
   belongs_to :analytical_axis, class_name: "Accounting::AnalyticalAxis",
              foreign_key: :analytical_axis_id
   has_many   :analytical_annotations, class_name: "Accounting::AnalyticalAnnotation",

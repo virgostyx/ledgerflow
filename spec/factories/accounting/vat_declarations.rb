@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :vat_declaration, class: 'Accounting::VatDeclaration' do
+    entity  { ActsAsTenant.current_tenant || create(:entity) }
     association :fiscal_year, factory: :fiscal_year
 
     period_type  { :quarterly }

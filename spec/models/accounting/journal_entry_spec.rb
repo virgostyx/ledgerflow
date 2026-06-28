@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::JournalEntry, type: :model do
+  include_context 'with entity'
+
   describe 'associations' do
     it { should belong_to(:journal).class_name('Accounting::Journal') }
     it { should belong_to(:fiscal_year).class_name('Accounting::FiscalYear') }
@@ -11,7 +13,17 @@ RSpec.describe Accounting::JournalEntry, type: :model do
     subject { build(:journal_entry) }
 
     it { should validate_presence_of(:entry_date) }
-    it { should validate_uniqueness_of(:reference).ignoring_case_sensitivity }
+    it 'rejects a duplicate reference within the same entity' do
+      create(:journal_entry, reference: 'REF2025/001')
+      expect(build(:journal_entry, reference: 'REF2025/001')).not_to be_valid
+    end
+
+    it 'allows the same reference in a different entity' do
+      create(:journal_entry, reference: 'REF2025/001')
+      ActsAsTenant.with_tenant(create(:entity)) do
+        expect(build(:journal_entry, reference: 'REF2025/001')).to be_valid
+      end
+    end
 
     context 'quand validée (non-brouillon)' do
       subject { build(:journal_entry, :posted) }

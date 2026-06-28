@@ -24,7 +24,10 @@ RSpec.describe 'Landing', type: :request do
   end
 
   describe 'Redirection des utilisateurs connectés' do
+    include_context 'with entity'
+
     let!(:user) { create(:user, :accountant) }
+    let!(:user_membership) { create(:user_entity, :accountant, user: user, entity: entity) }
 
     it 'redirige vers le dashboard si déjà connecté' do
       sign_in user

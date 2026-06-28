@@ -1,6 +1,8 @@
 class Accounting::BankTransaction < ApplicationRecord
   self.table_name = "accounting_bank_transactions"
 
+  acts_as_tenant :entity
+
   belongs_to :bank_account,  class_name: "Accounting::BankAccount"
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
 

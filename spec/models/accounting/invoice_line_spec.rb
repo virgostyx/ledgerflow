@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Accounting::InvoiceLine, type: :model do
+  include_context 'with entity'
+
   describe 'associations' do
     it { should belong_to(:invoice).class_name('Accounting::Invoice') }
     it { should belong_to(:account).class_name('Accounting::Account') }

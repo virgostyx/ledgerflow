@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :journal, class: "Accounting::Journal" do
+    entity              { ActsAsTenant.current_tenant || create(:entity) }
     sequence(:code)     { |n| "J#{n.to_s.rjust(2, '0')}" }
     label_fr            { "Journal divers" }
     journal_type        { :misc }

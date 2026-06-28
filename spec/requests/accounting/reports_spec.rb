@@ -6,6 +6,8 @@ RSpec.describe "Accounting::Reports", type: :request do
   let(:accountant) { create(:user, role: :accountant) }
   let(:journal)    { create(:journal, :purchase) }
 
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+
   let!(:expense_account) do
     create(:account, code: "604000", label_fr: "Services",
            account_type: :expense, normal_balance: :debit, account_class: 6)

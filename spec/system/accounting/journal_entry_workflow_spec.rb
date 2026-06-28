@@ -8,6 +8,7 @@ RSpec.describe 'Workflow : Création et validation d une écriture', type: :syst
   let!(:account_440) { create(:account, code: '440000', label_fr: 'Fournisseurs') }
   let!(:account_411) { create(:account, code: '411000', label_fr: 'TVA à récupérer') }
   let(:accountant)   { create(:user, role: :accountant) }
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
 
   before { login_as accountant, scope: :user }
 

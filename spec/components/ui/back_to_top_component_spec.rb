@@ -20,7 +20,7 @@ RSpec.describe Ui::BackToTopComponent, type: :component do
   end
 
   it 'is fixed bottom-right' do
-    expect(page).to have_css('.fixed.bottom-6.right-6')
+    expect(page).to have_css('.fixed.bottom-24.right-6')
   end
 
   it 'has an accessible aria-label' do

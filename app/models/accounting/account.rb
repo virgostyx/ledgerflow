@@ -1,6 +1,8 @@
 class Accounting::Account < ApplicationRecord
   self.table_name = "accounting_accounts"
 
+  acts_as_tenant :entity
+
   include Accounting::MonetaryPrecision
   include Accounting::Auditable
 
@@ -14,7 +16,7 @@ class Accounting::Account < ApplicationRecord
   has_many   :journal_entry_lines, class_name: "Accounting::JournalEntryLine",
              foreign_key: :account_id, dependent: :restrict_with_error
 
-  validates :code,           presence: true, uniqueness: true, length: { maximum: 10 }
+  validates :code,           presence: true, uniqueness: { scope: :entity_id }, length: { maximum: 10 }
   validates :label_fr,       presence: true
   validates :account_class,  presence: true,
                              inclusion: { in: 1..7 }

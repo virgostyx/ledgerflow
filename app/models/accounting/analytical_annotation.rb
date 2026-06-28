@@ -1,6 +1,8 @@
 class Accounting::AnalyticalAnnotation < ApplicationRecord
   self.table_name = "accounting_analytical_annotations"
 
+  acts_as_tenant :entity
+
   belongs_to :journal_entry_line, class_name: "Accounting::JournalEntryLine",
              foreign_key: :journal_entry_line_id, inverse_of: :analytical_annotations
   belongs_to :analytical_axis,    class_name: "Accounting::AnalyticalAxis",

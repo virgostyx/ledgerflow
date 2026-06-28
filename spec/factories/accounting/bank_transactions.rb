@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :bank_transaction, class: 'Accounting::BankTransaction' do
+    entity  { ActsAsTenant.current_tenant || create(:entity) }
     association :bank_account, factory: :bank_account
 
     transaction_date { Date.current }

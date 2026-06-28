@@ -10,6 +10,9 @@ class User < ApplicationRecord
 
   enum :role, { admin: 0, accountant: 1, manager: 2, auditor: 3, budget_user: 4 }
 
+  has_many :user_entities, dependent: :destroy
+  has_many :entities, through: :user_entities
+
   validates :full_name, presence: true
   validates :email,     presence: true
 
