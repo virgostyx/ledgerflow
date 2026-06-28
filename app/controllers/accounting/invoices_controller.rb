@@ -1,8 +1,11 @@
 class Accounting::InvoicesController < ApplicationController
   before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :send_peppol ]
+  before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
-    @invoices = policy_scope(Accounting::Invoice).order(invoice_date: :desc)
+    @invoices = policy_scope(Accounting::Invoice)
+                  .where(invoice_type: @invoice_type)
+                  .order(invoice_date: :desc)
   end
 
   def show
@@ -10,12 +13,12 @@ class Accounting::InvoicesController < ApplicationController
   end
 
   def new
-    @invoice = Accounting::Invoice.new
+    @invoice = Accounting::Invoice.new(invoice_type: @invoice_type)
     authorize @invoice
   end
 
   def create
-    @invoice = Accounting::Invoice.new(invoice_params)
+    @invoice = Accounting::Invoice.new(invoice_params.merge(invoice_type: @invoice_type))
     authorize @invoice
 
     if @invoice.save
@@ -42,9 +45,10 @@ class Accounting::InvoicesController < ApplicationController
   def destroy
     authorize @invoice
 
+    invoice_type = @invoice.invoice_type
     if @invoice.draft?
       @invoice.destroy!
-      redirect_to accounting_invoices_path, notice: t("accounting.invoices.deleted")
+      redirect_to list_path_for(invoice_type), notice: t("accounting.invoices.deleted")
     else
       head :unprocessable_content
     end
@@ -80,9 +84,17 @@ class Accounting::InvoicesController < ApplicationController
     @invoice = Accounting::Invoice.find(params[:id])
   end
 
+  def set_invoice_type_context
+    @invoice_type = params[:invoice_type].presence
+  end
+
+  def list_path_for(invoice_type)
+    invoice_type.to_s == "customer" ? accounting_sales_path : accounting_purchases_path
+  end
+
   def invoice_params
     params.require(:accounting_invoice).permit(
-      :invoice_type, :invoice_date, :due_date, :partner_id,
+      :invoice_date, :due_date, :partner_id,
       :fiscal_year_id, :currency, :description, :notes, :external_ref
     )
   end

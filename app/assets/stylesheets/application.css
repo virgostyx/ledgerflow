@@ -168,11 +168,23 @@
   color: #9ca3af !important; /* gray-400 */
 }
 
-/* Label color on focus */
+/* Label floats when focused or when field has content (CSS-only, no JS dependency) */
+[data-controller*="floating-label"] input:focus + label,
+[data-controller*="floating-label"] textarea:focus + label,
+[data-controller*="floating-label"] select:focus + label,
+[data-controller*="floating-label"] input:not(:placeholder-shown) + label,
+[data-controller*="floating-label"] textarea:not(:placeholder-shown) + label {
+  top: 0 !important;
+  transform: translateY(-50%) scale(0.8) !important;
+  background: white !important;
+  padding: 0 0.25rem !important;
+}
+
+/* Primary color only when focused */
 [data-controller*="floating-label"] input:focus + label,
 [data-controller*="floating-label"] textarea:focus + label,
 [data-controller*="floating-label"] select:focus + label {
-  color: #ea580c; /* primary-600 */
+  color: #ea580c !important; /* primary-600 */
 }
 
 /* Error state */

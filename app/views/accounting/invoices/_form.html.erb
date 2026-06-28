@@ -1,5 +1,7 @@
 <%= form_with model: invoice, scope: :accounting_invoice,
-              url: invoice.persisted? ? accounting_invoice_path(invoice) : accounting_invoices_path,
+              url: invoice.persisted? ? accounting_invoice_path(invoice)
+                                      : invoice.customer? ? accounting_sales_path
+                                                          : accounting_purchases_path,
               html: { class: 'space-y-6 max-w-2xl' } do |f| %>
   <% if invoice.errors.any? %>
     <div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
@@ -12,34 +14,25 @@
   <% end %>
 
   <div class="relative" data-controller="floating-label">
-    <%= f.select :invoice_type,
-          [['Customer', 'customer'], ['Supplier', 'supplier']],
-          {},
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
-    <%= f.label :invoice_type, 'Type', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
-  </div>
-
-  <div class="relative" data-controller="floating-label">
     <%= f.date_field :invoice_date,
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
     <%= f.label :invoice_date, 'Invoice date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
   <div class="relative" data-controller="floating-label">
     <%= f.date_field :due_date,
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
     <%= f.label :due_date, 'Due date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
   <div class="relative" data-controller="floating-label">
     <%= f.collection_select :partner_id,
           Accounting::Partner.active.order(:name), :id, :name,
-          { prompt: 'Select a partner...' },
+          { include_blank: true },
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
     <%= f.label :partner_id, 'Partner', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
@@ -48,7 +41,7 @@
           Accounting::FiscalYear.where(status: :open).order(:year), :id, :year,
           { include_blank: false },
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
     <%= f.label :fiscal_year_id, 'Fiscal year', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
@@ -57,7 +50,7 @@
           rows: 3,
           placeholder: ' ',
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
     <%= f.label :description, 'Description', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 

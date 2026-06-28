@@ -14,7 +14,7 @@
           autofocus: true, autocomplete: 'name',
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
           placeholder: ' ',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue' } %>
     <%= f.label :full_name, 'Full name', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
@@ -23,7 +23,7 @@
           autocomplete: 'email',
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
           placeholder: ' ',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue' } %>
     <%= f.label :email, 'Email address', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
@@ -33,7 +33,7 @@
             autocomplete: 'new-password',
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
             placeholder: ' ',
-            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue' } %>
       <%= f.label :password, 'Password', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
     <p class="text-xs text-gray-400 mt-1 px-1">Minimum 12 characters</p>
@@ -44,7 +44,7 @@
           autocomplete: 'new-password',
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
           placeholder: ' ',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue' } %>
     <%= f.label :password_confirmation, 'Confirm password', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 

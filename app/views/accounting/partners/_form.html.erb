@@ -24,7 +24,7 @@
           Accounting::Partner.partner_types.keys.map { |k| [k.humanize, k] },
           {},
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur change->floating-label#checkValue' } %>
     <%= f.label :partner_type, 'Type', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 

@@ -33,7 +33,18 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :invoices do
+      # Sales (customer invoices)
+      get  "sales",         to: "invoices#index",  as: :sales,         defaults: { invoice_type: "customer" }
+      get  "sales/new",     to: "invoices#new",    as: :new_sales,     defaults: { invoice_type: "customer" }
+      post "sales",         to: "invoices#create",                     defaults: { invoice_type: "customer" }
+
+      # Purchases (supplier invoices)
+      get  "purchases",     to: "invoices#index",  as: :purchases,     defaults: { invoice_type: "supplier" }
+      get  "purchases/new", to: "invoices#new",    as: :new_purchases, defaults: { invoice_type: "supplier" }
+      post "purchases",     to: "invoices#create",                     defaults: { invoice_type: "supplier" }
+
+      # Individual invoice actions — URLs inchangées
+      resources :invoices, only: [ :show, :edit, :update, :destroy ] do
         member do
           post :validate_invoice
           post :send_peppol
