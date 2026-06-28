@@ -18,7 +18,7 @@
 
       <div>
         <%= f.label :name, "Entity name *", class: "block text-sm font-medium text-gray-700 mb-1" %>
-        <%= f.text_field :name, required: true, placeholder: "My ASBL",
+        <%= f.text_field :name, required: true, placeholder: "My Company",
               class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
                       focus:outline-none focus:ring-2 focus:ring-indigo-500" %>
       </div>
@@ -34,7 +34,8 @@
         <%= f.label :legal_form, "Legal form", class: "block text-sm font-medium text-gray-700 mb-1" %>
         <%= f.select :legal_form,
               [["ASBL / VZW", "ASBL"], ["Fondation / Stichting", "Fondation"],
-               ["SA / NV", "SA"], ["SRL / BV", "SRL"], ["Other", "Autre"]],
+               ["SA / NV", "SA"], ["SRL / BV", "SRL"], ["SCRL / CVBA", "SCRL"],
+               ["Sole proprietorship", "Indépendant"], ["Other", "Autre"]],
               { include_blank: "Select" },
               class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
                       focus:outline-none focus:ring-2 focus:ring-indigo-500" %>

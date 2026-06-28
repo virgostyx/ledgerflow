@@ -7,7 +7,7 @@ module Entities
 
       executed do |ctx|
         ActsAsTenant.with_tenant(ctx.entity) do
-          Seeders::PcmnSeeder.call
+          Seeders::PcmnSeeder.call(entity: ctx.entity)
         end
       rescue StandardError => e
         ctx.fail!("Failed to copy PCMN chart: #{e.message}")

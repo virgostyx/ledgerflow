@@ -22,7 +22,7 @@ end
 
 # Step 3: Seed accounting data within entity context
 ActsAsTenant.with_tenant(entity) do
-  Seeders::PcmnSeeder.call
+  Seeders::PcmnSeeder.call(entity: entity)
   Seeders::JournalsSeeder.call
   Seeders::AnalyticalAxesSeeder.call
 

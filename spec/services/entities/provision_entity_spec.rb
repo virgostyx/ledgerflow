@@ -56,4 +56,56 @@ RSpec.describe Entities::ProvisionEntity, type: :service do
       expect(result).to be_failure
     end
   end
+
+  describe 'PCMN selection by legal form' do
+    context 'for an ASBL entity' do
+      let(:entity) { create(:entity, created_by: user, legal_form: 'ASBL') }
+
+      it 'loads the ASBL PCMN — fonds associatif terminology for class 1' do
+        result
+        account = ActsAsTenant.with_tenant(entity) { Accounting::Account.find_by(code: '100000') }
+        expect(account.label_fr).to eq("Capital ou fonds de l'association")
+      end
+    end
+
+    context 'for a Fondation entity' do
+      let(:entity) { create(:entity, created_by: user, legal_form: 'Fondation') }
+
+      it 'loads the ASBL PCMN' do
+        result
+        account = ActsAsTenant.with_tenant(entity) { Accounting::Account.find_by(code: '100000') }
+        expect(account.label_fr).to eq("Capital ou fonds de l'association")
+      end
+    end
+
+    context 'for a commercial entity (SA)' do
+      let(:entity) { create(:entity, created_by: user, legal_form: 'SA') }
+
+      it 'loads the commercial PCMN — capital souscrit for class 1' do
+        result
+        account = ActsAsTenant.with_tenant(entity) { Accounting::Account.find_by(code: '100000') }
+        expect(account.label_fr).to eq('Capital souscrit')
+      end
+    end
+
+    context 'for a SRL entity' do
+      let(:entity) { create(:entity, created_by: user, legal_form: 'SRL') }
+
+      it 'loads the commercial PCMN' do
+        result
+        account = ActsAsTenant.with_tenant(entity) { Accounting::Account.find_by(code: '100000') }
+        expect(account.label_fr).to eq('Capital souscrit')
+      end
+    end
+
+    context 'for an entity without legal form (nil)' do
+      let(:entity) { create(:entity, created_by: user, legal_form: nil) }
+
+      it 'defaults to the commercial PCMN' do
+        result
+        account = ActsAsTenant.with_tenant(entity) { Accounting::Account.find_by(code: '100000') }
+        expect(account.label_fr).to eq('Capital souscrit')
+      end
+    end
+  end
 end
