@@ -14,7 +14,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
       fiscal_year:  fiscal_year,
       entry_date:   invoice.invoice_date,
       reference:    invoice.invoice_number,
-      description:  "Facture #{invoice.invoice_number} — #{invoice.partner.name}",
+      description:  "Invoice #{invoice.invoice_number} — #{invoice.partner.name}",
       status:       :draft,
       source_type:  "Accounting::Invoice"
     )
@@ -72,7 +72,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
         account:       vat_account,
         debit:         BigDecimal("0"),
         credit:        invoice.vat_amount,
-        label:         "TVA"
+        label:         "VAT"
       )
     end
   end
@@ -97,7 +97,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
         account:       vat_account,
         debit:         invoice.vat_amount,
         credit:        BigDecimal("0"),
-        label:         "TVA récupérable"
+        label:         "Recoverable VAT"
       )
     end
 

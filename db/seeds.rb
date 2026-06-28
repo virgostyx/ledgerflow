@@ -25,6 +25,7 @@ ActsAsTenant.with_tenant(entity) do
   Seeders::PcmnSeeder.call(entity: entity)
   Seeders::JournalsSeeder.call
   Seeders::AnalyticalAxesSeeder.call
+  Seeders::PartnersSeeder.call
 
   # Create opening fiscal year if not already present
   current_year = Date.current.year

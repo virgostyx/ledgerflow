@@ -16,7 +16,7 @@ module Accounting::Immutable
     return if will_save_change_to_status?(to: "reversed")
 
     raise Accounting::ImmutableRecordError,
-          "#{self.class.name} ##{id} est validé et ne peut être modifié."
+          "#{self.class.name} ##{id} is posted and cannot be modified."
   end
 
   def prevent_destroy_if_posted
@@ -24,6 +24,6 @@ module Accounting::Immutable
     return unless status_in_database == "posted"
 
     raise Accounting::ImmutableRecordError,
-          "#{self.class.name} ##{id} est validé et ne peut être supprimé."
+          "#{self.class.name} ##{id} is posted and cannot be deleted."
   end
 end

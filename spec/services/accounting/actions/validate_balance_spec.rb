@@ -17,11 +17,11 @@ RSpec.describe Accounting::Actions::ValidateBalance, type: :service do
     context 'avec une écriture déséquilibrée' do
       let(:entry) { create(:journal_entry, :with_unbalanced_lines, fiscal_year: fiscal_year) }
 
-      it 'échoue avec un message mentionnant déséquilibré' do
+      it 'fails with an unbalanced entry message' do
         ctx = LightService::Context.make(entry: entry)
         expect { described_class.execute(ctx) }
           .to raise_error(LightService::FailWithRollbackError)
-        expect(ctx.message).to include('déséquilibré')
+        expect(ctx.message).to include('Unbalanced entry')
       end
     end
   end
