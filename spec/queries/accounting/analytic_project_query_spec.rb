@@ -67,7 +67,7 @@ RSpec.describe Accounting::AnalyticProjectQuery, type: :query do
 
     it "retourne uniquement le projet demandé" do
       project_ids = results.map(&:project_id)
-      expect(project_ids).to eq([1])
+      expect(project_ids).to eq([ 1 ])
     end
 
     it "agrège toutes les charges du projet 1" do

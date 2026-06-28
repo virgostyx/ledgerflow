@@ -1,3 +1,9 @@
+require 'simplecov'
+SimpleCov.start 'rails' do
+  add_filter '/spec/'
+  minimum_coverage 95
+end
+
 require 'spec_helper'
 ENV['RAILS_ENV'] ||= 'test'
 require_relative '../config/environment'
@@ -6,12 +12,6 @@ require 'rspec/rails'
 require 'view_component/test_helpers'
 require 'view_component/system_test_helpers'
 require 'webmock/rspec'
-
-require 'simplecov'
-SimpleCov.start 'rails' do
-  add_filter '/spec/'
-  minimum_coverage 95
-end
 
 Rails.root.glob('spec/support/**/*.rb').sort_by(&:to_s).each { |f| require f }
 

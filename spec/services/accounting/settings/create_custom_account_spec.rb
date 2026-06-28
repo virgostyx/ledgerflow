@@ -73,5 +73,16 @@ RSpec.describe Accounting::Settings::CreateCustomAccount, type: :service do
         expect(result).to be_failure
       end
     end
+
+    context "when an unexpected error occurs" do
+      before do
+        allow(ApplicationRecord).to receive(:transaction).and_raise(StandardError, "unexpected DB error")
+      end
+
+      it "returns a failed context" do
+        result = described_class.call(params: valid_params, user: user)
+        expect(result).to be_failure
+      end
+    end
   end
 end

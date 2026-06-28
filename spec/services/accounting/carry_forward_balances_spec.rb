@@ -216,4 +216,14 @@ RSpec.describe Accounting::CarryForwardBalances do
       expect(result).to be_success
     end
   end
+
+  context "when an unexpected error occurs" do
+    before do
+      allow(ApplicationRecord).to receive(:transaction).and_raise(StandardError, "unexpected DB error")
+    end
+
+    it "returns a failed context" do
+      expect(result).to be_failure
+    end
+  end
 end

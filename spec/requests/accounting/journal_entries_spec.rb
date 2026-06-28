@@ -101,6 +101,36 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
         expect(response).to have_http_status(:unprocessable_content)
       end
     end
+
+    context 'quand PostJournalEntry échoue après sauvegarde' do
+      let(:valid_params) do
+        {
+          accounting_journal_entry: {
+            journal_id:     journal.id,
+            fiscal_year_id: fiscal_year.id,
+            entry_date:     Date.current,
+            description:    'Test',
+            lines_attributes: {
+              '0' => { account_id: account_604.id, debit: '500.00', credit: '0', label: 'Charges' },
+              '1' => { account_id: account_440.id, debit: '0', credit: '500.00', label: 'Fournisseur' }
+            }
+          }
+        }
+      end
+
+      before do
+        allow(Accounting::PostJournalEntry).to receive(:call).and_return(
+          double('result', success?: false, message: 'posting error')
+        )
+      end
+
+      it 'retourne 422 et ne conserve pas l écriture' do
+        expect {
+          post accounting_journal_entries_path, params: valid_params.merge(commit: 'Save')
+        }.not_to change(Accounting::JournalEntry, :count)
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
   end
 
   describe 'GET /accounting/journal_entries/:id' do

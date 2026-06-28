@@ -1,8 +1,3 @@
-require_relative 'seeders/pcmn_seeder'
-require_relative 'seeders/journals_seeder'
-require_relative 'seeders/analytical_axes_seeder'
-require_relative 'seeders/users_seeder'
-
 # Step 1: Seed users (entity needs a created_by user)
 Seeders::UsersSeeder.call
 

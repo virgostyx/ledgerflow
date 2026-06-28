@@ -7,7 +7,7 @@ class Stats::KpiCardComponent < ViewComponent::Base
     red:     { bg: "bg-red-50",      icon: "text-red-600",     text: "text-red-900"     },
     blue:    { bg: "bg-blue-50",     icon: "text-blue-600",    text: "text-blue-900"    },
     amber:   { bg: "bg-amber-50",    icon: "text-amber-600",   text: "text-amber-900"   },
-    gray:    { bg: "bg-gray-100",    icon: "text-gray-600",    text: "text-gray-900"    },
+    gray:    { bg: "bg-gray-100",    icon: "text-gray-600",    text: "text-gray-900"    }
   }.freeze
 
   ICON_PATHS = {
@@ -20,7 +20,7 @@ class Stats::KpiCardComponent < ViewComponent::Base
     clock:          "M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
     exclamation:    "M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z",
     arrow_trending_up:   "M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941",
-    arrow_trending_down: "M2.25 6 9 12.75l4.306-4.306a11.95 11.95 0 0 1 5.814 5.518l2.74 1.22m0 0-5.94 2.281m5.94-2.28-2.28-5.941",
+    arrow_trending_down: "M2.25 6 9 12.75l4.306-4.306a11.95 11.95 0 0 1 5.814 5.518l2.74 1.22m0 0-5.94 2.281m5.94-2.28-2.28-5.941"
   }.freeze
 
   def initialize(title:, value:, icon: :chart_bar, color: :primary, trend: nil, subtitle: nil)

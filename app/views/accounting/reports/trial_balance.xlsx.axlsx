@@ -15,7 +15,7 @@ wb.add_worksheet(name: I18n.t("accounting.reports.trial_balance.title")) do |she
       row.total_debit.to_f,
       row.total_credit.to_f,
       row.balance.to_f
-    ], types: [:string, :string, :float, :float, :float]
+    ], types: [ :string, :string, :float, :float, :float ]
   end
 
   total_row_idx = @rows.length + 2
@@ -25,5 +25,5 @@ wb.add_worksheet(name: I18n.t("accounting.reports.trial_balance.title")) do |she
     @rows.sum(&:total_debit).to_f,
     @rows.sum(&:total_credit).to_f,
     ""
-  ], b: true, types: [:string, :string, :float, :float, :string]
+  ], b: true, types: [ :string, :string, :float, :float, :string ]
 end
