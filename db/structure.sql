@@ -430,7 +430,8 @@ CREATE TABLE public.accounting_invoices (
     updated_at timestamp(6) without time zone NOT NULL,
     peppol_id character varying,
     peppol_status integer DEFAULT 0 NOT NULL,
-    entity_id bigint NOT NULL
+    entity_id bigint NOT NULL,
+    journal_id bigint
 );
 
 
@@ -1409,6 +1410,13 @@ CREATE INDEX index_accounting_invoices_on_journal_entry_id ON public.accounting_
 
 
 --
+-- Name: index_accounting_invoices_on_journal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoices_on_journal_id ON public.accounting_invoices USING btree (journal_id);
+
+
+--
 -- Name: index_accounting_invoices_on_partner_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1836,6 +1844,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 
 --
+-- Name: accounting_invoices fk_rails_93cf61efdd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoices
+    ADD CONSTRAINT fk_rails_93cf61efdd FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_9602ee956d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1954,6 +1970,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260628000001'),
 ('20260627000008'),
 ('20260627000007'),
 ('20260627000006'),

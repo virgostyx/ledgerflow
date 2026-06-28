@@ -96,6 +96,18 @@ RSpec.describe 'Accounting::Invoices', type: :request do
       expect(response.body).to include(supplier_partner.name)
       expect(response.body).not_to include(customer_partner.name)
     end
+
+    it 'affiche le bouton Delete pour les factures fournisseur en brouillon' do
+      create(:invoice, :draft, :supplier, partner: partner, fiscal_year: fiscal_year)
+      get accounting_purchases_path
+      expect(response.body).to include('Delete')
+    end
+
+    it "n'affiche pas le bouton Delete pour les factures fournisseur validées" do
+      create(:invoice, :posted, :supplier, partner: partner, fiscal_year: fiscal_year)
+      get accounting_purchases_path
+      expect(response.body).not_to include('Delete')
+    end
   end
 
   describe 'GET /accounting/purchases/new' do
@@ -107,6 +119,16 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     it "n'affiche pas le champ invoice_type" do
       get accounting_new_purchases_path
       expect(response.body).not_to include('name="accounting_invoice[invoice_type]"')
+    end
+
+    context 'avec un journal achats existant' do
+      let!(:purchase_journal) { create(:journal, :purchase) }
+
+      it 'pré-sélectionne le journal achats par défaut' do
+        get accounting_new_purchases_path
+        expect(response.body).to include('selected')
+        expect(response.body).to include(purchase_journal.code)
+      end
     end
   end
 
@@ -176,13 +198,26 @@ RSpec.describe 'Accounting::Invoices', type: :request do
   describe 'POST /accounting/invoices/:id/validate_invoice' do
     include_context 'with_pcmn_accounts'
 
-    let!(:sale_journal) { create(:journal, :sale) }
-    let(:invoice)       { create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year) }
+    context 'facture client' do
+      let!(:sale_journal) { create(:journal, :sale) }
+      let(:invoice)       { create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal) }
 
-    it 'valide la facture et redirige' do
-      post validate_invoice_accounting_invoice_path(invoice)
-      expect(invoice.reload).to be_posted
-      expect(response).to redirect_to(accounting_invoice_path(invoice))
+      it 'valide la facture et redirige' do
+        post validate_invoice_accounting_invoice_path(invoice)
+        expect(invoice.reload).to be_posted
+        expect(response).to redirect_to(accounting_invoice_path(invoice))
+      end
+    end
+
+    context 'facture fournisseur' do
+      let!(:purchase_journal) { create(:journal, :purchase) }
+      let(:invoice) { create(:invoice, :with_lines, invoice_type: :supplier, fiscal_year: fiscal_year, journal: purchase_journal) }
+
+      it 'valide la facture fournisseur et utilise le journal sélectionné' do
+        post validate_invoice_accounting_invoice_path(invoice)
+        expect(invoice.reload).to be_posted
+        expect(invoice.reload.journal_entry.journal).to eq(purchase_journal)
+      end
     end
   end
 

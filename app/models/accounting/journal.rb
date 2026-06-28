@@ -35,6 +35,10 @@ class Accounting::Journal < ApplicationRecord
     bank? || cash? || purchase? || sale?
   end
 
+  def display_name
+    "#{code} — #{label_fr}"
+  end
+
   def destroyable?
     journal_entries.none?
   end

@@ -5,6 +5,24 @@ RSpec.describe Accounting::InvoicePresenter, type: :presenter do
 
   let(:partner) { create(:partner, name: 'ACME SA') }
 
+  describe '#entry_number_display' do
+    it 'retourne le numéro assigné quand présent' do
+      invoice = build(:invoice, invoice_number: 'ACH2026/0001')
+      expect(described_class.new(invoice).entry_number_display).to eq('ACH2026/0001')
+    end
+
+    it 'calcule le prochain numéro depuis le journal pour un draft' do
+      journal = create(:journal, :purchase, current_sequence: 4)
+      invoice = build(:invoice, :draft, invoice_number: nil, journal: journal, invoice_date: Date.new(2026, 6, 1))
+      expect(described_class.new(invoice).entry_number_display).to eq('ACH2026/0005')
+    end
+
+    it 'retourne — si draft sans journal' do
+      invoice = build(:invoice, :draft, invoice_number: nil, journal: nil)
+      expect(described_class.new(invoice).entry_number_display).to eq('—')
+    end
+  end
+
   describe '#invoice_number_or_draft' do
     it 'retourne le numéro quand présent' do
       invoice = build(:invoice, invoice_number: 'VTE2026/0001')

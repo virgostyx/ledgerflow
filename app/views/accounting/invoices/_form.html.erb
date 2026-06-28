@@ -2,7 +2,7 @@
               url: invoice.persisted? ? accounting_invoice_path(invoice)
                                       : invoice.customer? ? accounting_sales_path
                                                           : accounting_purchases_path,
-              html: { class: 'space-y-6 max-w-2xl' } do |f| %>
+              html: { class: 'space-y-6 max-w-2xl', data: { controller: 'invoice-form' } } do |f| %>
   <% if invoice.errors.any? %>
     <div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
       <ul class="list-disc list-inside">
@@ -14,16 +14,56 @@
   <% end %>
 
   <div class="relative" data-controller="floating-label">
-    <%= f.date_field :invoice_date,
+    <%= f.collection_select :fiscal_year_id,
+          Accounting::FiscalYear.where(status: :open).order(:year), :id, :year,
+          { include_blank: false },
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
           data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+    <%= f.label :fiscal_year_id, 'Fiscal year', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <% journal_type = invoice.supplier? ? :purchase : :sale %>
+  <% journal_options = Accounting::Journal.active.by_type(journal_type).order(:code).map do |j|
+       next_num = "#{j.sequence_prefix}#{Date.current.year}/#{(j.current_sequence + 1).to_s.rjust(4, '0')}"
+       [j.display_name, j.id, { data: { next_number: next_num } }]
+     end %>
+  <div class="relative" data-controller="floating-label">
+    <%= f.select :journal_id,
+          journal_options,
+          { include_blank: false },
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input',
+                  invoice_form_target: 'journalSelect',
+                  action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#updateEntryNumber' } %>
+    <%= f.label :journal_id, 'Journal', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <% if local_assigns[:next_entry_number] %>
+    <div class="relative" data-controller="floating-label">
+      <input type="text" value="<%= next_entry_number %>" readonly
+             class="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-500 font-mono cursor-default focus:outline-none"
+             data-floating-label-target="input"
+             data-invoice-form-target="entryNumberPreview"
+             id="next_entry_number_preview">
+      <label class="lf-floating-label floating-active" for="next_entry_number_preview">Entry number</label>
+    </div>
+  <% end %>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.date_field :invoice_date,
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input',
+                  invoice_form_target: 'invoiceDate',
+                  action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#fillDueDate' } %>
     <%= f.label :invoice_date, 'Invoice date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
   <div class="relative" data-controller="floating-label">
     <%= f.date_field :due_date,
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+          data: { floating_label_target: 'input',
+                  invoice_form_target: 'dueDate',
+                  action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
     <%= f.label :due_date, 'Due date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
@@ -37,15 +77,6 @@
   </div>
 
   <div class="relative" data-controller="floating-label">
-    <%= f.collection_select :fiscal_year_id,
-          Accounting::FiscalYear.where(status: :open).order(:year), :id, :year,
-          { include_blank: false },
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
-    <%= f.label :fiscal_year_id, 'Fiscal year', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
-  </div>
-
-  <div class="relative" data-controller="floating-label">
     <%= f.text_area :description,
           rows: 3,
           placeholder: ' ',
@@ -56,5 +87,7 @@
 
   <div class="flex gap-3 pt-2">
     <%= f.submit class: 'btn-primary' %>
+    <% cancel_path = invoice.customer? ? accounting_sales_path : accounting_purchases_path %>
+    <%= link_to 'Cancel', cancel_path, class: 'btn-secondary' %>
   </div>
 <% end %>

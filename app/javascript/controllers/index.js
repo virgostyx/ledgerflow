@@ -47,3 +47,6 @@ application.register("floating-label", FloatingLabelController)
 
 import CookieBannerController from "controllers/cookie_banner_controller"
 application.register("cookie-banner", CookieBannerController)
+
+import InvoiceFormController from "controllers/invoice_form_controller"
+application.register("invoice-form", InvoiceFormController)

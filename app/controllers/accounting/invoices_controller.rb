@@ -14,6 +14,11 @@ class Accounting::InvoicesController < ApplicationController
 
   def new
     @invoice = Accounting::Invoice.new(invoice_type: @invoice_type)
+    if @invoice_type.present?
+      journal_type = @invoice.customer? ? :sale : :purchase
+      @invoice.journal = Accounting::Journal.active.find_by(journal_type: journal_type)
+    end
+    @next_entry_number = preview_next_sequence(@invoice.journal)
     authorize @invoice
   end
 
@@ -88,13 +93,20 @@ class Accounting::InvoicesController < ApplicationController
     @invoice_type = params[:invoice_type].presence
   end
 
+  def preview_next_sequence(journal)
+    return nil unless journal
+    year = Date.current.year
+    next_seq = journal.current_sequence + 1
+    "#{journal.sequence_prefix}#{year}/#{next_seq.to_s.rjust(4, '0')}"
+  end
+
   def list_path_for(invoice_type)
     invoice_type.to_s == "customer" ? accounting_sales_path : accounting_purchases_path
   end
 
   def invoice_params
     params.require(:accounting_invoice).permit(
-      :invoice_date, :due_date, :partner_id,
+      :invoice_date, :due_date, :partner_id, :journal_id,
       :fiscal_year_id, :currency, :description, :notes, :external_ref
     )
   end

@@ -54,6 +54,22 @@
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">VAT</dt>
       <dd class="mt-1 text-sm font-mono text-gray-900"><%= Accounting::MoneyPresenter.new(@invoice.vat_amount).format %></dd>
     </div>
+    <% if @invoice.journal_entry %>
+    <div>
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Journal</dt>
+      <dd class="mt-1 text-sm text-gray-900">
+        <%= @invoice.journal_entry.journal.code %> — <%= @invoice.journal_entry.journal.label_fr %>
+      </dd>
+    </div>
+    <div>
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Journal entry</dt>
+      <dd class="mt-1 text-sm text-gray-900">
+        <%= link_to @invoice.journal_entry.reference,
+              accounting_journal_entry_path(@invoice.journal_entry),
+              class: "text-primary-600 hover:underline" %>
+      </dd>
+    </div>
+    <% end %>
     <div class="col-span-2 border-t border-gray-100 pt-4">
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total incl. VAT</dt>
       <dd class="mt-1 text-xl font-bold font-mono text-gray-900"><%= presenter.formatted_total %></dd>

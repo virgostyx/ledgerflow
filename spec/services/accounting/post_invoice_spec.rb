@@ -8,7 +8,7 @@ RSpec.describe Accounting::PostInvoice, type: :service do
   let!(:purchase_journal) { create(:journal, :purchase) }
 
   describe '.call — facture client' do
-    let(:invoice) { create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year) }
+    let(:invoice) { create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal) }
     subject(:result) { described_class.call(invoice: invoice) }
 
     it 'retourne un contexte de succès' do
@@ -46,22 +46,21 @@ RSpec.describe Accounting::PostInvoice, type: :service do
   end
 
   describe '.call — facture fournisseur' do
-    let(:invoice) { create(:invoice, :with_lines, invoice_type: :supplier, fiscal_year: fiscal_year) }
+    let(:invoice) { create(:invoice, :with_lines, invoice_type: :supplier, fiscal_year: fiscal_year, journal: purchase_journal) }
     subject(:result) { described_class.call(invoice: invoice) }
 
     it 'retourne un contexte de succès' do
       expect(result).to be_success
     end
 
-    it 'utilise le journal achats' do
+    it 'utilise le journal sélectionné sur la facture' do
       result
-      entry = invoice.reload.journal_entry
-      expect(entry.journal.journal_type).to eq('purchase')
+      expect(invoice.reload.journal_entry.journal).to eq(purchase_journal)
     end
   end
 
   describe '.call — facture déjà validée' do
-    let(:invoice) { create(:invoice, :posted, :with_lines, fiscal_year: fiscal_year) }
+    let(:invoice) { create(:invoice, :posted, :with_lines, fiscal_year: fiscal_year, journal: sale_journal) }
     subject(:result) { described_class.call(invoice: invoice) }
 
     it 'retourne un échec' do
@@ -75,7 +74,7 @@ RSpec.describe Accounting::PostInvoice, type: :service do
 
   describe '.call — facture client TVA 0%' do
     let(:invoice) do
-      inv = create(:invoice, invoice_type: :customer, fiscal_year: fiscal_year)
+      inv = create(:invoice, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal)
       create(:invoice_line, invoice: inv, account: account_700,
              quantity: 1, unit_price: '500.00', vat_rate: '0.00')
       inv.compute_totals
@@ -95,7 +94,7 @@ RSpec.describe Accounting::PostInvoice, type: :service do
   end
 
   describe '.call — facture sans lignes' do
-    let(:invoice) { create(:invoice, :draft, fiscal_year: fiscal_year) }
+    let(:invoice) { create(:invoice, :draft, fiscal_year: fiscal_year, journal: sale_journal) }
     subject(:result) { described_class.call(invoice: invoice) }
 
     it 'retourne un échec' do
@@ -111,11 +110,7 @@ RSpec.describe Accounting::PostInvoice, type: :service do
     let(:invoice) { create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year) }
     subject(:result) { described_class.call(invoice: invoice) }
 
-    before do
-      allow(Accounting::Journal).to receive(:active).and_return(
-        double(find_by: nil)
-      )
-    end
+    before { sale_journal.update!(active: false) }
 
     it 'retourne un échec si aucun journal actif n est trouvé' do
       expect(result).to be_failure
@@ -123,7 +118,7 @@ RSpec.describe Accounting::PostInvoice, type: :service do
   end
 
   describe '.call — rescue StandardError' do
-    let(:invoice) { create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year) }
+    let(:invoice) { create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal) }
 
     it 'renvoie un contexte d échec si une erreur inattendue survient' do
       allow(ApplicationRecord).to receive(:transaction).and_raise(RuntimeError, 'DB down')

@@ -7,6 +7,7 @@ RSpec.describe Accounting::Invoice, type: :model do
     it { should belong_to(:partner).class_name('Accounting::Partner') }
     it { should belong_to(:fiscal_year).class_name('Accounting::FiscalYear') }
     it { should belong_to(:journal_entry).class_name('Accounting::JournalEntry').optional }
+    it { should belong_to(:journal).class_name('Accounting::Journal').optional }
     it { should have_many(:lines).class_name('Accounting::InvoiceLine').dependent(:destroy) }
   end
 
@@ -16,6 +17,38 @@ RSpec.describe Accounting::Invoice, type: :model do
     it { should validate_presence_of(:invoice_type) }
     it { should validate_presence_of(:invoice_date) }
     it { should validate_presence_of(:partner) }
+  end
+
+  describe 'journal type validation' do
+    let(:sale_journal)     { create(:journal, :sale) }
+    let(:purchase_journal) { create(:journal, :purchase) }
+
+    it 'is valid when a customer invoice uses a sale journal' do
+      invoice = build(:invoice, :customer, journal: sale_journal)
+      expect(invoice).to be_valid
+    end
+
+    it 'is valid when a supplier invoice uses a purchase journal' do
+      invoice = build(:invoice, :supplier, journal: purchase_journal)
+      expect(invoice).to be_valid
+    end
+
+    it 'is invalid when a customer invoice uses a purchase journal' do
+      invoice = build(:invoice, :customer, journal: purchase_journal)
+      expect(invoice).not_to be_valid
+      expect(invoice.errors[:journal]).to be_present
+    end
+
+    it 'is invalid when a supplier invoice uses a sale journal' do
+      invoice = build(:invoice, :supplier, journal: sale_journal)
+      expect(invoice).not_to be_valid
+      expect(invoice.errors[:journal]).to be_present
+    end
+
+    it 'is valid with no journal (optional)' do
+      invoice = build(:invoice, :supplier, journal: nil)
+      expect(invoice).to be_valid
+    end
   end
 
   describe 'enums' do

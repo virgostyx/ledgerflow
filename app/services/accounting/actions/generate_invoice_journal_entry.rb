@@ -30,6 +30,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   end
 
   def self.find_journal(invoice)
+    return invoice.journal if invoice.journal.present?
     journal_type = invoice.customer? ? :sale : :purchase
     Accounting::Journal.active.find_by(journal_type: journal_type)
   end

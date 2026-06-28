@@ -23,6 +23,16 @@ class Accounting::InvoicePresenter
     @invoice.invoice_number.presence || "Draft"
   end
 
+  def entry_number_display
+    return @invoice.invoice_number if @invoice.invoice_number.present?
+
+    journal = @invoice.journal
+    return "—" unless journal
+
+    year = @invoice.invoice_date&.year || Date.current.year
+    "#{journal.sequence_prefix}#{year}/#{(journal.current_sequence + 1).to_s.rjust(4, '0')}"
+  end
+
   def formatted_date
     Accounting::DatePresenter.new(@invoice.invoice_date).format
   end
