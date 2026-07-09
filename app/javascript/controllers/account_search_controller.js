@@ -8,15 +8,12 @@ export default class extends Controller {
     const query = this.inputTarget.value.trim().toLowerCase()
     this.suggestionsTarget.innerHTML = ""
 
-    if (query.length < 2) {
-      this.suggestionsTarget.classList.add("hidden")
-      return
-    }
-
-    const matches = this.accountsValue.filter(a =>
-      a.code.toLowerCase().includes(query) ||
-      a.label.toLowerCase().includes(query)
-    ).slice(0, 8)
+    const matches = query.length === 0
+      ? this.accountsValue.slice(0, 10)
+      : this.accountsValue.filter(a =>
+          a.code.toLowerCase().includes(query) ||
+          a.label.toLowerCase().includes(query)
+        ).slice(0, 10)
 
     if (matches.length === 0) {
       this.suggestionsTarget.classList.add("hidden")

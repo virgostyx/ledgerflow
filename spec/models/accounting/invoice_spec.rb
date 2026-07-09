@@ -110,6 +110,37 @@ RSpec.describe Accounting::Invoice, type: :model do
     end
   end
 
+  describe 'nested attributes for lines' do
+    include_context 'with_open_fiscal_year'
+
+    let(:invoice) { create(:invoice, fiscal_year: fiscal_year) }
+    let(:account) { create(:account) }
+
+    it 'crée des lignes via lines_attributes' do
+      expect {
+        invoice.update!(lines_attributes: [
+          { description: 'Service A', account_id: account.id,
+            quantity: '2', unit_price: '100.00', vat_rate: '21.00', position: 1 }
+        ])
+      }.to change { invoice.lines.reload.count }.from(0).to(1)
+    end
+
+    it 'supprime une ligne via _destroy' do
+      line = create(:invoice_line, invoice: invoice, account: account)
+      expect {
+        invoice.update!(lines_attributes: [{ id: line.id, _destroy: '1' }])
+      }.to change { invoice.lines.reload.count }.by(-1)
+    end
+
+    it 'ignore les lignes totalement vides (reject_if: :all_blank)' do
+      expect {
+        invoice.update!(lines_attributes: [
+          { description: '', account_id: '', quantity: '', unit_price: '', vat_rate: '', position: '' }
+        ])
+      }.not_to change { invoice.lines.reload.count }
+    end
+  end
+
   describe '#compute_totals' do
     include_context 'with_open_fiscal_year'
 

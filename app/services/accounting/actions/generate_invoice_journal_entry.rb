@@ -4,6 +4,15 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   expects  :invoice
   promises :invoice
 
+  # Belgian VAT grid codes — grilles de la déclaration TVA périodique belge
+  # Purchase expense lines: base amount excl. VAT per rate
+  VAT_GRID_PURCHASE = { 21 => 81, 12 => 82, 6 => 83 }.freeze
+  # Sale revenue lines: base amount excl. VAT per rate
+  VAT_GRID_SALE     = { 21 => 1, 12 => 2, 6 => 3 }.freeze
+  # TVA code for the VAT journal entry lines
+  VAT_CODE_PURCHASE_VAT = 59  # TVA récupérable (411000)
+  VAT_CODE_SALE_VAT     = 54  # TVA à reverser (451000)
+
   executed do |ctx|
     invoice = ctx.invoice
     journal = find_journal(invoice)
@@ -58,22 +67,29 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     )
 
     invoice.lines.each do |line|
-      Accounting::JournalEntryLine.create!(
+      vat_code = VAT_GRID_SALE[line.vat_rate.to_i]
+      journal_line = Accounting::JournalEntryLine.create!(
         journal_entry: entry,
         account:       line.account,
         debit:         BigDecimal("0"),
         credit:        line.subtotal_excl_vat,
-        label:         line.description
+        label:         line.description,
+        vat_code:      vat_code
       )
+      propagate_annotations(line, journal_line)
     end
 
-    if invoice.vat_amount > BigDecimal("0")
+    invoice.lines.group_by { |l| l.vat_rate.to_i }.each do |rate, lines|
+      next if rate.zero?
+      grouped_vat = lines.sum(&:vat_amount)
       Accounting::JournalEntryLine.create!(
         journal_entry: entry,
         account:       vat_account,
         debit:         BigDecimal("0"),
-        credit:        invoice.vat_amount,
-        label:         "VAT"
+        credit:        grouped_vat,
+        label:         "VAT #{rate}%",
+        vat_code:      VAT_CODE_SALE_VAT,
+        vat_amount:    grouped_vat
       )
     end
   end
@@ -83,22 +99,29 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     vat_account     = Accounting::Account.find_by!(code: "411000")
 
     invoice.lines.each do |line|
-      Accounting::JournalEntryLine.create!(
+      vat_code = VAT_GRID_PURCHASE[line.vat_rate.to_i]
+      journal_line = Accounting::JournalEntryLine.create!(
         journal_entry: entry,
         account:       line.account,
         debit:         line.subtotal_excl_vat,
         credit:        BigDecimal("0"),
-        label:         line.description
+        label:         line.description,
+        vat_code:      vat_code
       )
+      propagate_annotations(line, journal_line)
     end
 
-    if invoice.vat_amount > BigDecimal("0")
+    invoice.lines.group_by { |l| l.vat_rate.to_i }.each do |rate, lines|
+      next if rate.zero?
+      grouped_vat = lines.sum(&:vat_amount)
       Accounting::JournalEntryLine.create!(
         journal_entry: entry,
         account:       vat_account,
-        debit:         invoice.vat_amount,
+        debit:         grouped_vat,
         credit:        BigDecimal("0"),
-        label:         "Recoverable VAT"
+        label:         "Recoverable VAT #{rate}%",
+        vat_code:      VAT_CODE_PURCHASE_VAT,
+        vat_amount:    grouped_vat
       )
     end
 
@@ -111,6 +134,17 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     )
   end
 
+  def self.propagate_annotations(invoice_line, journal_line)
+    invoice_line.analytical_annotations.each do |ann|
+      Accounting::AnalyticalAnnotation.create!(
+        journal_entry_line: journal_line,
+        analytical_axis:    ann.analytical_axis,
+        analytical_account: ann.analytical_account
+      )
+    end
+  end
+
   private_class_method :find_journal, :build_entry_lines,
-                       :build_customer_lines, :build_supplier_lines
+                       :build_customer_lines, :build_supplier_lines,
+                       :propagate_annotations
 end

@@ -18,7 +18,10 @@ class Accounting::InvoicesController < ApplicationController
       journal_type = @invoice.customer? ? :sale : :purchase
       @invoice.journal = Accounting::Journal.active.find_by(journal_type: journal_type)
     end
+    @invoice.lines.build
     @next_entry_number = preview_next_sequence(@invoice.journal)
+    @axes     = Accounting::AnalyticalAxis.active.order(:code)
+    @accounts = Accounting::Account.active.where(is_leaf: true).order(:code)
     authorize @invoice
   end
 
@@ -29,11 +32,15 @@ class Accounting::InvoicesController < ApplicationController
     if @invoice.save
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.created")
     else
+      @axes     = Accounting::AnalyticalAxis.active.order(:code)
+      @accounts = Accounting::Account.active.where(is_leaf: true).order(:code)
       render :new, status: :unprocessable_content
     end
   end
 
   def edit
+    @axes     = Accounting::AnalyticalAxis.active.order(:code)
+    @accounts = Accounting::Account.active.where(is_leaf: true).order(:code)
     authorize @invoice
   end
 
@@ -43,6 +50,8 @@ class Accounting::InvoicesController < ApplicationController
     if @invoice.update(invoice_params)
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.updated")
     else
+      @axes     = Accounting::AnalyticalAxis.active.order(:code)
+      @accounts = Accounting::Account.active.where(is_leaf: true).order(:code)
       render :edit, status: :unprocessable_content
     end
   end
@@ -107,7 +116,14 @@ class Accounting::InvoicesController < ApplicationController
   def invoice_params
     params.require(:accounting_invoice).permit(
       :invoice_date, :due_date, :partner_id, :journal_id,
-      :fiscal_year_id, :currency, :description, :notes, :external_ref
+      :fiscal_year_id, :currency, :description, :notes, :external_ref,
+      lines_attributes: [
+        :id, :description, :account_id, :quantity, :unit_price,
+        :vat_rate, :vat_code, :position, :_destroy,
+        analytical_annotations_attributes: [
+          :id, :analytical_axis_id, :analytical_account_id, :_destroy
+        ]
+      ]
     )
   end
 end

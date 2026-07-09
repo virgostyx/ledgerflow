@@ -17,4 +17,5 @@
       back_text: presenter.invoice_number_or_draft
     ) %>
 
-<%= render 'form', invoice: @invoice, next_entry_number: nil %>
+<%= render 'form', invoice: @invoice, next_entry_number: nil,
+                         accounts: @accounts, axes: @axes %>

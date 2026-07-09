@@ -51,7 +51,7 @@
                    value="<%= lf.object.account&.code %>"
                    class="block w-full rounded border-gray-300 text-sm"
                    data-account-search-target="input"
-                   data-action="input->account-search#filter blur->account-search#hideDelayed">
+                   data-action="focus->account-search#filter input->account-search#filter blur->account-search#hideDelayed">
             <%= lf.hidden_field :account_id, data: { account_search_target: 'accountId' } %>
             <div data-account-search-target="suggestions"
                  class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
@@ -124,7 +124,7 @@
           <input type="text" placeholder="Account"
                  class="block w-full rounded border-gray-300 text-sm"
                  data-account-search-target="input"
-                 data-action="input->account-search#filter blur->account-search#hideDelayed">
+                 data-action="focus->account-search#filter input->account-search#filter blur->account-search#hideDelayed">
           <input type="hidden" name="accounting_journal_entry[lines_attributes][NEW_INDEX][account_id]"
                  data-account-search-target="accountId">
           <div data-account-search-target="suggestions"

@@ -1,8 +1,28 @@
+<%
+  accounts_json = (local_assigns[:accounts] || []).map { |a|
+    { id: a.id, code: a.code, label: a.label_fr, account_class: a.account_class }
+  }.to_json
+
+  axes          = local_assigns[:axes] || []
+  axes_json     = axes.map { |axis|
+    {
+      id:           axis.id,
+      code:         axis.code,
+      label:        axis.label_fr,
+      required_for: axis.required_for_account_classes,
+      accounts:     axis.analytical_accounts.active.ordered.map { |aa|
+                      { id: aa.id, code: aa.code, label: aa.label_fr }
+                    }
+    }
+  }.to_json
+%>
 <%= form_with model: invoice, scope: :accounting_invoice,
               url: invoice.persisted? ? accounting_invoice_path(invoice)
                                       : invoice.customer? ? accounting_sales_path
                                                           : accounting_purchases_path,
-              html: { class: 'space-y-6 max-w-2xl', data: { controller: 'invoice-form' } } do |f| %>
+              html: { class: 'space-y-6',
+                      data: { controller: 'invoice-form',
+                              invoice_form_axes_value: axes_json } } do |f| %>
   <% if invoice.errors.any? %>
     <div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
       <ul class="list-disc list-inside">
@@ -13,79 +33,297 @@
     </div>
   <% end %>
 
-  <div class="relative" data-controller="floating-label">
-    <%= f.collection_select :fiscal_year_id,
-          Accounting::FiscalYear.where(status: :open).order(:year), :id, :year,
-          { include_blank: false },
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
-    <%= f.label :fiscal_year_id, 'Fiscal year', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
-  </div>
-
-  <% journal_type = invoice.supplier? ? :purchase : :sale %>
-  <% journal_options = Accounting::Journal.active.by_type(journal_type).order(:code).map do |j|
-       next_num = "#{j.sequence_prefix}#{Date.current.year}/#{(j.current_sequence + 1).to_s.rjust(4, '0')}"
-       [j.display_name, j.id, { data: { next_number: next_num } }]
-     end %>
-  <div class="relative" data-controller="floating-label">
-    <%= f.select :journal_id,
-          journal_options,
-          { include_blank: false },
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input',
-                  invoice_form_target: 'journalSelect',
-                  action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#updateEntryNumber' } %>
-    <%= f.label :journal_id, 'Journal', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
-  </div>
-
-  <% if local_assigns[:next_entry_number] %>
+  <%# ── Header fields ──────────────────────────────────────────────── %>
+  <div class="grid grid-cols-2 gap-4 max-w-2xl">
     <div class="relative" data-controller="floating-label">
-      <input type="text" value="<%= next_entry_number %>" readonly
-             class="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-500 font-mono cursor-default focus:outline-none"
-             data-floating-label-target="input"
-             data-invoice-form-target="entryNumberPreview"
-             id="next_entry_number_preview">
-      <label class="lf-floating-label floating-active" for="next_entry_number_preview">Entry number</label>
+      <%= f.collection_select :fiscal_year_id,
+            Accounting::FiscalYear.where(status: :open).order(:year), :id, :year,
+            { include_blank: false },
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+      <%= f.label :fiscal_year_id, 'Fiscal year', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
-  <% end %>
 
-  <div class="relative" data-controller="floating-label">
-    <%= f.date_field :invoice_date,
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input',
-                  invoice_form_target: 'invoiceDate',
-                  action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#fillDueDate' } %>
-    <%= f.label :invoice_date, 'Invoice date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    <% journal_type = invoice.supplier? ? :purchase : :sale %>
+    <% journal_options = Accounting::Journal.active.by_type(journal_type).order(:code).map do |j|
+         next_num = "#{j.sequence_prefix}#{Date.current.year}/#{(j.current_sequence + 1).to_s.rjust(4, '0')}"
+         [j.display_name, j.id, { data: { next_number: next_num } }]
+       end %>
+    <div class="relative" data-controller="floating-label">
+      <%= f.select :journal_id,
+            journal_options,
+            { include_blank: false },
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+            data: { floating_label_target: 'input',
+                    invoice_form_target: 'journalSelect',
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#updateEntryNumber' } %>
+      <%= f.label :journal_id, 'Journal', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    </div>
+
+    <% if local_assigns[:next_entry_number] %>
+      <div class="relative col-span-2" data-controller="floating-label">
+        <input type="text" value="<%= next_entry_number %>" readonly
+               class="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-500 font-mono cursor-default focus:outline-none"
+               data-floating-label-target="input"
+               data-invoice-form-target="entryNumberPreview"
+               id="next_entry_number_preview">
+        <label class="lf-floating-label floating-active" for="next_entry_number_preview">Entry number</label>
+      </div>
+    <% end %>
+
+    <div class="relative" data-controller="floating-label">
+      <%= f.date_field :invoice_date,
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+            data: { floating_label_target: 'input',
+                    invoice_form_target: 'invoiceDate',
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#fillDueDate' } %>
+      <%= f.label :invoice_date, 'Invoice date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    </div>
+
+    <div class="relative" data-controller="floating-label">
+      <%= f.date_field :due_date,
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+            data: { floating_label_target: 'input',
+                    invoice_form_target: 'dueDate',
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+      <%= f.label :due_date, 'Due date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    </div>
+
+    <div class="relative col-span-2" data-controller="floating-label">
+      <%= f.collection_select :partner_id,
+            Accounting::Partner.active.order(:name), :id, :name,
+            { include_blank: true },
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+      <%= f.label :partner_id, 'Partner', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    </div>
+
+    <div class="relative col-span-2" data-controller="floating-label">
+      <%= f.text_area :description,
+            rows: 2,
+            placeholder: ' ',
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+      <%= f.label :description, 'Description', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    </div>
   </div>
 
-  <div class="relative" data-controller="floating-label">
-    <%= f.date_field :due_date,
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input',
-                  invoice_form_target: 'dueDate',
-                  action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
-    <%= f.label :due_date, 'Due date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  <%# ── Lines section ───────────────────────────────────────────────── %>
+  <div class="border-t border-gray-200 pt-6">
+    <h3 class="text-sm font-semibold text-gray-700 mb-3">Lines</h3>
+
+    <%# Column headers %>
+    <div class="grid gap-2 text-xs font-medium text-gray-500 mb-2 px-1"
+         style="grid-template-columns: 3fr 3fr 2fr 1fr 2fr 2fr auto">
+      <div>Account</div>
+      <div>Description</div>
+      <div class="text-right">Amount HT</div>
+      <div class="text-right">VAT %</div>
+      <div class="text-right">VAT</div>
+      <div class="text-right">Total TTC</div>
+      <div></div>
+    </div>
+
+    <%# Existing lines %>
+    <div data-invoice-form-target="linesContainer">
+      <%= f.fields_for :lines do |lf| %>
+        <div class="invoice-line-row mb-2" data-invoice-form-target="lineRow"
+             <%= 'style="display:none"' if lf.object.marked_for_destruction? %>>
+          <%= lf.hidden_field :id %>
+          <%= lf.hidden_field :_destroy, value: '0' %>
+          <%= lf.hidden_field :quantity, value: '1' %>
+          <div class="grid gap-2 items-center"
+               style="grid-template-columns: 3fr 3fr 2fr 1fr 2fr 2fr auto">
+
+            <%# Account autocomplete %>
+            <div class="relative" data-controller="account-search"
+                 data-account-search-accounts-value="<%= accounts_json %>"
+                 data-action="account-search:selected->invoice-form#onAccountSelected">
+              <input type="text" placeholder="Account…"
+                     value="<%= lf.object.account&.code %>"
+                     class="block w-full rounded border-gray-300 text-sm"
+                     data-account-search-target="input"
+                     data-action="focus->account-search#filter input->account-search#filter blur->account-search#hideDelayed">
+              <%= lf.hidden_field :account_id, data: { account_search_target: 'accountId' } %>
+              <div data-account-search-target="suggestions"
+                   class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
+            </div>
+
+            <%# Description %>
+            <%= lf.text_field :description, placeholder: 'Description',
+                  class: 'block w-full rounded border-gray-300 text-sm' %>
+
+            <%# Amount HT (unit_price with qty=1) %>
+            <%= lf.number_field :unit_price, step: '0.01', min: '0', placeholder: '0,00',
+                  class: 'block w-full rounded border-gray-300 text-sm text-right font-mono',
+                  data: { line_amount: true, action: 'input->invoice-form#computeLineTotals' } %>
+
+            <%# VAT rate select %>
+            <%= lf.select :vat_rate,
+                  [['0%', '0.00'], ['6%', '6.00'], ['12%', '12.00'], ['21%', '21.00']],
+                  { selected: lf.object.vat_rate.to_s.sub(/\.?0+$/, '') == '0' ? '0.00' : lf.object.vat_rate&.to_s },
+                  class: 'block w-full rounded border-gray-300 text-sm',
+                  data: { line_vat_rate: true, action: 'change->invoice-form#computeLineTotals' } %>
+
+            <%# Computed VAT and total (readonly display) %>
+            <div class="text-right text-sm font-mono text-gray-600"
+                 data-line-vat-display><%= Accounting::MoneyPresenter.new(lf.object.vat_amount || 0).format %></div>
+            <div class="text-right text-sm font-mono font-semibold text-gray-900"
+                 data-line-total-display><%= Accounting::MoneyPresenter.new(lf.object.total_incl_vat || 0).format %></div>
+
+            <%# Remove button %>
+            <button type="button"
+                    class="text-gray-400 hover:text-red-600 text-lg leading-none px-1"
+                    data-action="click->invoice-form#removeLine">×</button>
+          </div>
+
+          <%# Analytical axes sub-row %>
+          <% if axes.any? %>
+            <div class="analytical-axes-row mt-1 grid gap-2 pl-1"
+                 style="grid-template-columns: repeat(<%= axes.size %>, minmax(0, 1fr)) 1fr">
+              <% axes.each_with_index do |axis, axis_idx| %>
+                <% annotation = lf.object.analytical_annotations.find { |a| a.analytical_axis_id == axis.id } %>
+                <div class="axis-field" data-axis-code="<%= axis.code %>">
+                  <label class="block text-xs text-gray-400 mb-0.5 axis-label">
+                    <%= axis.code %>
+                    <span class="required-marker hidden text-red-500 text-xs">*</span>
+                  </label>
+                  <%= lf.fields_for :analytical_annotations,
+                        annotation || Accounting::InvoiceLineAnnotation.new(analytical_axis: axis),
+                        index: axis_idx do |af| %>
+                    <%= af.hidden_field :analytical_axis_id %>
+                    <%= af.hidden_field :id %>
+                    <%= af.select :analytical_account_id,
+                          axis.analytical_accounts.active.ordered.map { |aa| [aa.label_fr, aa.id] },
+                          { include_blank: "—" },
+                          class: "block w-full rounded border-gray-300 text-xs py-1",
+                          data: { destroy_field: false,
+                                  action: "change->invoice-form#onAxisAccountChanged" } %>
+                    <%= af.hidden_field :_destroy, value: 0, data: { destroy_field: true } %>
+                  <% end %>
+                </div>
+              <% end %>
+              <div></div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Template for new lines (cloned by Stimulus) %>
+    <template data-invoice-form-target="lineTemplate">
+      <div class="invoice-line-row mb-2" data-invoice-form-target="lineRow">
+        <input type="hidden" name="accounting_invoice[lines_attributes][NEW_INDEX][quantity]" value="1">
+        <div class="grid gap-2 items-center"
+             style="grid-template-columns: 3fr 3fr 2fr 1fr 2fr 2fr auto">
+
+          <div class="relative" data-controller="account-search"
+               data-account-search-accounts-value="<%= accounts_json %>"
+               data-action="account-search:selected->invoice-form#onAccountSelected">
+            <input type="text" placeholder="Account…"
+                   class="block w-full rounded border-gray-300 text-sm"
+                   data-account-search-target="input"
+                   data-action="focus->account-search#filter input->account-search#filter blur->account-search#hideDelayed">
+            <input type="hidden"
+                   name="accounting_invoice[lines_attributes][NEW_INDEX][account_id]"
+                   data-account-search-target="accountId">
+            <div data-account-search-target="suggestions"
+                 class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
+          </div>
+
+          <input type="text" placeholder="Description"
+                 name="accounting_invoice[lines_attributes][NEW_INDEX][description]"
+                 class="block w-full rounded border-gray-300 text-sm">
+
+          <input type="number" step="0.01" min="0" placeholder="0,00" value="0"
+                 name="accounting_invoice[lines_attributes][NEW_INDEX][unit_price]"
+                 class="block w-full rounded border-gray-300 text-sm text-right font-mono"
+                 data-line-amount="true"
+                 data-action="input->invoice-form#computeLineTotals">
+
+          <select name="accounting_invoice[lines_attributes][NEW_INDEX][vat_rate]"
+                  class="block w-full rounded border-gray-300 text-sm"
+                  data-line-vat-rate="true"
+                  data-action="change->invoice-form#computeLineTotals">
+            <option value="0.00">0%</option>
+            <option value="6.00">6%</option>
+            <option value="12.00">12%</option>
+            <option value="21.00" selected>21%</option>
+          </select>
+
+          <div class="text-right text-sm font-mono text-gray-600"
+               data-line-vat-display>0,00</div>
+          <div class="text-right text-sm font-mono font-semibold text-gray-900"
+               data-line-total-display>0,00</div>
+
+          <button type="button"
+                  class="text-gray-400 hover:text-red-600 text-lg leading-none px-1"
+                  data-action="click->invoice-form#removeLine">×</button>
+        </div>
+
+        <%# Analytical axes in template %>
+        <% if axes.any? %>
+          <div class="analytical-axes-row mt-1 grid gap-2 pl-1"
+               style="grid-template-columns: repeat(<%= axes.size %>, minmax(0, 1fr)) 1fr">
+            <% axes.each_with_index do |axis, axis_idx| %>
+              <div class="axis-field" data-axis-code="<%= axis.code %>">
+                <label class="block text-xs text-gray-400 mb-0.5 axis-label">
+                  <%= axis.code %>
+                  <span class="required-marker hidden text-red-500 text-xs">*</span>
+                </label>
+                <input type="hidden"
+                       name="accounting_invoice[lines_attributes][NEW_INDEX][analytical_annotations_attributes][<%= axis_idx %>][analytical_axis_id]"
+                       value="<%= axis.id %>">
+                <select name="accounting_invoice[lines_attributes][NEW_INDEX][analytical_annotations_attributes][<%= axis_idx %>][analytical_account_id]"
+                        class="block w-full rounded border-gray-300 text-xs py-1"
+                        data-action="change->invoice-form#onAxisAccountChanged">
+                  <option value="">—</option>
+                  <% axis.analytical_accounts.active.ordered.each do |aa| %>
+                    <option value="<%= aa.id %>"><%= aa.label_fr %></option>
+                  <% end %>
+                </select>
+              </div>
+            <% end %>
+            <div></div>
+          </div>
+        <% end %>
+      </div>
+    </template>
+
+    <%# Add line button %>
+    <button type="button"
+            class="mt-2 inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800 font-medium"
+            data-action="click->invoice-form#addLine">
+      + Add line
+    </button>
+
+    <%# Invoice totals ── %>
+    <div class="mt-6 border-t border-gray-200 pt-4 flex justify-end">
+      <dl class="space-y-1 text-sm text-right min-w-56">
+        <div class="flex justify-between gap-8">
+          <dt class="text-gray-500">Subtotal excl. VAT</dt>
+          <dd class="font-mono text-gray-900" data-invoice-form-target="invoiceSubtotal">
+            <%= Accounting::MoneyPresenter.new(invoice.subtotal_excl_vat || 0).format %>
+          </dd>
+        </div>
+        <div class="flex justify-between gap-8">
+          <dt class="text-gray-500">VAT</dt>
+          <dd class="font-mono text-gray-900" data-invoice-form-target="invoiceVat">
+            <%= Accounting::MoneyPresenter.new(invoice.vat_amount || 0).format %>
+          </dd>
+        </div>
+        <div class="flex justify-between gap-8 border-t border-gray-300 pt-2 mt-1">
+          <dt class="font-semibold text-gray-900">Total incl. VAT</dt>
+          <dd class="font-mono font-bold text-lg text-gray-900" data-invoice-form-target="invoiceTotal">
+            <%= Accounting::MoneyPresenter.new(invoice.total_incl_vat || 0).format %>
+          </dd>
+        </div>
+      </dl>
+    </div>
   </div>
 
-  <div class="relative" data-controller="floating-label">
-    <%= f.collection_select :partner_id,
-          Accounting::Partner.active.order(:name), :id, :name,
-          { include_blank: true },
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
-    <%= f.label :partner_id, 'Partner', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
-  </div>
-
-  <div class="relative" data-controller="floating-label">
-    <%= f.text_area :description,
-          rows: 3,
-          placeholder: ' ',
-          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
-    <%= f.label :description, 'Description', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
-  </div>
-
-  <div class="flex gap-3 pt-2">
+  <%# ── Submit ─────────────────────────────────────────────────────── %>
+  <div class="flex gap-3 pt-2 border-t border-gray-200">
     <%= f.submit class: 'btn-primary' %>
     <% cancel_path = invoice.customer? ? accounting_sales_path : accounting_purchases_path %>
     <%= link_to 'Cancel', cancel_path, class: 'btn-secondary' %>

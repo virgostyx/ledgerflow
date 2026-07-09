@@ -28,7 +28,8 @@
   <% end %>
 <% end %>
 
-<div class="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl">
+<%# ── Invoice metadata ───────────────────────────────────────────────── %>
+<div class="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl mb-6">
   <dl class="grid grid-cols-2 gap-x-8 gap-y-4">
     <div>
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Type</dt>
@@ -46,33 +47,96 @@
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Due date</dt>
       <dd class="mt-1 text-sm text-gray-900"><%= presenter.formatted_due_date %></dd>
     </div>
-    <div>
-      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Excl. VAT</dt>
-      <dd class="mt-1 text-sm font-mono text-gray-900"><%= Accounting::MoneyPresenter.new(@invoice.subtotal_excl_vat).format %></dd>
-    </div>
-    <div>
-      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">VAT</dt>
-      <dd class="mt-1 text-sm font-mono text-gray-900"><%= Accounting::MoneyPresenter.new(@invoice.vat_amount).format %></dd>
-    </div>
-    <% if @invoice.journal_entry %>
-    <div>
-      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Journal</dt>
-      <dd class="mt-1 text-sm text-gray-900">
-        <%= @invoice.journal_entry.journal.code %> — <%= @invoice.journal_entry.journal.label_fr %>
-      </dd>
-    </div>
-    <div>
-      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Journal entry</dt>
-      <dd class="mt-1 text-sm text-gray-900">
-        <%= link_to @invoice.journal_entry.reference,
-              accounting_journal_entry_path(@invoice.journal_entry),
-              class: "text-primary-600 hover:underline" %>
-      </dd>
-    </div>
+    <% if @invoice.description.present? %>
+      <div class="col-span-2">
+        <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @invoice.description %></dd>
+      </div>
     <% end %>
-    <div class="col-span-2 border-t border-gray-100 pt-4">
-      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total incl. VAT</dt>
-      <dd class="mt-1 text-xl font-bold font-mono text-gray-900"><%= presenter.formatted_total %></dd>
-    </div>
+    <% if @invoice.journal_entry %>
+      <div>
+        <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Journal</dt>
+        <dd class="mt-1 text-sm text-gray-900">
+          <%= @invoice.journal_entry.journal.code %> — <%= @invoice.journal_entry.journal.label_fr %>
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Journal entry</dt>
+        <dd class="mt-1 text-sm text-gray-900">
+          <%= link_to @invoice.journal_entry.reference,
+                accounting_journal_entry_path(@invoice.journal_entry),
+                class: "text-primary-600 hover:underline" %>
+        </dd>
+      </div>
+    <% end %>
   </dl>
 </div>
+
+<%# ── Lines table ────────────────────────────────────────────────────── %>
+<% if @invoice.lines.any? %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+    <div class="px-6 py-3 border-b border-gray-100 bg-gray-50">
+      <h3 class="text-sm font-semibold text-gray-700">Lines</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th class="px-4 py-2 text-left">Account</th>
+            <th class="px-4 py-2 text-left">Description</th>
+            <th class="px-4 py-2 text-right">Amount HT</th>
+            <th class="px-4 py-2 text-right">VAT %</th>
+            <th class="px-4 py-2 text-right">VAT</th>
+            <th class="px-4 py-2 text-right">Total TTC</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @invoice.lines.each do |line| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 font-mono text-xs text-gray-600">
+                <%= line.account.code %>
+                <span class="text-gray-400 ml-1"><%= line.account.label_fr %></span>
+              </td>
+              <td class="px-4 py-3 text-gray-900"><%= line.description %></td>
+              <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(line.subtotal_excl_vat).format %></td>
+              <td class="px-4 py-3 text-right"><%= line.vat_rate.to_f %>%</td>
+              <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(line.vat_amount).format %></td>
+              <td class="px-4 py-3 text-right font-mono font-semibold"><%= Accounting::MoneyPresenter.new(line.total_incl_vat).format %></td>
+            </tr>
+            <% if line.analytical_annotations.any? %>
+              <tr class="bg-indigo-50">
+                <td colspan="6" class="px-6 py-1 text-xs text-indigo-600">
+                  <% line.analytical_annotations.each do |ann| %>
+                    <span class="mr-4">
+                      <span class="font-medium"><%= ann.analytical_axis.code %> :</span>
+                      <%= ann.analytical_account.label_fr %>
+                    </span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+        <tfoot class="border-t-2 border-gray-200 bg-gray-50">
+          <tr class="text-sm">
+            <td colspan="2" class="px-4 py-3 text-right text-gray-500 font-medium">Totals</td>
+            <td class="px-4 py-3 text-right font-mono font-semibold">
+              <%= Accounting::MoneyPresenter.new(@invoice.subtotal_excl_vat).format %>
+            </td>
+            <td class="px-4 py-3"></td>
+            <td class="px-4 py-3 text-right font-mono font-semibold">
+              <%= Accounting::MoneyPresenter.new(@invoice.vat_amount).format %>
+            </td>
+            <td class="px-4 py-3 text-right font-mono font-bold text-gray-900">
+              <%= presenter.formatted_total %>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+<% else %>
+  <div class="bg-white rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400 mb-6">
+    No lines yet. <% if @invoice.draft? %><%= link_to 'Add lines', edit_accounting_invoice_path(@invoice), class: 'text-primary-600 hover:underline' %><% end %>
+  </div>
+<% end %>

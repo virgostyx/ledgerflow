@@ -150,6 +150,26 @@ RSpec.describe 'Accounting::Invoices', type: :request do
       end
     end
 
+    context 'avec des lignes (lines_attributes)' do
+      let(:account) { create(:account) }
+
+      it 'crée la facture ET ses lignes en une seule requête' do
+        expect {
+          post accounting_purchases_path, params: {
+            accounting_invoice: {
+              invoice_date: Date.current, partner_id: partner.id,
+              fiscal_year_id: fiscal_year.id,
+              lines_attributes: {
+                '0' => { description: 'Fournitures', account_id: account.id,
+                         quantity: '1', unit_price: '200.00', vat_rate: '21.00', position: '1' }
+              }
+            }
+          }
+        }.to change { Accounting::Invoice.supplier.count }.by(1)
+          .and change { Accounting::InvoiceLine.count }.by(1)
+      end
+    end
+
     context 'sans date' do
       it 'retourne 422' do
         post accounting_purchases_path, params: {
@@ -157,6 +177,35 @@ RSpec.describe 'Accounting::Invoices', type: :request do
         }
         expect(response).to have_http_status(:unprocessable_content)
       end
+    end
+  end
+
+  describe 'PATCH /accounting/invoices/:id — lignes imbriquées' do
+    let(:invoice) { create(:invoice, :draft, :supplier, partner: partner, fiscal_year: fiscal_year) }
+    let(:account) { create(:account) }
+
+    it 'ajoute des lignes via lines_attributes' do
+      expect {
+        patch accounting_invoice_path(invoice), params: {
+          accounting_invoice: {
+            lines_attributes: {
+              '0' => { description: 'Matériel', account_id: account.id,
+                       quantity: '3', unit_price: '50.00', vat_rate: '21.00', position: '1' }
+            }
+          }
+        }
+      }.to change { invoice.lines.reload.count }.by(1)
+    end
+
+    it 'supprime une ligne existante via _destroy' do
+      line = create(:invoice_line, invoice: invoice, account: account)
+      expect {
+        patch accounting_invoice_path(invoice), params: {
+          accounting_invoice: {
+            lines_attributes: { '0' => { id: line.id, _destroy: '1' } }
+          }
+        }
+      }.to change { invoice.lines.reload.count }.by(-1)
     end
   end
 

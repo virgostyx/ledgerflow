@@ -2,61 +2,54 @@
 service: ledgerflow
 
 # Name of the container image (use your-user/app-name on external registries).
-image: ledgerflow
+image: virgostyx/ledgerflow
 
 # Deploy to these servers.
+# Same physical server as BudgetFlow (kamal-proxy routes by hostname, so
+# multiple apps can share one host — see proxy.host below).
 servers:
   web:
-    - 192.168.0.1
-  # job:
-  #   hosts:
-  #     - 192.168.0.1
-  #   cmd: bin/jobs
+    - budgetflow-production
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
-# If used with Cloudflare, set encryption mode in SSL/TLS setting to "Full" to enable CF-to-app encryption.
+# Requires an A record for ledgerflow.budgetflowmanagement.com pointing at this server's IP
+# BEFORE the first deploy (Let's Encrypt HTTP-01 challenge needs it to resolve).
 #
-# Using an SSL proxy like this requires turning on config.assume_ssl and config.force_ssl in production.rb!
-#
-# Don't use this when deploying to multiple web servers (then you have to terminate SSL at your load balancer).
-#
-# proxy:
-#   ssl: true
-#   host: app.example.com
+# Using an SSL proxy like this requires turning on config.assume_ssl and config.force_ssl in production.rb
+# (already enabled in config/environments/production.rb).
+proxy:
+  ssl: true
+  host: ledgerflow.budgetflowmanagement.com
 
 # Where you keep your container images.
 registry:
-  # Alternatives: hub.docker.com / registry.digitalocean.com / ghcr.io / ...
-  server: localhost:5555
-
-  # Needed for authenticated registries.
-  # username: your-user
-
-  # Always use an access token rather than real password when possible.
-  # password:
-  #   - KAMAL_REGISTRY_PASSWORD
+  # Same Docker Hub account as BudgetFlow. The "ledgerflow" repository must
+  # exist (or be creatable) under this account before the first push.
+  username: virgostyx
+  password:
+    - KAMAL_REGISTRY_PASSWORD
 
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
 env:
   secret:
     - RAILS_MASTER_KEY
+    - LEDGERFLOW_DATABASE_PASSWORD
   clear:
-    # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
-    # When you start using multiple servers, you should split out job processing to a dedicated machine.
+    RAILS_ENV: production
+
+    # Database configuration (uses the accessory PostgreSQL below)
+    DB_HOST: ledgerflow-db
+
+    # Run the Solid Queue Supervisor inside the web process — traffic is low
+    # (dev/testing use only for now), no need for a dedicated job server yet.
     SOLID_QUEUE_IN_PUMA: true
 
-    # Set number of processes dedicated to Solid Queue (default: 1)
-    # JOB_CONCURRENCY: 3
+    # Kept deliberately low — single-user dev/testing traffic, not public yet.
+    WEB_CONCURRENCY: 1
+    RAILS_MAX_THREADS: 5
+    PORT: 3000
 
-    # Set number of cores available to the application on each server (default: 1).
-    # WEB_CONCURRENCY: 2
-
-    # Match this to any external database server to configure Active Record correctly
-    # Use ledgerflow-db for a db accessory server on same machine via local kamal docker network.
-    # DB_HOST: 192.168.0.2
-
-    # Log everything from Rails
-    # RAILS_LOG_LEVEL: debug
+    RAILS_LOG_LEVEL: info
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
 # "bin/kamal logs -r job" will tail logs from the first server in the job section.
@@ -67,7 +60,6 @@ aliases:
   dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
 
 # Use a persistent storage volume for sqlite database files and local Active Storage files.
-# Recommended to change this to a mounted volume path that is backed up off server.
 volumes:
   - "ledgerflow_storage:/rails/storage"
 
@@ -80,40 +72,30 @@ asset_path: /rails/public/assets
 builder:
   arch: amd64
 
-  # # Build image via remote server (useful for faster amd64 builds on arm64 computers)
-  # remote: ssh://docker@docker-builder-server
-  #
-  # # Pass arguments and secrets to the Docker build process
-  # args:
-  #   RUBY_VERSION: 3.3.0
-  # secrets:
-  #   - GITHUB_TOKEN
-  #   - RAILS_MASTER_KEY
-
-# Use a different ssh user than root
-# ssh:
-#   user: app
+# SSH configuration — same custom user/port as BudgetFlow on this shared server.
+ssh:
+  user: deploy
+  port: 2221
 
 # Use accessory services (secrets come from .kamal/secrets).
-# accessories:
-#   db:
-#     image: mysql:8.0
-#     host: 192.168.0.2
-#     # Change to 3306 to expose port to the world instead of just local network.
-#     port: "127.0.0.1:3306:3306"
-#     env:
-#       clear:
-#         MYSQL_ROOT_HOST: '%'
-#       secret:
-#         - MYSQL_ROOT_PASSWORD
-#     files:
-#       - config/mysql/production.cnf:/etc/mysql/my.cnf
-#       - db/production.sql:/docker-entrypoint-initdb.d/setup.sql
-#     directories:
-#       - data:/var/lib/mysql
-#   redis:
-#     image: valkey/valkey:8
-#     host: 192.168.0.2
-#     port: 6379
-#     directories:
-#       - data:/data
+# Separate PostgreSQL instance from BudgetFlow's — no shared database between
+# the two apps. Host port 5433 (not 5432) to avoid colliding with BudgetFlow's
+# own accessory on the same server.
+accessories:
+  db:
+    image: postgres:16-alpine
+    host: budgetflow-production
+    port: "127.0.0.1:5433:5432"  # Local-only, not exposed publicly
+    env:
+      clear:
+        POSTGRES_USER: ledgerflow
+        POSTGRES_DB: ledgerflow_production
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - data:/var/lib/postgresql/data
+    options:
+      health-cmd: "pg_isready -U ledgerflow"
+      health-interval: "10s"
+      health-timeout: "5s"
+      health-retries: 5

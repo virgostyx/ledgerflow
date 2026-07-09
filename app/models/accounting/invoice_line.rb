@@ -5,8 +5,14 @@ class Accounting::InvoiceLine < ApplicationRecord
 
   include Accounting::MonetaryPrecision
 
-  belongs_to :invoice, class_name: "Accounting::Invoice"
+  belongs_to :invoice, class_name: "Accounting::Invoice", inverse_of: :lines
   belongs_to :account, class_name: "Accounting::Account"
+  has_many   :analytical_annotations, class_name: "Accounting::InvoiceLineAnnotation",
+             foreign_key: :invoice_line_id, dependent: :destroy,
+             inverse_of: :invoice_line
+
+  accepts_nested_attributes_for :analytical_annotations, allow_destroy: true,
+             reject_if: proc { |a| a["analytical_account_id"].blank? }
 
   validates :description, presence: true
   validates :quantity,    numericality: { greater_than: 0 }

@@ -15,7 +15,10 @@ class Accounting::Invoice < ApplicationRecord
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
   belongs_to :journal,       class_name: "Accounting::Journal", optional: true
   has_many   :lines,         class_name: "Accounting::InvoiceLine",
-                             foreign_key: :invoice_id, dependent: :destroy
+                             foreign_key: :invoice_id, dependent: :destroy,
+                             inverse_of: :invoice
+
+  accepts_nested_attributes_for :lines, allow_destroy: true, reject_if: :all_blank
 
   validates :invoice_type, presence: true
   validates :invoice_date, presence: true
