@@ -19,7 +19,7 @@ class Accounting::Journal < ApplicationRecord
   has_one :bank_account, class_name: "Accounting::BankAccount",
           foreign_key: :journal_id, dependent: :nullify
 
-  validates :code,            presence: true, uniqueness: { scope: :entity_id }, length: { maximum: 5 }
+  validates :code,            presence: true, uniqueness: { scope: :entity_id }, length: { maximum: 8 }
   validates :label_fr,        presence: true
   validates :journal_type,    presence: true
   validates :sequence_prefix, presence: true

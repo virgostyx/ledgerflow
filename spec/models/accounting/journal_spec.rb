@@ -7,6 +7,7 @@ RSpec.describe Accounting::Journal, type: :model do
     subject { build(:journal) }
 
     it { should validate_presence_of(:code) }
+    it { should validate_length_of(:code).is_at_most(8) }
     it { should validate_presence_of(:label_fr) }
     it { should validate_presence_of(:journal_type) }
     it { should validate_presence_of(:sequence_prefix) }

@@ -585,7 +585,7 @@ ALTER SEQUENCE public.accounting_journal_entry_lines_id_seq OWNED BY public.acco
 
 CREATE TABLE public.accounting_journals (
     id bigint NOT NULL,
-    code character varying(5) NOT NULL,
+    code character varying(8) NOT NULL,
     label_fr character varying NOT NULL,
     journal_type integer NOT NULL,
     default_account_id bigint,
@@ -2086,6 +2086,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709000001'),
 ('20260628163629'),
 ('20260628000001'),
 ('20260627000008'),

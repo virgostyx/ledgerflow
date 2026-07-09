@@ -127,7 +127,7 @@
     <%# Existing lines %>
     <div data-invoice-form-target="linesContainer">
       <%= f.fields_for :lines do |lf| %>
-        <div class="invoice-line-row mb-2" data-invoice-form-target="lineRow"
+        <div class="invoice-line-row mb-2 border border-blue-200 odd:bg-blue-50 rounded-md py-1 px-1 -mx-1" data-invoice-form-target="lineRow"
              <%= 'style="display:none"' if lf.object.marked_for_destruction? %>>
           <%= lf.hidden_field :id %>
           <%= lf.hidden_field :_destroy, value: '0' %>
@@ -140,8 +140,8 @@
                  data-account-search-accounts-value="<%= accounts_json %>"
                  data-action="account-search:selected->invoice-form#onAccountSelected">
               <input type="text" placeholder="Account…"
-                     value="<%= lf.object.account&.code %>"
-                     class="block w-full rounded border-gray-300 text-sm"
+                     value="<%= lf.object.account ? "#{lf.object.account.code} — #{lf.object.account.label_fr}" : nil %>"
+                     class="block w-full rounded border border-gray-300 text-sm"
                      data-account-search-target="input"
                      data-action="focus->account-search#filter input->account-search#filter blur->account-search#hideDelayed">
               <%= lf.hidden_field :account_id, data: { account_search_target: 'accountId' } %>
@@ -151,18 +151,18 @@
 
             <%# Description %>
             <%= lf.text_field :description, placeholder: 'Description',
-                  class: 'block w-full rounded border-gray-300 text-sm' %>
+                  class: 'block w-full rounded border border-gray-300 text-sm' %>
 
             <%# Amount HT (unit_price with qty=1) %>
             <%= lf.number_field :unit_price, step: '0.01', min: '0', placeholder: '0,00',
-                  class: 'block w-full rounded border-gray-300 text-sm text-right font-mono',
+                  class: 'block w-full rounded border border-gray-300 text-sm text-right font-mono',
                   data: { line_amount: true, action: 'input->invoice-form#computeLineTotals' } %>
 
             <%# VAT rate select %>
             <%= lf.select :vat_rate,
                   [['0%', '0.00'], ['6%', '6.00'], ['12%', '12.00'], ['21%', '21.00']],
                   { selected: lf.object.vat_rate.to_s.sub(/\.?0+$/, '') == '0' ? '0.00' : lf.object.vat_rate&.to_s },
-                  class: 'block w-full rounded border-gray-300 text-sm',
+                  class: 'block w-full rounded border border-gray-300 text-sm',
                   data: { line_vat_rate: true, action: 'change->invoice-form#computeLineTotals' } %>
 
             <%# Computed VAT and total (readonly display) %>
@@ -196,9 +196,8 @@
                     <%= af.select :analytical_account_id,
                           axis.analytical_accounts.active.ordered.map { |aa| [aa.label_fr, aa.id] },
                           { include_blank: "—" },
-                          class: "block w-full rounded border-gray-300 text-xs py-1",
-                          data: { destroy_field: false,
-                                  action: "change->invoice-form#onAxisAccountChanged" } %>
+                          class: "block w-full rounded border border-gray-300 text-xs py-1",
+                          data: { action: "change->invoice-form#onAxisAccountChanged" } %>
                     <%= af.hidden_field :_destroy, value: 0, data: { destroy_field: true } %>
                   <% end %>
                 </div>
@@ -212,7 +211,7 @@
 
     <%# Template for new lines (cloned by Stimulus) %>
     <template data-invoice-form-target="lineTemplate">
-      <div class="invoice-line-row mb-2" data-invoice-form-target="lineRow">
+      <div class="invoice-line-row mb-2 border border-blue-200 odd:bg-blue-50 rounded-md py-1 px-1 -mx-1" data-invoice-form-target="lineRow">
         <input type="hidden" name="accounting_invoice[lines_attributes][NEW_INDEX][quantity]" value="1">
         <div class="grid gap-2 items-center"
              style="grid-template-columns: 3fr 3fr 2fr 1fr 2fr 2fr auto">
@@ -221,7 +220,7 @@
                data-account-search-accounts-value="<%= accounts_json %>"
                data-action="account-search:selected->invoice-form#onAccountSelected">
             <input type="text" placeholder="Account…"
-                   class="block w-full rounded border-gray-300 text-sm"
+                   class="block w-full rounded border border-gray-300 text-sm"
                    data-account-search-target="input"
                    data-action="focus->account-search#filter input->account-search#filter blur->account-search#hideDelayed">
             <input type="hidden"
@@ -233,16 +232,16 @@
 
           <input type="text" placeholder="Description"
                  name="accounting_invoice[lines_attributes][NEW_INDEX][description]"
-                 class="block w-full rounded border-gray-300 text-sm">
+                 class="block w-full rounded border border-gray-300 text-sm">
 
           <input type="number" step="0.01" min="0" placeholder="0,00" value="0"
                  name="accounting_invoice[lines_attributes][NEW_INDEX][unit_price]"
-                 class="block w-full rounded border-gray-300 text-sm text-right font-mono"
+                 class="block w-full rounded border border-gray-300 text-sm text-right font-mono"
                  data-line-amount="true"
                  data-action="input->invoice-form#computeLineTotals">
 
           <select name="accounting_invoice[lines_attributes][NEW_INDEX][vat_rate]"
-                  class="block w-full rounded border-gray-300 text-sm"
+                  class="block w-full rounded border border-gray-300 text-sm"
                   data-line-vat-rate="true"
                   data-action="change->invoice-form#computeLineTotals">
             <option value="0.00">0%</option>
@@ -275,7 +274,7 @@
                        name="accounting_invoice[lines_attributes][NEW_INDEX][analytical_annotations_attributes][<%= axis_idx %>][analytical_axis_id]"
                        value="<%= axis.id %>">
                 <select name="accounting_invoice[lines_attributes][NEW_INDEX][analytical_annotations_attributes][<%= axis_idx %>][analytical_account_id]"
-                        class="block w-full rounded border-gray-300 text-xs py-1"
+                        class="block w-full rounded border border-gray-300 text-xs py-1"
                         data-action="change->invoice-form#onAxisAccountChanged">
                   <option value="">—</option>
                   <% axis.analytical_accounts.active.ordered.each do |aa| %>

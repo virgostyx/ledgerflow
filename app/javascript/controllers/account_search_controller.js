@@ -38,7 +38,7 @@ export default class extends Controller {
   }
 
   select(account) {
-    this.inputTarget.value    = account.code
+    this.inputTarget.value    = `${account.code} — ${account.label}`
     this.accountIdTarget.value = account.id
     this.suggestionsTarget.classList.add("hidden")
     this.inputTarget.dispatchEvent(new Event("account-selected", { bubbles: true }))

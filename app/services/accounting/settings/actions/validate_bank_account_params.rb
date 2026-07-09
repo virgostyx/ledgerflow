@@ -11,8 +11,8 @@ class Accounting::Settings::Actions::ValidateBankAccountParams
       next ctx
     end
 
-    unless p[:journal_code].present? && p[:journal_code].length <= 5
-      ctx.fail!("Journal code is required and must be 5 characters or less")
+    unless p[:journal_code].present? && p[:journal_code].length <= 8
+      ctx.fail!("Journal code is required and must be 8 characters or less")
       next ctx
     end
 
