@@ -42,12 +42,16 @@ RSpec.describe Accounting::Partner, type: :model do
         expect(build(:partner, iban: nil)).to be_valid
       end
 
-      it 'rejette un IBAN non belge' do
-        expect(build(:partner, iban: 'FR7630006000011234567890189')).not_to be_valid
+      it 'accepte un IBAN étranger valide (SEPA)' do
+        expect(build(:partner, iban: 'FR7630006000011234567890189')).to be_valid
       end
 
       it 'rejette un IBAN trop court' do
         expect(build(:partner, iban: 'BE123')).not_to be_valid
+      end
+
+      it 'rejette un IBAN au checksum invalide' do
+        expect(build(:partner, iban: 'BE00539007547034')).not_to be_valid
       end
     end
   end

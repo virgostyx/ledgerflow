@@ -662,6 +662,81 @@ ALTER SEQUENCE public.accounting_partners_id_seq OWNED BY public.accounting_part
 
 
 --
+-- Name: accounting_payment_batch_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_payment_batch_lines (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    payment_batch_id bigint NOT NULL,
+    invoice_id bigint NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    remittance_information character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_payment_batch_lines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_payment_batch_lines_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_payment_batch_lines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_payment_batch_lines_id_seq OWNED BY public.accounting_payment_batch_lines.id;
+
+
+--
+-- Name: accounting_payment_batches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_payment_batches (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    bank_account_id bigint NOT NULL,
+    journal_entry_id bigint,
+    status integer DEFAULT 0 NOT NULL,
+    requested_execution_date date NOT NULL,
+    message_id character varying,
+    sepa_xml text,
+    total_amount numeric(15,2) DEFAULT 0.0 NOT NULL,
+    generated_at timestamp(6) without time zone,
+    executed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_payment_batches_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_payment_batches_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_payment_batches_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_payment_batches_id_seq OWNED BY public.accounting_payment_batches.id;
+
+
+--
 -- Name: accounting_vat_declarations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -982,6 +1057,20 @@ ALTER TABLE ONLY public.accounting_partners ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: accounting_payment_batch_lines id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batch_lines ALTER COLUMN id SET DEFAULT nextval('public.accounting_payment_batch_lines_id_seq'::regclass);
+
+
+--
+-- Name: accounting_payment_batches id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batches ALTER COLUMN id SET DEFAULT nextval('public.accounting_payment_batches_id_seq'::regclass);
+
+
+--
 -- Name: accounting_vat_declarations id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1134,6 +1223,22 @@ ALTER TABLE ONLY public.accounting_journals
 
 ALTER TABLE ONLY public.accounting_partners
     ADD CONSTRAINT accounting_partners_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_payment_batch_lines accounting_payment_batch_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batch_lines
+    ADD CONSTRAINT accounting_payment_batch_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_payment_batches accounting_payment_batches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batches
+    ADD CONSTRAINT accounting_payment_batches_pkey PRIMARY KEY (id);
 
 
 --
@@ -1648,6 +1753,55 @@ CREATE INDEX index_accounting_partners_on_partner_type ON public.accounting_part
 
 
 --
+-- Name: index_accounting_payment_batch_lines_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_batch_lines_on_entity_id ON public.accounting_payment_batch_lines USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_payment_batch_lines_on_invoice_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_batch_lines_on_invoice_id ON public.accounting_payment_batch_lines USING btree (invoice_id);
+
+
+--
+-- Name: index_accounting_payment_batch_lines_on_payment_batch_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_batch_lines_on_payment_batch_id ON public.accounting_payment_batch_lines USING btree (payment_batch_id);
+
+
+--
+-- Name: index_accounting_payment_batches_on_bank_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_batches_on_bank_account_id ON public.accounting_payment_batches USING btree (bank_account_id);
+
+
+--
+-- Name: index_accounting_payment_batches_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_batches_on_entity_id ON public.accounting_payment_batches USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_payment_batches_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_batches_on_journal_entry_id ON public.accounting_payment_batches USING btree (journal_entry_id);
+
+
+--
+-- Name: index_accounting_payment_batches_on_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_payment_batches_on_message_id ON public.accounting_payment_batches USING btree (message_id);
+
+
+--
 -- Name: index_accounting_vat_declarations_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1757,6 +1911,14 @@ CREATE TRIGGER enforce_audit_log_immutability BEFORE DELETE OR UPDATE ON public.
 --
 
 CREATE CONSTRAINT TRIGGER enforce_double_entry AFTER INSERT OR UPDATE ON public.accounting_journal_entry_lines DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.enforce_double_entry_check();
+
+
+--
+-- Name: accounting_payment_batches fk_rails_0bc5bca68a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batches
+    ADD CONSTRAINT fk_rails_0bc5bca68a FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id);
 
 
 --
@@ -1920,6 +2082,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: accounting_payment_batches fk_rails_73ac73592a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batches
+    ADD CONSTRAINT fk_rails_73ac73592a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_804019e4cc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1976,6 +2146,14 @@ ALTER TABLE ONLY public.accounting_journals
 
 
 --
+-- Name: accounting_payment_batch_lines fk_rails_a27948dec1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batch_lines
+    ADD CONSTRAINT fk_rails_a27948dec1 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_analytical_annotations fk_rails_addec3672a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2005,6 +2183,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 ALTER TABLE ONLY public.accounting_bank_accounts
     ADD CONSTRAINT fk_rails_bd15e59b6a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_payment_batch_lines fk_rails_c341f8f34d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batch_lines
+    ADD CONSTRAINT fk_rails_c341f8f34d FOREIGN KEY (payment_batch_id) REFERENCES public.accounting_payment_batches(id);
 
 
 --
@@ -2064,6 +2250,22 @@ ALTER TABLE ONLY public.user_entities
 
 
 --
+-- Name: accounting_payment_batch_lines fk_rails_f036501dd6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batch_lines
+    ADD CONSTRAINT fk_rails_f036501dd6 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
+-- Name: accounting_payment_batches fk_rails_f29405861c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_batches
+    ADD CONSTRAINT fk_rails_f29405861c FOREIGN KEY (bank_account_id) REFERENCES public.accounting_bank_accounts(id);
+
+
+--
 -- Name: accounting_bank_transactions fk_rails_f5872c5e07; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2086,6 +2288,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260718122123'),
 ('20260709000001'),
 ('20260628163629'),
 ('20260628000001'),

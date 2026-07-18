@@ -59,6 +59,14 @@ Rails.application.routes.draw do
 
       resource  :bank_reconciliation, only: [ :show, :update ]
 
+      resources :payment_batches, only: [ :index, :new, :create, :show, :destroy ] do
+        member do
+          post :generate
+          post :execute
+          get  :download
+        end
+      end
+
       namespace :reports do
         get :trial_balance
         get :balance_sheet

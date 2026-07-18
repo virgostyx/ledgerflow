@@ -1,0 +1,78 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Payment Batches', path: accounting_payment_batches_path },
+    { label: 'New' }
+  ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(
+      title: 'New Payment Batch',
+      back_path: accounting_payment_batches_path,
+      back_text: 'Payment Batches'
+    ) %>
+
+<%= form_with url: accounting_payment_batches_path, method: :post, scope: :accounting_payment_batch,
+              html: { class: 'space-y-6' } do |f| %>
+  <div class="grid grid-cols-2 gap-4 max-w-2xl">
+    <div>
+      <%= f.label :bank_account_id, 'Bank account', class: 'block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1' %>
+      <%= f.collection_select :bank_account_id, @bank_accounts, :id, :label_fr,
+            { include_blank: 'Select a bank account' },
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500' %>
+    </div>
+    <div>
+      <%= f.label :requested_execution_date, 'Requested execution date', class: 'block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1' %>
+      <%= f.date_field :requested_execution_date, value: Date.current + 1,
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500' %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden max-w-4xl">
+    <div class="px-6 py-3 border-b border-gray-100 bg-gray-50">
+      <h3 class="text-sm font-semibold text-gray-700">Eligible supplier invoices</h3>
+    </div>
+    <% if @eligible_invoices.empty? %>
+      <p class="px-6 py-8 text-sm text-gray-400 text-center">No posted supplier invoice is available for payment.</p>
+    <% else %>
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th class="px-4 py-2 text-left"></th>
+            <th class="px-4 py-2 text-left">Invoice</th>
+            <th class="px-4 py-2 text-left">Supplier</th>
+            <th class="px-4 py-2 text-left">Due date</th>
+            <th class="px-4 py-2 text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @eligible_invoices.each do |invoice| %>
+            <% presenter = Accounting::InvoicePresenter.new(invoice) %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3">
+                <%= check_box_tag 'accounting_payment_batch[invoice_ids][]', invoice.id, false,
+                      id: "invoice_#{invoice.id}",
+                      disabled: !invoice.partner.sepa_payable?,
+                      class: 'rounded border-gray-300 text-primary-600 focus:ring-primary-500' %>
+              </td>
+              <td class="px-4 py-3 font-mono text-primary-700"><%= label_tag "invoice_#{invoice.id}", presenter.invoice_number_or_draft, class: 'cursor-pointer' %></td>
+              <td class="px-4 py-3 text-gray-700">
+                <%= invoice.partner.name %>
+                <% unless invoice.partner.sepa_payable? %>
+                  <span class="text-red-500 text-xs block">No valid IBAN</span>
+                <% end %>
+              </td>
+              <td class="px-4 py-3 text-gray-500"><%= presenter.formatted_due_date %></td>
+              <td class="px-4 py-3 text-right font-mono text-gray-900"><%= presenter.formatted_total %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+
+  <div>
+    <%= f.submit 'Create Payment Batch',
+          class: 'inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors cursor-pointer' %>
+  </div>
+<% end %>

@@ -190,6 +190,23 @@ en:
       invoice_not_posted: "Only posted invoices can be sent via Peppol."
       hmac_invalid:       "Invalid HMAC signature."
 
+  payments:
+    payment_batches:
+      created:   "Payment batch created."
+      generated: "SEPA payment file generated."
+      executed:  "Payment batch executed; invoices marked as paid."
+      cancelled: "Payment batch cancelled."
+      deleted:   "Payment batch deleted."
+    errors:
+      no_invoices_selected: "Select at least one invoice to include in the payment batch."
+      invoice_not_eligible: "Invoice %{number} is not eligible for payment (must be a posted supplier invoice)."
+      missing_iban:         "Supplier %{name} has no valid IBAN on file."
+      already_in_batch:     "Invoice %{number} is already included in another active payment batch."
+      batch_not_generated:  "Only a generated payment batch can be executed."
+      batch_not_draft:      "Only a draft payment batch can generate a SEPA file."
+      sepa_generation_failed: "Could not generate the SEPA payment file: %{message}"
+      not_destroyable:      "This payment batch cannot be deleted once it has been generated."
+
   activerecord:
     errors:
       messages:

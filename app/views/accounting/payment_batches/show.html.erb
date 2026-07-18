@@ -1,0 +1,96 @@
+<% presenter = Accounting::PaymentBatchPresenter.new(@payment_batch) %>
+
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Payment Batches', path: accounting_payment_batches_path },
+    { label: "Batch ##{@payment_batch.id}" }
+  ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(
+      title: "Payment Batch ##{@payment_batch.id}",
+      back_path: accounting_payment_batches_path,
+      back_text: 'Payment Batches'
+    ) do |header| %>
+  <% header.with_actions do %>
+    <%= render Accounting::StatusBadgeComponent.new(status: @payment_batch.status.to_sym) %>
+
+    <% if @payment_batch.draft? && policy(@payment_batch).generate? %>
+      <%= button_to 'Generate SEPA file', generate_accounting_payment_batch_path(@payment_batch), method: :post,
+            class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
+    <% end %>
+
+    <% if @payment_batch.generated? %>
+      <%= link_to 'Download SEPA file', download_accounting_payment_batch_path(@payment_batch),
+            class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
+      <% if policy(@payment_batch).execute? %>
+        <%= button_to 'Mark as executed', execute_accounting_payment_batch_path(@payment_batch), method: :post,
+              data: { turbo_confirm: 'Confirm the SEPA file was uploaded to the bank? This will settle the invoices as paid.' },
+              class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
+      <% end %>
+    <% end %>
+
+    <% if @payment_batch.destroyable? && policy(@payment_batch).destroy? %>
+      <%= button_to 'Delete', accounting_payment_batch_path(@payment_batch), method: :delete,
+            data: { turbo_confirm: 'Delete this draft payment batch?' },
+            class: 'px-4 py-2 border border-red-300 text-sm text-red-600 rounded-md hover:bg-red-50 transition-colors' %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<div class="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl mb-6">
+  <dl class="grid grid-cols-2 gap-x-8 gap-y-4">
+    <div>
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Bank account</dt>
+      <dd class="mt-1 text-sm text-gray-900"><%= @payment_batch.bank_account.label_fr %> (<%= @payment_batch.bank_account.iban %>)</dd>
+    </div>
+    <div>
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Requested execution date</dt>
+      <dd class="mt-1 text-sm text-gray-900"><%= presenter.formatted_requested_execution_date %></dd>
+    </div>
+    <div>
+      <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total</dt>
+      <dd class="mt-1 text-sm font-mono text-gray-900"><%= presenter.formatted_total %></dd>
+    </div>
+    <% if @payment_batch.journal_entry %>
+      <div>
+        <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Settlement entry</dt>
+        <dd class="mt-1 text-sm text-gray-900">
+          <%= link_to @payment_batch.journal_entry.reference, accounting_journal_entry_path(@payment_batch.journal_entry),
+                class: 'text-primary-600 hover:underline' %>
+        </dd>
+      </div>
+    <% end %>
+  </dl>
+</div>
+
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+  <div class="px-6 py-3 border-b border-gray-100 bg-gray-50">
+    <h3 class="text-sm font-semibold text-gray-700">Invoices</h3>
+  </div>
+  <table class="min-w-full text-sm">
+    <thead>
+      <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <th class="px-4 py-2 text-left">Invoice</th>
+        <th class="px-4 py-2 text-left">Supplier</th>
+        <th class="px-4 py-2 text-left">Remittance information</th>
+        <th class="px-4 py-2 text-right">Amount</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      <% @payment_batch.lines.includes(invoice: :partner).each do |line| %>
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 font-mono text-primary-700">
+            <%= link_to line.invoice.invoice_number, accounting_invoice_path(line.invoice) %>
+          </td>
+          <td class="px-4 py-3 text-gray-700"><%= line.invoice.partner.name %></td>
+          <td class="px-4 py-3 text-gray-500"><%= line.remittance_information %></td>
+          <td class="px-4 py-3 text-right font-mono text-gray-900">
+            <%= Accounting::MoneyPresenter.new(line.amount).format %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

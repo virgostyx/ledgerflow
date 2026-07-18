@@ -1,14 +1,22 @@
 class Accounting::StatusPresenter
   LABELS = {
-    draft:    "Draft",
-    posted:   "Posted",
-    reversed: "Cancelled"
+    draft:     "Draft",
+    posted:    "Posted",
+    reversed:  "Cancelled",
+    paid:      "Paid",
+    cancelled: "Cancelled",
+    generated: "Generated",
+    executed:  "Executed"
   }.freeze
 
   BADGE_VARIANTS = {
-    draft:    :default,
-    posted:   :success,
-    reversed: :danger
+    draft:     :default,
+    posted:    :success,
+    reversed:  :danger,
+    paid:      :success,
+    cancelled: :danger,
+    generated: :warning,
+    executed:  :success
   }.freeze
 
   def initialize(status)
