@@ -1,9 +1,10 @@
 class Accounting::AccountSelectComponent < ViewComponent::Base
-  def initialize(accounts:, name:, selected: nil, prompt: nil, disabled: false)
+  def initialize(accounts:, name:, selected: nil, prompt: nil, label: nil, disabled: false)
     @accounts = accounts
     @name     = name
     @selected = selected
     @prompt   = prompt
+    @label    = label
     @disabled = disabled
   end
 

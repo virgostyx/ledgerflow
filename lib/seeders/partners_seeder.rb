@@ -11,7 +11,7 @@ module Seeders
         city:         "Bruxelles",
         zip:          "1030",
         country:      "BE",
-        iban:         "BE71096000049734",
+        iban:         "BE52096000049734",
         bic:          "JVBABE22",
         notes:        "Opérateur télécom — lignes fixes, mobiles et internet"
       },
@@ -25,7 +25,7 @@ module Seeders
         city:         "Bruxelles",
         zip:          "1200",
         country:      "BE",
-        iban:         "BE45068009338471",
+        iban:         "BE77068009338471",
         bic:          "NICABEBB",
         notes:        "Fournisseur d'énergie — électricité et gaz naturel"
       },
@@ -39,7 +39,7 @@ module Seeders
         city:         "Bruxelles",
         zip:          "1000",
         country:      "BE",
-        iban:         "BE77096000085988",
+        iban:         "BE21096000085988",
         bic:          "JVBABE22",
         notes:        "Services postaux et de courrier"
       },
@@ -53,7 +53,7 @@ module Seeders
         city:         "Bruxelles",
         zip:          "1000",
         country:      "BE",
-        iban:         "BE55310126986468",
+        iban:         "BE89310126986468",
         bic:          "BBRUBEBB",
         notes:        "Titres-repas et services aux entreprises"
       },
@@ -67,7 +67,7 @@ module Seeders
         city:         "Mechelen",
         zip:          "2800",
         country:      "BE",
-        iban:         "BE56293041272220",
+        iban:         "BE89293041272220",
         bic:          "GEBABEBB",
         notes:        "Fournitures de bureau et papeterie"
       },
@@ -81,7 +81,7 @@ module Seeders
         city:         "Wavre",
         zip:          "1300",
         country:      "BE",
-        iban:         "BE87001556987123",
+        iban:         "BE29001556987123",
         bic:          "GEBABEBB",
         notes:        "Entretien et réparation de véhicules de société"
       }

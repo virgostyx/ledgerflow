@@ -52,11 +52,11 @@
   </div>
 
   <div>
-    <%= f.label :default_account_id, "Counterpart Account", class: "block text-sm font-medium text-gray-700 mb-1" %>
     <%= render Accounting::AccountSelectComponent.new(
           accounts: @accounts,
           name:     "accounting_journal[default_account_id]",
           selected: journal.default_account_id,
+          label:    "Counterpart Account",
           prompt:   "— Select an account —"
         ) %>
     <p class="mt-1 text-xs text-gray-400">

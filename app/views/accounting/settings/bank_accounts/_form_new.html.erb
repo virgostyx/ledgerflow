@@ -16,63 +16,69 @@
   </div>
 
   <div class="grid grid-cols-2 gap-5">
-    <div>
-      <%= f.label :label_fr, "Account Label", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <div class="relative" data-controller="floating-label">
       <%= f.text_field :label_fr,
-            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
-            placeholder: "e.g. ING Current Account" %>
+            placeholder: " ",
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500",
+            data: { floating_label_target: "input", action: "focus->floating-label#focus blur->floating-label#blur" } %>
+      <%= f.label :label_fr, "Account Label", class: "lf-floating-label", data: { floating_label_target: "label" } %>
     </div>
 
-    <div>
-      <%= f.label :label_nl, "Label (NL)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <div class="relative" data-controller="floating-label">
       <%= f.text_field :label_nl,
-            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
-            placeholder: "e.g. ING Zichtrekening (optional)" %>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-2 gap-5">
-    <div>
-      <%= f.label :journal_code, "Journal Code", class: "block text-sm font-medium text-gray-700 mb-1" %>
-      <%= f.text_field :journal_code,
-            maxlength: 5,
-            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
-            placeholder: "e.g. ING1" %>
-      <p class="mt-1 text-xs text-gray-400">Unique code for the bank journal (max 5 chars).</p>
-    </div>
-
-    <div>
-      <%= f.label :default_account_id, "Counterpart Account (55xxxx)", class: "block text-sm font-medium text-gray-700 mb-1" %>
-      <%= render Accounting::AccountSelectComponent.new(
-            accounts: @accounts_55,
-            name:     "bank_account_form[default_account_id]",
-            selected: nil,
-            prompt:   "— Select a 55xxxx account —"
-          ) %>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-2 gap-5">
-    <div>
-      <%= f.label :iban, "IBAN", class: "block text-sm font-medium text-gray-700 mb-1" %>
-      <%= f.text_field :iban,
-            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
-            placeholder: "BE71 0961 2345 6769" %>
-    </div>
-
-    <div>
-      <%= f.label :bic, "BIC / SWIFT", class: "block text-sm font-medium text-gray-700 mb-1" %>
-      <%= f.text_field :bic,
-            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
-            placeholder: "BBRUBEBB" %>
+            placeholder: " ",
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500",
+            data: { floating_label_target: "input", action: "focus->floating-label#focus blur->floating-label#blur" } %>
+      <%= f.label :label_nl, "Label (NL)", class: "lf-floating-label", data: { floating_label_target: "label" } %>
     </div>
   </div>
 
   <div>
-    <%= f.label :notes, "Notes", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <div class="relative" data-controller="floating-label">
+      <%= f.text_field :journal_code,
+            maxlength: 8,
+            placeholder: " ",
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm font-mono text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500",
+            data: { floating_label_target: "input", action: "focus->floating-label#focus blur->floating-label#blur" } %>
+      <%= f.label :journal_code, "Journal Code", class: "lf-floating-label", data: { floating_label_target: "label" } %>
+    </div>
+    <p class="mt-1 text-xs text-gray-400">Unique code for the bank journal (max 8 chars).</p>
+  </div>
+
+  <div>
+    <%= render Accounting::AccountSelectComponent.new(
+          accounts: @accounts_55,
+          name:     "bank_account_form[default_account_id]",
+          selected: nil,
+          label:    "Counterpart Account (55xxxx)",
+          prompt:   "— Select a 55xxxx account —"
+        ) %>
+  </div>
+
+  <div class="grid grid-cols-2 gap-5">
+    <div class="relative" data-controller="floating-label">
+      <%= f.text_field :iban,
+            placeholder: " ",
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm font-mono text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500",
+            data: { floating_label_target: "input", action: "focus->floating-label#focus blur->floating-label#blur" } %>
+      <%= f.label :iban, "IBAN", class: "lf-floating-label", data: { floating_label_target: "label" } %>
+    </div>
+
+    <div class="relative" data-controller="floating-label">
+      <%= f.text_field :bic,
+            placeholder: " ",
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm font-mono text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500",
+            data: { floating_label_target: "input", action: "focus->floating-label#focus blur->floating-label#blur" } %>
+      <%= f.label :bic, "BIC / SWIFT", class: "lf-floating-label", data: { floating_label_target: "label" } %>
+    </div>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
     <%= f.text_area :notes, rows: 2,
-          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500",
-          placeholder: "Internal notes (optional)" %>
+          placeholder: " ",
+          class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500",
+          data: { floating_label_target: "input", action: "focus->floating-label#focus blur->floating-label#blur" } %>
+    <%= f.label :notes, "Notes", class: "lf-floating-label", data: { floating_label_target: "label" } %>
   </div>
 
   <div class="flex items-center gap-3 pt-2">

@@ -30,4 +30,19 @@ RSpec.describe Accounting::AccountSelectComponent, type: :component do
     render_inline(described_class.new(accounts: accounts, name: 'account_id', prompt: 'Choisir un compte'))
     expect(page).to have_text('Choisir un compte')
   end
+
+  it 'affiche un label flottant quand label est fourni' do
+    render_inline(described_class.new(accounts: accounts, name: 'account_id', label: 'Compte'))
+    expect(page).to have_css('label', text: 'Compte')
+  end
+
+  it "n'affiche aucun label quand label n'est pas fourni" do
+    render_inline(described_class.new(accounts: accounts, name: 'account_id'))
+    expect(page).not_to have_css('label')
+  end
+
+  it 'contraint la largeur du select pour éviter tout débordement du container' do
+    render_inline(described_class.new(accounts: accounts, name: 'account_id'))
+    expect(page).to have_css('select.w-full')
+  end
 end

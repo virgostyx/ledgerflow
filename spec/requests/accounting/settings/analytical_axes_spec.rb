@@ -46,6 +46,15 @@ RSpec.describe "Accounting::Settings::AnalyticalAxes", type: :request do
       expect(axis.reload.required_for_account_classes).to contain_exactly(6, 7)
     end
 
+    it "drops the blank entry submitted by the checkbox group's hidden field" do
+      patch accounting_settings_analytical_axis_path(axis),
+            params: { accounting_analytical_axis: { required_for_account_classes: [ "6", "7", "" ] } }
+      expect(axis.reload.required_for_account_classes).to contain_exactly(6, 7)
+
+      get accounting_settings_analytical_axes_path
+      expect(response).to have_http_status(:ok)
+    end
+
     it "returns 422 with blank label" do
       patch accounting_settings_analytical_axis_path(axis),
             params: { accounting_analytical_axis: { label_fr: "" } }

@@ -1,8 +1,19 @@
-<select name="<%= @name %>"<% if @disabled %> disabled<% end %>>
-  <% if @prompt %>
-    <option value=""><%= @prompt %></option>
+<div class="relative" data-controller="floating-label">
+  <select name="<%= @name %>" id="<%= @name %>"
+          class="block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500"
+          data-floating-label-target="input"
+          data-action="focus->floating-label#focus blur->floating-label#blur change->floating-label#checkValue"
+          <% if @disabled %>disabled<% end %>>
+    <% if @prompt %>
+      <option value=""><%= @prompt %></option>
+    <% end %>
+    <% @accounts.each do |account| %>
+      <option value="<%= account.id %>"<% if account.id == @selected %> selected<% end %>><%= account_option_label(account) %></option>
+    <% end %>
+  </select>
+  <% if @label %>
+    <label for="<%= @name %>" class="lf-floating-label" data-floating-label-target="label">
+      <%= @label %>
+    </label>
   <% end %>
-  <% @accounts.each do |account| %>
-    <option value="<%= account.id %>"<% if account.id == @selected %> selected<% end %>><%= account_option_label(account) %></option>
-  <% end %>
-</select>
+</div>

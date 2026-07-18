@@ -29,6 +29,8 @@ class Accounting::Settings::AnalyticalAxesController < Accounting::Settings::Bas
   def axis_params
     params.require(:accounting_analytical_axis).permit(
       :label_fr, :label_nl, :active, required_for_account_classes: []
-    )
+    ).tap do |permitted|
+      permitted[:required_for_account_classes]&.reject!(&:blank?)
+    end
   end
 end

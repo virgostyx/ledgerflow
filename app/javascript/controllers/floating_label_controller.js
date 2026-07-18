@@ -17,7 +17,11 @@ export default class extends Controller {
   }
 
   checkValue() {
-    const hasValue = this.inputTarget.value.toString().trim() !== ""
+    // A <select> always renders visible text in its box (the prompt option
+    // included), unlike a text input which is blank when empty, so its label
+    // must stay floated up rather than overlapping that text.
+    const isSelect = this.inputTarget.tagName === "SELECT"
+    const hasValue = isSelect || this.inputTarget.value.toString().trim() !== ""
     const isFocused = this.inputTarget === document.activeElement
 
     if (hasValue || isFocused) {
