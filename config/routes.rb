@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   # Landing page publique
+  get "/favicon.ico", to: redirect("/icon.png")
   root "landing#index"
 
   # Devise — authentification
