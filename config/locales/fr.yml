@@ -54,6 +54,31 @@ fr:
         no_lines:       "La facture doit comporter au moins une ligne."
         no_journal:     "Aucun journal actif de type %{type} trouvé."
 
+    settings:
+      journals:
+        created:          "Journal créé avec succès."
+        updated:          "Journal mis à jour."
+        deleted:          "Journal supprimé."
+        toggled:          "Statut du journal mis à jour."
+        not_destroyable:  "Ce journal ne peut pas être supprimé car il comporte des écritures existantes."
+        not_deactivatable: "Ce journal ne peut pas être désactivé car il comporte des écritures en brouillon."
+      bank_accounts:
+        created:          "Compte bancaire créé avec succès."
+        updated:          "Compte bancaire mis à jour."
+        deleted:          "Compte bancaire supprimé."
+        not_destroyable:  "Ce compte bancaire ne peut pas être supprimé car il comporte des transactions."
+      accounts:
+        created:          "Compte créé avec succès."
+        updated:          "Compte mis à jour."
+        not_destroyable:  "Ce compte ne peut pas être supprimé."
+      analytical_axes:
+        updated:          "Axe analytique mis à jour."
+      analytical_accounts:
+        created:          "Compte analytique créé avec succès."
+        updated:          "Compte analytique mis à jour."
+        deleted:          "Compte analytique supprimé."
+        not_destroyable:  "Ce compte ne peut pas être supprimé car il comporte des annotations."
+
     fiscal_years:
       index:
         title: "Exercices comptables"
