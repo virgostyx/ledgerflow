@@ -4,8 +4,7 @@ class Accounting::ReportsController < ApplicationController
   def trial_balance
     authorize :report, :trial_balance?, policy_class: Accounting::ReportPolicy
 
-    as_of   = params[:as_of].present? ? Date.parse(params[:as_of]) : nil
-    @as_of  = as_of || @fiscal_year.end_date
+    @as_of  = parse_date(params[:as_of], @fiscal_year.end_date)
     @rows   = Accounting::TrialBalanceQuery.new(fiscal_year: @fiscal_year, as_of: @as_of).call
 
     respond_to do |format|
@@ -41,8 +40,8 @@ class Accounting::ReportsController < ApplicationController
 
     @accounts = Accounting::Account.active.order(:code)
     @account  = Accounting::Account.find_by(id: params[:account_id])
-    @date_from = params[:date_from].present? ? Date.parse(params[:date_from]) : @fiscal_year.start_date
-    @date_to   = params[:date_to].present?   ? Date.parse(params[:date_to])   : @fiscal_year.end_date
+    @date_from = parse_date(params[:date_from], @fiscal_year.start_date)
+    @date_to   = parse_date(params[:date_to],   @fiscal_year.end_date)
 
     if @account
       @rows = Accounting::GeneralLedgerQuery.new(
@@ -108,10 +107,15 @@ class Accounting::ReportsController < ApplicationController
 
   def set_fiscal_year
     @fiscal_year = if params[:fiscal_year_id].present?
-                     Accounting::FiscalYear.find(params[:fiscal_year_id])
+      Accounting::FiscalYear.find(params[:fiscal_year_id])
     else
-                     Accounting::FiscalYear.current
+      Accounting::FiscalYear.current
     end
+  end
+
+  # Raises ArgumentError on an invalid date (rescued by trial_balance).
+  def parse_date(value, default)
+    value.present? ? Date.parse(value) : default
   end
 
   def trial_balance_csv
