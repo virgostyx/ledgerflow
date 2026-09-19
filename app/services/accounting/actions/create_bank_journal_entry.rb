@@ -27,9 +27,12 @@ class Accounting::Actions::CreateBankJournalEntry
       status:      :draft
     )
 
+    partner = ctx[:partner]
+
     Accounting::JournalEntryLine.create!(
       journal_entry: entry,
       account:       debit_account,
+      partner:       (partner if debit_account == counterpart),
       debit:         abs_amount,
       credit:        BigDecimal("0"),
       label:         label || tx.description
@@ -38,6 +41,7 @@ class Accounting::Actions::CreateBankJournalEntry
     Accounting::JournalEntryLine.create!(
       journal_entry: entry,
       account:       credit_account,
+      partner:       (partner if credit_account == counterpart),
       debit:         BigDecimal("0"),
       credit:        abs_amount,
       label:         label || tx.description
