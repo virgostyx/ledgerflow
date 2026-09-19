@@ -553,6 +553,7 @@ CREATE TABLE public.accounting_journal_entry_lines (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     entity_id bigint NOT NULL,
+    invoice_id bigint,
     CONSTRAINT chk_at_least_one_side CHECK (((debit > (0)::numeric) OR (credit > (0)::numeric))),
     CONSTRAINT chk_credit_non_negative CHECK ((credit >= (0)::numeric)),
     CONSTRAINT chk_debit_non_negative CHECK ((debit >= (0)::numeric)),
@@ -1697,6 +1698,13 @@ CREATE INDEX index_accounting_journal_entry_lines_on_entity_id ON public.account
 
 
 --
+-- Name: index_accounting_journal_entry_lines_on_invoice_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journal_entry_lines_on_invoice_id ON public.accounting_journal_entry_lines USING btree (invoice_id);
+
+
+--
 -- Name: index_accounting_journal_entry_lines_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2018,6 +2026,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 
 --
+-- Name: accounting_journal_entry_lines fk_rails_42f8a23db1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entry_lines
+    ADD CONSTRAINT fk_rails_42f8a23db1 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_479b19d12c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2288,6 +2304,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260919100000'),
 ('20260718164144'),
 ('20260718122123'),
 ('20260709000001'),
