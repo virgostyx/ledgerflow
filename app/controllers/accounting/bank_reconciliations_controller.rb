@@ -1,9 +1,9 @@
 class Accounting::BankReconciliationsController < ApplicationController
   def show
     authorize :bank_reconciliation, policy_class: Accounting::BankReconciliationsPolicy
-    @pending_transactions = Accounting::BankTransaction.pending
-                                .includes(bank_account: :journal)
-                                .order(transaction_date: :desc)
+    @pagy, @pending_transactions = pagy(Accounting::BankTransaction.pending
+                                          .includes(bank_account: :journal)
+                                          .order(transaction_date: :desc))
     @suggestions = @pending_transactions.index_with { |tx| Accounting::MatchBankTransaction.call(transaction: tx) }
     @bank_accounts = Accounting::BankAccount.where(active: true).order(:label_fr)
     @accounts      = Accounting::Account.where(is_leaf: true).order(:code)

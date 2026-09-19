@@ -2,7 +2,7 @@ class Accounting::JournalEntriesController < ApplicationController
   before_action :set_entry, only: [ :show, :edit, :update, :post_entry, :reverse ]
 
   def index
-    @entries = policy_scope(Accounting::JournalEntry).order(entry_date: :desc, created_at: :desc)
+    @pagy, @entries = pagy(policy_scope(Accounting::JournalEntry).order(entry_date: :desc, created_at: :desc))
   end
 
   def show

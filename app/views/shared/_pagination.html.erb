@@ -1,0 +1,13 @@
+<% if pagy.pages > 1 %>
+  <nav class="flex items-center justify-between mt-4 text-sm text-gray-600" aria-label="Pagination">
+    <span>Page <%= pagy.page %> of <%= pagy.pages %> (<%= pagy.count %> items)</span>
+    <span class="flex gap-2">
+      <% if pagy.prev %>
+        <%= link_to 'Previous', pagy_url_for(pagy, pagy.prev), class: 'px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50' %>
+      <% end %>
+      <% if pagy.next %>
+        <%= link_to 'Next', pagy_url_for(pagy, pagy.next), class: 'px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50' %>
+      <% end %>
+    </span>
+  </nav>
+<% end %>

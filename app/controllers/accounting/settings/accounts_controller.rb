@@ -2,11 +2,8 @@ class Accounting::Settings::AccountsController < Accounting::Settings::BaseContr
   before_action :set_account, only: [ :edit, :update ]
 
   def index
-    @accounts = if params[:account_class].present?
-      Accounting::Account.by_class(params[:account_class]).order(:code)
-    else
-      Accounting::Account.order(:code)
-    end
+    scope = params[:account_class].present? ? Accounting::Account.by_class(params[:account_class]) : Accounting::Account
+    @pagy, @accounts = pagy(scope.order(:code))
   end
 
   def new

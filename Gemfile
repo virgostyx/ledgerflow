@@ -94,3 +94,5 @@ group :test do
   gem "webmock"
   gem "vcr"
 end
+
+gem "pagy", "~> 9.4"

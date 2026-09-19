@@ -35,7 +35,7 @@
     <h2 class="text-sm font-semibold text-gray-700">
       Pending transactions
       <span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-        <%= @pending_transactions.count %>
+        <%= @pagy.count %>
       </span>
     </h2>
   </div>
@@ -110,6 +110,7 @@
         <% end %>
       </tbody>
     </table>
+    <div class="px-4 pb-4"><%= render 'shared/pagination', pagy: @pagy %></div>
   <% else %>
     <div class="px-4 py-8 text-center">
       <p class="text-sm text-gray-500">No pending transactions. Import a CAMT.053 file to begin.</p>

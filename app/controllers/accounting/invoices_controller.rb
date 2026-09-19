@@ -3,9 +3,9 @@ class Accounting::InvoicesController < ApplicationController
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
-    @invoices = policy_scope(Accounting::Invoice)
-                  .where(invoice_type: @invoice_type)
-                  .order(invoice_date: :desc)
+    @pagy, @invoices = pagy(policy_scope(Accounting::Invoice)
+                              .where(invoice_type: @invoice_type)
+                              .order(invoice_date: :desc))
   end
 
   def show

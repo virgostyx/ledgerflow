@@ -2,7 +2,7 @@ class Accounting::PaymentBatchesController < ApplicationController
   before_action :set_payment_batch, only: [ :show, :destroy, :generate, :execute, :download ]
 
   def index
-    @payment_batches = policy_scope(Accounting::PaymentBatch).order(created_at: :desc)
+    @pagy, @payment_batches = pagy(policy_scope(Accounting::PaymentBatch).order(created_at: :desc))
   end
 
   def new

@@ -9,6 +9,7 @@ class ApplicationController < ActionController::Base
   before_action :require_entity!
 
   include Pundit::Authorization
+  include Pagy::Backend
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 

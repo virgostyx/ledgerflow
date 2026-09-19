@@ -16,6 +16,14 @@ RSpec.describe 'Accounting::Partners', type: :request do
       get accounting_partners_path
       expect(response).to have_http_status(:ok)
     end
+
+    it 'pagine la liste' do
+      create_list(:partner, 26)
+      get accounting_partners_path
+      expect(response.body.scan('View</a>').size).to eq(25)
+      get accounting_partners_path, params: { page: 2 }
+      expect(response.body.scan('View</a>').size).to eq(1)
+    end
   end
 
   describe 'GET /accounting/partners/new' do

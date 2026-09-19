@@ -1,4 +1,6 @@
 module ApplicationHelper
+  include Pagy::Frontend
+
   # Returns Tailwind classes for a sidebar nav link.
   # Marks the link active when the current request path matches any of the given paths
   # (exact match OR prefix match with a trailing slash).
