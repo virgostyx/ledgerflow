@@ -13,7 +13,21 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
+  helper_method :filter_params, :filters_active?
+
   private
+
+  FILTER_KEYS = %i[q status journal_id fiscal_year_id partner_type country from to overdue unpaid
+                   inactive period_type bank_account_id direction].freeze
+
+  # List filters, submitted as q[...] by shared/_filters.
+  def filter_params
+    params[:q].is_a?(ActionController::Parameters) ? params[:q].permit(*FILTER_KEYS) : ActionController::Parameters.new.permit
+  end
+
+  def filters_active?
+    filter_params.values.any?(&:present?)
+  end
 
   def set_locale
     I18n.locale = I18n.default_locale

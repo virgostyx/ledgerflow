@@ -18,6 +18,44 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
       get accounting_journal_entries_path
       expect(response).to have_http_status(:ok)
     end
+
+    describe 'filtres' do
+      let!(:alpha) { create(:journal_entry, journal: journal, fiscal_year: fiscal_year, description: 'ZZalpha', entry_date: Date.new(2025, 1, 10)) }
+      let!(:beta)  { create(:journal_entry, :posted, journal: journal, fiscal_year: fiscal_year, description: 'ZZbeta', entry_date: Date.new(2025, 3, 10)) }
+
+      it 'filtre par texte' do
+        get accounting_journal_entries_path, params: { q: { q: 'alph' } }
+        expect(response.body).to include('ZZalpha').and not_include('ZZbeta')
+      end
+
+      it 'filtre par statut' do
+        get accounting_journal_entries_path, params: { q: { status: 'posted' } }
+        expect(response.body).to include('ZZbeta').and not_include('ZZalpha')
+      end
+
+      it 'filtre par période' do
+        get accounting_journal_entries_path, params: { q: { from: '2025-02-01', to: '2025-04-01' } }
+        expect(response.body).to include('ZZbeta').and not_include('ZZalpha')
+      end
+
+      it 'filtre par journal' do
+        other = create(:journal, :sale)
+        create(:journal_entry, journal: other, fiscal_year: fiscal_year, description: 'ZZgamma')
+        get accounting_journal_entries_path, params: { q: { journal_id: journal.id } }
+        expect(response.body).to include('ZZalpha').and not_include('ZZgamma')
+      end
+
+      it 'annonce l absence de résultat' do
+        get accounting_journal_entries_path, params: { q: { q: 'nothing-matches' } }
+        expect(response.body).to include('No results match your filters')
+      end
+
+      it 'conserve les filtres en changeant de page' do
+        create_list(:journal_entry, 26, journal: journal, fiscal_year: fiscal_year, description: 'ZZbulk')
+        get accounting_journal_entries_path, params: { q: { q: 'ZZbulk' } }
+        expect(response.body).to include('q%5Bq%5D=ZZbulk').and include('page=2')
+      end
+    end
   end
 
   describe 'GET /accounting/journal_entries/new' do

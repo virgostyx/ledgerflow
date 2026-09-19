@@ -14,7 +14,13 @@
   <% end %>
 <% end %>
 
-<% if @partners.empty? %>
+<%= render 'shared/filters', fields: [
+  { name: :q, label: 'Search', type: :text },
+  { name: :partner_type, label: 'Type', type: :select, options: Accounting::Partner.partner_types.keys.map { |s| [s.humanize, s] } },
+  { name: :country, label: 'Country', type: :select, options: Accounting::Partner.distinct.order(:country).pluck(:country).map { |c| [c, c] } },
+  { name: :inactive, label: 'Include inactive', type: :checkbox }
+] %>
+<% if @partners.empty? && !filters_active? %>
   <%= render Ui::EmptyStateComponent.new(
         title: 'No partners yet',
         description: 'Add your first customer or supplier to get started.',

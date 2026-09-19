@@ -22,4 +22,10 @@ class Accounting::JournalEntry < ApplicationRecord
   validates :reference,  uniqueness: { scope: :entity_id, case_sensitive: false }, allow_nil: true
 
   scope :for_fiscal_year, ->(fy) { where(fiscal_year: fy) }
+
+  def self.filter_by(q)
+    matching(status: q[:status], journal_id: q[:journal_id], fiscal_year_id: q[:fiscal_year_id])
+      .search(q[:q], "reference", "description")
+      .between(:entry_date, q[:from], q[:to])
+  end
 end

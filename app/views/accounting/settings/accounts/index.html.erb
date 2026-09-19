@@ -18,6 +18,10 @@
     <% end %>
   </div>
 
+  <div class="mt-4">
+    <%= render 'shared/filters', hidden: { account_class: params[:account_class].presence }.compact, fields: [{ name: :q, label: 'Search code or label', type: :text }] %>
+  </div>
+
   <div class="mt-4 bg-white rounded-lg border border-gray-200 overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">

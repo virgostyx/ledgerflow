@@ -5,6 +5,7 @@ class Accounting::InvoicesController < ApplicationController
   def index
     @pagy, @invoices = pagy(policy_scope(Accounting::Invoice)
                               .where(invoice_type: @invoice_type)
+                              .filter_by(filter_params)
                               .order(invoice_date: :desc))
   end
 

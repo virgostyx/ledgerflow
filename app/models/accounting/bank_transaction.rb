@@ -20,4 +20,11 @@ class Accounting::BankTransaction < ApplicationRecord
   def debit?
     amount.negative?
   end
+
+  def self.filter_by(q)
+    rel = search(q[:q], "description", "reference").between(:transaction_date, q[:from], q[:to])
+    rel = rel.where(amount: 0..) if q[:direction] == "credit"
+    rel = rel.where(amount: ...0) if q[:direction] == "debit"
+    rel
+  end
 end

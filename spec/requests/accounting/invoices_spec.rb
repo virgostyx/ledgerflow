@@ -33,6 +33,40 @@ RSpec.describe 'Accounting::Invoices', type: :request do
       expect(response.body).to include(customer_partner.name)
       expect(response.body).not_to include(supplier_partner.name)
     end
+
+    describe 'filtres' do
+      let!(:acme)   { create(:partner, name: 'ZZAcme') }
+      let!(:globex) { create(:partner, name: 'ZZGlobex') }
+      let!(:draft_inv)  { create(:invoice, :customer, partner: acme, fiscal_year: fiscal_year, invoice_date: Date.new(2025, 1, 5)) }
+      let!(:posted_inv) { create(:invoice, :customer, :posted, partner: globex, fiscal_year: fiscal_year, invoice_date: Date.new(2025, 3, 5), due_date: Date.current - 5) }
+
+      it 'filtre par nom de partenaire' do
+        get accounting_sales_path, params: { q: { q: 'acme' } }
+        expect(response.body).to include('ZZAcme').and not_include('ZZGlobex')
+      end
+
+      it 'filtre par statut' do
+        get accounting_sales_path, params: { q: { status: 'posted' } }
+        expect(response.body).to include('ZZGlobex').and not_include('ZZAcme')
+      end
+
+      it 'filtre par période' do
+        get accounting_sales_path, params: { q: { from: '2025-02-01' } }
+        expect(response.body).to include('ZZGlobex').and not_include('ZZAcme')
+      end
+
+      it 'filtre les factures échues' do
+        get accounting_sales_path, params: { q: { overdue: '1' } }
+        expect(response.body).to include('ZZGlobex').and not_include('ZZAcme')
+      end
+
+      it 'filtre les factures impayées côté achats' do
+        create(:invoice, :supplier, :posted, partner: globex, fiscal_year: fiscal_year)
+        create(:invoice, :supplier, partner: acme, fiscal_year: fiscal_year)
+        get accounting_purchases_path, params: { q: { unpaid: '1' } }
+        expect(response.body).to include('ZZGlobex').and not_include('ZZAcme')
+      end
+    end
   end
 
   describe 'GET /accounting/sales/new' do

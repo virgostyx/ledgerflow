@@ -48,4 +48,9 @@ class Accounting::PaymentBatch < ApplicationRecord
     raise Accounting::ImmutableRecordError,
           "#{self.class.name} ##{id} is #{status} and cannot be deleted."
   end
+
+  def self.filter_by(q)
+    matching(status: q[:status], bank_account_id: q[:bank_account_id])
+      .between(:requested_execution_date, q[:from], q[:to])
+  end
 end

@@ -2,7 +2,7 @@ class Accounting::VatDeclarationsController < ApplicationController
   before_action :set_declaration, only: [ :show ]
 
   def index
-    @pagy, @declarations = pagy(policy_scope(Accounting::VatDeclaration).order(period_start: :desc))
+    @pagy, @declarations = pagy(policy_scope(Accounting::VatDeclaration).filter_by(filter_params).order(period_start: :desc))
   end
 
   def show

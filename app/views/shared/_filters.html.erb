@@ -1,0 +1,34 @@
+<%# fields: [{ name:, label:, type: :text|:select|:date|:checkbox, options: [[label, value], ...] }] ; hidden: { param => value } %>
+<% hidden ||= {} %>
+<% input_class = 'mt-1 block w-full rounded-md border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500' %>
+<div class="mb-4">
+  <%= render Ui::FilterPanelComponent.new(active_count: filter_params.values.count(&:present?)) do |panel| %>
+    <% panel.with_fields do %>
+      <%= form_with url: request.path, method: :get, scope: :q, class: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end' do |f| %>
+        <% hidden.each do |key, value| %><%= hidden_field_tag key, value %><% end %>
+        <% fields.each do |field| %>
+          <% value = filter_params[field[:name]] %>
+          <div>
+            <% if field[:type] == :checkbox %>
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700 pb-2">
+                <%= check_box_tag "q[#{field[:name]}]", '1', value == '1', class: 'rounded border-gray-300 text-primary-600' %>
+                <%= field[:label] %>
+              </label>
+            <% else %>
+              <%= label_tag "q_#{field[:name]}", field[:label], class: 'block text-xs font-medium text-gray-500 uppercase tracking-wider' %>
+              <% if field[:type] == :select %>
+                <%= select_tag "q[#{field[:name]}]", options_for_select(field[:options], value), include_blank: 'All', id: "q_#{field[:name]}", class: input_class %>
+              <% else %>
+                <%= tag.input type: field[:type] == :date ? 'date' : 'text', name: "q[#{field[:name]}]", id: "q_#{field[:name]}", value: value, class: input_class %>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+        <div class="flex gap-2">
+          <%= submit_tag 'Apply', name: nil, class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer' %>
+          <%= link_to 'Reset', request.path, class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50' %>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

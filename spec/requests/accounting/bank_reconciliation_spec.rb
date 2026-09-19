@@ -23,6 +23,26 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
       get accounting_bank_reconciliation_path
       expect(response).to have_http_status(:ok)
     end
+
+    describe 'filtres' do
+      let!(:incoming) { create(:bank_transaction, bank_account: bank_account, description: 'ZZincoming', amount: 50, transaction_date: Date.new(2025, 1, 10)) }
+      let!(:outgoing) { create(:bank_transaction, bank_account: bank_account, description: 'ZZoutgoing', amount: -50, transaction_date: Date.new(2025, 3, 10)) }
+
+      it 'filtre par texte' do
+        get accounting_bank_reconciliation_path, params: { q: { q: 'outgo' } }
+        expect(response.body).to include('ZZoutgoing').and not_include('ZZincoming')
+      end
+
+      it 'filtre par sens' do
+        get accounting_bank_reconciliation_path, params: { q: { direction: 'credit' } }
+        expect(response.body).to include('ZZincoming').and not_include('ZZoutgoing')
+      end
+
+      it 'filtre par période' do
+        get accounting_bank_reconciliation_path, params: { q: { from: '2025-02-01' } }
+        expect(response.body).to include('ZZoutgoing').and not_include('ZZincoming')
+      end
+    end
   end
 
   describe 'PATCH /accounting/bank_reconciliation — lettrage' do

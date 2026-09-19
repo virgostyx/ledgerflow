@@ -16,6 +16,21 @@ RSpec.describe 'Accounting::VatDeclarations', type: :request do
       get accounting_vat_declarations_path
       expect(response).to have_http_status(:ok)
     end
+
+    describe 'filtres' do
+      let!(:draft_decl)     { create(:vat_declaration, fiscal_year: fiscal_year, period_type: :quarterly) }
+      let!(:submitted_decl) { create(:vat_declaration, fiscal_year: fiscal_year, status: :submitted, period_type: :monthly, period_start: Date.new(2025, 4, 1), period_end: Date.new(2025, 4, 30)) }
+
+      it 'filtre par statut' do
+        get accounting_vat_declarations_path, params: { q: { status: 'submitted' } }
+        expect(response.body).to include(accounting_vat_declaration_path(submitted_decl)).and not_include(accounting_vat_declaration_path(draft_decl))
+      end
+
+      it 'filtre par type de période' do
+        get accounting_vat_declarations_path, params: { q: { period_type: 'quarterly' } }
+        expect(response.body).to include(accounting_vat_declaration_path(draft_decl)).and not_include(accounting_vat_declaration_path(submitted_decl))
+      end
+    end
   end
 
   describe 'GET /accounting/vat_declarations/new' do

@@ -24,6 +24,34 @@ RSpec.describe 'Accounting::Partners', type: :request do
       get accounting_partners_path, params: { page: 2 }
       expect(response.body.scan('View</a>').size).to eq(1)
     end
+
+    describe 'filtres' do
+      let!(:acme)   { create(:partner, name: 'ZZAcme', partner_type: :customer, country: 'BE', city: 'Namur') }
+      let!(:globex) { create(:partner, name: 'ZZGlobex', partner_type: :supplier, country: 'FR', city: 'Lyon') }
+      let!(:gone)   { create(:partner, name: 'ZZGone', active: false) }
+
+      it 'filtre par nom ou ville' do
+        get accounting_partners_path, params: { q: { q: 'lyon' } }
+        expect(response.body).to include('ZZGlobex').and not_include('ZZAcme')
+      end
+
+      it 'filtre par type' do
+        get accounting_partners_path, params: { q: { partner_type: 'customer' } }
+        expect(response.body).to include('ZZAcme').and not_include('ZZGlobex')
+      end
+
+      it 'filtre par pays' do
+        get accounting_partners_path, params: { q: { country: 'FR' } }
+        expect(response.body).to include('ZZGlobex').and not_include('ZZAcme')
+      end
+
+      it 'masque les inactifs par défaut et les montre à la demande' do
+        get accounting_partners_path
+        expect(response.body).not_to include('ZZGone')
+        get accounting_partners_path, params: { q: { inactive: '1' } }
+        expect(response.body).to include('ZZGone')
+      end
+    end
   end
 
   describe 'GET /accounting/partners/new' do

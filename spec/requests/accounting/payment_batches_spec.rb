@@ -22,6 +22,27 @@ RSpec.describe 'Accounting::PaymentBatches', type: :request do
       get accounting_payment_batches_path
       expect(response).to have_http_status(:ok)
     end
+
+    describe 'filters' do
+      let!(:draft_batch)     { create(:payment_batch, bank_account: bank_account, requested_execution_date: Date.new(2025, 1, 10)) }
+      let!(:generated_batch) { create(:payment_batch, :generated, bank_account: bank_account, message_id: 'ZZmsg', requested_execution_date: Date.new(2025, 3, 10)) }
+
+      it 'filters by status' do
+        get accounting_payment_batches_path, params: { q: { status: 'generated' } }
+        expect(response.body).to include(accounting_payment_batch_path(generated_batch)).and not_include(accounting_payment_batch_path(draft_batch))
+      end
+
+      it 'filters by execution date range' do
+        get accounting_payment_batches_path, params: { q: { from: '2025-02-01' } }
+        expect(response.body).to include(accounting_payment_batch_path(generated_batch)).and not_include(accounting_payment_batch_path(draft_batch))
+      end
+
+      it 'filters by bank account' do
+        other = create(:payment_batch)
+        get accounting_payment_batches_path, params: { q: { bank_account_id: bank_account.id } }
+        expect(response.body).to include(accounting_payment_batch_path(draft_batch)).and not_include(accounting_payment_batch_path(other))
+      end
+    end
   end
 
   describe 'GET /accounting/payment_batches/new' do

@@ -11,3 +11,6 @@
     </span>
   </nav>
 <% end %>
+<% if pagy.count.zero? %>
+  <p class="mt-4 text-sm text-gray-500 text-center">No results match your filters.</p>
+<% end %>

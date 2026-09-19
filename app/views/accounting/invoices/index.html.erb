@@ -19,7 +19,15 @@
   <% end %>
 <% end %>
 
-<% if @invoices.empty? %>
+<%= render 'shared/filters', fields: [
+  { name: :q, label: 'Search', type: :text },
+  { name: :status, label: 'Status', type: :select, options: Accounting::Invoice.statuses.keys.map { |s| [s.humanize, s] } },
+  { name: :from, label: 'From', type: :date },
+  { name: :to, label: 'To', type: :date },
+  { name: :unpaid, label: 'Unpaid only', type: :checkbox },
+  { name: :overdue, label: 'Overdue only', type: :checkbox }
+] %>
+<% if @invoices.empty? && !filters_active? %>
   <%= render Ui::EmptyStateComponent.new(
         title: "No #{section_title.downcase} invoices yet",
         description: 'Create your first invoice to get started.',

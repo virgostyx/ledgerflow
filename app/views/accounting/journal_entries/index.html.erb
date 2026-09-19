@@ -14,7 +14,15 @@
   <% end %>
 <% end %>
 
-<% if @entries.empty? %>
+<%= render 'shared/filters', fields: [
+  { name: :q, label: 'Search', type: :text },
+  { name: :journal_id, label: 'Journal', type: :select, options: Accounting::Journal.order(:code).map { |j| [j.code, j.id] } },
+  { name: :status, label: 'Status', type: :select, options: Accounting::JournalEntry.statuses.keys.map { |s| [s.humanize, s] } },
+  { name: :fiscal_year_id, label: 'Fiscal year', type: :select, options: Accounting::FiscalYear.order(year: :desc).map { |f| [f.year, f.id] } },
+  { name: :from, label: 'From', type: :date },
+  { name: :to, label: 'To', type: :date }
+] %>
+<% if @entries.empty? && !filters_active? %>
   <%= render Ui::EmptyStateComponent.new(
         title: 'No journal entries yet',
         description: 'Create your first journal entry to get started.',

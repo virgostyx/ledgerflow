@@ -29,6 +29,13 @@
   <% end %>
 </div>
 
+<%= render 'shared/filters', fields: [
+  { name: :q, label: 'Search', type: :text },
+  { name: :direction, label: 'Direction', type: :select, options: [['Credit (incoming)', 'credit'], ['Debit (outgoing)', 'debit']] },
+  { name: :from, label: 'From', type: :date },
+  { name: :to, label: 'To', type: :date }
+] %>
+
 <%# Pending transactions %>
 <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
   <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -40,7 +47,7 @@
     </h2>
   </div>
 
-  <% if @pending_transactions.any? %>
+  <% if @pending_transactions.any? || filters_active? %>
     <table class="w-full text-sm">
       <thead class="bg-gray-50 border-b border-gray-200">
         <tr>

@@ -71,4 +71,13 @@ class Accounting::Invoice < ApplicationRecord
     return if journal.journal_type == expected
     errors.add(:journal, "must be a #{expected} journal")
   end
+
+  def self.filter_by(q)
+    rel = matching(status: q[:status])
+            .between(:invoice_date, q[:from], q[:to])
+    rel = rel.joins(:partner).search(q[:q], "accounting_invoices.invoice_number", "accounting_partners.name", "accounting_invoices.description") if q[:q].present?
+    rel = rel.posted if q[:unpaid] == "1"
+    rel = rel.posted.where(due_date: ...Date.current) if q[:overdue] == "1"
+    rel
+  end
 end

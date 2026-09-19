@@ -31,4 +31,9 @@ class Accounting::Partner < ApplicationRecord
     return if iban.blank?
     errors.add(:iban, :invalid) unless IBANTools::IBAN.valid?(iban)
   end
+
+  def self.filter_by(q)
+    rel = matching(partner_type: q[:partner_type], country: q[:country]).search(q[:q], "name", "vat_number", "city")
+    q[:inactive] == "1" ? rel : rel.active
+  end
 end

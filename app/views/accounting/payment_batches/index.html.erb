@@ -14,7 +14,13 @@
   <% end %>
 <% end %>
 
-<% if @payment_batches.empty? %>
+<%= render 'shared/filters', fields: [
+  { name: :status, label: 'Status', type: :select, options: Accounting::PaymentBatch.statuses.keys.map { |s| [s.humanize, s] } },
+  { name: :bank_account_id, label: 'Bank account', type: :select, options: Accounting::BankAccount.order(:label_fr).map { |b| [b.label_fr, b.id] } },
+  { name: :from, label: 'Execution from', type: :date },
+  { name: :to, label: 'Execution to', type: :date }
+] %>
+<% if @payment_batches.empty? && !filters_active? %>
   <%= render Ui::EmptyStateComponent.new(
         title: 'No payment batches yet',
         description: 'Group posted supplier invoices into a SEPA payment batch.',

@@ -26,6 +26,16 @@ RSpec.describe "Accounting::Settings::Accounts", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it "filters by text on code or label" do
+      get accounting_settings_accounts_path, params: { q: { q: "services" } }
+      expect(response.body).to include("604000").and not_include("600000")
+    end
+
+    it "combines the text filter with the class filter" do
+      get accounting_settings_accounts_path, params: { account_class: 6, q: { q: "604" } }
+      expect(response.body).to include("604000").and not_include("600000")
+    end
+
     it "filters by class when ?account_class= is given" do
       get accounting_settings_accounts_path, params: { account_class: 6 }
       expect(response).to have_http_status(:ok)

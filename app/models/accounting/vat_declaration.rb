@@ -24,4 +24,8 @@ class Accounting::VatDeclaration < ApplicationRecord
     return unless period_start && period_end
     errors.add(:period_end, :greater_than, count: period_start) if period_end < period_start
   end
+
+  def self.filter_by(q)
+    matching(status: q[:status], period_type: q[:period_type], fiscal_year_id: q[:fiscal_year_id])
+  end
 end

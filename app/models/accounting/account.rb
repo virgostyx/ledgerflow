@@ -55,4 +55,8 @@ class Accounting::Account < ApplicationRecord
     return if code.start_with?(parent.code)
     errors.add(:code, :must_follow_parent_hierarchy)
   end
+
+  def self.filter_by(q)
+    search(q[:q], "code", "label_fr")
+  end
 end

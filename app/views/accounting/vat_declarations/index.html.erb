@@ -14,7 +14,12 @@
   <% end %>
 <% end %>
 
-<% if @declarations.empty? %>
+<%= render 'shared/filters', fields: [
+  { name: :status, label: 'Status', type: :select, options: Accounting::VatDeclaration.statuses.keys.map { |s| [s.humanize, s] } },
+  { name: :period_type, label: 'Period', type: :select, options: Accounting::VatDeclaration.period_types.keys.map { |s| [s.humanize, s] } },
+  { name: :fiscal_year_id, label: 'Fiscal year', type: :select, options: Accounting::FiscalYear.order(year: :desc).map { |f| [f.year, f.id] } }
+] %>
+<% if @declarations.empty? && !filters_active? %>
   <%= render Ui::EmptyStateComponent.new(
         title: 'No VAT declarations yet',
         description: 'Submit your first VAT declaration for the current period.',
