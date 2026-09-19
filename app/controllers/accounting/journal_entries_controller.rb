@@ -11,7 +11,7 @@ class Accounting::JournalEntriesController < ApplicationController
 
   def new
     @entry      = Accounting::JournalEntry.new
-    @entry.fiscal_year = Accounting::FiscalYear.find_by(status: :open)
+    @entry.fiscal_year = Accounting::FiscalYear.current
     @journals   = Accounting::Journal.active.order(:code)
     @accounts   = Accounting::Account.where(is_leaf: true).order(:code)
     @axes       = Accounting::AnalyticalAxis.active.ordered.includes(analytical_accounts: [])

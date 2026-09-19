@@ -46,7 +46,7 @@ class Peppol::WebhooksController < ApplicationController
 
   def handle_incoming(payload)
     ubl_xml     = payload["ubl_xml"]
-    fiscal_year = ActsAsTenant.without_tenant { Accounting::FiscalYear.find_by(status: :open) }
+    fiscal_year = ActsAsTenant.without_tenant { Accounting::FiscalYear.current }
     return unless fiscal_year && ubl_xml.present?
 
     ActsAsTenant.with_tenant(fiscal_year.entity) do

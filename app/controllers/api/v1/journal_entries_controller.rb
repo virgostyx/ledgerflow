@@ -17,7 +17,7 @@ class Api::V1::JournalEntriesController < Api::V1::BaseController
     return render json: { error: "Account not found" }, status: :unprocessable_content if account.nil?
 
     journal     = Accounting::Journal.where(journal_type: :purchase, active: true).first
-    fiscal_year = Accounting::FiscalYear.find_by(status: :open)
+    fiscal_year = Accounting::FiscalYear.current
     amount      = BigDecimal(params[:amount].to_s)
 
     entry = nil

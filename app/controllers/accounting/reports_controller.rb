@@ -110,7 +110,7 @@ class Accounting::ReportsController < ApplicationController
     @fiscal_year = if params[:fiscal_year_id].present?
                      Accounting::FiscalYear.find(params[:fiscal_year_id])
     else
-                     Accounting::FiscalYear.find_by(status: :open)
+                     Accounting::FiscalYear.current
     end
   end
 

@@ -53,7 +53,7 @@ class Accounting::BankReconciliationsController < ApplicationController
 
   def handle_reconciliation
     transaction = Accounting::BankTransaction.find(bank_params[:bank_transaction_id])
-    fiscal_year = Accounting::FiscalYear.find_by(status: :open)
+    fiscal_year = Accounting::FiscalYear.current
 
     result = Accounting::ReconcileBankTransaction.call(
       transaction: transaction,
@@ -91,7 +91,7 @@ class Accounting::BankReconciliationsController < ApplicationController
     return redirect_to back, alert: t("accounting.bank_reconciliation.invalid_invoice") if allocations.any? { |invoice, _| invoice.nil? }
 
     result = Accounting::BookInvoiceReceipt.call(transaction: transaction, allocations: allocations,
-                                                 fiscal_year: Accounting::FiscalYear.open_years.first)
+                                                 fiscal_year: Accounting::FiscalYear.current)
     if result.success?
       redirect_to accounting_bank_reconciliation_path, notice: t("accounting.bank_reconciliation.reconciled")
     else
@@ -122,13 +122,13 @@ class Accounting::BankReconciliationsController < ApplicationController
         Accounting::LinkTransactionToSettlement.call(transaction: transaction, payment_batch: suggestion.target)
       when :expense
         Accounting::ReconcileBankTransaction.call(transaction: transaction, account_id: suggestion.target.id,
-                                                  fiscal_year: Accounting::FiscalYear.open_years.first, label: "Bank fees")
+                                                  fiscal_year: Accounting::FiscalYear.current, label: "Bank fees")
       when :invoices
         Accounting::BookInvoiceReceipt.call(transaction: transaction, invoices: suggestion.target,
-                                            fiscal_year: Accounting::FiscalYear.open_years.first)
+                                            fiscal_year: Accounting::FiscalYear.current)
       when :invoice
         Accounting::BookInvoiceReceipt.call(transaction: transaction, invoice: suggestion.target,
-                                            fiscal_year: Accounting::FiscalYear.open_years.first)
+                                            fiscal_year: Accounting::FiscalYear.current)
       end
 
     if result.success?
