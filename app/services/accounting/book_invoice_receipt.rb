@@ -19,7 +19,7 @@ class Accounting::BookInvoiceReceipt
     ApplicationRecord.transaction do
       result = Accounting::ReconcileBankTransaction.call(
         transaction: transaction,
-        account_id:  Accounting::Account.find_by!(code: "400000").id,
+        account_id:  Accounting::Account.find_by!(code: Accounting::AccountCodes::CUSTOMERS).id,
         fiscal_year: fiscal_year,
         label:       "Receipt #{list.filter_map(&:invoice_number).join(', ')}".strip,
         allocations: allocations

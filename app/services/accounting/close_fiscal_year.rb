@@ -9,7 +9,7 @@ class Accounting::CloseFiscalYear
     end
 
     closing_journal = Accounting::Journal.where(journal_type: :misc, active: true).first
-    result_account  = Accounting::Account.find_by(code: "699000")
+    result_account  = Accounting::Account.find_by(code: Accounting::AccountCodes::RESULT)
 
     unless closing_journal && result_account
       ctx = LightService::Context.make(fiscal_year: fiscal_year)

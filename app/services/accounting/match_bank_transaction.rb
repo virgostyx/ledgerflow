@@ -38,7 +38,7 @@ class Accounting::MatchBankTransaction
     Suggestion.new(kind: :invoices, target: named, excess: 0, confidence: :medium)
   end
 
-  FEES_ACCOUNT_CODE = "651100" # Frais bancaires
+  FEES_ACCOUNT_CODE = Accounting::AccountCodes::BANK_FEES
   FEES_PATTERN      = /\bfees?\b/i
 
   # A debit mentioning a fee goes to bank fees. ponytail: single keyword and account; make them settings if needed.

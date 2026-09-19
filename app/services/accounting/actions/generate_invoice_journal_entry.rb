@@ -55,8 +55,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   end
 
   def self.build_customer_lines(invoice, entry)
-    receivable_account = Accounting::Account.find_by!(code: "400000")
-    vat_account        = Accounting::Account.find_by!(code: "451000")
+    receivable_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::CUSTOMERS)
+    vat_account        = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
 
     Accounting::JournalEntryLine.create!(
       journal_entry: entry,
@@ -95,8 +95,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   end
 
   def self.build_supplier_lines(invoice, entry)
-    payable_account = Accounting::Account.find_by!(code: "440000")
-    vat_account     = Accounting::Account.find_by!(code: "411000")
+    payable_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::SUPPLIERS)
+    vat_account     = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_DEDUCTIBLE)
 
     invoice.lines.each do |line|
       vat_code = VAT_GRID_PURCHASE[line.vat_rate.to_i]

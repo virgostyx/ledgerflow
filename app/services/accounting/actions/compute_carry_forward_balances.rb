@@ -7,8 +7,8 @@ class Accounting::Actions::ComputeCarryForwardBalances
     Accounting::Account.account_types[:equity]
   ].freeze
 
-  RESULT_ACCOUNT_CODE       = "699000"
-  CARRY_FORWARD_ACCOUNT_CODE = "130000"
+  RESULT_ACCOUNT_CODE       = Accounting::AccountCodes::RESULT
+  CARRY_FORWARD_ACCOUNT_CODE = Accounting::AccountCodes::CARRY_FORWARD
 
   expects :previous_fiscal_year
   promises :carry_forward_lines, :carry_account

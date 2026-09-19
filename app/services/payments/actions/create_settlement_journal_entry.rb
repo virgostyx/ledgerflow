@@ -8,7 +8,7 @@ class Payments::Actions::CreateSettlementJournalEntry
     batch               = ctx.payment_batch
     bank_journal        = batch.bank_account.journal
     bank_account_record = bank_journal.default_account
-    payable_account     = Accounting::Account.find_by!(code: "440000")
+    payable_account     = Accounting::Account.find_by!(code: Accounting::AccountCodes::SUPPLIERS)
     fiscal_year         = Accounting::FiscalYear.current
     lines               = batch.lines.includes(invoice: :partner).to_a
 
