@@ -3,6 +3,9 @@
 # Other cases (bank fees, unknown transfer) are plain BuildStatement entries.
 class Bank::Simulator::CustomerReceipt
   def self.call(invoice:, bank_account:, amount: nil, communication: true, date: Date.current)
+    raise ArgumentError, "Invoice ##{invoice.id} is not a customer invoice" unless invoice.customer?
+    raise ArgumentError, "Invoice ##{invoice.id} is not posted" unless invoice.posted?
+
     description = communication ? "Invoice #{invoice.invoice_number} #{comm(invoice)}" : "Transfer"
 
     Bank::Simulator::BuildStatement.call(

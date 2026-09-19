@@ -34,6 +34,20 @@ RSpec.describe Bank::Simulator::CustomerReceipt, type: :service do
     expect(Accounting::MatchBankTransaction.call(transaction: Accounting::BankTransaction.sole)).to be_nil
   end
 
+  it 'refuses a supplier invoice' do
+    supplier_invoice = create(:invoice, :supplier, :posted)
+
+    expect { described_class.call(invoice: supplier_invoice, bank_account: bank_account) }
+      .to raise_error(ArgumentError, /customer invoice/)
+  end
+
+  it 'refuses an invoice that is not posted' do
+    draft = create(:invoice, :customer, :draft)
+
+    expect { described_class.call(invoice: draft, bank_account: bank_account) }
+      .to raise_error(ArgumentError, /not posted/)
+  end
+
   it 'can be repeated with distinct references (duplicate payment)' do
     2.times { import(described_class.call(invoice: invoice, bank_account: bank_account)) }
     expect(Accounting::BankTransaction.count).to eq(2)
