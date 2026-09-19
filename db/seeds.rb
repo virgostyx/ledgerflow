@@ -51,6 +51,43 @@ ActsAsTenant.with_tenant(entity) do
     )
     puts "[FiscalYear] Exercice #{current_year} créé."
   end
+
+  # Opening balance on the main bank account: OD entry (550100 / 100000) + reconciled bank transaction
+  unless bank_account.transactions.exists?(reference: "OPENING")
+    fiscal_year = Accounting::FiscalYear.find_by!(year: current_year)
+    amount      = BigDecimal("50000")
+
+    ApplicationRecord.transaction do
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+
+      journal = Accounting::Journal.find_by!(code: "OD")
+      entry = Accounting::JournalEntry.create!(
+        journal:     journal,
+        fiscal_year: fiscal_year,
+        entry_date:  fiscal_year.start_date,
+        description: "Opening balance",
+        reference:   journal.next_sequence_number(year: fiscal_year.start_date.year),
+        status:      :draft
+      )
+      { "550100" => { debit: amount }, "100000" => { credit: amount } }.each do |code, side|
+        entry.lines.create!(account: Accounting::Account.find_by!(code: code), label: "Opening balance", **side)
+      end
+      result = Accounting::PostJournalEntry.call(entry: entry)
+      raise ActiveRecord::Rollback, result.message if result.failure?
+
+      bank_account.transactions.create!(
+        transaction_date: fiscal_year.start_date,
+        amount:           amount,
+        currency:         "EUR",
+        description:      "Opening balance",
+        reference:        "OPENING",
+        status:           :reconciled,
+        journal_entry:    entry,
+        raw_data:         {}
+      )
+      puts "[BankAccount] Solde d'ouverture #{amount} € créé (écriture #{entry.reference})."
+    end
+  end
 end
 
 # Step 4: Create UserEntity memberships for all non-budget users
