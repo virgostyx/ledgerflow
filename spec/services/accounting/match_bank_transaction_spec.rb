@@ -81,4 +81,46 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
     tx = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('10'), description: 'random')
     expect(described_class.call(transaction: tx)).to be_nil
   end
+
+  context 'grouped receipts' do
+    let!(:fiscal_year) { create(:fiscal_year, status: :open) }
+    let(:partner) { create(:partner) }
+    let!(:first) do
+      create(:invoice, :customer, :posted, partner: partner, fiscal_year: fiscal_year, invoice_number: '2026-0041')
+        .tap { |i| i.update_columns(total_incl_vat: BigDecimal('1000')) }
+    end
+    let!(:second) do
+      create(:invoice, :customer, :posted, partner: partner, fiscal_year: fiscal_year, invoice_number: '2026-0043')
+        .tap { |i| i.update_columns(total_incl_vat: BigDecimal('500')) }
+    end
+
+    def tx(amount: 1500, description: 'Invoices 2026-0041 and 2026-0043')
+      create(:bank_transaction, bank_account: bank_account, amount: BigDecimal(amount.to_s), description: description)
+    end
+
+    it 'suggests all invoices named in the description when the sum of balances matches' do
+      suggestion = described_class.call(transaction: tx)
+
+      expect(suggestion.kind).to eq(:invoices)
+      expect(suggestion.target).to contain_exactly(first, second)
+      expect(suggestion.confidence).to eq(:medium)
+    end
+
+    it 'does not match when the sum differs' do
+      expect(described_class.call(transaction: tx(amount: 1400))).to be_nil
+    end
+
+    it 'does not match invoices of different partners' do
+      second.update_columns(partner_id: create(:partner).id)
+      expect(described_class.call(transaction: tx)).to be_nil
+    end
+
+    it 'does not match when only one invoice number is present' do
+      expect(described_class.call(transaction: tx(amount: 1000, description: 'Invoice 2026-0041'))).to be_nil
+    end
+
+    it 'does not confuse a number with a longer one' do
+      expect(described_class.call(transaction: tx(description: '2026-00411 and 2026-00431'))).to be_nil
+    end
+  end
 end

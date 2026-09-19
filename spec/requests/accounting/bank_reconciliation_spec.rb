@@ -112,6 +112,32 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
       expect(response.body).to include('overpaid by').and include(Accounting::MoneyPresenter.new(BigDecimal('290')).format)
     end
 
+    context 'with a grouped transfer' do
+      let!(:second) do
+        create(:invoice, :customer, :posted, fiscal_year: fiscal_year, partner: invoice.partner, invoice_number: 'GRP-0002')
+          .tap { |i| i.update_columns(total_incl_vat: BigDecimal('300')) }
+      end
+      let!(:group_tx) do
+        invoice.update_columns(invoice_number: 'GRP-0001')
+        create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('1510'),
+               description: 'Invoices GRP-0001 and GRP-0002')
+      end
+      let(:accept_group) { { bank_reconciliation: { bank_transaction_id: group_tx.id, accept_suggestion: '1' } } }
+
+      it 'lists the invoices in the suggestion' do
+        get accounting_bank_reconciliation_path
+        expect(response.body).to include('GRP-0001').and include('GRP-0002')
+      end
+
+      it 'books an accepted grouped suggestion and pays every invoice' do
+        patch accounting_bank_reconciliation_path, params: accept_group
+
+        expect(group_tx.reload).to be_reconciled
+        expect(invoice.reload).to be_paid
+        expect(second.reload).to be_paid
+      end
+    end
+
     it 'tucks manual reconciliation behind a link when a suggestion exists' do
       get accounting_bank_reconciliation_path
       expect(response.body).to include('Reconcile manually')

@@ -10,6 +10,7 @@ class Accounting::JournalEntryLine < ApplicationRecord
   belongs_to :account,       class_name: "Accounting::Account"
   belongs_to :partner,       class_name: "Accounting::Partner",
                               foreign_key: :partner_id, optional: true
+  belongs_to :invoice,       class_name: "Accounting::Invoice", optional: true
   has_many   :analytical_annotations, class_name: "Accounting::AnalyticalAnnotation",
              foreign_key: :journal_entry_line_id, inverse_of: :journal_entry_line,
              dependent: :destroy

@@ -85,4 +85,44 @@ RSpec.describe Accounting::BookInvoiceReceipt, type: :service do
     book
     expect(book).to be_failure
   end
+
+  context 'grouped receipt (several invoices of one partner)' do
+    let(:second) do
+      create(:invoice, :customer, :posted, fiscal_year: fiscal_year, partner: invoice.partner)
+        .tap { |i| i.update_columns(total_incl_vat: BigDecimal('300')) }
+    end
+    let(:group_tx) { create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('1510')) }
+
+    def book_group(transaction: group_tx, invoices: [ invoice, second ])
+      described_class.call(transaction: transaction, invoices: invoices, fiscal_year: fiscal_year)
+    end
+
+    it 'books one entry with a receivable line per invoice and pays them all' do
+      expect { expect(book_group).to be_success }.to change(Accounting::JournalEntry, :count).by(1)
+
+      lines = group_tx.reload.journal_entry.lines
+      expect(lines.find_by(account: bank_gl).debit).to eq(BigDecimal('1510'))
+      expect(lines.find_by(invoice_id: invoice.id).credit).to eq(BigDecimal('1210'))
+      expect(lines.find_by(invoice_id: second.id).credit).to eq(BigDecimal('300'))
+      expect(invoice.reload).to be_paid
+      expect(second.reload).to be_paid
+    end
+
+    it 'refuses when the amount is not the sum of the balances, changing nothing' do
+      group_tx.update_columns(amount: BigDecimal('1500'))
+
+      expect { expect(book_group).to be_failure }.not_to change(Accounting::JournalEntry, :count)
+      expect(invoice.reload).to be_posted
+    end
+
+    it 'refuses invoices of different partners' do
+      second.update_columns(partner_id: create(:partner).id)
+      expect(book_group).to be_failure
+    end
+
+    it 'refuses a group containing an invoice that is not open' do
+      second.update_columns(status: Accounting::Invoice.statuses[:paid])
+      expect(book_group).to be_failure
+    end
+  end
 end

@@ -13,9 +13,6 @@ class Accounting::Actions::CreateBankJournalEntry
     abs_amount  = tx.amount.abs
     label       = ctx.respond_to?(:label) ? ctx[:label].presence : tx.description
 
-    debit_account  = tx.credit? ? bank_account_record : counterpart
-    credit_account = tx.credit? ? counterpart          : bank_account_record
-
     entry = nil
     ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
 
@@ -24,30 +21,26 @@ class Accounting::Actions::CreateBankJournalEntry
       fiscal_year: ctx.fiscal_year,
       entry_date:  tx.transaction_date,
       description: label || tx.description,
-      status:      :draft,
-      source_type: ctx[:source_type],
-      source_id:   ctx[:source_id]
+      status:      :draft
     )
 
-    partner = ctx[:partner]
-
-    Accounting::JournalEntryLine.create!(
-      journal_entry: entry,
-      account:       debit_account,
-      partner:       (partner if debit_account == counterpart),
-      debit:         abs_amount,
-      credit:        BigDecimal("0"),
-      label:         label || tx.description
-    )
+    # One bank line for the whole transaction; the counterpart side is split per invoice when allocations are given.
+    counterpart_lines = ctx[:allocations].presence || [ [ nil, abs_amount ] ]
+    bank_side         = tx.credit? ? :debit : :credit
+    counterpart_side  = tx.credit? ? :credit : :debit
+    zero              = BigDecimal("0")
 
     Accounting::JournalEntryLine.create!(
-      journal_entry: entry,
-      account:       credit_account,
-      partner:       (partner if credit_account == counterpart),
-      debit:         BigDecimal("0"),
-      credit:        abs_amount,
-      label:         label || tx.description
+      journal_entry: entry, account: bank_account_record, label: label || tx.description,
+      bank_side => abs_amount, counterpart_side => zero
     )
+    counterpart_lines.each do |invoice, amount|
+      Accounting::JournalEntryLine.create!(
+        journal_entry: entry, account: counterpart, label: label || tx.description,
+        partner: invoice&.partner, invoice: invoice,
+        counterpart_side => amount, bank_side => zero
+      )
+    end
 
     post_result = Accounting::PostJournalEntry.call(entry: entry)
     unless post_result.success?

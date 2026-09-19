@@ -66,6 +66,9 @@ class Accounting::BankReconciliationsController < ApplicationController
       case suggestion.kind
       when :payment_batch
         Accounting::LinkTransactionToSettlement.call(transaction: transaction, payment_batch: suggestion.target)
+      when :invoices
+        Accounting::BookInvoiceReceipt.call(transaction: transaction, invoices: suggestion.target,
+                                            fiscal_year: Accounting::FiscalYear.open_years.first)
       when :invoice
         Accounting::BookInvoiceReceipt.call(transaction: transaction, invoice: suggestion.target,
                                             fiscal_year: Accounting::FiscalYear.open_years.first)

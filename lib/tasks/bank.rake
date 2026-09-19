@@ -35,4 +35,22 @@ namespace :bank do
       puts "Imported #{result[:imported_count]} transaction(s)"
     end
   end
+
+  desc "Simulate one customer transfer settling several invoices: bank:grouped_receipt[BANK_ACCOUNT_ID,'ID ID ...']"
+  task :grouped_receipt, [ :bank_account_id, :invoice_ids ] => :environment do |_, args|
+    abort "Development/test only" if Rails.env.production?
+
+    bank_account = ActsAsTenant.without_tenant { Accounting::BankAccount.find(args.fetch(:bank_account_id)) }
+    ActsAsTenant.with_tenant(bank_account.entity) do
+      invoices = Accounting::Invoice.find(args.fetch(:invoice_ids).split)
+      xml = begin
+        Bank::Simulator::GroupedReceipt.call(invoices: invoices, bank_account: bank_account)
+      rescue ArgumentError => e
+        abort e.message
+      end
+      result = Accounting::ImportCamtStatement.call(xml: xml, bank_account: bank_account)
+      abort result.message if result.failure?
+      puts "Imported #{result[:imported_count]} transaction(s)"
+    end
+  end
 end
