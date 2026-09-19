@@ -48,7 +48,6 @@
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Counterpart</th>
-          <th class="px-4 py-3"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
@@ -72,18 +71,26 @@
               <%= Accounting::MoneyPresenter.new(tx.amount).format %>
             </td>
             <td class="px-4 py-3">
-              <%= form_with url: accounting_bank_reconciliation_path, method: :patch,
-                            class: 'flex gap-2 items-center' do |f| %>
-                <%= hidden_field_tag 'bank_reconciliation[bank_transaction_id]', tx.id %>
-                <%= select_tag 'bank_reconciliation[account_id]',
-                      options_from_collection_for_select(@accounts, :id,
-                        ->(a) { "#{a.code} — #{a.label_fr}" }),
-                      prompt: 'Select an account',
-                      class: 'rounded-md border-gray-300 text-xs focus:ring-primary-500 focus:border-primary-500' %>
-            </td>
-            <td class="px-4 py-3">
-                <%= submit_tag 'Reconcile',
-                      class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700 transition-colors' %>
+              <% manual_form = capture do %>
+                <%= form_with url: accounting_bank_reconciliation_path, method: :patch,
+                              class: 'flex gap-2 items-center' do |f| %>
+                  <%= hidden_field_tag 'bank_reconciliation[bank_transaction_id]', tx.id %>
+                  <%= select_tag 'bank_reconciliation[account_id]',
+                        options_from_collection_for_select(@accounts, :id,
+                          ->(a) { "#{a.code} — #{a.label_fr}" }),
+                        prompt: 'Select an account',
+                        class: 'rounded-md border-gray-300 text-xs focus:ring-primary-500 focus:border-primary-500' %>
+                  <%= submit_tag 'Reconcile',
+                        class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700 transition-colors' %>
+                <% end %>
+              <% end %>
+              <% if @suggestions[tx] %>
+                <details>
+                  <summary class="text-xs text-gray-500 cursor-pointer">Reconcile manually</summary>
+                  <div class="mt-2"><%= manual_form %></div>
+                </details>
+              <% else %>
+                <%= manual_form %>
               <% end %>
             </td>
           </tr>

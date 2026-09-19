@@ -105,6 +105,19 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
       expect(response.body).to include('Suggested').and include(invoice.invoice_number.to_s)
     end
 
+    it 'tucks manual reconciliation behind a link when a suggestion exists' do
+      get accounting_bank_reconciliation_path
+      expect(response.body).to include('Reconcile manually')
+    end
+
+    it 'shows the manual form directly when there is no suggestion' do
+      receipt.update_columns(description: 'nothing to match')
+      get accounting_bank_reconciliation_path
+
+      expect(response.body).to include('value="Reconcile"')
+      expect(response.body).not_to include('Reconcile manually')
+    end
+
     it 'books an accepted invoice suggestion and pays the invoice' do
       patch accounting_bank_reconciliation_path, params: accept
 
