@@ -4,7 +4,7 @@ class Accounting::MatchBankTransaction
   Suggestion = Struct.new(:kind, :target, :confidence, :excess, keyword_init: true)
 
   def self.call(transaction:)
-    match_batch(transaction) || match_invoice(transaction) || match_invoices(transaction)
+    match_batch(transaction) || match_invoice(transaction) || match_invoices(transaction) || match_fees(transaction)
   end
 
   def self.match_batch(tx)
@@ -37,5 +37,16 @@ class Accounting::MatchBankTransaction
 
     Suggestion.new(kind: :invoices, target: named, excess: 0, confidence: :medium)
   end
-  private_class_method :match_batch, :match_invoice, :match_invoices
+
+  FEES_ACCOUNT_CODE = "651100" # Frais bancaires
+  FEES_PATTERN      = /\bfees?\b/i
+
+  # A debit mentioning a fee goes to bank fees. ponytail: single keyword and account; make them settings if needed.
+  def self.match_fees(tx)
+    return unless tx.debit? && tx.description.to_s.match?(FEES_PATTERN)
+
+    account = Accounting::Account.find_by(code: FEES_ACCOUNT_CODE)
+    Suggestion.new(kind: :expense, target: account, excess: 0, confidence: :medium) if account
+  end
+  private_class_method :match_batch, :match_invoice, :match_invoices, :match_fees
 end

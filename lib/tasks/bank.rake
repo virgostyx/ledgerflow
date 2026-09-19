@@ -53,4 +53,18 @@ namespace :bank do
       puts "Imported #{result[:imported_count]} transaction(s)"
     end
   end
+
+  desc "Simulate the bank debiting its fees: bank:fees[BANK_ACCOUNT_ID,AMOUNT] (default 4.50)"
+  task :fees, [ :bank_account_id, :amount ] => :environment do |_, args|
+    abort "Development/test only" if Rails.env.production?
+
+    bank_account = ActsAsTenant.without_tenant { Accounting::BankAccount.find(args.fetch(:bank_account_id)) }
+    ActsAsTenant.with_tenant(bank_account.entity) do
+      options = { bank_account: bank_account }
+      options[:amount] = BigDecimal(args[:amount]) if args[:amount]
+      result = Accounting::ImportCamtStatement.call(xml: Bank::Simulator::BankFees.call(**options), bank_account: bank_account)
+      abort result.message if result.failure?
+      puts "Imported #{result[:imported_count]} transaction(s)"
+    end
+  end
 end

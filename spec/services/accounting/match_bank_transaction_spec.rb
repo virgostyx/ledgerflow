@@ -123,4 +123,37 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
       expect(described_class.call(transaction: tx(description: '2026-00411 and 2026-00431'))).to be_nil
     end
   end
+
+  context 'bank fees' do
+    let!(:fees_account) { create(:account, code: '651100', label_fr: 'Frais bancaires') }
+
+    def debit(description, amount: -4)
+      create(:bank_transaction, bank_account: bank_account, amount: BigDecimal(amount.to_s), description: description)
+    end
+
+    it 'suggests the bank fees account for a debit mentioning a fee' do
+      suggestion = described_class.call(transaction: debit('Monthly account Fee'))
+
+      expect(suggestion.kind).to eq(:expense)
+      expect(suggestion.target).to eq(fees_account)
+      expect(suggestion.confidence).to eq(:medium)
+    end
+
+    it 'also matches the plural, in any case' do
+      expect(described_class.call(transaction: debit('card FEES 09/2026'))).to be_present
+    end
+
+    it 'does not match a word that merely contains fee' do
+      expect(described_class.call(transaction: debit('Coffee machine'))).to be_nil
+    end
+
+    it 'does not match a credit' do
+      expect(described_class.call(transaction: debit('Fee refund', amount: 4))).to be_nil
+    end
+
+    it 'gives no suggestion when the fees account does not exist' do
+      fees_account.destroy!
+      expect(described_class.call(transaction: debit('Fee'))).to be_nil
+    end
+  end
 end

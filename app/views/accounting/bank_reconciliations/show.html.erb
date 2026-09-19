@@ -62,6 +62,7 @@
                 <div class="mt-1 flex items-center gap-2 text-xs text-emerald-700">
                   <span>Suggested: <%= case suggestion.kind
                         when :invoice  then "invoice #{suggestion.target.invoice_number}"
+                        when :expense  then "bank fees (#{suggestion.target.code})"
                         when :invoices then "invoices #{suggestion.target.map(&:invoice_number).join(', ')}"
                         else "payment batch #{suggestion.target.message_id}"
                         end %> (<%= suggestion.confidence %> confidence<%= ", overpaid by #{Accounting::MoneyPresenter.new(suggestion.excess).format}" if suggestion.excess&.positive? %>)</span>

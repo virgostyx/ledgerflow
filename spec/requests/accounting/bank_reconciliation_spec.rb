@@ -138,6 +138,28 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
       end
     end
 
+    context 'with bank fees' do
+      let!(:fees_account) { create(:account, code: '651100', label_fr: 'Frais bancaires') }
+      let!(:fee_tx) do
+        create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('-4.50'), description: 'Account fee 09/2026')
+      end
+      let(:accept_fee) { { bank_reconciliation: { bank_transaction_id: fee_tx.id, accept_suggestion: '1' } } }
+
+      it 'shows the bank fees suggestion' do
+        get accounting_bank_reconciliation_path
+        expect(response.body).to include('bank fees').and include('651100')
+      end
+
+      it 'books the fee: debit 651100, credit the bank account' do
+        patch accounting_bank_reconciliation_path, params: accept_fee
+
+        expect(fee_tx.reload).to be_reconciled
+        lines = fee_tx.journal_entry.lines
+        expect(lines.find_by(account: fees_account).debit).to eq(BigDecimal('4.50'))
+        expect(lines.find_by(account: bank_account_record).credit).to eq(BigDecimal('4.50'))
+      end
+    end
+
     it 'tucks manual reconciliation behind a link when a suggestion exists' do
       get accounting_bank_reconciliation_path
       expect(response.body).to include('Reconcile manually')
