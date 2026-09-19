@@ -11,8 +11,8 @@ export default class extends Controller {
     const matches = query.length === 0
       ? this.accountsValue.slice(0, 10)
       : this.accountsValue.filter(a =>
-          a.code.toLowerCase().includes(query) ||
-          a.label.toLowerCase().includes(query)
+          a.code.toLowerCase().startsWith(query) ||
+          (!/^\d/.test(query) && a.label.toLowerCase().includes(query))
         ).slice(0, 10)
 
     if (matches.length === 0) {
