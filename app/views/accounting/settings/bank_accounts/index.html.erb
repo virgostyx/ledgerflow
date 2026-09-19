@@ -85,3 +85,4 @@
   </div>
   <%= render 'shared/pagination', pagy: @pagy %>
 </div>
+<%= turbo_stream_from ActsAsTenant.current_tenant, :bank_accounts %>

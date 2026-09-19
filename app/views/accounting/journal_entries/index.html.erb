@@ -67,3 +67,4 @@
   </div>
   <%= render 'shared/pagination', pagy: @pagy %>
 <% end %>
+<%= turbo_stream_from ActsAsTenant.current_tenant, :journal_entries %>

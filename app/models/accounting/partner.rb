@@ -2,6 +2,7 @@ class Accounting::Partner < ApplicationRecord
   self.table_name = "accounting_partners"
 
   acts_as_tenant :entity
+  broadcasts_refreshes_to ->(r) { [ r.entity, :partners ] }
 
   BELGIAN_VAT_FORMAT = /\ABE[01]\d{9}\z/
 

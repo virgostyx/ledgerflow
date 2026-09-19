@@ -2,6 +2,7 @@ class Accounting::Account < ApplicationRecord
   self.table_name = "accounting_accounts"
 
   acts_as_tenant :entity
+  broadcasts_refreshes_to ->(r) { [ r.entity, :accounts ] }
 
   include Accounting::MonetaryPrecision
   include Accounting::Auditable

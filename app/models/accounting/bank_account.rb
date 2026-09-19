@@ -2,6 +2,7 @@ class Accounting::BankAccount < ApplicationRecord
   self.table_name = "accounting_bank_accounts"
 
   acts_as_tenant :entity
+  broadcasts_refreshes_to ->(r) { [ r.entity, :bank_accounts ] }
 
   belongs_to :journal, class_name: "Accounting::Journal"
   has_many :transactions, class_name: "Accounting::BankTransaction",

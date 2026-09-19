@@ -66,3 +66,4 @@
     <% end %>
   </div>
 </div>
+<%= turbo_stream_from ActsAsTenant.current_tenant, :analytical_axes %>

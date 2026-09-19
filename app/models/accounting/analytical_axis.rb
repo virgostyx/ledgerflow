@@ -2,6 +2,7 @@ class Accounting::AnalyticalAxis < ApplicationRecord
   self.table_name = "accounting_analytical_axes"
 
   acts_as_tenant :entity
+  broadcasts_refreshes_to ->(r) { [ r.entity, :analytical_axes ] }
 
   has_many :analytical_accounts, class_name: "Accounting::AnalyticalAccount",
            foreign_key: :analytical_axis_id, dependent: :destroy

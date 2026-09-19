@@ -2,6 +2,7 @@ class Accounting::PaymentBatch < ApplicationRecord
   self.table_name = "accounting_payment_batches"
 
   acts_as_tenant :entity
+  broadcasts_refreshes_to ->(r) { [ r.entity, :payment_batches ] }
 
   include AASM
 

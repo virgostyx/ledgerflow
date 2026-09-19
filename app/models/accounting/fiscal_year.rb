@@ -2,6 +2,7 @@ class Accounting::FiscalYear < ApplicationRecord
   self.table_name = "accounting_fiscal_years"
 
   acts_as_tenant :entity
+  broadcasts_refreshes_to ->(r) { [ r.entity, :fiscal_years ] }
 
   enum :status, { open: 0, pre_closing: 1, closed: 2 }
 

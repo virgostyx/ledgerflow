@@ -2,6 +2,7 @@ class Accounting::JournalEntry < ApplicationRecord
   self.table_name = "accounting_journal_entries"
 
   acts_as_tenant :entity
+  broadcasts_refreshes_to ->(r) { [ r.entity, :journal_entries ] }
 
   include Accounting::Statusable
   include Accounting::Immutable

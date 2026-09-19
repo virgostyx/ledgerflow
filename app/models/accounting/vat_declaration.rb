@@ -2,6 +2,7 @@ class Accounting::VatDeclaration < ApplicationRecord
   self.table_name = "accounting_vat_declarations"
 
   acts_as_tenant :entity
+  broadcasts_refreshes_to ->(r) { [ r.entity, :vat_declarations ] }
 
   belongs_to :fiscal_year, class_name: "Accounting::FiscalYear"
 

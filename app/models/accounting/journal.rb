@@ -2,6 +2,7 @@ class Accounting::Journal < ApplicationRecord
   self.table_name = "accounting_journals"
 
   acts_as_tenant :entity
+  broadcasts_refreshes_to ->(r) { [ r.entity, :journals ] }
 
   COUNTERPART_PREFIXES = {
     "bank"     => "55",
