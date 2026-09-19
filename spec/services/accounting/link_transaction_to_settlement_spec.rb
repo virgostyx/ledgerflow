@@ -32,9 +32,45 @@ RSpec.describe Accounting::LinkTransactionToSettlement, type: :service do
     expect(described_class.call(transaction: tx, payment_batch: batch)).to be_failure
   end
 
-  it 'refuses a batch that is not executed' do
-    generated = create(:payment_batch, :generated, bank_account: bank_account, total_amount: BigDecimal('300'))
-    expect(described_class.call(transaction: tx, payment_batch: generated)).to be_failure
+  it 'refuses a draft batch' do
+    draft = create(:payment_batch, status: :draft, bank_account: bank_account, total_amount: BigDecimal('300'))
+    expect(described_class.call(transaction: tx, payment_batch: draft)).to be_failure
+    expect(tx.reload).to be_pending
+  end
+
+  context 'with a generated (not yet confirmed) batch' do
+    let!(:fiscal_year)     { create(:fiscal_year, status: :open) }
+    let!(:payable_account) { create(:account, :supplier, code: '440000') }
+    let(:supplier)         { create(:partner, :supplier, :with_iban) }
+    let(:invoice) do
+      create(:invoice, :supplier, :posted, :with_lines, partner: supplier, fiscal_year: fiscal_year)
+    end
+    let(:generated) do
+      b = create(:payment_batch, :generated, bank_account: bank_account, total_amount: invoice.total_incl_vat)
+      create(:payment_batch_line, payment_batch: b, invoice: invoice, amount: invoice.total_incl_vat)
+      b.reload
+    end
+    let(:debit) do
+      create(:bank_transaction, bank_account: bank_account, amount: -generated.total_amount, reference: generated.message_id)
+    end
+
+    it 'executes the batch, pays the invoices and links the debit to the new settlement entry' do
+      result = described_class.call(transaction: debit, payment_batch: generated)
+
+      expect(result).to be_success
+      expect(generated.reload).to be_executed
+      expect(invoice.reload).to be_paid
+      expect(debit.reload).to be_reconciled
+      expect(debit.journal_entry).to eq(generated.journal_entry)
+    end
+
+    it 'rolls everything back if the batch cannot be executed' do
+      invoice.update_column(:status, Accounting::Invoice.statuses[:cancelled])
+
+      expect(described_class.call(transaction: debit, payment_batch: generated)).to be_failure
+      expect(generated.reload).to be_generated
+      expect(debit.reload).to be_pending
+    end
   end
 
   it 'refuses an amount mismatch' do

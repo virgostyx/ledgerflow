@@ -64,7 +64,7 @@
                         when :invoice  then "invoice #{suggestion.target.invoice_number}"
                         when :expense  then "bank fees (#{suggestion.target.code})"
                         when :invoices then "invoices #{suggestion.target.map(&:invoice_number).join(', ')}"
-                        else "payment batch #{suggestion.target.message_id}"
+                        else "payment batch #{suggestion.target.message_id}#{' — will be marked as executed' if suggestion.target.generated?}"
                         end %> (<%= suggestion.confidence %> confidence<%= ", overpaid by #{Accounting::MoneyPresenter.new(suggestion.excess).format}" if suggestion.excess&.positive? %>)</span>
                   <%= button_to 'Accept', accounting_bank_reconciliation_path, method: :patch,
                         params: { 'bank_reconciliation[bank_transaction_id]' => tx.id, 'bank_reconciliation[accept_suggestion]' => 1 },

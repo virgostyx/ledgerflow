@@ -138,6 +138,34 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
       end
     end
 
+    context 'with a generated batch' do
+      let!(:payable) { create(:account, :supplier, code: '440000') }
+      let(:supplier) { create(:partner, :supplier, :with_iban) }
+      let(:purchase) { create(:invoice, :supplier, :posted, :with_lines, partner: supplier, fiscal_year: fiscal_year) }
+      let!(:generated) do
+        b = create(:payment_batch, :generated, bank_account: bank_account, total_amount: purchase.total_incl_vat)
+        create(:payment_batch_line, payment_batch: b, invoice: purchase, amount: purchase.total_incl_vat)
+        b.reload
+      end
+      let!(:debit) do
+        create(:bank_transaction, bank_account: bank_account, amount: -generated.total_amount, reference: generated.message_id)
+      end
+
+      it 'says the batch will be marked as executed' do
+        get accounting_bank_reconciliation_path
+        expect(response.body).to include('will be marked as executed')
+      end
+
+      it 'executes the batch when the suggestion is accepted' do
+        patch accounting_bank_reconciliation_path,
+              params: { bank_reconciliation: { bank_transaction_id: debit.id, accept_suggestion: '1' } }
+
+        expect(generated.reload).to be_executed
+        expect(purchase.reload).to be_paid
+        expect(debit.reload.journal_entry).to eq(generated.journal_entry)
+      end
+    end
+
     context 'with bank fees' do
       let!(:fees_account) { create(:account, code: '651100', label_fr: 'Frais bancaires') }
       let!(:fee_tx) do

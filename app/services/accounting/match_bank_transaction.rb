@@ -10,7 +10,7 @@ class Accounting::MatchBankTransaction
   def self.match_batch(tx)
     return unless tx.debit? && tx.reference.present?
 
-    batch = Accounting::PaymentBatch.executed.find_by(message_id: tx.reference)
+    batch = Accounting::PaymentBatch.where(status: %i[generated executed]).find_by(message_id: tx.reference)
     Suggestion.new(kind: :payment_batch, target: batch, confidence: :high) if batch && batch.total_amount == -tx.amount
   end
 

@@ -23,8 +23,15 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
     expect(described_class.call(transaction: tx)).to be_nil
   end
 
-  it 'does not match a batch that is not executed yet' do
+  it 'matches a generated batch too (the debit proves the file was executed)' do
     batch = create(:payment_batch, :generated, bank_account: bank_account, total_amount: BigDecimal('300'))
+    tx = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('-300'), reference: batch.message_id)
+
+    expect(described_class.call(transaction: tx)).to have_attributes(kind: :payment_batch, target: batch)
+  end
+
+  it 'does not match a draft or cancelled batch' do
+    batch = create(:payment_batch, :cancelled, bank_account: bank_account, message_id: 'MSG', total_amount: BigDecimal('300'))
     tx = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('-300'), reference: batch.message_id)
 
     expect(described_class.call(transaction: tx)).to be_nil
