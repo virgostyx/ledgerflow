@@ -72,4 +72,5 @@ production:
   cable:
     <<: *primary_production
     database: ledgerflow_production_cable
+    schema_format: ruby
     migrations_paths: db/cable_migrate
