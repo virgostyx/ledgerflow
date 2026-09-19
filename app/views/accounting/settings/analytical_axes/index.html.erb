@@ -48,7 +48,7 @@
                       <% if account.destroyable? %>
                         <%= button_to accounting_settings_analytical_account_path(account),
                               method: :delete,
-                              data: { confirm: "Delete #{account.code}?" },
+                              data: { turbo_confirm: "Delete #{account.code}?" },
                               class: "text-sm text-danger-600 hover:text-danger-800" do %>
                           Delete
                         <% end %>

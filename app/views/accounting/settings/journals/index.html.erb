@@ -72,7 +72,7 @@
                 <% if journal.destroyable? %>
                   <%= button_to accounting_settings_journal_path(journal),
                         method: :delete,
-                        data: { confirm: "Delete journal #{journal.code}? This cannot be undone." },
+                        data: { turbo_confirm: "Delete journal #{journal.code}? This cannot be undone." },
                         class: "text-sm text-danger-600 hover:text-danger-800" do %>
                     Delete
                   <% end %>

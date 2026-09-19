@@ -63,7 +63,7 @@
                 <% if account.destroyable? %>
                   <%= button_to accounting_settings_bank_account_path(account),
                         method: :delete,
-                        data: { confirm: "Delete bank account #{account.iban}? This cannot be undone." },
+                        data: { turbo_confirm: "Delete bank account #{account.iban}? This cannot be undone." },
                         class: "text-sm text-danger-600 hover:text-danger-800" do %>
                     Delete
                   <% end %>
