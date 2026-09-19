@@ -24,6 +24,19 @@ end
 ActsAsTenant.with_tenant(entity) do
   Seeders::PcmnSeeder.call(entity: entity)
   Seeders::JournalsSeeder.call
+
+  bank_account = Accounting::BankAccount.find_or_initialize_by(iban: "BE68539007547034")
+  if bank_account.new_record?
+    bank_account.assign_attributes(
+      journal:  Accounting::Journal.find_by!(code: "BNQ"),
+      label_fr: "Compte principal",
+      bic:      "BBRUBEBB",
+      currency: "EUR",
+      active:   true
+    )
+    bank_account.save!
+    puts "[BankAccount] '#{bank_account.label_fr}' créé."
+  end
   Seeders::AnalyticalAxesSeeder.call
   Seeders::PartnersSeeder.call
 
