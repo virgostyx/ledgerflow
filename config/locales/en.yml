@@ -46,6 +46,7 @@ en:
     bank_reconciliation:
       imported:   "Statement imported: %{count} transaction(s) created."
       reconciled: "Transaction reconciled successfully."
+      no_suggestion: "No suggestion available for this transaction."
 
     vat_declarations:
       created: "VAT declaration generated successfully."

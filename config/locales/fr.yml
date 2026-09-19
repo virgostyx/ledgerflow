@@ -39,6 +39,7 @@ fr:
     bank_reconciliation:
       imported:   "Relevé importé : %{count} transaction(s) créée(s)."
       reconciled: "Transaction lettrée avec succès."
+      no_suggestion: "Aucune suggestion disponible pour cette transaction."
 
     vat_declarations:
       created: "Déclaration TVA générée avec succès."

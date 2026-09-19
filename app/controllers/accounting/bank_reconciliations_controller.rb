@@ -4,6 +4,7 @@ class Accounting::BankReconciliationsController < ApplicationController
     @pending_transactions = Accounting::BankTransaction.pending
                                 .includes(bank_account: :journal)
                                 .order(transaction_date: :desc)
+    @suggestions = @pending_transactions.index_with { |tx| Accounting::MatchBankTransaction.call(transaction: tx) }
     @bank_accounts = Accounting::BankAccount.where(active: true).order(:label_fr)
     @accounts      = Accounting::Account.where(is_leaf: true).order(:code)
   end
@@ -13,6 +14,8 @@ class Accounting::BankReconciliationsController < ApplicationController
 
     if bank_params[:camt_file].present?
       handle_camt_import
+    elsif bank_params[:accept_suggestion].present?
+      handle_accept_suggestion
     else
       handle_reconciliation
     end
@@ -48,6 +51,28 @@ class Accounting::BankReconciliationsController < ApplicationController
     if result.success?
       redirect_to accounting_bank_reconciliation_path,
                   notice: t("accounting.bank_reconciliation.reconciled")
+    else
+      redirect_to accounting_bank_reconciliation_path, alert: result.message
+    end
+  end
+
+  # The suggestion is recomputed server-side; the client only says "accept".
+  def handle_accept_suggestion
+    transaction = Accounting::BankTransaction.pending.find(bank_params[:bank_transaction_id])
+    suggestion  = Accounting::MatchBankTransaction.call(transaction: transaction)
+    return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.no_suggestion") unless suggestion
+
+    result =
+      case suggestion.kind
+      when :payment_batch
+        Accounting::LinkTransactionToSettlement.call(transaction: transaction, payment_batch: suggestion.target)
+      when :invoice
+        Accounting::BookInvoiceReceipt.call(transaction: transaction, invoice: suggestion.target,
+                                            fiscal_year: Accounting::FiscalYear.open_years.first)
+      end
+
+    if result.success?
+      redirect_to accounting_bank_reconciliation_path, notice: t("accounting.bank_reconciliation.reconciled")
     else
       redirect_to accounting_bank_reconciliation_path, alert: result.message
     end

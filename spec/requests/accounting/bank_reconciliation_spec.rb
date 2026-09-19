@@ -90,6 +90,53 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
     end
   end
 
+  describe 'suggestions' do
+    let!(:invoice) do
+      create(:invoice, :customer, :posted, fiscal_year: fiscal_year).tap { |i| i.update_columns(total_incl_vat: BigDecimal('1210')) }
+    end
+    let(:comm) { Accounting::StructuredCommunication.display(Accounting::StructuredCommunication.for_id(invoice.id)) }
+    let!(:receipt) do
+      create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('1210'), description: "Payment #{comm}")
+    end
+    let(:accept) { { bank_reconciliation: { bank_transaction_id: receipt.id, accept_suggestion: '1' } } }
+
+    it 'shows the suggested invoice on the review page' do
+      get accounting_bank_reconciliation_path
+      expect(response.body).to include('Suggested').and include(invoice.invoice_number.to_s)
+    end
+
+    it 'books an accepted invoice suggestion and pays the invoice' do
+      patch accounting_bank_reconciliation_path, params: accept
+
+      expect(receipt.reload).to be_reconciled
+      expect(invoice.reload).to be_paid
+      expect(response).to redirect_to(accounting_bank_reconciliation_path)
+    end
+
+    it 'links an accepted payment batch suggestion without a new entry' do
+      entry = create(:journal_entry, fiscal_year: fiscal_year)
+      batch = create(:payment_batch, :executed, bank_account: bank_account, total_amount: BigDecimal('300'), journal_entry: entry)
+      debit = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('-300'), reference: batch.message_id)
+
+      expect {
+        patch accounting_bank_reconciliation_path,
+              params: { bank_reconciliation: { bank_transaction_id: debit.id, accept_suggestion: '1' } }
+      }.not_to change(Accounting::JournalEntry, :count)
+
+      expect(debit.reload.journal_entry).to eq(batch.journal_entry)
+    end
+
+    it 'refuses to accept when there is no suggestion' do
+      plain = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('5'), description: 'nothing')
+
+      patch accounting_bank_reconciliation_path,
+            params: { bank_reconciliation: { bank_transaction_id: plain.id, accept_suggestion: '1' } }
+
+      expect(plain.reload).to be_pending
+      expect(flash[:alert]).to be_present
+    end
+  end
+
   describe 'accès manager' do
     before { sign_in manager }
 
