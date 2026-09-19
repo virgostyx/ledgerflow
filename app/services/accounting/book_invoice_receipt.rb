@@ -1,7 +1,8 @@
 # Books a customer receipt matched to an invoice: bank / receivable (400000, with the partner)
-# via the regular reconciliation. Partial payments are allowed up to the remaining balance; the invoice
-# is marked paid once the balance reaches zero. All or nothing.
-# ponytail: no overpayment handling (refused); one receipt = one invoice, no grouped payments.
+# via the regular reconciliation. Partial payments leave the invoice open; the invoice is marked paid once
+# the balance reaches zero. An overpayment is booked in full: the excess stays as a credit balance for the
+# partner on 400000. All or nothing.
+# ponytail: no automatic allocation of that credit to other invoices, no grouped payments.
 class Accounting::BookInvoiceReceipt
   extend LightService::Organizer
 
@@ -31,7 +32,6 @@ class Accounting::BookInvoiceReceipt
   def self.guard(tx, invoice)
     if tx.reconciled? || !tx.credit?                            then "Not a pending credit"
     elsif !invoice.customer? || !invoice.posted?                then "Invoice is not an open customer invoice"
-    elsif tx.amount > invoice.remaining_amount                  then "Amount exceeds the invoice balance"
     end
   end
 

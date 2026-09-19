@@ -105,6 +105,13 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
       expect(response.body).to include('Suggested').and include(invoice.invoice_number.to_s)
     end
 
+    it 'shows the excess of an overpayment in the suggestion' do
+      receipt.update_columns(amount: BigDecimal('1500'))
+      get accounting_bank_reconciliation_path
+
+      expect(response.body).to include('overpaid by').and include(Accounting::MoneyPresenter.new(BigDecimal('290')).format)
+    end
+
     it 'tucks manual reconciliation behind a link when a suggestion exists' do
       get accounting_bank_reconciliation_path
       expect(response.body).to include('Reconcile manually')

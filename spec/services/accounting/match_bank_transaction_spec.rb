@@ -55,9 +55,19 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
       expect(suggestion.confidence).to eq(:medium)
     end
 
-    it 'does not match an overpayment' do
+    it 'suggests an overpayment with medium confidence and the excess' do
       tx = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('1500'), description: comm)
-      expect(described_class.call(transaction: tx)).to be_nil
+
+      suggestion = described_class.call(transaction: tx)
+
+      expect(suggestion.target).to eq(invoice)
+      expect(suggestion.confidence).to eq(:medium)
+      expect(suggestion.excess).to eq(BigDecimal('290'))
+    end
+
+    it 'reports no excess for an exact or partial payment' do
+      tx = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('500'), description: comm)
+      expect(described_class.call(transaction: tx).excess).to eq(0)
     end
 
     it 'does not match an already paid invoice' do

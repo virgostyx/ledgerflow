@@ -140,6 +140,12 @@
               <td colspan="5" class="px-4 py-2 text-right text-gray-500 font-medium">Remaining</td>
               <td class="px-4 py-2 text-right font-mono font-bold text-gray-900"><%= Accounting::MoneyPresenter.new(@invoice.remaining_amount).format %></td>
             </tr>
+            <% if @invoice.overpaid_amount.positive? %>
+              <tr class="text-sm">
+                <td colspan="5" class="px-4 py-2 text-right text-gray-500 font-medium">Overpaid (credit on customer account)</td>
+                <td class="px-4 py-2 text-right font-mono text-amber-700"><%= Accounting::MoneyPresenter.new(@invoice.overpaid_amount).format %></td>
+              </tr>
+            <% end %>
           <% end %>
         </tfoot>
       </table>

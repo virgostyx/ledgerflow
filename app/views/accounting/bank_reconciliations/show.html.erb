@@ -60,7 +60,7 @@
               <%= tx.description %>
               <% if (suggestion = @suggestions[tx]) %>
                 <div class="mt-1 flex items-center gap-2 text-xs text-emerald-700">
-                  <span>Suggested: <%= suggestion.kind == :invoice ? "invoice #{suggestion.target.invoice_number}" : "payment batch #{suggestion.target.message_id}" %> (<%= suggestion.confidence %> confidence)</span>
+                  <span>Suggested: <%= suggestion.kind == :invoice ? "invoice #{suggestion.target.invoice_number}" : "payment batch #{suggestion.target.message_id}" %> (<%= suggestion.confidence %> confidence<%= ", overpaid by #{Accounting::MoneyPresenter.new(suggestion.excess).format}" if suggestion.excess&.positive? %>)</span>
                   <%= button_to 'Accept', accounting_bank_reconciliation_path, method: :patch,
                         params: { 'bank_reconciliation[bank_transaction_id]' => tx.id, 'bank_reconciliation[accept_suggestion]' => 1 },
                         class: 'px-2 py-1 bg-primary-600 text-white rounded-md hover:bg-primary-700' %>

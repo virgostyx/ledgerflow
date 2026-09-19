@@ -59,7 +59,11 @@ class Accounting::Invoice < ApplicationRecord
   end
 
   def remaining_amount
-    total_incl_vat - paid_amount
+    [ total_incl_vat - paid_amount, 0 ].max
+  end
+
+  def overpaid_amount
+    [ paid_amount - total_incl_vat, 0 ].max
   end
 
   private

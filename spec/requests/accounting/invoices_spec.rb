@@ -244,6 +244,15 @@ RSpec.describe 'Accounting::Invoices', type: :request do
         expect(response.body).to include(Accounting::MoneyPresenter.new(BigDecimal('710')).format)
       end
 
+      it 'shows the overpayment once the invoice is overpaid' do
+        tx = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('800'))
+        Accounting::BookInvoiceReceipt.call(transaction: tx, invoice: customer_invoice, fiscal_year: fiscal_year)
+        get accounting_invoice_path(customer_invoice)
+
+        expect(response.body).to include('Overpaid')
+        expect(response.body).to include(Accounting::MoneyPresenter.new(BigDecimal('90')).format)
+      end
+
       it 'shows nothing for an invoice without payments' do
         other = create(:invoice, :customer, :posted, :with_lines, partner: partner, fiscal_year: fiscal_year)
         get accounting_invoice_path(other)

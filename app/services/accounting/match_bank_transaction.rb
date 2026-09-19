@@ -1,7 +1,7 @@
 # Suggests what a bank transaction corresponds to. Never writes anything.
 # ponytail: no IBAN+amount rule yet (the CAMT parser drops counterparty IBAN); add when the parser keeps it.
 class Accounting::MatchBankTransaction
-  Suggestion = Struct.new(:kind, :target, :confidence, keyword_init: true)
+  Suggestion = Struct.new(:kind, :target, :confidence, :excess, keyword_init: true)
 
   def self.call(transaction:)
     match_batch(transaction) || match_invoice(transaction)
@@ -18,9 +18,11 @@ class Accounting::MatchBankTransaction
     return unless tx.credit? && (digits = Accounting::StructuredCommunication.extract(tx.description))
 
     invoice = Accounting::Invoice.customer.posted.find_by(id: Accounting::StructuredCommunication.id_from(digits))
-    return unless invoice && tx.amount <= invoice.remaining_amount
+    return unless invoice
 
-    Suggestion.new(kind: :invoice, target: invoice, confidence: tx.amount == invoice.remaining_amount ? :high : :medium)
+    excess = [ tx.amount - invoice.remaining_amount, 0 ].max
+    Suggestion.new(kind: :invoice, target: invoice, excess: excess,
+                   confidence: tx.amount == invoice.remaining_amount ? :high : :medium)
   end
   private_class_method :match_batch, :match_invoice
 end

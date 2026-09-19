@@ -48,20 +48,26 @@ RSpec.describe Accounting::BookInvoiceReceipt, type: :service do
     expect(invoice.remaining_amount).to eq(0)
   end
 
-  it 'refuses an overpayment, changing nothing' do
+  it 'books an overpayment in full, pays the invoice and leaves the excess on the receivable' do
     tx.update_columns(amount: BigDecimal('1500'))
 
-    expect { expect(book).to be_failure }.not_to change(Accounting::JournalEntry, :count)
-    expect(tx.reload).to be_pending
-    expect(invoice.reload).to be_posted
+    expect(book).to be_success
+
+    expect(invoice.reload).to be_paid
+    expect(invoice.remaining_amount).to eq(0)
+    expect(invoice.overpaid_amount).to eq(BigDecimal('290'))
+    expect(tx.journal_entry.lines.find_by(account: receivable).credit).to eq(BigDecimal('1500'))
   end
 
-  it 'refuses a receipt above what remains after a partial payment' do
+  it 'handles an overpayment that follows a partial payment' do
     tx.update_columns(amount: BigDecimal('500'))
     book
-    too_much = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('800'))
+    second = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('800'))
 
-    expect(book(transaction: too_much)).to be_failure
+    expect(book(transaction: second)).to be_success
+
+    expect(invoice.reload).to be_paid
+    expect(invoice.overpaid_amount).to eq(BigDecimal('90'))
   end
 
   it 'refuses an invoice that is not an open customer invoice' do
