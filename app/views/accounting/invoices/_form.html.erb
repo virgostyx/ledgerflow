@@ -127,7 +127,7 @@
     <%# Existing lines %>
     <div data-invoice-form-target="linesContainer">
       <%= f.fields_for :lines do |lf| %>
-        <div class="invoice-line-row mb-2 border border-blue-200 odd:bg-blue-50 rounded-md py-1 px-1 -mx-1" data-invoice-form-target="lineRow"
+        <div class="invoice-line-row mb-2 border border-primary-200 odd:bg-primary-50 rounded-md py-1 px-1 -mx-1" data-invoice-form-target="lineRow"
              <%= 'style="display:none"' if lf.object.marked_for_destruction? %>>
           <%= lf.hidden_field :id %>
           <%= lf.hidden_field :_destroy, value: '0' %>
@@ -211,7 +211,7 @@
 
     <%# Template for new lines (cloned by Stimulus) %>
     <template data-invoice-form-target="lineTemplate">
-      <div class="invoice-line-row mb-2 border border-blue-200 odd:bg-blue-50 rounded-md py-1 px-1 -mx-1" data-invoice-form-target="lineRow">
+      <div class="invoice-line-row mb-2 border border-primary-200 odd:bg-primary-50 rounded-md py-1 px-1 -mx-1" data-invoice-form-target="lineRow">
         <input type="hidden" name="accounting_invoice[lines_attributes][NEW_INDEX][quantity]" value="1">
         <div class="grid gap-2 items-center"
              style="grid-template-columns: 3fr 3fr 2fr 1fr 2fr 2fr auto">
