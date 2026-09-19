@@ -9,11 +9,7 @@ class Payments::Actions::CreateSettlementJournalEntry
     bank_journal        = batch.bank_account.journal
     bank_account_record = bank_journal.default_account
     payable_account     = Accounting::Account.find_by!(code: "440000")
-    # NB: Accounting::FiscalYear.current wraps `open_years.first` in a `scope`
-    # block; when no fiscal year is open, that returns nil, which Rails'
-    # `scope` macro silently reinterprets as `.all` instead of an empty
-    # result. Querying open_years.first directly avoids that fallback.
-    fiscal_year         = Accounting::FiscalYear.open_years.first
+    fiscal_year         = Accounting::FiscalYear.current
     lines               = batch.lines.includes(invoice: :partner).to_a
 
     entry = Accounting::JournalEntry.new(

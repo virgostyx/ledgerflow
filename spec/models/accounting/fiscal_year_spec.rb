@@ -50,6 +50,11 @@ RSpec.describe Accounting::FiscalYear, type: :model do
     it '.current retourne l exercice actif' do
       expect(Accounting::FiscalYear.current).to eq(open_fy)
     end
+
+    it '.current retourne nil quand aucun exercice n est ouvert' do
+      open_fy.update!(status: :closed)
+      expect(Accounting::FiscalYear.current).to be_nil
+    end
   end
 
   describe '#open? #closed?' do

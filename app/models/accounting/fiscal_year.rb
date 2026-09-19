@@ -14,7 +14,9 @@ class Accounting::FiscalYear < ApplicationRecord
   validate  :only_one_open_at_a_time, if: :open?
 
   scope :open_years, -> { where(status: :open) }
-  scope :current,    -> { open_years.first }
+
+  # A class method, not a scope: a scope returning nil falls back to `.all`.
+  def self.current = open_years.first
 
   private
 
