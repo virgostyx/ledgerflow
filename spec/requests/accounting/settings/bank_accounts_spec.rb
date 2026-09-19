@@ -19,6 +19,15 @@ RSpec.describe "Accounting::Settings::BankAccounts", type: :request do
       get accounting_settings_bank_accounts_path
       expect(response).to have_http_status(:ok)
     end
+
+    it "paginates the list" do
+      25.times do |i|
+        j = create(:journal, :bank, code: "B#{i}", default_account: account_550)
+        build(:bank_account, journal: j, iban: "BE00#{i}").save!(validate: false)
+      end
+      get accounting_settings_bank_accounts_path
+      expect(response.body).to include("Page 1 of 2")
+    end
   end
 
   describe "GET /accounting/settings/bank_accounts/new" do

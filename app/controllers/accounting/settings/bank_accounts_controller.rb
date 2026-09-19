@@ -3,9 +3,9 @@ class Accounting::Settings::BankAccountsController < Accounting::Settings::BaseC
   before_action :load_form_data,   only: [ :new, :create, :edit, :update ]
 
   def index
-    @bank_accounts = Accounting::BankAccount
-                       .includes(:journal, :transactions)
-                       .order("accounting_journals.code")
+    @pagy, @bank_accounts = pagy(Accounting::BankAccount
+                                   .includes(:journal, :transactions)
+                                   .order("accounting_journals.code"))
   end
 
   def new

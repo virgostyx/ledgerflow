@@ -19,6 +19,12 @@ RSpec.describe "Accounting::Settings::Journals", type: :request do
       get accounting_settings_journals_path
       expect(response).to have_http_status(:ok)
     end
+
+    it "paginates the list" do
+      25.times { |i| create(:journal, :purchase, code: "P#{i}", default_account: account_440) }
+      get accounting_settings_journals_path
+      expect(response.body).to include("Page 1 of 2")
+    end
   end
 
   describe "GET /accounting/settings/journals/new" do
