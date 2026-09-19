@@ -26,12 +26,42 @@ RSpec.describe Accounting::BookInvoiceReceipt, type: :service do
     expect(lines.find_by(account: receivable)).to have_attributes(credit: BigDecimal('1210'), partner_id: invoice.partner_id)
   end
 
-  it 'refuses an amount that differs from the invoice total, changing nothing' do
-    tx.update_columns(amount: BigDecimal('1000'))
+  it 'books a partial payment and leaves the invoice open with the remaining balance' do
+    tx.update_columns(amount: BigDecimal('500'))
+
+    expect(book).to be_success
+
+    expect(tx.reload).to be_reconciled
+    expect(invoice.reload).to be_posted
+    expect(invoice.paid_amount).to eq(BigDecimal('500'))
+    expect(invoice.remaining_amount).to eq(BigDecimal('710'))
+  end
+
+  it 'pays the invoice once successive receipts cover the total' do
+    tx.update_columns(amount: BigDecimal('500'))
+    book
+    second = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('710'))
+
+    expect(book(transaction: second)).to be_success
+
+    expect(invoice.reload).to be_paid
+    expect(invoice.remaining_amount).to eq(0)
+  end
+
+  it 'refuses an overpayment, changing nothing' do
+    tx.update_columns(amount: BigDecimal('1500'))
 
     expect { expect(book).to be_failure }.not_to change(Accounting::JournalEntry, :count)
     expect(tx.reload).to be_pending
     expect(invoice.reload).to be_posted
+  end
+
+  it 'refuses a receipt above what remains after a partial payment' do
+    tx.update_columns(amount: BigDecimal('500'))
+    book
+    too_much = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('800'))
+
+    expect(book(transaction: too_much)).to be_failure
   end
 
   it 'refuses an invoice that is not an open customer invoice' do

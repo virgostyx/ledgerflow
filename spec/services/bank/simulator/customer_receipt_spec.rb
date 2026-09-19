@@ -20,12 +20,12 @@ RSpec.describe Bank::Simulator::CustomerReceipt, type: :service do
     expect(Accounting::MatchBankTransaction.call(transaction: tx).target).to eq(invoice)
   end
 
-  it 'supports a partial payment (not matched: amount differs)' do
+  it 'supports a partial payment (suggested with medium confidence)' do
     import(described_class.call(invoice: invoice, bank_account: bank_account, amount: BigDecimal('500')))
 
     tx = Accounting::BankTransaction.sole
     expect(tx.amount).to eq(BigDecimal('500'))
-    expect(Accounting::MatchBankTransaction.call(transaction: tx)).to be_nil
+    expect(Accounting::MatchBankTransaction.call(transaction: tx)).to have_attributes(target: invoice, confidence: :medium)
   end
 
   it 'supports a transfer without communication (not matched)' do

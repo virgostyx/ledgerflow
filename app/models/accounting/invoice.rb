@@ -51,6 +51,17 @@ class Accounting::Invoice < ApplicationRecord
     self.total_incl_vat    = lines.sum(&:total_incl_vat)
   end
 
+  # Customer receipts are booked with source InvoiceReceipt/<invoice id>; the balance is derived from them.
+  def paid_amount
+    Accounting::JournalEntryLine.joins(:journal_entry)
+      .where(accounting_journal_entries: { source_type: "Accounting::InvoiceReceipt", source_id: id })
+      .sum(:credit)
+  end
+
+  def remaining_amount
+    total_incl_vat - paid_amount
+  end
+
   private
 
   def journal_matches_invoice_type

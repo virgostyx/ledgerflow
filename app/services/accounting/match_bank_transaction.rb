@@ -18,7 +18,9 @@ class Accounting::MatchBankTransaction
     return unless tx.credit? && (digits = Accounting::StructuredCommunication.extract(tx.description))
 
     invoice = Accounting::Invoice.customer.posted.find_by(id: Accounting::StructuredCommunication.id_from(digits))
-    Suggestion.new(kind: :invoice, target: invoice, confidence: :high) if invoice && invoice.total_incl_vat == tx.amount
+    return unless invoice && tx.amount <= invoice.remaining_amount
+
+    Suggestion.new(kind: :invoice, target: invoice, confidence: tx.amount == invoice.remaining_amount ? :high : :medium)
   end
   private_class_method :match_batch, :match_invoice
 end

@@ -24,7 +24,9 @@ class Accounting::Actions::CreateBankJournalEntry
       fiscal_year: ctx.fiscal_year,
       entry_date:  tx.transaction_date,
       description: label || tx.description,
-      status:      :draft
+      status:      :draft,
+      source_type: ctx[:source_type],
+      source_id:   ctx[:source_id]
     )
 
     partner = ctx[:partner]
