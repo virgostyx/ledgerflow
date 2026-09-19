@@ -58,79 +58,46 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     receivable_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::CUSTOMERS)
     vat_account        = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
 
-    Accounting::JournalEntryLine.create!(
-      journal_entry: entry,
-      account:       receivable_account,
-      debit:         invoice.total_incl_vat,
-      credit:        BigDecimal("0"),
-      label:         invoice.partner.name
-    )
-
-    invoice.lines.each do |line|
-      vat_code = VAT_GRID_SALE[line.vat_rate.to_i]
-      journal_line = Accounting::JournalEntryLine.create!(
-        journal_entry: entry,
-        account:       line.account,
-        debit:         BigDecimal("0"),
-        credit:        line.subtotal_excl_vat,
-        label:         line.description,
-        vat_code:      vat_code
-      )
-      propagate_annotations(line, journal_line)
-    end
-
-    invoice.lines.group_by { |l| l.vat_rate.to_i }.each do |rate, lines|
-      next if rate.zero?
-      grouped_vat = lines.sum(&:vat_amount)
-      Accounting::JournalEntryLine.create!(
-        journal_entry: entry,
-        account:       vat_account,
-        debit:         BigDecimal("0"),
-        credit:        grouped_vat,
-        label:         "VAT #{rate}%",
-        vat_code:      VAT_CODE_SALE_VAT,
-        vat_amount:    grouped_vat
-      )
-    end
+    create_line(entry, :debit, invoice.total_incl_vat, account: receivable_account, label: invoice.partner.name)
+    build_item_lines(invoice, entry, :credit, VAT_GRID_SALE)
+    build_vat_lines(invoice, entry, :credit, account: vat_account, vat_code: VAT_CODE_SALE_VAT, label: "VAT")
   end
 
   def self.build_supplier_lines(invoice, entry)
     payable_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::SUPPLIERS)
     vat_account     = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_DEDUCTIBLE)
 
+    build_item_lines(invoice, entry, :debit, VAT_GRID_PURCHASE)
+    build_vat_lines(invoice, entry, :debit, account: vat_account, vat_code: VAT_CODE_PURCHASE_VAT, label: "Recoverable VAT")
+    create_line(entry, :credit, invoice.total_incl_vat, account: payable_account, label: invoice.partner.name)
+  end
+
+  # One journal line per invoice line, on `side`, carrying the VAT grid code.
+  def self.build_item_lines(invoice, entry, side, vat_grid)
     invoice.lines.each do |line|
-      vat_code = VAT_GRID_PURCHASE[line.vat_rate.to_i]
-      journal_line = Accounting::JournalEntryLine.create!(
-        journal_entry: entry,
-        account:       line.account,
-        debit:         line.subtotal_excl_vat,
-        credit:        BigDecimal("0"),
-        label:         line.description,
-        vat_code:      vat_code
-      )
+      journal_line = create_line(entry, side, line.subtotal_excl_vat, account: line.account, label: line.description,
+                                 vat_code: vat_grid[line.vat_rate.to_i])
       propagate_annotations(line, journal_line)
     end
+  end
 
+  # One VAT line per non-zero rate, on `side`.
+  def self.build_vat_lines(invoice, entry, side, account:, vat_code:, label:)
     invoice.lines.group_by { |l| l.vat_rate.to_i }.each do |rate, lines|
       next if rate.zero?
       grouped_vat = lines.sum(&:vat_amount)
-      Accounting::JournalEntryLine.create!(
-        journal_entry: entry,
-        account:       vat_account,
-        debit:         grouped_vat,
-        credit:        BigDecimal("0"),
-        label:         "Recoverable VAT #{rate}%",
-        vat_code:      VAT_CODE_PURCHASE_VAT,
-        vat_amount:    grouped_vat
-      )
+      create_line(entry, side, grouped_vat, account: account, label: "#{label} #{rate}%",
+                  vat_code: vat_code, vat_amount: grouped_vat)
     end
+  end
 
+  def self.create_line(entry, side, amount, **attrs)
+    zero = BigDecimal("0")
     Accounting::JournalEntryLine.create!(
       journal_entry: entry,
-      account:       payable_account,
-      debit:         BigDecimal("0"),
-      credit:        invoice.total_incl_vat,
-      label:         invoice.partner.name
+      debit:         side == :debit ? amount : zero,
+      credit:        side == :credit ? amount : zero,
+      **attrs
     )
   end
 
@@ -146,5 +113,6 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
   private_class_method :find_journal, :build_entry_lines,
                        :build_customer_lines, :build_supplier_lines,
+                       :build_item_lines, :build_vat_lines, :create_line,
                        :propagate_annotations
 end
