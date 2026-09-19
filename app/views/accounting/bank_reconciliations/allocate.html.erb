@@ -43,8 +43,8 @@
               <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(invoice.due_date).format if invoice.due_date %></td>
               <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(invoice.remaining_amount).format %></td>
               <td class="px-4 py-3 text-right">
-                <%= text_field_tag "bank_reconciliation[allocations][#{invoice.id}]", nil, inputmode: 'decimal', autocomplete: 'off',
-                      class: 'w-28 text-right font-mono rounded-md border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500' %>
+                <%= text_field_tag "bank_reconciliation[allocations][#{invoice.id}]", nil, inputmode: 'decimal', autocomplete: 'off', placeholder: '0.00',
+                      class: 'w-28 px-2 py-1.5 text-right font-mono text-sm bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:ring-primary-500 focus:border-primary-500' %>
               </td>
             </tr>
           <% end %>
