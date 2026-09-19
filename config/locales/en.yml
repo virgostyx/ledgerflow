@@ -49,6 +49,9 @@ en:
       no_suggestion: "No suggestion available for this transaction."
       ignored: "Transaction ignored."
       not_pending: "Only pending transactions can be ignored."
+      not_allocatable: "Only pending credits can be allocated to invoices."
+      invalid_amount: "Enter valid amounts."
+      invalid_invoice: "Unknown or closed invoice."
 
     vat_declarations:
       created: "VAT declaration generated successfully."

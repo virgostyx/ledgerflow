@@ -267,6 +267,80 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
     end
   end
 
+  describe 'manual allocation to invoices' do
+    let(:client) { create(:partner) }
+    let!(:first_invoice) do
+      create(:invoice, :customer, :posted, fiscal_year: fiscal_year, partner: client, invoice_number: 'ALLOC-1')
+        .tap { |i| i.update_columns(total_incl_vat: BigDecimal('1000')) }
+    end
+    let!(:second_invoice) do
+      create(:invoice, :customer, :posted, fiscal_year: fiscal_year, partner: client, invoice_number: 'ALLOC-2')
+        .tap { |i| i.update_columns(total_incl_vat: BigDecimal('500')) }
+    end
+    let!(:transfer) do
+      create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('1200'), description: 'Transfer')
+    end
+
+    def allocate(amounts)
+      patch accounting_bank_reconciliation_path, params: {
+        bank_reconciliation: { bank_transaction_id: transfer.id,
+                               allocations: amounts.transform_keys(&:to_s) }
+      }
+    end
+
+    it 'links to the allocation page from a pending credit' do
+      get accounting_bank_reconciliation_path
+      expect(response.body).to include(allocate_accounting_bank_reconciliation_path(bank_transaction_id: transfer.id))
+    end
+
+    it 'lists the open customer invoices on the allocation page' do
+      get allocate_accounting_bank_reconciliation_path(bank_transaction_id: transfer.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('ALLOC-1').and include('ALLOC-2')
+    end
+
+    it 'books the allocation, ignoring blank amounts' do
+      allocate(first_invoice.id => '1000', second_invoice.id => '200')
+
+      expect(transfer.reload).to be_reconciled
+      expect(first_invoice.reload).to be_paid
+      expect(second_invoice.reload.remaining_amount).to eq(BigDecimal('300'))
+      expect(response).to redirect_to(accounting_bank_reconciliation_path)
+    end
+
+    it 'skips the empty fields the real form submits for every other invoice' do
+      other = create(:invoice, :customer, :posted, fiscal_year: fiscal_year, partner: client, invoice_number: 'ALLOC-3')
+      allocate(first_invoice.id => '1000', second_invoice.id => '200,00', other.id => '')
+
+      expect(transfer.reload).to be_reconciled
+      expect(other.reload).to be_posted
+    end
+
+    it 'refuses amounts that do not add up, changing nothing' do
+      allocate(first_invoice.id => '1000', second_invoice.id => '100')
+
+      expect(transfer.reload).to be_pending
+      expect(first_invoice.reload).to be_posted
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'refuses an unparsable amount' do
+      allocate(first_invoice.id => 'abc')
+
+      expect(transfer.reload).to be_pending
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'redirects with an alert when the transaction is not a pending credit' do
+      transfer.update_columns(amount: BigDecimal('-1200'))
+      get allocate_accounting_bank_reconciliation_path(bank_transaction_id: transfer.id)
+
+      expect(response).to redirect_to(accounting_bank_reconciliation_path)
+      expect(flash[:alert]).to be_present
+    end
+  end
+
   describe 'accès manager' do
     before { sign_in manager }
 

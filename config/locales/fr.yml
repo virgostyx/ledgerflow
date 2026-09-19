@@ -42,6 +42,9 @@ fr:
       no_suggestion: "Aucune suggestion disponible pour cette transaction."
       ignored: "Transaction ignorée."
       not_pending: "Seules les transactions en attente peuvent être ignorées."
+      not_allocatable: "Seuls les crédits en attente peuvent être ventilés sur des factures."
+      invalid_amount: "Saisissez des montants valides."
+      invalid_invoice: "Facture inconnue ou clôturée."
 
     vat_declarations:
       created: "Déclaration TVA générée avec succès."

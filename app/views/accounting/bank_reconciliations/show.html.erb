@@ -97,10 +97,14 @@
               <% else %>
                 <%= manual_form %>
               <% end %>
+              <% if tx.credit? %>
+                <%= link_to 'Allocate to invoices', allocate_accounting_bank_reconciliation_path(bank_transaction_id: tx.id),
+                      class: 'block mt-2 text-xs text-primary-600 hover:underline' %>
+              <% end %>
               <%= button_to 'Ignore', accounting_bank_reconciliation_path, method: :patch,
                     params: { 'bank_reconciliation[bank_transaction_id]' => tx.id, 'bank_reconciliation[ignore]' => 1 },
                     data: { turbo_confirm: 'Ignore this transaction? It will be removed from the list without any accounting entry.' },
-                    class: 'mt-2 text-xs text-gray-500 underline hover:text-gray-700' %>
+                    class: 'mt-1 text-xs text-gray-500 underline hover:text-gray-700' %>
             </td>
           </tr>
         <% end %>

@@ -58,7 +58,9 @@ Rails.application.routes.draw do
         member { post :close }
       end
 
-      resource  :bank_reconciliation, only: [ :show, :update ]
+      resource :bank_reconciliation, only: [ :show, :update ] do
+        get :allocate
+      end
 
       resources :payment_batches, only: [ :index, :new, :create, :show, :destroy ] do
         member do

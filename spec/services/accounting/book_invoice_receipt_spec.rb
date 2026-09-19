@@ -125,4 +125,49 @@ RSpec.describe Accounting::BookInvoiceReceipt, type: :service do
       expect(book_group).to be_failure
     end
   end
+
+  context 'manual allocation (explicit amount per invoice)' do
+    let(:second) do
+      create(:invoice, :customer, :posted, fiscal_year: fiscal_year, partner: invoice.partner)
+        .tap { |i| i.update_columns(total_incl_vat: BigDecimal('300')) }
+    end
+    let(:tx_1200) { create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('1200')) }
+
+    def allocate(allocations, transaction: tx_1200)
+      described_class.call(transaction: transaction, allocations: allocations, fiscal_year: fiscal_year)
+    end
+
+    it 'books each amount on its invoice; a fully covered invoice is paid, the other stays open' do
+      expect(allocate([ [ invoice, BigDecimal('900') ], [ second, BigDecimal('300') ] ])).to be_success
+
+      lines = tx_1200.reload.journal_entry.lines
+      expect(lines.find_by(invoice_id: invoice.id).credit).to eq(BigDecimal('900'))
+      expect(lines.find_by(invoice_id: second.id).credit).to eq(BigDecimal('300'))
+      expect(invoice.reload).to be_posted
+      expect(invoice.remaining_amount).to eq(BigDecimal('310'))
+      expect(second.reload).to be_paid
+    end
+
+    it 'lets an allocation exceed the balance, leaving a credit on the partner' do
+      tx_1200.update_columns(amount: BigDecimal('1600'))
+
+      expect(allocate([ [ invoice, BigDecimal('1210') ], [ second, BigDecimal('390') ] ])).to be_success
+      expect(second.reload.overpaid_amount).to eq(BigDecimal('90'))
+    end
+
+    it 'refuses allocations that do not add up to the transaction amount' do
+      expect { expect(allocate([ [ invoice, BigDecimal('900') ], [ second, BigDecimal('200') ] ])).to be_failure }
+        .not_to change(Accounting::JournalEntry, :count)
+      expect(tx_1200.reload).to be_pending
+    end
+
+    it 'refuses a non-positive allocation' do
+      expect(allocate([ [ invoice, BigDecimal('1300') ], [ second, BigDecimal('-100') ] ])).to be_failure
+    end
+
+    it 'refuses invoices of different partners' do
+      second.update_columns(partner_id: create(:partner).id)
+      expect(allocate([ [ invoice, BigDecimal('900') ], [ second, BigDecimal('300') ] ])).to be_failure
+    end
+  end
 end

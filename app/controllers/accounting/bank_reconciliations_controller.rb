@@ -9,6 +9,16 @@ class Accounting::BankReconciliationsController < ApplicationController
     @accounts      = Accounting::Account.where(is_leaf: true).order(:code)
   end
 
+  def allocate
+    authorize :bank_reconciliation, :show?, policy_class: Accounting::BankReconciliationsPolicy
+    @transaction = Accounting::BankTransaction.pending.find_by(id: params[:bank_transaction_id])
+    unless @transaction&.credit?
+      return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.not_allocatable")
+    end
+
+    @invoices = Accounting::Invoice.customer.posted.includes(:partner).order(:partner_id, :due_date, :id)
+  end
+
   def update
     authorize :bank_reconciliation, policy_class: Accounting::BankReconciliationsPolicy
 
@@ -16,6 +26,8 @@ class Accounting::BankReconciliationsController < ApplicationController
       handle_camt_import
     elsif bank_params[:ignore].present?
       handle_ignore
+    elsif bank_params[:allocations].present?
+      handle_allocations
     elsif bank_params[:accept_suggestion].present?
       handle_accept_suggestion
     else
@@ -66,6 +78,36 @@ class Accounting::BankReconciliationsController < ApplicationController
     else
       redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.not_pending")
     end
+  end
+
+  # Blank or zero amounts are skipped; the service checks the rest (sum, partner, positivity).
+  def handle_allocations
+    transaction = Accounting::BankTransaction.pending.find_by(id: bank_params[:bank_transaction_id])
+    return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.not_pending") unless transaction
+
+    back = allocate_accounting_bank_reconciliation_path(bank_transaction_id: transaction.id)
+    allocations = parse_allocations
+    return redirect_to back, alert: t("accounting.bank_reconciliation.invalid_amount") unless allocations
+    return redirect_to back, alert: t("accounting.bank_reconciliation.invalid_invoice") if allocations.any? { |invoice, _| invoice.nil? }
+
+    result = Accounting::BookInvoiceReceipt.call(transaction: transaction, allocations: allocations,
+                                                 fiscal_year: Accounting::FiscalYear.open_years.first)
+    if result.success?
+      redirect_to accounting_bank_reconciliation_path, notice: t("accounting.bank_reconciliation.reconciled")
+    else
+      redirect_to back, alert: result.message
+    end
+  end
+
+  # [[invoice_or_nil, amount], ...] without empty rows; nil when an amount cannot be parsed.
+  def parse_allocations
+    raw = bank_params[:allocations].to_unsafe_h.transform_values do |value|
+      BigDecimal(value.to_s.strip.tr(",", ".").presence || "0", exception: false)
+    end
+    return if raw.values.any? { |amount| amount.nil? || !amount.finite? }
+
+    invoices = Accounting::Invoice.customer.posted.where(id: raw.keys).index_by { |i| i.id.to_s }
+    raw.reject { |_, amount| amount.zero? }.map { |id, amount| [ invoices[id], amount ] }
   end
 
   # The suggestion is recomputed server-side; the client only says "accept".

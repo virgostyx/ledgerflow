@@ -1,18 +1,20 @@
-# Books a customer receipt: bank / receivable (400000) via the regular reconciliation, each receivable line
-# linked to its invoice and partner.
-# - One invoice: partial payments leave it open, it is paid once the balance reaches zero; an overpayment is
-#   booked in full and the excess stays as a credit balance for the partner on 400000.
-# - Several invoices of one partner (grouped transfer): the amount must equal the sum of their balances.
-# All or nothing.
-# ponytail: no automatic allocation of a credit balance to other invoices; a grouped transfer must be exact.
+# Books a customer receipt: bank / receivable (400000) via the regular reconciliation, one receivable line per
+# allocated invoice, linked to the invoice and its partner. The allocated amounts must add up to the transaction.
+# - invoice:     the whole amount on one invoice (partial payment leaves it open; an overpayment stays as a credit
+#                balance for the partner on 400000).
+# - invoices:    a grouped transfer, each invoice settled for its remaining balance.
+# - allocations: explicit [[invoice, amount], ...] chosen by the user.
+# An invoice is marked paid once its balance reaches zero. All or nothing.
+# ponytail: no automatic allocation of a credit balance to other invoices.
 class Accounting::BookInvoiceReceipt
   extend LightService::Organizer
 
-  def self.call(transaction:, fiscal_year:, invoice: nil, invoices: nil)
-    list  = (invoices || [ invoice ]).uniq
-    error = guard(transaction, list)
+  def self.call(transaction:, fiscal_year:, invoice: nil, invoices: nil, allocations: nil)
+    allocations = build_allocations(transaction, invoice, invoices, allocations)
+    error = guard(transaction, allocations)
     return failure(transaction, error) if error
 
+    list   = allocations.map(&:first)
     result = nil
     ApplicationRecord.transaction do
       result = Accounting::ReconcileBankTransaction.call(
@@ -20,7 +22,7 @@ class Accounting::BookInvoiceReceipt
         account_id:  Accounting::Account.find_by!(code: "400000").id,
         fiscal_year: fiscal_year,
         label:       "Receipt #{list.filter_map(&:invoice_number).join(', ')}".strip,
-        allocations: allocations(transaction, list)
+        allocations: allocations
       )
       list.each { |i| i.pay! if i.remaining_amount.zero? } if result.success?
       raise ActiveRecord::Rollback if result.failure?
@@ -30,20 +32,27 @@ class Accounting::BookInvoiceReceipt
     failure(transaction, "Error: #{e.message}")
   end
 
-  def self.allocations(tx, list)
-    list.one? ? [ [ list.first, tx.amount ] ] : list.map { |i| [ i, i.remaining_amount ] }
+  def self.build_allocations(tx, invoice, invoices, allocations)
+    return allocations if allocations
+    return invoices.uniq.map { |i| [ i, i.remaining_amount ] } if invoices
+
+    [ [ invoice, tx.amount ] ]
   end
 
-  def self.guard(tx, list)
-    if tx.reconciled? || !tx.credit?                              then "Not a pending credit"
-    elsif list.any? { |i| !i.customer? || !i.posted? }            then "Invoice is not an open customer invoice"
-    elsif list.map(&:partner_id).uniq.size > 1                    then "Invoices must belong to the same partner"
-    elsif list.many? && list.sum(&:remaining_amount) != tx.amount then "Amount does not match the sum of the invoice balances"
+  def self.guard(tx, allocations)
+    list = allocations.map(&:first)
+    if tx.reconciled? || !tx.credit?                                 then "Not a pending credit"
+    elsif allocations.empty?                                         then "Nothing to allocate"
+    elsif list.any? { |i| !i.customer? || !i.posted? }               then "Invoice is not an open customer invoice"
+    elsif list.uniq.size != list.size                                then "An invoice can only be allocated once"
+    elsif list.map(&:partner_id).uniq.size > 1                       then "Invoices must belong to the same partner"
+    elsif allocations.any? { |_, amount| amount <= 0 }               then "Allocated amounts must be positive"
+    elsif allocations.sum { |_, amount| amount } != tx.amount        then "Allocated amounts must add up to the transaction amount"
     end
   end
 
   def self.failure(tx, message)
     LightService::Context.make(transaction: tx).tap { |ctx| ctx.fail!(message) }
   end
-  private_class_method :allocations, :guard, :failure
+  private_class_method :build_allocations, :guard, :failure
 end
