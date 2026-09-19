@@ -220,6 +220,37 @@ RSpec.describe 'Accounting::Invoices', type: :request do
       get accounting_invoice_path(invoice)
       expect(response).to have_http_status(:ok)
     end
+
+    context 'customer invoice with a partial payment' do
+      include_context 'with_pcmn_accounts'
+
+      let!(:bank_journal) { create(:journal, :bank, default_account: account_550) }
+      let(:bank_account)  { create(:bank_account, journal: bank_journal) }
+      let(:customer_invoice) do
+        create(:invoice, :customer, :posted, :with_lines, partner: partner, fiscal_year: fiscal_year)
+          .tap { |i| i.update_columns(total_incl_vat: BigDecimal('1210')) }
+      end
+
+      before do
+        tx = create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('500'))
+        Accounting::BookInvoiceReceipt.call(transaction: tx, invoice: customer_invoice, fiscal_year: fiscal_year)
+      end
+
+      it 'shows the amount paid and the remaining balance' do
+        get accounting_invoice_path(customer_invoice)
+
+        expect(response.body).to include('Paid').and include('Remaining')
+        expect(response.body).to include(Accounting::MoneyPresenter.new(BigDecimal('500')).format)
+        expect(response.body).to include(Accounting::MoneyPresenter.new(BigDecimal('710')).format)
+      end
+
+      it 'shows nothing for an invoice without payments' do
+        other = create(:invoice, :customer, :posted, :with_lines, partner: partner, fiscal_year: fiscal_year)
+        get accounting_invoice_path(other)
+
+        expect(response.body).not_to include('Remaining')
+      end
+    end
   end
 
   describe 'GET /accounting/invoices/:id/edit' do

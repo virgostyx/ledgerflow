@@ -131,6 +131,16 @@
               <%= presenter.formatted_total %>
             </td>
           </tr>
+          <% if @invoice.customer? && @invoice.paid_amount.positive? %>
+            <tr class="text-sm">
+              <td colspan="5" class="px-4 py-2 text-right text-gray-500 font-medium">Paid</td>
+              <td class="px-4 py-2 text-right font-mono text-emerald-700"><%= Accounting::MoneyPresenter.new(@invoice.paid_amount).format %></td>
+            </tr>
+            <tr class="text-sm">
+              <td colspan="5" class="px-4 py-2 text-right text-gray-500 font-medium">Remaining</td>
+              <td class="px-4 py-2 text-right font-mono font-bold text-gray-900"><%= Accounting::MoneyPresenter.new(@invoice.remaining_amount).format %></td>
+            </tr>
+          <% end %>
         </tfoot>
       </table>
     </div>
