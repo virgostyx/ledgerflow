@@ -64,10 +64,12 @@ production:
   cache:
     <<: *primary_production
     database: ledgerflow_production_cache
+    schema_format: ruby
     migrations_paths: db/cache_migrate
   queue:
     <<: *primary_production
     database: ledgerflow_production_queue
+    schema_format: ruby
     migrations_paths: db/queue_migrate
   cable:
     <<: *primary_production
