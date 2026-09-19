@@ -105,6 +105,21 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
       create(:bank_transaction, bank_account: bank_account, amount: BigDecimal(amount.to_s), description: description)
     end
 
+    it 'matches against preloaded open invoices without querying them again' do
+      transaction = tx
+      open_invoices = Accounting::Invoice.customer.posted.where.not(invoice_number: nil).to_a
+      queries = []
+      subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+        queries << payload[:sql] if payload[:sql].include?('FROM "accounting_invoices"')
+      end
+
+      suggestion = described_class.call(transaction: transaction, open_invoices: open_invoices)
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+
+      expect(suggestion.target).to contain_exactly(first, second)
+      expect(queries).to be_empty
+    end
+
     it 'suggests all invoices named in the description when the sum of balances matches' do
       suggestion = described_class.call(transaction: tx)
 

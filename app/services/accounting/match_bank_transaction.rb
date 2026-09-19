@@ -3,9 +3,13 @@
 class Accounting::MatchBankTransaction
   Suggestion = Struct.new(:kind, :target, :confidence, :excess, keyword_init: true)
 
-  def self.call(transaction:)
-    match_batch(transaction) || match_invoice(transaction) || match_invoices(transaction) || match_fees(transaction)
+  # `open_invoices`: optional preloaded open customer invoices, so a caller matching many transactions queries them once.
+  def self.call(transaction:, open_invoices: nil)
+    match_batch(transaction) || match_invoice(transaction) || match_invoices(transaction, open_invoices) ||
+      match_fees(transaction)
   end
+
+  def self.open_customer_invoices = Accounting::Invoice.customer.posted.where.not(invoice_number: nil)
 
   def self.match_batch(tx)
     return unless tx.debit? && tx.reference.present?
@@ -27,10 +31,10 @@ class Accounting::MatchBankTransaction
 
   # Grouped transfer: several open invoices of one partner named in the description, whose balances add up to the amount.
   # ponytail: scans open customer invoices in Ruby; index/limit by partner if the open-invoice count gets large.
-  def self.match_invoices(tx)
+  def self.match_invoices(tx, open_invoices)
     return unless tx.credit? && tx.description.present?
 
-    named = Accounting::Invoice.customer.posted.where.not(invoice_number: nil).select do |invoice|
+    named = (open_invoices || open_customer_invoices).select do |invoice|
       tx.description.match?(/(?<![\w-])#{Regexp.escape(invoice.invoice_number)}(?![\w-])/)
     end
     return unless named.size > 1 && named.map(&:partner_id).uniq.one? && named.sum(&:remaining_amount) == tx.amount
@@ -48,5 +52,5 @@ class Accounting::MatchBankTransaction
     account = Accounting::Account.find_by(code: FEES_ACCOUNT_CODE)
     Suggestion.new(kind: :expense, target: account, excess: 0, confidence: :medium) if account
   end
-  private_class_method :match_batch, :match_invoice, :match_invoices, :match_fees
+  private_class_method :open_customer_invoices, :match_batch, :match_invoice, :match_invoices, :match_fees
 end
