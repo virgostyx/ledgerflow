@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <link rel="icon" href="/icon.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
@@ -16,7 +17,7 @@
   <body class="bg-white text-gray-900">
     <nav class="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <span class="text-2xl text-primary-700">◈</span>
+        <%= image_tag "/logo.png", alt: "", class: "h-8 w-8" %>
         <span class="text-lg font-bold text-primary-700">LedgerFlow</span>
       </div>
       <%= link_to 'Sign in', new_user_session_path,

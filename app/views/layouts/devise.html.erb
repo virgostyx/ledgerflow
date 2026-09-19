@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <link rel="icon" href="/icon.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
@@ -15,7 +16,7 @@
   <body class="min-h-screen bg-gray-50 flex">
     <div class="flex flex-col items-center justify-center flex-1 px-4 py-12">
       <div class="mb-8 text-center">
-        <span class="text-4xl text-primary-700">◈</span>
+        <%= image_tag "/logo.png", alt: "", class: "h-14 w-14 mx-auto mb-2" %>
         <h1 class="text-2xl font-bold text-primary-700">LedgerFlow</h1>
         <p class="text-sm text-gray-500">Compliant accounting • Belgium</p>
       </div>
