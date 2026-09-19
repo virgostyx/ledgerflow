@@ -156,6 +156,17 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
         expect(response.body).to include('will be marked as executed')
       end
 
+      it 'shows an alert and changes nothing when the batch cannot be executed' do
+        purchase.update_column(:status, Accounting::Invoice.statuses[:cancelled])
+
+        patch accounting_bank_reconciliation_path,
+              params: { bank_reconciliation: { bank_transaction_id: debit.id, accept_suggestion: '1' } }
+
+        expect(flash[:alert]).to be_present
+        expect(debit.reload).to be_pending
+        expect(generated.reload).to be_generated
+      end
+
       it 'executes the batch when the suggestion is accepted' do
         patch accounting_bank_reconciliation_path,
               params: { bank_reconciliation: { bank_transaction_id: debit.id, accept_suggestion: '1' } }

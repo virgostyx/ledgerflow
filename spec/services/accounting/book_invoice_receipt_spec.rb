@@ -76,6 +76,16 @@ RSpec.describe Accounting::BookInvoiceReceipt, type: :service do
     expect(tx.reload).to be_pending
   end
 
+  it 'fails cleanly, changing nothing, when the receivable account is missing' do
+    receivable.destroy!
+
+    result = nil
+    expect { result = book }.not_to change(Accounting::JournalEntry, :count)
+    expect(result).to be_failure
+    expect(result.message).to start_with('Error')
+    expect(tx.reload).to be_pending
+  end
+
   it 'refuses a debit' do
     tx.update_columns(amount: BigDecimal('-1210'))
     expect(book).to be_failure
