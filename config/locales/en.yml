@@ -47,6 +47,8 @@ en:
       imported:   "Statement imported: %{count} transaction(s) created."
       reconciled: "Transaction reconciled successfully."
       no_suggestion: "No suggestion available for this transaction."
+      ignored: "Transaction ignored."
+      not_pending: "Only pending transactions can be ignored."
 
     vat_declarations:
       created: "VAT declaration generated successfully."

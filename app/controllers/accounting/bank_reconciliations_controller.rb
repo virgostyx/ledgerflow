@@ -14,6 +14,8 @@ class Accounting::BankReconciliationsController < ApplicationController
 
     if bank_params[:camt_file].present?
       handle_camt_import
+    elsif bank_params[:ignore].present?
+      handle_ignore
     elsif bank_params[:accept_suggestion].present?
       handle_accept_suggestion
     else
@@ -53,6 +55,16 @@ class Accounting::BankReconciliationsController < ApplicationController
                   notice: t("accounting.bank_reconciliation.reconciled")
     else
       redirect_to accounting_bank_reconciliation_path, alert: result.message
+    end
+  end
+
+  def handle_ignore
+    transaction = Accounting::BankTransaction.pending.find_by(id: bank_params[:bank_transaction_id])
+    if transaction
+      transaction.ignored!
+      redirect_to accounting_bank_reconciliation_path, notice: t("accounting.bank_reconciliation.ignored")
+    else
+      redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.not_pending")
     end
   end
 

@@ -233,6 +233,40 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
     end
   end
 
+  describe 'PATCH /accounting/bank_reconciliation — ignore' do
+    let!(:stray) do
+      create(:bank_transaction, bank_account: bank_account, amount: BigDecimal('42'), description: 'Entered by mistake')
+    end
+
+    it 'shows an Ignore button on pending transactions' do
+      get accounting_bank_reconciliation_path
+      expect(response.body).to include('value="Ignore"').or include('>Ignore<')
+    end
+
+    it 'marks the transaction as ignored, removes it from the list and creates no entry' do
+      expect {
+        patch accounting_bank_reconciliation_path,
+              params: { bank_reconciliation: { bank_transaction_id: stray.id, ignore: '1' } }
+      }.not_to change(Accounting::JournalEntry, :count)
+
+      expect(stray.reload).to be_ignored
+      expect(response).to redirect_to(accounting_bank_reconciliation_path)
+
+      get accounting_bank_reconciliation_path
+      expect(response.body).not_to include('Entered by mistake')
+    end
+
+    it 'refuses to ignore a transaction that is already reconciled' do
+      stray.update_columns(status: Accounting::BankTransaction.statuses[:reconciled])
+
+      patch accounting_bank_reconciliation_path,
+            params: { bank_reconciliation: { bank_transaction_id: stray.id, ignore: '1' } }
+
+      expect(stray.reload).to be_reconciled
+      expect(flash[:alert]).to be_present
+    end
+  end
+
   describe 'accès manager' do
     before { sign_in manager }
 
