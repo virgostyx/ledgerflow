@@ -15,7 +15,7 @@ class ApplicationController < ActionController::Base
   private
 
   def set_locale
-    I18n.locale = current_user&.locale || :fr
+    I18n.locale = I18n.default_locale
   end
 
   def set_current_entity

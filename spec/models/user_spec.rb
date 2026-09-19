@@ -25,9 +25,9 @@ RSpec.describe User, type: :model do
       expect(user.active).to be true
     end
 
-    it 'a la locale fr par défaut' do
+    it 'a la locale en par défaut' do
       user = User.new
-      expect(user.locale).to eq('fr')
+      expect(user.locale).to eq('en')
     end
   end
 

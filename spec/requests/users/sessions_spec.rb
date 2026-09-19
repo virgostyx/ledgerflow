@@ -28,7 +28,7 @@ RSpec.describe 'Users::Sessions', type: :request do
           user: { email: user.email, password: 'wrong_password' }
         }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(response.body).to include('Email ou mot de passe invalide')
+        expect(response.body).to include('Invalid email or password')
       end
     end
 

@@ -37,7 +37,7 @@ RSpec.describe Accounting::PostJournalEntry, type: :service do
     end
 
     it 'inclut le message déséquilibré' do
-      expect(result.message).to include('déséquilibré')
+      expect(result.message).to include('Unbalanced entry')
     end
 
     it 'ne modifie pas le statut' do

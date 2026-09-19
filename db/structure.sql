@@ -890,7 +890,7 @@ CREATE TABLE public.users (
     locked_at timestamp(6) without time zone,
     role integer DEFAULT 3 NOT NULL,
     full_name character varying DEFAULT ''::character varying NOT NULL,
-    locale character varying DEFAULT 'fr'::character varying NOT NULL,
+    locale character varying DEFAULT 'en'::character varying NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
@@ -2288,6 +2288,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260718164144'),
 ('20260718122123'),
 ('20260709000001'),
 ('20260628163629'),

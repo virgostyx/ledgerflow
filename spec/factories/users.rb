@@ -5,7 +5,7 @@ FactoryBot.define do
     password  { 'Password123!' }
     role      { :auditor }
     active    { true }
-    locale    { 'fr' }
+    locale    { 'en' }
 
     trait :admin      do role { :admin }      end
     trait :accountant do role { :accountant } end
