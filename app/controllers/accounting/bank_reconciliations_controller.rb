@@ -62,12 +62,7 @@ class Accounting::BankReconciliationsController < ApplicationController
       label:       bank_params[:label]
     )
 
-    if result.success?
-      redirect_to accounting_bank_reconciliation_path,
-                  notice: t("accounting.bank_reconciliation.reconciled")
-    else
-      redirect_to accounting_bank_reconciliation_path, alert: result.message
-    end
+    redirect_for(result)
   end
 
   def handle_ignore
@@ -92,11 +87,7 @@ class Accounting::BankReconciliationsController < ApplicationController
 
     result = Accounting::BookInvoiceReceipt.call(transaction: transaction, allocations: allocations,
                                                  fiscal_year: Accounting::FiscalYear.current)
-    if result.success?
-      redirect_to accounting_bank_reconciliation_path, notice: t("accounting.bank_reconciliation.reconciled")
-    else
-      redirect_to back, alert: result.message
-    end
+    redirect_for(result, failure_path: back)
   end
 
   # [[invoice_or_nil, amount], ...] without empty rows; nil when an amount cannot be parsed.
@@ -113,28 +104,17 @@ class Accounting::BankReconciliationsController < ApplicationController
   # The suggestion is recomputed server-side; the client only says "accept".
   def handle_accept_suggestion
     transaction = Accounting::BankTransaction.pending.find(bank_params[:bank_transaction_id])
-    suggestion  = Accounting::MatchBankTransaction.call(transaction: transaction)
-    return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.no_suggestion") unless suggestion
+    result = Accounting::AcceptBankSuggestion.call(transaction: transaction)
+    return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.no_suggestion") unless result
 
-    result =
-      case suggestion.kind
-      when :payment_batch
-        Accounting::LinkTransactionToSettlement.call(transaction: transaction, payment_batch: suggestion.target)
-      when :expense
-        Accounting::ReconcileBankTransaction.call(transaction: transaction, account_id: suggestion.target.id,
-                                                  fiscal_year: Accounting::FiscalYear.current, label: "Bank fees")
-      when :invoices
-        Accounting::BookInvoiceReceipt.call(transaction: transaction, invoices: suggestion.target,
-                                            fiscal_year: Accounting::FiscalYear.current)
-      when :invoice
-        Accounting::BookInvoiceReceipt.call(transaction: transaction, invoice: suggestion.target,
-                                            fiscal_year: Accounting::FiscalYear.current)
-      end
+    redirect_for(result)
+  end
 
+  def redirect_for(result, failure_path: accounting_bank_reconciliation_path)
     if result.success?
       redirect_to accounting_bank_reconciliation_path, notice: t("accounting.bank_reconciliation.reconciled")
     else
-      redirect_to accounting_bank_reconciliation_path, alert: result.message
+      redirect_to failure_path, alert: result.message
     end
   end
 
