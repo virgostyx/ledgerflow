@@ -23,6 +23,10 @@ fr:
       dual_side:         "Impossible d'avoir débit ET crédit positifs simultanément."
       zero_side:         "L'écriture doit comporter un montant au débit ou au crédit."
       unbalanced_entry:   "Écriture déséquilibrée : débit %{debit} ≠ crédit %{credit}."
+      reverse_not_posted:  "Seule une écriture comptabilisée peut être contre-passée."
+      reverse_year_closed: "L'exercice est clôturé, l'écriture ne peut pas être contre-passée."
+      reverse_has_source:  "Cette écriture provient d'une facture ou d'un paiement, annulez-la depuis celui-ci."
+      reverse_lettered:    "Des lignes sont lettrées, délettrez-les avant de contre-passer."
       already_reconciled: "Cette transaction a déjà été lettrée."
 
     partners:
@@ -34,7 +38,8 @@ fr:
       created:  "Écriture enregistrée en brouillon."
       updated:  "Écriture mise à jour."
       posted:   "Écriture validée et comptabilisée."
-      reverse_not_implemented: "La contre-passation n'est pas encore implémentée."
+      reversed: "Écriture contre-passée par %{reference}."
+      reversal_description: "Contre-passation de %{reference}"
 
     bank_reconciliation:
       imported:   "Relevé importé : %{count} transaction(s) créée(s)."

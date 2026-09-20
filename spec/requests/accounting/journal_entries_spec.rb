@@ -224,11 +224,21 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
   end
 
   describe 'POST /accounting/journal_entries/:id/reverse' do
-    let(:entry) { create(:journal_entry, :posted, fiscal_year: fiscal_year) }
+    let(:entry) { create(:journal_entry, :with_balanced_lines, fiscal_year: fiscal_year) }
 
-    it 'retourne une alerte non implémenté' do
+    before { Accounting::PostJournalEntry.call(entry: entry) }
+
+    it 'reverses the entry and redirects to the reversal' do
+      post reverse_accounting_journal_entry_path(entry)
+      expect(entry.reload).to be_reversed
+      expect(response).to redirect_to(accounting_journal_entry_path(entry.reversal))
+    end
+
+    it 'redirects back with an alert when the entry cannot be reversed' do
+      entry.update_columns(source_type: 'Accounting::Invoice', source_id: 1)
       post reverse_accounting_journal_entry_path(entry)
       expect(response).to redirect_to(accounting_journal_entry_path(entry))
+      expect(entry.reload).to be_posted
     end
   end
 

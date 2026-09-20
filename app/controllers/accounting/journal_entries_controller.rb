@@ -78,8 +78,13 @@ class Accounting::JournalEntriesController < ApplicationController
 
   def reverse
     authorize @entry, :reverse?
-    redirect_to accounting_journal_entry_path(@entry),
-                alert: t("accounting.journal_entries.reverse_not_implemented")
+    result = Accounting::ReverseJournalEntry.call(entry: @entry)
+    if result.success?
+      redirect_to accounting_journal_entry_path(result[:reversal]),
+                  notice: t("accounting.journal_entries.reversed", reference: result[:reversal].reference)
+    else
+      redirect_to accounting_journal_entry_path(@entry), alert: result.message
+    end
   end
 
   private

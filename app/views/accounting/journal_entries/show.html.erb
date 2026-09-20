@@ -18,6 +18,11 @@
       <%= button_to 'Post', post_entry_accounting_journal_entry_path(@entry), method: :post,
             class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
     <% end %>
+    <% if @entry.posted? && policy(@entry).reverse? %>
+      <%= button_to 'Reverse', reverse_accounting_journal_entry_path(@entry), method: :post,
+            form: { data: { turbo_confirm: 'Reverse this entry? A counter-entry will be posted.' } },
+            class: 'px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50 transition-colors' %>
+    <% end %>
     <% if @entry.draft? && policy(@entry).update? %>
       <%= link_to 'Edit', edit_accounting_journal_entry_path(@entry),
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>

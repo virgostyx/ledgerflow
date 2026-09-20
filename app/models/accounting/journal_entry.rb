@@ -10,6 +10,8 @@ class Accounting::JournalEntry < ApplicationRecord
 
   belongs_to :journal,     class_name: "Accounting::Journal"
   belongs_to :fiscal_year, class_name: "Accounting::FiscalYear"
+  belongs_to :reversal_of, class_name: "Accounting::JournalEntry", optional: true
+  has_one    :reversal,    class_name: "Accounting::JournalEntry", foreign_key: :reversal_of_id, inverse_of: :reversal_of
   has_many   :lines,       class_name: "Accounting::JournalEntryLine",
                            foreign_key: :journal_entry_id,
                            inverse_of: :journal_entry,

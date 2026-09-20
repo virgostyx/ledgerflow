@@ -30,6 +30,10 @@ en:
       dual_side:          "Cannot have both debit AND credit positive at the same time."
       zero_side:          "The entry must have an amount in either debit or credit."
       unbalanced_entry:   "Unbalanced entry: debit %{debit} ≠ credit %{credit}."
+      reverse_not_posted:  "Only a posted entry can be reversed."
+      reverse_year_closed: "The fiscal year is closed, the entry cannot be reversed."
+      reverse_has_source:  "This entry comes from an invoice or a payment, cancel it from there."
+      reverse_lettered:    "Some lines are lettered, unletter them before reversing."
       already_reconciled: "This transaction has already been reconciled."
 
     partners:
@@ -41,7 +45,8 @@ en:
       created:  "Entry saved as draft."
       updated:  "Entry updated."
       posted:   "Entry posted and recorded."
-      reverse_not_implemented: "Reversal is not yet implemented."
+      reversed: "Entry reversed by %{reference}."
+      reversal_description: "Reversal of %{reference}"
 
     bank_reconciliation:
       imported:   "Statement imported: %{count} transaction(s) created."
