@@ -68,6 +68,22 @@ namespace :bank do
     end
   end
 
+  desc "Simulate a cash withdrawal (bank debit): bank:withdrawal[BANK_ACCOUNT_ID,AMOUNT]"
+  task :withdrawal, [ :bank_account_id, :amount ] => :environment do |_, args|
+    abort "Development/test only" if Rails.env.production?
+
+    bank_account = ActsAsTenant.without_tenant { Accounting::BankAccount.find(args.fetch(:bank_account_id)) }
+    ActsAsTenant.with_tenant(bank_account.entity) do
+      xml = Bank::Simulator::BuildStatement.call(
+        iban: bank_account.iban,
+        entries: [ { date: Date.current, amount: -BigDecimal(args.fetch(:amount)).abs, description: "Cash withdrawal" } ]
+      )
+      result = Accounting::ImportCamtStatement.call(xml: xml, bank_account: bank_account)
+      abort result.message if result.failure?
+      puts "Imported #{result[:imported_count]} transaction(s)"
+    end
+  end
+
   desc "Simulate an unidentified incoming transfer (no reference), to try manual allocation: bank:transfer[BANK_ACCOUNT_ID,AMOUNT]"
   task :transfer, [ :bank_account_id, :amount ] => :environment do |_, args|
     abort "Development/test only" if Rails.env.production?

@@ -61,6 +61,17 @@ RSpec.describe 'bank rake tasks' do
     expect(Accounting::BankTransaction.pluck(:amount)).to contain_exactly(BigDecimal('-4.50'), BigDecimal('-12.30'))
   end
 
+  it 'bank:withdrawal imports a cash withdrawal as a debit, whatever the sign given' do
+    expect { run('bank:withdrawal', bank_account.id, '500') }.to output(/Imported 1/).to_stdout
+    expect { run('bank:withdrawal', bank_account.id, '-200') }.to output(/Imported 1/).to_stdout
+
+    expect(Accounting::BankTransaction.pluck(:amount)).to contain_exactly(BigDecimal('-500'), BigDecimal('-200'))
+    tx = Accounting::BankTransaction.order(:id).first
+    expect(tx).to be_debit
+    expect(tx.description).to eq('Cash withdrawal')
+    expect(Accounting::MatchBankTransaction.call(transaction: tx)).to be_nil
+  end
+
   it 'bank:transfer imports an unidentified transfer' do
     expect { run('bank:transfer', bank_account.id, '1200') }.to output(/Imported 1/).to_stdout
 
