@@ -22,10 +22,16 @@ class Accounting::JournalEntryLine < ApplicationRecord
 
   MONETARY_COLUMNS = %w[debit credit vat_amount amount_currency].freeze
 
+  validate :partner_belongs_to_entity
   validate :only_one_side_positive
   validate :at_least_one_side_positive
 
   private
+
+  # The association is tenant-scoped, so a partner id from another entity resolves to nil.
+  def partner_belongs_to_entity
+    errors.add(:partner, :invalid) if partner_id.present? && partner.nil?
+  end
 
   def only_one_side_positive
     return unless debit.present? && credit.present?

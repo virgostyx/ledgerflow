@@ -40,6 +40,7 @@
       <tr>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Label</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Partner</th>
         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
       </tr>
@@ -51,6 +52,7 @@
             <%= line.account.code %> — <%= line.account.label_fr %>
           </td>
           <td class="px-4 py-3 text-gray-500"><%= line.label %></td>
+          <td class="px-4 py-3 text-gray-500"><%= line.partner&.name %></td>
           <td class="px-4 py-3 text-right font-mono text-gray-900">
             <%= Accounting::MoneyPresenter.new(line.debit).format if line.debit > 0 %>
           </td>

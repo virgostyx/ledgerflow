@@ -99,6 +99,37 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
       end
     end
 
+    context 'with a partner on a line' do
+      let(:supplier) { create(:partner, :supplier) }
+
+      def params_with_partner(partner_id)
+        { commit: 'Save', accounting_journal_entry: {
+            journal_id: journal.id, fiscal_year_id: fiscal_year.id, entry_date: Date.current, description: 'Partner',
+            lines_attributes: {
+              '0' => { account_id: account_604.id, debit: '100.00', credit: '0', label: 'Charge' },
+              '1' => { account_id: account_440.id, debit: '0', credit: '100.00', label: 'Supplier', partner_id: partner_id }
+            } } }
+      end
+
+      it 'stores the partner on the line' do
+        post accounting_journal_entries_path, params: params_with_partner(supplier.id)
+        expect(Accounting::JournalEntry.last.lines.find_by(account: account_440).partner).to eq(supplier)
+      end
+
+      it 'does not accept a partner of another entity' do
+        foreign = ActsAsTenant.with_tenant(create(:entity)) { create(:partner, :supplier) }
+
+        expect { post accounting_journal_entries_path, params: params_with_partner(foreign.id) }
+          .not_to change(Accounting::JournalEntryLine, :count)
+      end
+
+      it 'shows the partner on the entry page' do
+        post accounting_journal_entries_path, params: params_with_partner(supplier.id)
+        get accounting_journal_entry_path(Accounting::JournalEntry.last)
+        expect(response.body).to include(supplier.name)
+      end
+    end
+
     context 'avec des annotations analytiques' do
       let!(:axis)         { create(:analytical_axis, :proj) }
       let!(:anal_account) { create(:analytical_account, analytical_axis: axis,

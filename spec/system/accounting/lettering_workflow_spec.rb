@@ -33,6 +33,31 @@ RSpec.describe 'Lettering workflow', type: :system, js: true do
     end
   end
 
+  # Types the Caisse settlement in the real entry form (supplier chosen on the 440000 line), as a user would.
+  def book_cash_settlement(amount)
+    journal = cash_journal # created before the page loads, or it is missing from the select
+    visit new_accounting_journal_entry_path
+    select journal.display_name, from: 'Journal'
+    execute_script("document.querySelector('input[type=\"date\"]').value = '#{Date.current.iso8601}'")
+    fill_in 'Description', with: 'Cash payment supplier'
+
+    within '.entry-lines', match: :first do
+      execute_script("document.querySelector('[name=\"accounting_journal_entry[lines_attributes][0][account_id]\"]').value = '#{account_440.id}'")
+      select supplier.name, from: 'accounting_journal_entry[lines_attributes][0][partner_id]'
+      fill_in 'Debit', with: format('%.2f', amount)
+    end
+    click_button 'Add a line'
+    expect(page).to have_css('.entry-lines', count: 2)
+    execute_script("document.querySelectorAll('.entry-lines')[1].querySelector('[name*=\"account_id\"]').value = '#{account_570.id}'")
+    within all('.entry-lines').last do
+      fill_in 'Credit', with: format('%.2f', amount)
+    end
+
+    click_button 'Save'
+    expect(page).to have_css('.bg-emerald-100', text: 'Posted')
+    Accounting::JournalEntryLine.where(account: account_440, partner: supplier).where('debit > 0').first!
+  end
+
   def pick_account(account)
     visit new_accounting_lettering_path
     select account.full_label, from: 'account_id'
@@ -49,7 +74,7 @@ RSpec.describe 'Lettering workflow', type: :system, js: true do
     total   = payable.credit
     funds   = total + 100
 
-    cash_line = post_entry(cash_journal, 'CSH/0001', [ [ account_440, total, 0, supplier ], [ account_570, 0, total, nil ] ]).first
+    cash_line = book_cash_settlement(total)
     bank_line = post_entry(bank_journal, 'BNQ/0001', [ [ transit, funds, 0, nil ], [ account_550, 0, funds, nil ] ]).first
     od_line   = post_entry(od_journal, 'OD/0001', [ [ transit, 0, funds, nil ], [ account_570, total, 0, nil ],
                                                     [ suspense, 100, 0, nil ] ]).first

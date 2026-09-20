@@ -32,7 +32,8 @@
   <%# Column headers %>
   <div class="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 mb-2 px-1">
     <div class="col-span-3">Account</div>
-    <div class="col-span-4">Label</div>
+    <div class="col-span-2">Label</div>
+    <div class="col-span-2">Partner</div>
     <div class="col-span-2 text-right">Debit</div>
     <div class="col-span-2 text-right">Credit</div>
     <div class="col-span-1"></div>
@@ -56,9 +57,14 @@
             <div data-account-search-target="suggestions"
                  class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
           </div>
-          <div class="col-span-4">
+          <div class="col-span-2">
             <label class="sr-only">Label</label>
             <%= lf.text_field :label, placeholder: 'Label', class: 'block w-full rounded border-gray-300 text-sm' %>
+          </div>
+          <div class="col-span-2">
+            <label class="sr-only">Partner</label>
+            <%= lf.collection_select :partner_id, partners, :id, :name, { include_blank: '—' },
+                  class: 'block w-full rounded border-gray-300 text-sm' %>
           </div>
           <div class="col-span-2">
             <label class="sr-only">Debit</label>
@@ -130,11 +136,21 @@
           <div data-account-search-target="suggestions"
                class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
         </div>
-        <div class="col-span-4">
+        <div class="col-span-2">
           <label class="sr-only">Label</label>
           <input type="text" placeholder="Label"
                  name="accounting_journal_entry[lines_attributes][NEW_INDEX][label]"
                  class="block w-full rounded border-gray-300 text-sm">
+        </div>
+        <div class="col-span-2">
+          <label class="sr-only">Partner</label>
+          <select name="accounting_journal_entry[lines_attributes][NEW_INDEX][partner_id]"
+                  class="block w-full rounded border-gray-300 text-sm">
+            <option value="">—</option>
+            <% partners.each do |partner| %>
+              <option value="<%= partner.id %>"><%= partner.name %></option>
+            <% end %>
+          </select>
         </div>
         <div class="col-span-2">
           <label class="sr-only">Debit</label>

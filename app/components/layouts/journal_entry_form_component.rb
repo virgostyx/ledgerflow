@@ -31,4 +31,8 @@ class Layouts::JournalEntryFormComponent < ViewComponent::Base
   def axes
     @axes
   end
+
+  def partners
+    @partners ||= Accounting::Partner.where(active: true).order(:name)
+  end
 end

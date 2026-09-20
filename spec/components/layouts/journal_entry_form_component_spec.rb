@@ -7,7 +7,25 @@ RSpec.describe Layouts::JournalEntryFormComponent, type: :component do
   let(:accounts) { [ create(:account, code: '604000', label_fr: 'Services divers') ] }
   let(:entry)    { build(:journal_entry, journal: journals.first, fiscal_year: fiscal_year) }
 
+  let!(:supplier)          { create(:partner, :supplier, name: 'Acme Supplies') }
+  let!(:inactive_partner)  { create(:partner, :inactive, name: 'Dormant SA') }
+
   before { render_inline(described_class.new(entry: entry, journals: journals, accounts: accounts)) }
+
+  describe 'partner per line' do
+    it 'renders a partner select on the first line' do
+      expect(page).to have_select('accounting_journal_entry[lines_attributes][0][partner_id]', with_options: [ 'Acme Supplies' ])
+    end
+
+    it 'lists active partners only' do
+      expect(page).not_to have_css('option', text: 'Dormant SA', visible: :all)
+    end
+
+    it 'renders a partner select in the new line template' do
+      # Capybara's parser does not expose <template> content, so check the rendered markup.
+      expect(rendered_content).to include('lines_attributes][NEW_INDEX][partner_id]')
+    end
+  end
 
   it 'a le data-controller journal-entry-form' do
     expect(page).to have_css('[data-controller="journal-entry-form"]')

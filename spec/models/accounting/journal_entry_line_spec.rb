@@ -8,6 +8,23 @@ RSpec.describe Accounting::JournalEntryLine, type: :model do
     it { should belong_to(:account).class_name('Accounting::Account') }
   end
 
+  describe 'partner' do
+    it 'is valid without a partner' do
+      expect(build(:journal_entry_line, :debit, partner: nil)).to be_valid
+    end
+
+    it 'is valid with a partner of the same entity' do
+      expect(build(:journal_entry_line, :debit, partner: create(:partner))).to be_valid
+    end
+
+    it 'is invalid with a partner of another entity' do
+      foreign = ActsAsTenant.with_tenant(create(:entity)) { create(:partner) }
+      line = build(:journal_entry_line, :debit, partner_id: foreign.id)
+      expect(line).not_to be_valid
+      expect(line.errors[:partner]).to be_present
+    end
+  end
+
   describe 'validations de la partie double' do
     it 'est invalide si débit ET crédit sont positifs simultanément' do
       line = build(:journal_entry_line, debit: '100.00', credit: '50.00')

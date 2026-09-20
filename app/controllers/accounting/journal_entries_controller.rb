@@ -97,7 +97,7 @@ class Accounting::JournalEntriesController < ApplicationController
     params.require(:accounting_journal_entry).permit(
       :journal_id, :fiscal_year_id, :entry_date, :description,
       lines_attributes: [
-        :id, :account_id, :debit, :credit, :label, :vat_code, :vat_amount, :_destroy,
+        :id, :account_id, :partner_id, :debit, :credit, :label, :vat_code, :vat_amount, :_destroy,
         analytical_annotations_attributes: [ :id, :analytical_axis_id, :analytical_account_id, :_destroy ]
       ]
     )
