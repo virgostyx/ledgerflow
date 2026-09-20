@@ -19,6 +19,24 @@ RSpec.describe Accounting::Invoice, type: :model do
     it { should validate_presence_of(:partner) }
   end
 
+  describe 'cash journal validation' do
+    it 'is valid for a supplier invoice with a cash journal' do
+      expect(build(:invoice, :supplier, cash_journal: create(:journal, :cash))).to be_valid
+    end
+
+    it 'is invalid with a non-cash journal' do
+      invoice = build(:invoice, :supplier, cash_journal: create(:journal, :purchase))
+      expect(invoice).not_to be_valid
+      expect(invoice.errors[:cash_journal]).to be_present
+    end
+
+    it 'is invalid on a customer invoice' do
+      invoice = build(:invoice, :customer, cash_journal: create(:journal, :cash))
+      expect(invoice).not_to be_valid
+      expect(invoice.errors[:cash_journal]).to be_present
+    end
+  end
+
   describe 'journal type validation' do
     let(:sale_journal)     { create(:journal, :sale) }
     let(:purchase_journal) { create(:journal, :purchase) }

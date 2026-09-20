@@ -9,7 +9,8 @@ class Accounting::PostInvoice
         Accounting::Actions::ComputeInvoiceTotals,
         Accounting::Actions::AssignInvoiceNumber,
         Accounting::Actions::GenerateInvoiceJournalEntry,
-        Accounting::Actions::UpdateInvoiceStatus
+        Accounting::Actions::UpdateInvoiceStatus,
+        Accounting::Actions::PayFromCash
       )
       raise ActiveRecord::Rollback if result.failure?
     end

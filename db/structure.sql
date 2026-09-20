@@ -465,7 +465,8 @@ CREATE TABLE public.accounting_invoices (
     peppol_id character varying,
     peppol_status integer DEFAULT 0 NOT NULL,
     entity_id bigint NOT NULL,
-    journal_id bigint
+    journal_id bigint,
+    cash_journal_id bigint
 );
 
 
@@ -1616,6 +1617,13 @@ CREATE INDEX index_accounting_invoice_lines_on_invoice_id_and_position ON public
 
 
 --
+-- Name: index_accounting_invoices_on_cash_journal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoices_on_cash_journal_id ON public.accounting_invoices USING btree (cash_journal_id);
+
+
+--
 -- Name: index_accounting_invoices_on_entity_and_invoice_number; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2005,6 +2013,14 @@ CREATE TRIGGER enforce_audit_log_immutability BEFORE DELETE OR UPDATE ON public.
 --
 
 CREATE CONSTRAINT TRIGGER enforce_double_entry AFTER INSERT OR UPDATE ON public.accounting_journal_entry_lines DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.enforce_double_entry_check();
+
+
+--
+-- Name: accounting_invoices fk_rails_0010c52c65; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoices
+    ADD CONSTRAINT fk_rails_0010c52c65 FOREIGN KEY (cash_journal_id) REFERENCES public.accounting_journals(id);
 
 
 --
@@ -2422,6 +2438,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260920200000'),
 ('20260920100100'),
 ('20260920100000'),
 ('20260919100000'),
