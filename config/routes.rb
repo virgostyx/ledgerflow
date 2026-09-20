@@ -48,6 +48,7 @@ Rails.application.routes.draw do
       resources :invoices, only: [ :show, :edit, :update, :destroy ] do
         member do
           post :validate_invoice
+          post :cancel_invoice
           post :send_peppol
         end
       end

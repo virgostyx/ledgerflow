@@ -59,10 +59,13 @@ fr:
       updated: "Facture mise à jour."
       deleted: "Facture supprimée."
       posted:  "Facture validée et comptabilisée."
+      cancelled: "Facture annulée et son écriture contre-passée."
       errors:
         already_posted: "Cette facture est déjà validée."
         no_lines:       "La facture doit comporter au moins une ligne."
         no_journal:     "Aucun journal actif de type %{type} trouvé."
+        cancel_not_posted: "Seule une facture comptabilisée peut être annulée."
+        cancel_paid:       "Cette facture a des paiements ou figure dans un lot de paiement, annulez-les d'abord."
 
     settings:
       journals:

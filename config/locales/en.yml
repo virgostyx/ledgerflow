@@ -66,10 +66,13 @@ en:
       updated: "Invoice updated."
       deleted: "Invoice deleted."
       posted:  "Invoice validated and posted."
+      cancelled: "Invoice cancelled and its entry reversed."
       errors:
         already_posted: "This invoice has already been posted."
         no_lines:       "The invoice must have at least one line."
         no_journal:     "No active journal of type %{type} found."
+        cancel_not_posted: "Only a posted invoice can be cancelled."
+        cancel_paid:       "This invoice has payments or is in a payment batch, undo them first."
 
     settings:
       journals:

@@ -46,7 +46,7 @@ class Accounting::Invoice < ApplicationRecord
     end
 
     event :cancel do
-      transitions from: :draft, to: :cancelled
+      transitions from: %i[draft posted], to: :cancelled
     end
   end
 

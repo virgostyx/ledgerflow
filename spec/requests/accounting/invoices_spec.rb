@@ -344,6 +344,28 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     end
   end
 
+  describe 'POST /accounting/invoices/:id/cancel_invoice' do
+    include_context 'with_pcmn_accounts'
+
+    let!(:purchase_journal) { create(:journal, :purchase) }
+    let(:invoice) { create(:invoice, :with_lines, invoice_type: :supplier, fiscal_year: fiscal_year, journal: purchase_journal) }
+
+    before { Accounting::PostInvoice.call(invoice: invoice) }
+
+    it 'cancels a posted invoice and redirects to it' do
+      post cancel_invoice_accounting_invoice_path(invoice)
+      expect(invoice.reload).to be_cancelled
+      expect(response).to redirect_to(accounting_invoice_path(invoice))
+    end
+
+    it 'redirects with an alert when the invoice cannot be cancelled' do
+      invoice.update_columns(status: Accounting::Invoice.statuses[:paid])
+      post cancel_invoice_accounting_invoice_path(invoice)
+      expect(invoice.reload).to be_paid
+      expect(flash[:alert]).to be_present
+    end
+  end
+
   describe 'POST /accounting/invoices/:id/send_peppol' do
     context 'facture validée (posted)' do
       let(:invoice) do

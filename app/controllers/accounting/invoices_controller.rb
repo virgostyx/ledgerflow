@@ -1,5 +1,5 @@
 class Accounting::InvoicesController < ApplicationController
-  before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :send_peppol ]
+  before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :send_peppol ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
@@ -66,6 +66,17 @@ class Accounting::InvoicesController < ApplicationController
       redirect_to list_path_for(invoice_type), notice: t("accounting.invoices.deleted")
     else
       head :unprocessable_content
+    end
+  end
+
+  def cancel_invoice
+    authorize @invoice, :cancel?
+
+    result = Accounting::CancelInvoice.call(invoice: @invoice)
+    if result.success?
+      redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.cancelled")
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: result.message
     end
   end
 

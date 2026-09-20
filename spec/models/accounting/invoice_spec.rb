@@ -79,8 +79,14 @@ RSpec.describe Accounting::Invoice, type: :model do
       expect(invoice.reload).to be_cancelled
     end
 
-    it 'ne peut pas être annulé depuis posted' do
+    it 'peut être annulé depuis posted' do
       invoice.update!(status: :posted)
+      invoice.cancel!
+      expect(invoice.reload).to be_cancelled
+    end
+
+    it 'ne peut pas être annulé depuis paid' do
+      invoice.update!(status: :paid)
       expect { invoice.cancel! }.to raise_error(AASM::InvalidTransition)
     end
   end

@@ -7,6 +7,10 @@ class Accounting::InvoicePolicy < ApplicationPolicy
     user.admin? || user.accountant?
   end
 
+  def cancel?
+    user.admin? || user.accountant?
+  end
+
   def send_peppol?
     user.admin? || user.accountant?
   end
