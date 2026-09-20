@@ -441,12 +441,17 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     end
   end
 
-  describe 'cash journal on supplier invoices' do
+  describe 'cash journal on invoices' do
     let!(:cash_journal) { create(:journal, :cash) }
     let(:invoice)       { create(:invoice, :draft, :supplier, partner: partner, fiscal_year: fiscal_year) }
 
     it 'offers the cash journal select on the supplier form' do
       get accounting_new_purchases_path
+      expect(response.body).to include('accounting_invoice_cash_journal_id', cash_journal.display_name)
+    end
+
+    it 'offers the cash journal select on the sales form too' do
+      get accounting_new_sales_path
       expect(response.body).to include('accounting_invoice_cash_journal_id', cash_journal.display_name)
     end
 

@@ -27,7 +27,7 @@ class Accounting::Invoice < ApplicationRecord
   validates :partner,      presence: true
 
   validate :journal_matches_invoice_type, if: -> { journal.present? }
-  validate :cash_journal_is_cash_on_supplier_invoice, if: -> { cash_journal.present? }
+  validate :cash_journal_is_cash, if: -> { cash_journal.present? }
 
   aasm column: :status, enum: true do
     state :draft, initial: true
@@ -79,9 +79,8 @@ class Accounting::Invoice < ApplicationRecord
     errors.add(:journal, "must be a #{expected} journal")
   end
 
-  def cash_journal_is_cash_on_supplier_invoice
+  def cash_journal_is_cash
     errors.add(:cash_journal, "must be a cash journal") unless cash_journal.cash?
-    errors.add(:cash_journal, "is only for supplier invoices") unless supplier?
   end
 
   def self.filter_by(q)

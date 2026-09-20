@@ -51,4 +51,39 @@ RSpec.describe Accounting::PostInvoice, 'paid from cash', type: :service do
     expect(invoice.reload).to be_draft
     expect(Accounting::JournalEntry.count).to eq(0)
   end
+
+  context 'with a customer invoice' do
+    let!(:sale_journal) { create(:journal, :sale) }
+    let(:invoice) do
+      create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year,
+                                    journal: sale_journal, cash_journal: cash_journal)
+    end
+
+    it 'marks the invoice as paid' do
+      expect(result).to be_success
+      expect(invoice.reload).to be_paid
+      expect(invoice.paid_amount).to eq(invoice.total_incl_vat)
+    end
+
+    it 'books Dr cash account / Cr 400000 in the cash journal, dated on the invoice date' do
+      result
+      entry = Accounting::JournalEntry.find_by!(journal: cash_journal)
+      expect(entry).to be_posted
+      expect(entry.entry_date).to eq(invoice.invoice_date)
+      debit  = entry.lines.find_by!(account: cash_journal.default_account)
+      credit = entry.lines.find_by!(account: account_400)
+      expect(debit.debit).to eq(invoice.reload.total_incl_vat)
+      expect(credit.credit).to eq(invoice.total_incl_vat)
+      expect(credit.partner).to eq(invoice.partner)
+      expect(credit.invoice).to eq(invoice)
+    end
+
+    it 'letters the receivable line with the receipt line' do
+      result
+      lines = Accounting::JournalEntryLine.where(account: account_400)
+      expect(lines.count).to eq(2)
+      expect(lines.map(&:lettering_id).uniq.size).to eq(1)
+      expect(lines.first.lettering_id).to be_present
+    end
+  end
 end

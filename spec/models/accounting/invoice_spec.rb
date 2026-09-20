@@ -30,10 +30,8 @@ RSpec.describe Accounting::Invoice, type: :model do
       expect(invoice.errors[:cash_journal]).to be_present
     end
 
-    it 'is invalid on a customer invoice' do
-      invoice = build(:invoice, :customer, cash_journal: create(:journal, :cash))
-      expect(invoice).not_to be_valid
-      expect(invoice.errors[:cash_journal]).to be_present
+    it 'is valid on a customer invoice' do
+      expect(build(:invoice, :customer, cash_journal: create(:journal, :cash))).to be_valid
     end
   end
 
