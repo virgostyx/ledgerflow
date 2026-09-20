@@ -554,6 +554,7 @@ CREATE TABLE public.accounting_journal_entry_lines (
     updated_at timestamp(6) without time zone NOT NULL,
     entity_id bigint NOT NULL,
     invoice_id bigint,
+    lettering_id bigint,
     CONSTRAINT chk_at_least_one_side CHECK (((debit > (0)::numeric) OR (credit > (0)::numeric))),
     CONSTRAINT chk_credit_non_negative CHECK ((credit >= (0)::numeric)),
     CONSTRAINT chk_debit_non_negative CHECK ((debit >= (0)::numeric)),
@@ -616,6 +617,41 @@ CREATE SEQUENCE public.accounting_journals_id_seq
 --
 
 ALTER SEQUENCE public.accounting_journals_id_seq OWNED BY public.accounting_journals.id;
+
+
+--
+-- Name: accounting_letterings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_letterings (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    partner_id bigint,
+    code character varying NOT NULL,
+    lettered_on date NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_letterings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_letterings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_letterings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_letterings_id_seq OWNED BY public.accounting_letterings.id;
 
 
 --
@@ -1051,6 +1087,13 @@ ALTER TABLE ONLY public.accounting_journals ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: accounting_letterings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_letterings ALTER COLUMN id SET DEFAULT nextval('public.accounting_letterings_id_seq'::regclass);
+
+
+--
 -- Name: accounting_partners id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1219,6 +1262,14 @@ ALTER TABLE ONLY public.accounting_journals
 
 
 --
+-- Name: accounting_letterings accounting_letterings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_letterings
+    ADD CONSTRAINT accounting_letterings_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_partners accounting_partners_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1338,6 +1389,13 @@ CREATE INDEX idx_on_analytical_account_id_5dc54f9ad9 ON public.accounting_analyt
 --
 
 CREATE INDEX idx_on_analytical_axis_id_ff3e21bbcb ON public.accounting_invoice_line_annotations USING btree (analytical_axis_id);
+
+
+--
+-- Name: idx_on_entity_id_account_id_code_b0055f39aa; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_entity_id_account_id_code_b0055f39aa ON public.accounting_letterings USING btree (entity_id, account_id, code);
 
 
 --
@@ -1712,6 +1770,13 @@ CREATE INDEX index_accounting_journal_entry_lines_on_journal_entry_id ON public.
 
 
 --
+-- Name: index_accounting_journal_entry_lines_on_lettering_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journal_entry_lines_on_lettering_id ON public.accounting_journal_entry_lines USING btree (lettering_id);
+
+
+--
 -- Name: index_accounting_journal_entry_lines_on_partner_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1730,6 +1795,27 @@ CREATE UNIQUE INDEX index_accounting_journals_on_entity_and_code ON public.accou
 --
 
 CREATE INDEX index_accounting_journals_on_entity_id ON public.accounting_journals USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_letterings_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_letterings_on_account_id ON public.accounting_letterings USING btree (account_id);
+
+
+--
+-- Name: index_accounting_letterings_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_letterings_on_entity_id ON public.accounting_letterings USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_letterings_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_letterings_on_partner_id ON public.accounting_letterings USING btree (partner_id);
 
 
 --
@@ -2202,11 +2288,27 @@ ALTER TABLE ONLY public.accounting_bank_accounts
 
 
 --
+-- Name: accounting_journal_entry_lines fk_rails_bf2911afa6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entry_lines
+    ADD CONSTRAINT fk_rails_bf2911afa6 FOREIGN KEY (lettering_id) REFERENCES public.accounting_letterings(id);
+
+
+--
 -- Name: accounting_payment_batch_lines fk_rails_c341f8f34d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_payment_batch_lines
     ADD CONSTRAINT fk_rails_c341f8f34d FOREIGN KEY (payment_batch_id) REFERENCES public.accounting_payment_batches(id);
+
+
+--
+-- Name: accounting_letterings fk_rails_c7d391d5f5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_letterings
+    ADD CONSTRAINT fk_rails_c7d391d5f5 FOREIGN KEY (account_id) REFERENCES public.accounting_accounts(id);
 
 
 --
@@ -2258,11 +2360,27 @@ ALTER TABLE ONLY public.accounting_invoice_lines
 
 
 --
+-- Name: accounting_letterings fk_rails_e58df8b924; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_letterings
+    ADD CONSTRAINT fk_rails_e58df8b924 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
 -- Name: user_entities fk_rails_e74f70b397; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_entities
     ADD CONSTRAINT fk_rails_e74f70b397 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_letterings fk_rails_ed96a62b21; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_letterings
+    ADD CONSTRAINT fk_rails_ed96a62b21 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -2304,6 +2422,8 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260920100100'),
+('20260920100000'),
 ('20260919100000'),
 ('20260718164144'),
 ('20260718122123'),

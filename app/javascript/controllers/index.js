@@ -50,3 +50,6 @@ application.register("cookie-banner", CookieBannerController)
 
 import InvoiceFormController from "controllers/invoice_form_controller"
 application.register("invoice-form", InvoiceFormController)
+
+import LetteringTotalController from "controllers/lettering_total_controller"
+application.register("lettering-total", LetteringTotalController)

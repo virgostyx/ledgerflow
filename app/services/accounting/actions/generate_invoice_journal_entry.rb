@@ -58,7 +58,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     receivable_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::CUSTOMERS)
     vat_account        = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
 
-    create_line(entry, :debit, invoice.total_incl_vat, account: receivable_account, label: invoice.partner.name)
+    create_line(entry, :debit, invoice.total_incl_vat, account: receivable_account, partner: invoice.partner,
+                label: invoice.partner.name)
     build_item_lines(invoice, entry, :credit, VAT_GRID_SALE)
     build_vat_lines(invoice, entry, :credit, account: vat_account, vat_code: VAT_CODE_SALE_VAT, label: "VAT")
   end
@@ -69,7 +70,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
     build_item_lines(invoice, entry, :debit, VAT_GRID_PURCHASE)
     build_vat_lines(invoice, entry, :debit, account: vat_account, vat_code: VAT_CODE_PURCHASE_VAT, label: "Recoverable VAT")
-    create_line(entry, :credit, invoice.total_incl_vat, account: payable_account, label: invoice.partner.name)
+    create_line(entry, :credit, invoice.total_incl_vat, account: payable_account, partner: invoice.partner,
+                label: invoice.partner.name)
   end
 
   # One journal line per invoice line, on `side`, carrying the VAT grid code.

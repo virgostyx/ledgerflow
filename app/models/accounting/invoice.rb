@@ -41,6 +41,10 @@ class Accounting::Invoice < ApplicationRecord
       transitions from: :posted, to: :paid
     end
 
+    event :reopen do
+      transitions from: :paid, to: :posted
+    end
+
     event :cancel do
       transitions from: :draft, to: :cancelled
     end
