@@ -8,10 +8,11 @@
 <%= render Ui::PageHeaderComponent.new(title: 'Lettering') %>
 
 <%= form_with url: new_accounting_lettering_path, method: :get, class: 'mb-6 flex items-end gap-3' do |f| %>
-  <div>
-    <%= f.label :account_id, 'Account', class: 'block text-sm font-medium text-gray-700 mb-1' %>
-    <%= f.select :account_id, @accounts.map { |a| [a.full_label, a.id] }, { selected: @account&.id, include_blank: 'Select an account' },
-          class: 'rounded-md border-gray-300 text-sm' %>
+  <div class="relative min-w-80" data-controller="floating-label">
+    <%= f.select :account_id, @accounts.map { |a| [a.full_label, a.id] }, { selected: @account&.id, include_blank: true },
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur change->floating-label#checkValue' } %>
+    <%= f.label :account_id, 'Account', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
   <%= f.submit 'Show lines', class: 'px-4 py-2 bg-gray-100 text-sm font-medium rounded-md hover:bg-gray-200 cursor-pointer' %>
 <% end %>
