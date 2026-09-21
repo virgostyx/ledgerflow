@@ -656,6 +656,42 @@ ALTER SEQUENCE public.accounting_letterings_id_seq OWNED BY public.accounting_le
 
 
 --
+-- Name: accounting_line_allocations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_line_allocations (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    debit_line_id bigint NOT NULL,
+    credit_line_id bigint NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    allocated_on date NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_allocation_amount_positive CHECK ((amount > (0)::numeric))
+);
+
+
+--
+-- Name: accounting_line_allocations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_line_allocations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_line_allocations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_line_allocations_id_seq OWNED BY public.accounting_line_allocations.id;
+
+
+--
 -- Name: accounting_partners; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1095,6 +1131,13 @@ ALTER TABLE ONLY public.accounting_letterings ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: accounting_line_allocations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_line_allocations ALTER COLUMN id SET DEFAULT nextval('public.accounting_line_allocations_id_seq'::regclass);
+
+
+--
 -- Name: accounting_partners id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1271,6 +1314,14 @@ ALTER TABLE ONLY public.accounting_letterings
 
 
 --
+-- Name: accounting_line_allocations accounting_line_allocations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_line_allocations
+    ADD CONSTRAINT accounting_line_allocations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_partners accounting_partners_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1390,6 +1441,13 @@ CREATE INDEX idx_on_analytical_account_id_5dc54f9ad9 ON public.accounting_analyt
 --
 
 CREATE INDEX idx_on_analytical_axis_id_ff3e21bbcb ON public.accounting_invoice_line_annotations USING btree (analytical_axis_id);
+
+
+--
+-- Name: idx_on_debit_line_id_credit_line_id_f925f5c66a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_debit_line_id_credit_line_id_f925f5c66a ON public.accounting_line_allocations USING btree (debit_line_id, credit_line_id);
 
 
 --
@@ -1827,6 +1885,27 @@ CREATE INDEX index_accounting_letterings_on_partner_id ON public.accounting_lett
 
 
 --
+-- Name: index_accounting_line_allocations_on_credit_line_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_line_allocations_on_credit_line_id ON public.accounting_line_allocations USING btree (credit_line_id);
+
+
+--
+-- Name: index_accounting_line_allocations_on_debit_line_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_line_allocations_on_debit_line_id ON public.accounting_line_allocations USING btree (debit_line_id);
+
+
+--
+-- Name: index_accounting_line_allocations_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_line_allocations_on_entity_id ON public.accounting_line_allocations USING btree (entity_id);
+
+
+--
 -- Name: index_accounting_partners_on_active; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2232,6 +2311,22 @@ ALTER TABLE ONLY public.entities
 
 
 --
+-- Name: accounting_line_allocations fk_rails_8bda82b65e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_line_allocations
+    ADD CONSTRAINT fk_rails_8bda82b65e FOREIGN KEY (debit_line_id) REFERENCES public.accounting_journal_entry_lines(id);
+
+
+--
+-- Name: accounting_line_allocations fk_rails_8d50efd843; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_line_allocations
+    ADD CONSTRAINT fk_rails_8d50efd843 FOREIGN KEY (credit_line_id) REFERENCES public.accounting_journal_entry_lines(id);
+
+
+--
 -- Name: accounting_journal_entries fk_rails_8d8da34615; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2293,6 +2388,14 @@ ALTER TABLE ONLY public.accounting_vat_declarations
 
 ALTER TABLE ONLY public.accounting_bank_transactions
     ADD CONSTRAINT fk_rails_b1db769153 FOREIGN KEY (bank_account_id) REFERENCES public.accounting_bank_accounts(id);
+
+
+--
+-- Name: accounting_line_allocations fk_rails_b66f2461eb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_line_allocations
+    ADD CONSTRAINT fk_rails_b66f2461eb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -2438,6 +2541,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260921100000'),
 ('20260920200000'),
 ('20260920100100'),
 ('20260920100000'),

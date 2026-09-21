@@ -10,8 +10,14 @@ class Accounting::Actions::ValidateLettering
     elsif lines.any?(&:lettering_id)                                       then "A line is already lettered"
     elsif lines.map(&:account_id).uniq.size > 1                            then "Lines must be on the same account"
     elsif lines.map(&:partner_id).uniq.size > 1                            then "Lines must have the same partner"
+    elsif split_allocation_group?(lines)                                   then "A partly settled line can only be lettered with its whole allocation group"
     elsif lines.sum(&:debit) != lines.sum(&:credit)                        then "Debits and credits must balance"
     end
     ctx.fail!(error) if error
+  end
+
+  def self.split_allocation_group?(lines)
+    ids = lines.map(&:id)
+    Accounting::LineAllocation.touching(ids).any? { |a| !(ids.include?(a.debit_line_id) && ids.include?(a.credit_line_id)) }
   end
 end

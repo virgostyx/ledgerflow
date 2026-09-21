@@ -9,7 +9,7 @@ class Accounting::Invoice < ApplicationRecord
   include Accounting::FiscalYearScoped
 
   enum :invoice_type,   { customer: 0, supplier: 1 }
-  enum :status,         { draft: 0, posted: 1, paid: 2, cancelled: 3 }
+  enum :status,         { draft: 0, posted: 1, paid: 2, cancelled: 3, partially_paid: 4 }
   enum :peppol_status,  { not_sent: 0, queued: 1, delivered: 2, failed: 3 }
 
   belongs_to :partner,       class_name: "Accounting::Partner"
@@ -39,6 +39,7 @@ class Accounting::Invoice < ApplicationRecord
   aasm column: :status, enum: true do
     state :draft, initial: true
     state :posted
+    state :partially_paid
     state :paid
     state :cancelled
 
@@ -47,7 +48,15 @@ class Accounting::Invoice < ApplicationRecord
     end
 
     event :pay do
-      transitions from: :posted, to: :paid
+      transitions from: %i[posted partially_paid], to: :paid
+    end
+
+    event :part_pay do
+      transitions from: :posted, to: :partially_paid
+    end
+
+    event :release do
+      transitions from: :partially_paid, to: :posted
     end
 
     event :reopen do
@@ -94,8 +103,8 @@ class Accounting::Invoice < ApplicationRecord
     rel = matching(status: q[:status])
             .between(:invoice_date, q[:from], q[:to])
     rel = rel.joins(:partner).search(q[:q], "accounting_invoices.invoice_number", "accounting_partners.name", "accounting_invoices.description") if q[:q].present?
-    rel = rel.posted if q[:unpaid] == "1"
-    rel = rel.posted.where(due_date: ...Date.current) if q[:overdue] == "1"
+    rel = rel.where(status: %i[posted partially_paid]) if q[:unpaid] == "1"
+    rel = rel.where(status: %i[posted partially_paid], due_date: ...Date.current) if q[:overdue] == "1"
     rel
   end
 end

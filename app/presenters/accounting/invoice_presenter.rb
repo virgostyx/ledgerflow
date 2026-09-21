@@ -5,6 +5,7 @@ class Accounting::InvoicePresenter
     "draft"     => "Draft",
     "posted"    => "Posted",
     "paid"      => "Paid",
+    "partially_paid" => "Partially paid",
     "cancelled" => "Cancelled"
   }.freeze
 
@@ -12,6 +13,7 @@ class Accounting::InvoicePresenter
     "draft"     => :default,
     "posted"    => :success,
     "paid"      => :success,
+    "partially_paid" => :warning,
     "cancelled" => :danger
   }.freeze
 

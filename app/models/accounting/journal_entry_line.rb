@@ -26,6 +26,11 @@ class Accounting::JournalEntryLine < ApplicationRecord
   validate :only_one_side_positive
   validate :at_least_one_side_positive
 
+  def allocations = Accounting::LineAllocation.touching(id)
+
+  # Unsigned amount still to settle: the line's amount minus what partial lettering already allocated to it.
+  def open_amount = debit + credit - allocations.sum(:amount)
+
   private
 
   # The association is tenant-scoped, so a partner id from another entity resolves to nil.

@@ -46,7 +46,7 @@ RSpec.describe Ui::ColumnHeaderComponent, type: :component do
 
   it 'lists enum keys as checkboxes, checked when selected' do
     header(:status, query: { 'f' => { 'status' => %w[posted] } })
-    expect(page).to have_field('f[status][]', type: 'checkbox', count: 4, visible: :all)
+    expect(page).to have_field('f[status][]', type: 'checkbox', count: 5, visible: :all)
     expect(page).to have_checked_field('Posted', visible: :all)
     expect(page).to have_unchecked_field('Draft', visible: :all)
   end

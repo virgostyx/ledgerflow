@@ -69,7 +69,7 @@ RSpec.describe Accounting::Invoice, type: :model do
 
   describe 'enums' do
     it { should define_enum_for(:invoice_type).with_values(customer: 0, supplier: 1) }
-    it { should define_enum_for(:status).with_values(draft: 0, posted: 1, paid: 2, cancelled: 3) }
+    it { should define_enum_for(:status).with_values(draft: 0, posted: 1, paid: 2, cancelled: 3, partially_paid: 4) }
   end
 
   describe 'statuts AASM' do
@@ -88,6 +88,28 @@ RSpec.describe Accounting::Invoice, type: :model do
       invoice.update!(status: :posted)
       invoice.pay!
       expect(invoice.reload).to be_paid
+    end
+
+    it 'passe en partially_paid puis paid, ou revient en posted' do
+      invoice.update!(status: :posted)
+      invoice.part_pay!
+      expect(invoice.reload).to be_partially_paid
+      invoice.release!
+      expect(invoice.reload).to be_posted
+      invoice.part_pay!
+      invoice.pay!
+      expect(invoice.reload).to be_paid
+    end
+
+    it 'ne peut pas être annulé depuis partially_paid' do
+      invoice.update!(status: :partially_paid)
+      expect { invoice.cancel! }.to raise_error(AASM::InvalidTransition)
+    end
+
+    it 'inclut partially_paid dans les filtres unpaid et overdue' do
+      invoice.update!(status: :partially_paid, due_date: Date.current - 1)
+      expect(described_class.filter_by(unpaid: '1')).to include(invoice)
+      expect(described_class.filter_by(overdue: '1')).to include(invoice)
     end
 
     it 'peut être annulé depuis draft' do

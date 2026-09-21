@@ -99,6 +99,36 @@ RSpec.describe Accounting::AgedBalanceQuery, type: :query do
     expect(row.total).to eq(BigDecimal("70"))
   end
 
+  it "counts only the open part of a partly allocated line" do
+    invoice = invoice_due(40)
+    bill    = post_line(account: customer_account, side: :debit,  amount: 100, partner: alice, invoice: invoice)
+    receipt = post_line(account: customer_account, side: :credit, amount: 30,  partner: alice)
+    Accounting::LineAllocation.create!(debit_line: bill, credit_line: receipt, amount: 30, allocated_on: Date.current)
+
+    row = customer_rows.first
+    expect(row.days_31_60).to eq(BigDecimal("70"))
+    expect(row.unallocated).to eq(0)
+    expect(row.total).to eq(BigDecimal("70"))
+  end
+
+  it "keeps the open part of a partly used payment as unallocated" do
+    bill    = post_line(account: customer_account, side: :debit,  amount: 30,  partner: alice, invoice: invoice_due(5))
+    receipt = post_line(account: customer_account, side: :credit, amount: 100, partner: alice)
+    Accounting::LineAllocation.create!(debit_line: bill, credit_line: receipt, amount: 30, allocated_on: Date.current)
+
+    row = customer_rows.first
+    expect(row.unallocated).to eq(BigDecimal("-70"))
+    expect(row.total).to eq(BigDecimal("-70"))
+  end
+
+  it "skips fully allocated lines" do
+    bill    = post_line(account: customer_account, side: :debit,  amount: 30, partner: alice)
+    receipt = post_line(account: customer_account, side: :credit, amount: 30, partner: alice)
+    Accounting::LineAllocation.create!(debit_line: bill, credit_line: receipt, amount: 30, allocated_on: Date.current)
+
+    expect(customer_rows).to be_empty
+  end
+
   it "reverses the sign for suppliers and ignores customer accounts" do
     post_line(account: supplier_account, side: :credit, amount: 200, partner: bob, invoice: invoice_due(5))
     post_line(account: customer_account, side: :debit,  amount: 100, partner: alice)

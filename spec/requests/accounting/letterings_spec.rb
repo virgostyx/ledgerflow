@@ -32,6 +32,17 @@ RSpec.describe 'Accounting::Letterings', type: :request do
       expect(response.body).to include(%(href="#{new_accounting_lettering_path}"))
     end
 
+    it 'offers leaf accounts and reconcilable header accounts, but not plain headers' do
+      account_400.update!(is_leaf: false, reconcilable: true)
+      header = create(:account, code: '600000', is_leaf: false, reconcilable: false)
+
+      get new_accounting_lettering_path
+
+      expect(response.body).to include(%(value="#{account_400.id}"))
+      expect(response.body).to include(%(value="#{account_570.id}"))
+      expect(response.body).not_to include(%(value="#{header.id}"))
+    end
+
     it 'lists the unlettered lines of the chosen account only' do
       open_line = line(credit: 121)
       lettered  = line(debit: 50).tap { |l| l.update_columns(lettering_id: create(:lettering, account: account_440).id) }

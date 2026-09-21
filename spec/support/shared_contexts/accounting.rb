@@ -6,8 +6,8 @@ end
 RSpec.shared_context 'with_pcmn_accounts' do
   include_context 'with entity'
   let!(:account_604) { create(:account, code: '604000', label_fr: 'Services divers', entity: entity) }
-  let!(:account_440) { create(:account, code: '440000', label_fr: 'Fournisseurs', entity: entity) }
-  let!(:account_400) { create(:account, code: '400000', label_fr: 'Clients', entity: entity) }
+  let!(:account_440) { create(:account, code: '440000', label_fr: 'Fournisseurs', reconcilable: true, entity: entity) }
+  let!(:account_400) { create(:account, code: '400000', label_fr: 'Clients', reconcilable: true, entity: entity) }
   let!(:account_411) { create(:account, code: '411000', label_fr: 'TVA à récupérer', entity: entity) }
   let!(:account_700) { create(:account, code: '700000', label_fr: 'Ventes', entity: entity) }
   let!(:account_451) { create(:account, code: '451000', label_fr: 'TVA à reverser', entity: entity) }

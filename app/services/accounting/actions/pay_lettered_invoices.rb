@@ -9,7 +9,7 @@ class Accounting::Actions::PayLetteredInvoices
   executed do |ctx|
     next unless TRADE_ACCOUNTS.include?(ctx.lettering.account.code)
 
-    Accounting::Invoice.posted.where(journal_entry_id: ctx.lines.map(&:journal_entry_id)).find_each(&:pay!)
+    Accounting::Invoice.where(status: %i[posted partially_paid]).where(journal_entry_id: ctx.lines.map(&:journal_entry_id)).find_each(&:pay!)
   rescue AASM::InvalidTransition, ActiveRecord::RecordInvalid => e
     ctx.fail_with_rollback!("Could not mark invoice as paid: #{e.message}")
   end

@@ -4,6 +4,7 @@ class Accounting::StatusPresenter
     posted:    "Posted",
     reversed:  "Cancelled",
     paid:      "Paid",
+    partially_paid: "Partially paid",
     cancelled: "Cancelled",
     generated: "Generated",
     executed:  "Executed"
@@ -14,6 +15,7 @@ class Accounting::StatusPresenter
     posted:    :success,
     reversed:  :danger,
     paid:      :success,
+    partially_paid: :warning,
     cancelled: :danger,
     generated: :warning,
     executed:  :success

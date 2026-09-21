@@ -31,7 +31,7 @@ class Accounting::LetteringsController < ApplicationController
   private
 
   def load_lines
-    @accounts = Accounting::Account.where(is_leaf: true).order(:code)
+    @accounts = Accounting::Account.where(is_leaf: true).or(Accounting::Account.where(reconcilable: true)).order(:code)
     @account  = @accounts.find_by(id: params[:account_id])
     return unless @account
 
@@ -39,5 +39,6 @@ class Accounting::LetteringsController < ApplicationController
                .joins(:journal_entry).merge(Accounting::JournalEntry.posted)
                .includes(:partner, :journal_entry).order(:partner_id, "accounting_journal_entries.entry_date", :id)
     @letterings = Accounting::Lettering.where(account: @account).includes(:partner).order(code: :desc).limit(20)
+    @allocations = Accounting::LineAllocation.where(debit_line_id: @lines.map(&:id)).includes(debit_line: :journal_entry, credit_line: %i[journal_entry partner])
   end
 end

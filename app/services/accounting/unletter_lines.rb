@@ -7,6 +7,7 @@ class Accounting::UnletterLines
     ctx = LightService::Context.make(lettering: lettering)
     ApplicationRecord.transaction do
       reopen_invoices(lettering)
+      Accounting::LineAllocation.touching(lettering.lines.select(:id)).destroy_all
       lettering.destroy!
     end
     ctx

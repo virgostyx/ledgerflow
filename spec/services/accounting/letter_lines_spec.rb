@@ -95,6 +95,19 @@ RSpec.describe Accounting::LetterLines, type: :service do
     end
   end
 
+  describe 'lines with partial allocations' do
+    it 'refuses to letter a partly allocated line without the rest of its group' do
+      credit_line = line(account: account_440, credit: 100, partner: supplier)
+      payment     = line(account: account_440, debit: 40, partner: supplier)
+      Accounting::AllocateLines.call(lines: [ credit_line, payment ])
+      other = line(account: account_440, debit: 100, partner: supplier)
+
+      result = described_class.call(lines: [ credit_line.reload, other ])
+      expect(result).to be_failure
+      expect(result.message).to eq('A partly settled line can only be lettered with its whole allocation group')
+    end
+  end
+
   describe 'accounts without a partner (580000 style)' do
     it 'letters lines with no partner' do
       transit = create(:account, code: '580000', account_class: 5)

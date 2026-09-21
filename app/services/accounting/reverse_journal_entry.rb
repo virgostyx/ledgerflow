@@ -31,7 +31,9 @@ class Accounting::ReverseJournalEntry
     return I18n.t("accounting.errors.reverse_not_posted")  unless entry.posted?
     return I18n.t("accounting.errors.reverse_year_closed") if entry.fiscal_year.closed?
     return I18n.t("accounting.errors.reverse_has_source")  if entry.source_type.present? && !from_source
-    I18n.t("accounting.errors.reverse_lettered")    if entry.lines.where.not(lettering_id: nil).exists?
+    return unless entry.lines.where.not(lettering_id: nil).exists? || Accounting::LineAllocation.touching(entry.lines.select(:id)).exists?
+
+    I18n.t("accounting.errors.reverse_lettered")
   end
   private_class_method :refusal_for
 

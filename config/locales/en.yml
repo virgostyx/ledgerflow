@@ -33,7 +33,7 @@ en:
       reverse_not_posted:  "Only a posted entry can be reversed."
       reverse_year_closed: "The fiscal year is closed, the entry cannot be reversed."
       reverse_has_source:  "This entry comes from an invoice or a payment, cancel it from there."
-      reverse_lettered:    "Some lines are lettered, unletter them before reversing."
+      reverse_lettered:    "Some lines are lettered or partly allocated, undo that before reversing."
       already_reconciled: "This transaction has already been reconciled."
 
     partners:

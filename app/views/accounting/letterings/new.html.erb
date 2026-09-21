@@ -18,6 +18,7 @@
 <% end %>
 
 <% if @account %>
+  <% open_amounts = @lines.index_with(&:open_amount).transform_keys(&:id) %>
   <%= form_with url: accounting_letterings_path, method: :post, data: { controller: 'lettering-total' } do |f| %>
     <%= hidden_field_tag :account_id, @account.id %>
     <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto mb-4">
@@ -31,6 +32,7 @@
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Label</th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Debit</th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Credit</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Open</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -44,10 +46,11 @@
               <td class="px-4 py-2"><%= line.label %></td>
               <td class="px-4 py-2 text-right"><%= number_with_precision(line.debit, precision: 2) if line.debit > 0 %></td>
               <td class="px-4 py-2 text-right"><%= number_with_precision(line.credit, precision: 2) if line.credit > 0 %></td>
+              <td class="px-4 py-2 text-right text-gray-500"><%= number_with_precision(open_amounts.fetch(line.id, line.debit + line.credit), precision: 2) %></td>
             </tr>
           <% end %>
           <% if @lines.empty? %>
-            <tr><td colspan="7" class="px-4 py-6 text-center text-gray-500">No unlettered lines on this account.</td></tr>
+            <tr><td colspan="8" class="px-4 py-6 text-center text-gray-500">No unlettered lines on this account.</td></tr>
           <% end %>
         </tbody>
       </table>
@@ -55,8 +58,26 @@
     <div class="flex items-center gap-4">
       <%= f.submit 'Letter selected lines', data: { lettering_total_target: 'submit' },
             class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed' %>
+      <%= f.submit 'Allocate partially', formaction: accounting_line_allocations_path, data: { lettering_total_target: 'allocate' },
+            class: 'px-4 py-2 bg-gray-100 text-sm font-medium rounded-md hover:bg-gray-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed' %>
       <span class="text-sm text-gray-600">Difference: <strong data-lettering-total-target="difference">0.00</strong></span>
     </div>
+  <% end %>
+
+  <% if @allocations.any? %>
+    <h2 class="text-sm font-semibold text-gray-700 mt-8 mb-2">Partly settled</h2>
+    <ul class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm">
+      <% @allocations.each do |allocation| %>
+        <li class="px-4 py-2 flex items-center justify-between">
+          <span>
+            <%= allocation.credit_line.partner&.name || 'no partner' %> —
+            <%= allocation.debit_line.journal_entry.reference %> / <%= allocation.credit_line.journal_entry.reference %> —
+            <strong><%= number_with_precision(allocation.amount, precision: 2) %></strong>
+          </span>
+          <%= button_to 'Remove', accounting_line_allocation_path(allocation), method: :delete, class: 'text-red-600 hover:underline' %>
+        </li>
+      <% end %>
+    </ul>
   <% end %>
 
   <% if @letterings.any? %>

@@ -71,6 +71,13 @@ RSpec.describe Accounting::ReverseJournalEntry, type: :service do
       expect(result).to be_failure
     end
 
+    it 'refuses when a line has partial allocations' do
+      line = entry.lines.first
+      other = create(:journal_entry_line, journal_entry: entry, account: line.account, debit: 0, credit: 5)
+      Accounting::LineAllocation.create!(debit_line: line, credit_line: other, amount: 1, allocated_on: Date.current)
+      expect(result).to be_failure
+    end
+
     it 'refuses an entry generated from another document' do
       entry.update_columns(source_type: 'Accounting::Invoice', source_id: 1)
       expect(result).to be_failure

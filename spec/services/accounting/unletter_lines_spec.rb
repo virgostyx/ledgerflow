@@ -47,4 +47,21 @@ RSpec.describe Accounting::UnletterLines, type: :service do
     expect(described_class.call(lettering: lettering)).to be_success
     expect(invoice.reload).to be_paid
   end
+
+  context 'when the lettering closed a group settled by partial allocations' do
+    it 'drops the allocations and reopens the invoice' do
+      first = cash_line
+      first.update_columns(debit: 500)
+      second = create(:journal_entry_line, journal_entry: first.journal_entry, account: account_440, partner: supplier,
+                      debit: payable_line.credit - 500)
+      Accounting::AllocateLines.call(lines: [ payable_line, first ])
+      closing = Accounting::AllocateLines.call(lines: [ payable_line.reload, second ])
+      expect(invoice.reload).to be_paid
+
+      expect(described_class.call(lettering: closing.lettering)).to be_success
+      expect(Accounting::LineAllocation.count).to eq(0)
+      expect(payable_line.reload.open_amount).to eq(payable_line.credit)
+      expect(invoice.reload).to be_posted
+    end
+  end
 end

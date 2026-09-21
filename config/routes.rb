@@ -58,6 +58,7 @@ Rails.application.routes.draw do
       resources :vat_declarations, only: [ :index, :new, :create, :show ]
 
       resources :letterings, only: [ :new, :create, :destroy ]
+      resources :line_allocations, only: [ :create, :destroy ]
 
       resources :fiscal_years do
         member { post :close }

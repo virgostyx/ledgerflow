@@ -1,6 +1,7 @@
 # Open (unlettered) receivables or payables per partner, aged by due date at `as_of`.
 # Due date is the invoice's, or the entry date for lines without an invoice.
-# Negative open amounts (unallocated payments, credit notes) go in `unallocated` and reduce the total.
+# Partial allocations reduce a line to its open part. Negative open amounts (unallocated payments, credit notes)
+# go in `unallocated` and reduce the total.
 class Accounting::AgedBalanceQuery
   BUCKETS = %i[not_due days_1_30 days_31_60 days_61_90 over_90].freeze
   Row = Struct.new(:partner_name, *BUCKETS, :unallocated, :total, keyword_init: true)
@@ -17,7 +18,7 @@ class Accounting::AgedBalanceQuery
   end
 
   def call
-    open_lines.group_by(&:first).map do |name, lines|
+    open_lines.reject { |(_, amount, _)| amount.zero? }.group_by(&:first).map do |name, lines|
       row = Row.new(partner_name: name, **Row.members.excluding(:partner_name).index_with { BigDecimal("0") })
       lines.each do |(_, amount, due_date)|
         slot = amount.negative? ? :unallocated : bucket(@as_of - due_date)
@@ -33,7 +34,10 @@ class Accounting::AgedBalanceQuery
   # => [[partner_name, amount, due_date], ...]
   def open_lines
     l = "accounting_journal_entry_lines"
-    amount = @kind == :customer ? "#{l}.debit - #{l}.credit" : "#{l}.credit - #{l}.debit"
+    net    = @kind == :customer ? "#{l}.debit - #{l}.credit" : "#{l}.credit - #{l}.debit"
+    used   = "COALESCE((SELECT SUM(al.amount) FROM accounting_line_allocations al " \
+             "WHERE al.debit_line_id = #{l}.id OR al.credit_line_id = #{l}.id), 0)"
+    amount = "(#{net}) - SIGN(#{net}) * #{used}" # open part of the line, signed like the line
 
     Accounting::JournalEntryLine
       .joins("JOIN accounting_journal_entries e ON e.id = #{l}.journal_entry_id")
