@@ -65,6 +65,19 @@ class Accounting::ReportsController < ApplicationController
     render :general_ledger
   end
 
+  def aged_balance
+    authorize :report, :aged_balance?, policy_class: Accounting::ReportPolicy
+
+    @kind  = params[:kind] == "supplier" ? :supplier : :customer
+    @as_of = begin
+      parse_date(params[:as_of], Date.current)
+    rescue ArgumentError
+      Date.current
+    end
+    @rows   = Accounting::AgedBalanceQuery.new(kind: @kind, as_of: @as_of).call
+    @totals = Accounting::AgedBalanceQuery.totals(@rows)
+  end
+
   def analytic_by_project
     authorize :report, :analytic_by_project?, policy_class: Accounting::ReportPolicy
 

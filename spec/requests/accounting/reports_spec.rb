@@ -178,4 +178,46 @@ RSpec.describe "Accounting::Reports", type: :request do
       expect(response).to have_http_status(:ok)
     end
   end
+
+  describe "GET /accounting/reports/aged_balance" do
+    it "returns 200 for customers by default" do
+      get accounting_reports_aged_balance_path
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "returns 200 for suppliers and lists open partner balances" do
+      partner = create(:partner, :supplier, name: "Acme Supplies")
+      supplier_account = create(:account, :supplier, reconcilable: true)
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 10)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: expense_account, debit: BigDecimal("50"), credit: BigDecimal("0"))
+      create(:journal_entry_line, journal_entry: entry, account: supplier_account, partner: partner,
+             debit: BigDecimal("0"), credit: BigDecimal("50"))
+      entry.post!
+
+      get accounting_reports_aged_balance_path(kind: "supplier", as_of: Date.current)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Acme Supplies")
+    end
+
+    it "falls back to customers on an unknown kind" do
+      get accounting_reports_aged_balance_path(kind: "bogus")
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "returns 200 with an invalid as_of date" do
+      get accounting_reports_aged_balance_path(as_of: "not-a-date")
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "redirects a user without report access" do
+      sign_out accountant
+      budget_user = create(:user, role: :budget_user)
+      create(:user_entity, :accountant, user: budget_user, entity: entity)
+      sign_in budget_user
+
+      get accounting_reports_aged_balance_path
+      expect(response).to have_http_status(:redirect)
+    end
+  end
 end

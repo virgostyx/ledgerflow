@@ -1,0 +1,62 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Reports' },
+    { label: t("accounting.reports.aged_balance.title") }
+  ]) %>
+<% end %>
+
+<% t_ab = ->(key) { t("accounting.reports.aged_balance.#{key}") } %>
+
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900"><%= t_ab.(:title) %></h1>
+
+  <%= form_with url: accounting_reports_aged_balance_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
+    <div>
+      <%= f.label :kind, t_ab.(:kind), class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :kind, [ [ t_ab.(:customer), "customer" ], [ t_ab.(:supplier), "supplier" ] ], { selected: @kind }, class: "mt-1 form-input" %>
+    </div>
+    <div>
+      <%= f.label :as_of, t_ab.(:as_of), class: "block text-sm font-medium text-gray-700" %>
+      <%= f.date_field :as_of, value: @as_of, class: "mt-1 form-input" %>
+    </div>
+    <%= f.submit t("accounting.reports.filter"), class: "btn-primary" %>
+  <% end %>
+
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t_ab.(:partner) %></th>
+          <% Accounting::AgedBalanceQuery::BUCKETS.each do |bucket| %>
+            <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t_ab.(bucket) %></th>
+          <% end %>
+          <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t_ab.(:unallocated) %></th>
+          <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t_ab.(:total) %></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @rows.each do |row| %>
+          <tr>
+            <td class="px-4 py-2"><%= row.partner_name || t_ab.(:no_partner) %></td>
+            <% (Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated]).each do |col| %>
+              <td class="px-4 py-2 text-right"><%= number_to_currency(row[col], unit: "€") %></td>
+            <% end %>
+            <td class="px-4 py-2 text-right font-semibold"><%= number_to_currency(row.total, unit: "€") %></td>
+          </tr>
+        <% end %>
+        <% if @rows.empty? %>
+          <tr><td colspan="8" class="px-4 py-6 text-center text-gray-400"><%= t("accounting.reports.no_data") %></td></tr>
+        <% end %>
+      </tbody>
+      <tfoot class="bg-gray-50 font-bold">
+        <tr>
+          <td class="px-4 py-2"><%= t("accounting.reports.totals") %></td>
+          <% (Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated total]).each do |col| %>
+            <td class="px-4 py-2 text-right"><%= number_to_currency(@totals[col], unit: "€") %></td>
+          <% end %>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
