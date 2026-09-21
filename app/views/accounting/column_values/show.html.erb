@@ -1,0 +1,14 @@
+<%= turbo_frame_tag "values-#{@key}" do %>
+  <% if @values.empty? %>
+    <p class="text-xs text-gray-400">No values</p>
+  <% else %>
+    <div class="space-y-1">
+      <% @values.each do |value| %>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="f[<%= @key %>][]" value="<%= value %>" <%= 'checked' if @selected.include?(value) %>>
+          <%= value %>
+        </label>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

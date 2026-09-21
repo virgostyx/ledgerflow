@@ -13,7 +13,7 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
-  helper_method :filter_params, :filters_active?
+  helper_method :filter_params, :filters_active?, :autofilter_params
 
   private
 
@@ -26,7 +26,13 @@ class ApplicationController < ActionController::Base
   end
 
   def filters_active?
-    filter_params.values.any?(&:present?)
+    filter_params.values.any?(&:present?) || params[:f].present?
+  end
+
+  # Per-column filters/sort (f[col]=..., sort=col, dir=asc|desc), whitelisted by the model's `autofilter_column`s.
+  def autofilter_params
+    { sort: params[:sort].to_s, dir: params[:dir].to_s,
+      f: params[:f].respond_to?(:to_unsafe_h) ? params[:f].to_unsafe_h : {} }
   end
 
   def set_locale

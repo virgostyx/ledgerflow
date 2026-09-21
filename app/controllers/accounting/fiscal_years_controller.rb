@@ -2,7 +2,7 @@ class Accounting::FiscalYearsController < ApplicationController
   before_action :set_fiscal_year, only: [ :show, :edit, :update, :destroy, :close ]
 
   def index
-    @pagy, @fiscal_years = pagy(policy_scope(Accounting::FiscalYear).order(year: :desc))
+    @pagy, @fiscal_years = pagy(policy_scope(Accounting::FiscalYear).order(year: :desc).autofilter(**autofilter_params))
   end
 
   def show

@@ -19,6 +19,32 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    describe 'column filters' do
+      let!(:alpha) { create(:journal_entry, journal: journal, fiscal_year: fiscal_year, description: 'ZZalpha', reference: 'REF-A', entry_date: Date.new(2025, 1, 10)) }
+      let!(:beta)  { create(:journal_entry, :posted, journal: journal, fiscal_year: fiscal_year, description: 'ZZbeta', reference: 'REF-B', entry_date: Date.new(2025, 3, 10)) }
+
+      it 'no longer duplicates journal, status and date filters in the filter panel' do
+        get accounting_journal_entries_path
+        expect(response.body).not_to include('name="q[journal_id]"', 'name="q[status]"', 'name="q[from]"', 'name="q[to]"')
+        expect(response.body).to include('name="q[q]"', 'name="q[fiscal_year_id]"')
+      end
+
+      it 'filters by status list' do
+        get accounting_journal_entries_path, params: { f: { status: %w[posted] } }
+        expect(response.body).to include('ZZbeta').and not_include('ZZalpha')
+      end
+
+      it 'filters by date range' do
+        get accounting_journal_entries_path, params: { f: { entry_date: { to: '2025-02-01' } } }
+        expect(response.body).to include('ZZalpha').and not_include('ZZbeta')
+      end
+
+      it 'filters by journal code and sorts by reference' do
+        get accounting_journal_entries_path, params: { f: { journal: [ journal.code ] }, sort: 'reference', dir: 'desc' }
+        expect(response.body.index('ZZbeta')).to be < response.body.index('ZZalpha')
+      end
+    end
+
     describe 'filtres' do
       let!(:alpha) { create(:journal_entry, journal: journal, fiscal_year: fiscal_year, description: 'ZZalpha', entry_date: Date.new(2025, 1, 10)) }
       let!(:beta)  { create(:journal_entry, :posted, journal: journal, fiscal_year: fiscal_year, description: 'ZZbeta', entry_date: Date.new(2025, 3, 10)) }

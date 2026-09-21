@@ -20,6 +20,13 @@ class Accounting::Journal < ApplicationRecord
   has_one :bank_account, class_name: "Accounting::BankAccount",
           foreign_key: :journal_id, dependent: :nullify
 
+  autofilter_column :code,            sql: "accounting_journals.code", type: :string
+  autofilter_column :label_fr,        sql: "accounting_journals.label_fr", type: :string, filter: false
+  autofilter_column :journal_type,    sql: "accounting_journals.journal_type", type: :enum
+  autofilter_column :default_account, sql: "accounting_accounts.code", type: :string, left_joins: :default_account
+  autofilter_column :sequence_prefix, sql: "accounting_journals.sequence_prefix", type: :string
+  autofilter_column :active,          sql: "accounting_journals.active", type: :boolean
+
   validates :code,            presence: true, uniqueness: { scope: :entity_id }, length: { maximum: 8 }
   validates :label_fr,        presence: true
   validates :journal_type,    presence: true

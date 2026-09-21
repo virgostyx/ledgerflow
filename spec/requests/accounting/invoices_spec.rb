@@ -69,6 +69,94 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     end
   end
 
+  describe 'GET /accounting/sales with column filters' do
+    let!(:acme)   { create(:partner, name: 'ZZAcme') }
+    let!(:globex) { create(:partner, name: 'ZZGlobex') }
+    let!(:draft_inv)  { create(:invoice, :customer, partner: acme, fiscal_year: fiscal_year, invoice_date: Date.new(2025, 1, 5), total_incl_vat: 100) }
+    let!(:posted_inv) { create(:invoice, :customer, :posted, partner: globex, fiscal_year: fiscal_year, invoice_date: Date.new(2025, 3, 5), total_incl_vat: 900) }
+
+    it 'no longer duplicates status and date filters in the filter panel' do
+      get accounting_sales_path
+      expect(response.body).not_to include('name="q[status]"', 'name="q[from]"', 'name="q[to]"')
+      expect(response.body).to include('name="q[q]"', 'name="q[unpaid]"', 'name="q[overdue]"')
+    end
+
+    it 'renders the column headers with filter dropdowns' do
+      get accounting_sales_path
+      expect(response.body).to include('data-controller="dropdown"').and include('Sort A')
+    end
+
+    it 'filters on a list of partner names' do
+      get accounting_sales_path, params: { f: { partner: [ 'ZZAcme' ] } }
+      expect(response.body).to include('ZZAcme').and not_include('ZZGlobex')
+    end
+
+    it 'filters on a status list and an amount range together' do
+      get accounting_sales_path, params: { f: { status: %w[draft posted], total_incl_vat: { min: '500' } } }
+      expect(response.body).to include('ZZGlobex').and not_include('ZZAcme')
+    end
+
+    it 'sorts by amount' do
+      get accounting_sales_path, params: { sort: 'total_incl_vat', dir: 'desc' }
+      expect(response.body.index('ZZGlobex')).to be < response.body.index('ZZAcme')
+      get accounting_sales_path, params: { sort: 'total_incl_vat', dir: 'asc' }
+      expect(response.body.index('ZZAcme')).to be < response.body.index('ZZGlobex')
+    end
+
+    it 'combines with the global search and keeps the empty table when nothing matches' do
+      get accounting_sales_path, params: { q: { q: 'globex' }, f: { partner: [ 'ZZAcme' ] } }
+      expect(response.body).not_to include('ZZGlobex')
+      expect(response.body).to include('No results match your filters')
+    end
+
+    it 'ignores unknown columns and unknown sort keys' do
+      get accounting_sales_path, params: { f: { bogus: %w[x] }, sort: 'bogus; DROP TABLE users' }
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('ZZAcme').and include('ZZGlobex')
+    end
+
+    it 'keeps column filters in the pagination links' do
+      create_list(:invoice, 26, :customer, partner: acme, fiscal_year: fiscal_year)
+      get accounting_sales_path, params: { f: { partner: [ 'ZZAcme' ] } }
+      expect(response.body).to include('f%5Bpartner%5D%5B%5D=ZZAcme')
+    end
+
+    it 'shows a clear-all link when a column filter is active' do
+      get accounting_sales_path, params: { f: { partner: [ 'ZZAcme' ] } }
+      expect(response.body).to include('Clear all column filters')
+    end
+  end
+
+  describe 'GET /accounting/column_values' do
+    let!(:acme)   { create(:partner, name: 'ZZAcme') }
+    let!(:globex) { create(:partner, name: 'ZZGlobex') }
+    let!(:sale)     { create(:invoice, :customer, partner: acme, fiscal_year: fiscal_year) }
+    let!(:purchase) { create(:invoice, :supplier, partner: globex, fiscal_year: fiscal_year) }
+
+    it 'lists distinct values inside a matching turbo frame' do
+      get accounting_column_values_path('invoices', 'partner')
+      expect(response.body).to include('turbo-frame id="values-partner"').and include('ZZAcme').and include('ZZGlobex')
+    end
+
+    it 'checks the currently selected values' do
+      get accounting_column_values_path('invoices', 'partner', f: { partner: [ 'ZZAcme' ] })
+      expect(response.body).to match(/value="ZZAcme"\s+checked/)
+    end
+
+    it 'restricts to the invoice type of the calling page' do
+      get accounting_column_values_path('invoices', 'partner', invoice_type: 'customer')
+      expect(response.body).to include('ZZAcme').and not_include('ZZGlobex')
+    end
+
+    it '404s for an unknown resource and an empty list for an unknown column' do
+      get accounting_column_values_path('users', 'email')
+      expect(response).to have_http_status(:not_found)
+      get accounting_column_values_path('invoices', 'nope')
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('No values')
+    end
+  end
+
   describe 'GET /accounting/sales/new' do
     it 'retourne 200' do
       get accounting_new_sales_path

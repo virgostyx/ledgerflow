@@ -3,7 +3,7 @@ class Accounting::Settings::AccountsController < Accounting::Settings::BaseContr
 
   def index
     scope = params[:account_class].present? ? Accounting::Account.by_class(params[:account_class]) : Accounting::Account
-    @pagy, @accounts = pagy(scope.filter_by(filter_params).order(:code))
+    @pagy, @accounts = pagy(scope.filter_by(filter_params).order(:code).autofilter(**autofilter_params))
   end
 
   def new

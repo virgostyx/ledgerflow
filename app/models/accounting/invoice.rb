@@ -22,6 +22,13 @@ class Accounting::Invoice < ApplicationRecord
 
   accepts_nested_attributes_for :lines, allow_destroy: true, reject_if: :all_blank
 
+  autofilter_column :invoice_number, sql: "accounting_invoices.invoice_number", type: :string, filter: false
+  autofilter_column :journal,        sql: "accounting_journals.code", type: :string, left_joins: :journal
+  autofilter_column :partner,        sql: "accounting_partners.name", type: :string, joins: :partner
+  autofilter_column :invoice_date,   sql: "accounting_invoices.invoice_date", type: :date
+  autofilter_column :total_incl_vat, sql: "accounting_invoices.total_incl_vat", type: :decimal
+  autofilter_column :status,         sql: "accounting_invoices.status", type: :enum
+
   validates :invoice_type, presence: true
   validates :invoice_date, presence: true
   validates :partner,      presence: true

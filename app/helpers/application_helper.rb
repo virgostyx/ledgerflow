@@ -1,4 +1,10 @@
 module ApplicationHelper
+  # Sortable/filterable column header for a list table (see Ui::ColumnHeaderComponent).
+  def column_header(model, key, label, resource:, **opts)
+    render Ui::ColumnHeaderComponent.new(model: model, key: key, label: label, resource: resource,
+                                         query: request.query_parameters, path: request.path, **opts)
+  end
+
   include Pagy::Frontend
 
   # Returns Tailwind classes for a sidebar nav link.

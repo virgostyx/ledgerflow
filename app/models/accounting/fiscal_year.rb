@@ -6,6 +6,11 @@ class Accounting::FiscalYear < ApplicationRecord
 
   enum :status, { open: 0, pre_closing: 1, closed: 2 }
 
+  autofilter_column :year,       sql: "accounting_fiscal_years.year", type: :decimal
+  autofilter_column :start_date, sql: "accounting_fiscal_years.start_date", type: :date
+  autofilter_column :status,     sql: "accounting_fiscal_years.status", type: :enum
+  autofilter_column :closed_at,  sql: "accounting_fiscal_years.closed_at::date", type: :date
+
   validates :year,       presence: true, uniqueness: { scope: :entity_id }
   validates :start_date, presence: true
   validates :end_date,   presence: true

@@ -6,7 +6,8 @@ class Accounting::InvoicesController < ApplicationController
     @pagy, @invoices = pagy(policy_scope(Accounting::Invoice)
                               .where(invoice_type: @invoice_type)
                               .filter_by(filter_params)
-                              .order(invoice_date: :desc))
+                              .order(invoice_date: :desc)
+                              .autofilter(**autofilter_params))
   end
 
   def show

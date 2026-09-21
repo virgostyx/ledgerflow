@@ -1,0 +1,6 @@
+<% if params[:f].present? || params[:sort].present? %>
+  <p class="mb-2 text-sm">
+    <%= link_to 'Clear all column filters', "#{request.path}?#{request.query_parameters.slice('q').to_query}",
+          class: 'text-primary-600 hover:text-primary-800' %>
+  </p>
+<% end %>

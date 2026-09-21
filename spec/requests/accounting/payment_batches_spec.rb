@@ -45,6 +45,32 @@ RSpec.describe 'Accounting::PaymentBatches', type: :request do
     end
   end
 
+  describe 'GET /accounting/payment_batches with column filters' do
+    let!(:bank_a) { create(:bank_account, label_fr: 'ZZBankA') }
+    let!(:bank_b) { create(:bank_account, label_fr: 'ZZBankB') }
+    let!(:draft_batch)    { create(:payment_batch, bank_account: bank_a, total_amount: 100) }
+    let!(:executed_batch) { create(:payment_batch, status: :executed, bank_account: bank_b, total_amount: 900) }
+
+    it 'filters on status, bank account and amount' do
+      get accounting_payment_batches_path, params: { f: { status: %w[executed] } }
+      expect(response.body).to include('ZZBankB').and not_include('ZZBankA')
+      get accounting_payment_batches_path, params: { f: { bank_account: %w[ZZBankA] } }
+      expect(response.body).to include('ZZBankA').and not_include('ZZBankB')
+      get accounting_payment_batches_path, params: { f: { total_amount: { min: '500' } } }
+      expect(response.body).to include('ZZBankB').and not_include('ZZBankA')
+    end
+
+    it 'no longer renders the redundant filter panel' do
+      get accounting_payment_batches_path
+      expect(response.body).not_to include('name="q[status]"', 'name="q[bank_account_id]"', 'name="q[from]"')
+    end
+
+    it 'serves the bank account values' do
+      get accounting_column_values_path('payment_batches', 'bank_account')
+      expect(response.body).to include('ZZBankA').and include('ZZBankB')
+    end
+  end
+
   describe 'GET /accounting/payment_batches/new' do
     it 'returns 200 and lists eligible invoices' do
       invoice

@@ -17,16 +17,18 @@
 <div class="max-w-5xl">
   <%= render Ui::PageHeaderComponent.new(title: "Journals") %>
 
-  <div class="mt-6 bg-white rounded-lg border border-gray-200 overflow-hidden">
+  <%= render 'shared/clear_column_filters' %>
+
+  <div class="mt-6 bg-white rounded-lg border border-gray-200 overflow-x-clip">
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Code</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Label</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Counterpart Account</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Sequence Prefix</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Journal, :code, 'Code', resource: 'journals') %></th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Journal, :label_fr, 'Label', resource: 'journals') %></th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Journal, :journal_type, 'Type', resource: 'journals') %></th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Journal, :default_account, 'Counterpart Account', resource: 'journals') %></th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Journal, :sequence_prefix, 'Sequence Prefix', resource: 'journals') %></th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Journal, :active, 'Status', resource: 'journals') %></th>
           <th class="px-4 py-3"></th>
         </tr>
       </thead>

@@ -2,7 +2,7 @@ class Accounting::PartnersController < ApplicationController
   before_action :set_partner, only: [ :show, :edit, :update, :destroy ]
 
   def index
-    @pagy, @partners = pagy(policy_scope(Accounting::Partner).filter_by(filter_params).order(:name))
+    @pagy, @partners = pagy(policy_scope(Accounting::Partner).filter_by(filter_params).order(:name).autofilter(**autofilter_params))
   end
 
   def show

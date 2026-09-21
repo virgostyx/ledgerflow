@@ -12,13 +12,14 @@
                 class: "btn-primary" if policy(Accounting::FiscalYear).create? %>
   </div>
 
+  <%= render 'shared/clear_column_filters' %>
   <table class="min-w-full divide-y divide-gray-200 text-sm">
     <thead class="bg-gray-50">
       <tr>
-        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= t("accounting.fiscal_years.year") %></th>
-        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= t("accounting.fiscal_years.period") %></th>
-        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= t("accounting.fiscal_years.status") %></th>
-        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= t("accounting.fiscal_years.closed_at") %></th>
+        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= column_header(Accounting::FiscalYear, :year, t("accounting.fiscal_years.year"), resource: "fiscal_years") %></th>
+        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= column_header(Accounting::FiscalYear, :start_date, t("accounting.fiscal_years.period"), resource: "fiscal_years") %></th>
+        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= column_header(Accounting::FiscalYear, :status, t("accounting.fiscal_years.status"), resource: "fiscal_years") %></th>
+        <th class="px-4 py-3 text-left font-medium text-gray-600"><%= column_header(Accounting::FiscalYear, :closed_at, t("accounting.fiscal_years.closed_at"), resource: "fiscal_years") %></th>
         <th class="px-4 py-3"></th>
       </tr>
     </thead>

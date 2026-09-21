@@ -17,6 +17,11 @@ class Accounting::PaymentBatch < ApplicationRecord
                     foreign_key: :payment_batch_id, dependent: :destroy,
                     inverse_of: :payment_batch
 
+  autofilter_column :bank_account,              sql: "accounting_bank_accounts.label_fr", type: :string, joins: :bank_account
+  autofilter_column :requested_execution_date, sql: "accounting_payment_batches.requested_execution_date", type: :date
+  autofilter_column :total_amount,             sql: "accounting_payment_batches.total_amount", type: :decimal
+  autofilter_column :status,                   sql: "accounting_payment_batches.status", type: :enum
+
   validates :requested_execution_date, presence: true
 
   aasm column: :status, enum: true do

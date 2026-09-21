@@ -30,6 +30,20 @@ RSpec.describe "Accounting::Settings::BankAccounts", type: :request do
     end
   end
 
+  describe "GET /accounting/settings/bank_accounts with column filters" do
+    let!(:other_journal) { create(:journal, :bank, code: "ZZB", default_account: account_550) }
+    let!(:other_account) { create(:bank_account, journal: other_journal, iban: "BE68539007547034", active: false) }
+
+    it "filters on journal and status, sorts by IBAN" do
+      get accounting_settings_bank_accounts_path, params: { f: { journal: %w[ZZB] } }
+      expect(response.body).to include("BE68539007547034").and not_include("BE71096123456769")
+      get accounting_settings_bank_accounts_path, params: { f: { active: %w[false] } }
+      expect(response.body).to include("BE68539007547034").and not_include("BE71096123456769")
+      get accounting_settings_bank_accounts_path, params: { sort: "iban", dir: "desc" }
+      expect(response.body.index("BE71096123456769")).to be < response.body.index("BE68539007547034")
+    end
+  end
+
   describe "GET /accounting/settings/bank_accounts/new" do
     it "returns 200" do
       get new_accounting_settings_bank_account_path

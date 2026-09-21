@@ -15,8 +15,6 @@
 <% end %>
 
 <%= render 'shared/filters', fields: [
-  { name: :status, label: 'Status', type: :select, options: Accounting::VatDeclaration.statuses.keys.map { |s| [s.humanize, s] } },
-  { name: :period_type, label: 'Period', type: :select, options: Accounting::VatDeclaration.period_types.keys.map { |s| [s.humanize, s] } },
   { name: :fiscal_year_id, label: 'Fiscal year', type: :select, options: Accounting::FiscalYear.order(year: :desc).map { |f| [f.year, f.id] } }
 ] %>
 <% if @declarations.empty? && !filters_active? %>
@@ -33,13 +31,14 @@
     <% end %>
   <% end %>
 <% else %>
-  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+  <%= render 'shared/clear_column_filters' %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-x-clip">
     <table class="w-full text-sm">
       <thead class="bg-gray-50 border-b border-gray-200">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::VatDeclaration, :period_start, 'Period', resource: 'vat_declarations') %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::VatDeclaration, :period_type, 'Type', resource: 'vat_declarations') %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::VatDeclaration, :status, 'Status', resource: 'vat_declarations') %></th>
           <th class="px-4 py-3"></th>
         </tr>
       </thead>

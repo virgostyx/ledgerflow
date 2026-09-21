@@ -33,6 +33,26 @@ RSpec.describe 'Accounting::VatDeclarations', type: :request do
     end
   end
 
+  describe 'GET /accounting/vat_declarations with column filters' do
+    let!(:quarterly) { create(:vat_declaration, fiscal_year: fiscal_year, period_type: :quarterly, period_start: Date.new(2025, 1, 1), period_end: Date.new(2025, 3, 31)) }
+    let!(:monthly)   { create(:vat_declaration, fiscal_year: fiscal_year, status: :submitted, period_type: :monthly, period_start: Date.new(2025, 4, 1), period_end: Date.new(2025, 4, 30)) }
+
+    it 'filters on status, period type and period start' do
+      get accounting_vat_declarations_path, params: { f: { status: %w[submitted] } }
+      expect(response.body).to include(accounting_vat_declaration_path(monthly)).and not_include(accounting_vat_declaration_path(quarterly))
+      get accounting_vat_declarations_path, params: { f: { period_type: %w[quarterly] } }
+      expect(response.body).to include(accounting_vat_declaration_path(quarterly)).and not_include(accounting_vat_declaration_path(monthly))
+      get accounting_vat_declarations_path, params: { f: { period_start: { from: '2025-03-01' } } }
+      expect(response.body).to include(accounting_vat_declaration_path(monthly)).and not_include(accounting_vat_declaration_path(quarterly))
+    end
+
+    it 'keeps only the fiscal year select in the panel' do
+      get accounting_vat_declarations_path
+      expect(response.body).to include('name="q[fiscal_year_id]"')
+      expect(response.body).not_to include('name="q[status]"', 'name="q[period_type]"')
+    end
+  end
+
   describe 'GET /accounting/vat_declarations/new' do
     it 'retourne 200' do
       get new_accounting_vat_declaration_path

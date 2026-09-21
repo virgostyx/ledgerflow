@@ -17,6 +17,11 @@ class Accounting::Account < ApplicationRecord
   has_many   :journal_entry_lines, class_name: "Accounting::JournalEntryLine",
              foreign_key: :account_id, dependent: :restrict_with_error
 
+  autofilter_column :code,         sql: "accounting_accounts.code", type: :string, filter: false
+  autofilter_column :label_fr,     sql: "accounting_accounts.label_fr", type: :string, filter: false
+  autofilter_column :account_type, sql: "accounting_accounts.account_type", type: :enum
+  autofilter_column :active,       sql: "accounting_accounts.active", type: :boolean
+
   validates :code,           presence: true, uniqueness: { scope: :entity_id }, length: { maximum: 10 }
   validates :label_fr,       presence: true
   validates :account_class,  presence: true,

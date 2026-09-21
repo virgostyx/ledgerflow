@@ -22,14 +22,16 @@
     <%= render 'shared/filters', hidden: { account_class: params[:account_class].presence }.compact, fields: [{ name: :q, label: 'Search code or label', type: :text }] %>
   </div>
 
-  <div class="mt-4 bg-white rounded-lg border border-gray-200 overflow-hidden">
+  <%= render 'shared/clear_column_filters' %>
+
+  <div class="mt-4 bg-white rounded-lg border border-gray-200 overflow-x-clip">
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Code</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Label</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Account, :code, 'Code', resource: 'accounts') %></th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Account, :label_fr, 'Label', resource: 'accounts') %></th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Account, :account_type, 'Type', resource: 'accounts') %></th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Account, :active, 'Status', resource: 'accounts') %></th>
           <th class="px-4 py-3"></th>
         </tr>
       </thead>

@@ -25,6 +25,8 @@ Rails.application.routes.draw do
     namespace :accounting do
       root to: "dashboard#index"
 
+      get "column_values/:resource/:column", to: "column_values#show", as: :column_values
+
       resources :partners
 
       resources :journal_entries do

@@ -27,6 +27,29 @@ RSpec.describe "Accounting::Settings::Journals", type: :request do
     end
   end
 
+  describe "GET /accounting/settings/journals with column filters" do
+    let!(:sales_journal) { create(:journal, :sale, code: "ZZV", default_account: account_400, active: false) }
+
+    it "filters on type, status, counterpart account and code" do
+      get accounting_settings_journals_path, params: { f: { journal_type: %w[sale] } }
+      expect(response.body).to include("ZZV").and not_include(journal.code)
+      get accounting_settings_journals_path, params: { f: { active: %w[false] } }
+      expect(response.body).to include("ZZV").and not_include(">#{journal.code}<")
+      get accounting_settings_journals_path, params: { f: { default_account: [ account_400.code ] } }
+      expect(response).to have_http_status(:ok)
+      get accounting_settings_journals_path, params: { sort: "code", dir: "desc" }
+      expect(response.body.index("ZZV")).to be < response.body.index(journal.code)
+    end
+
+    it "serves the code values to admins and refuses managers" do
+      get accounting_column_values_path("journals", "code")
+      expect(response.body).to include("ZZV")
+      sign_in manager
+      get accounting_column_values_path("journals", "code")
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
   describe "GET /accounting/settings/journals/new" do
     it "returns 200" do
       get new_accounting_settings_journal_path

@@ -1,0 +1,70 @@
+<div class="relative inline-block" data-controller="dropdown">
+  <div class="flex items-center gap-1 <%= 'justify-end' if @align == :right %>">
+    <span><%= label %></span>
+    <button type="button" data-action="dropdown#toggle" data-sorted="<%= sorted %>"
+            aria-label="Sort or filter <%= label %>"
+            class="p-0.5 rounded hover:bg-gray-200 <%= active? ? 'text-primary-600' : 'text-gray-400' %>">
+      <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <% if filter? %>
+          <path d="M3 4a1 1 0 011-1h12a1 1 0 01.8 1.6L12 11v5a1 1 0 01-1.45.9l-2-1A1 1 0 018 15v-4L3.2 4.6A1 1 0 013 4z"/>
+        <% else %>
+          <path d="M10 3l4 5H6l4-5zm0 14l-4-5h8l-4 5z"/>
+        <% end %>
+      </svg>
+    </button>
+    <% if sorted %>
+      <span data-sorted="<%= sorted %>" class="text-primary-600 text-xs"><%= sorted == 'asc' ? '▲' : '▼' %></span>
+    <% end %>
+  </div>
+
+  <div data-dropdown-target="menu"
+       class="hidden absolute z-20 mt-1 w-64 <%= menu_side %> bg-white border border-gray-200 rounded-md shadow-lg normal-case tracking-normal font-normal text-left text-sm text-gray-700">
+    <div class="py-1 border-b border-gray-100">
+      <%= link_to 'Sort A → Z', sort_url('asc'), class: 'block px-3 py-1.5 hover:bg-gray-50' %>
+      <%= link_to 'Sort Z → A', sort_url('desc'), class: 'block px-3 py-1.5 hover:bg-gray-50' %>
+    </div>
+
+    <% if filter? %>
+      <form method="get" action="<%= path %>" class="p-3 space-y-3">
+        <% hidden_fields.each do |name, value| %>
+          <input type="hidden" name="<%= name %>" value="<%= value %>">
+        <% end %>
+
+        <% case type %>
+        <% when :string %>
+          <div class="max-h-48 overflow-y-auto">
+            <turbo-frame id="values-<%= key %>" src="<%= values_url %>" loading="lazy">
+              <p class="text-xs text-gray-400">Loading…</p>
+            </turbo-frame>
+          </div>
+        <% when :enum, :boolean %>
+          <div class="max-h-48 overflow-y-auto space-y-1">
+            <% enum_options.each do |text, value| %>
+              <label class="flex items-center gap-2">
+                <input type="checkbox" name="f[<%= key %>][]" value="<%= value %>" <%= 'checked' if Array(selected).include?(value) %>>
+                <%= text %>
+              </label>
+            <% end %>
+          </div>
+        <% when :date %>
+          <label class="block text-xs text-gray-500">From
+            <input type="date" name="f[<%= key %>][from]" value="<%= range_value('from') %>" class="mt-1 w-full border-gray-300 rounded-md text-sm"></label>
+          <label class="block text-xs text-gray-500">To
+            <input type="date" name="f[<%= key %>][to]" value="<%= range_value('to') %>" class="mt-1 w-full border-gray-300 rounded-md text-sm"></label>
+        <% when :decimal %>
+          <label class="block text-xs text-gray-500">Min
+            <input type="number" step="0.01" name="f[<%= key %>][min]" value="<%= range_value('min') %>" class="mt-1 w-full border-gray-300 rounded-md text-sm"></label>
+          <label class="block text-xs text-gray-500">Max
+            <input type="number" step="0.01" name="f[<%= key %>][max]" value="<%= range_value('max') %>" class="mt-1 w-full border-gray-300 rounded-md text-sm"></label>
+        <% end %>
+
+        <div class="flex items-center justify-between">
+          <button type="submit" class="px-3 py-1 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700">Apply</button>
+          <% if active? %>
+            <%= link_to 'Clear filter', clear_url, class: 'text-xs text-gray-500 hover:text-gray-700' %>
+          <% end %>
+        </div>
+      </form>
+    <% end %>
+  </div>
+</div>

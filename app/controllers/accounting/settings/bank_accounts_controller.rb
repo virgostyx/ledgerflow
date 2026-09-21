@@ -5,7 +5,8 @@ class Accounting::Settings::BankAccountsController < Accounting::Settings::BaseC
   def index
     @pagy, @bank_accounts = pagy(Accounting::BankAccount
                                    .includes(:journal, :transactions)
-                                   .order("accounting_journals.code"))
+                                   .order("accounting_journals.code")
+                                   .autofilter(**autofilter_params))
   end
 
   def new

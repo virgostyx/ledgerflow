@@ -20,6 +20,11 @@ class Accounting::JournalEntry < ApplicationRecord
   accepts_nested_attributes_for :lines, allow_destroy: true,
     reject_if: proc { |attrs| attrs["account_id"].blank? }
 
+  autofilter_column :reference,  sql: "accounting_journal_entries.reference", type: :string
+  autofilter_column :journal,    sql: "accounting_journals.code", type: :string, joins: :journal
+  autofilter_column :entry_date, sql: "accounting_journal_entries.entry_date", type: :date
+  autofilter_column :status,     sql: "accounting_journal_entries.status", type: :enum
+
   validates :entry_date, presence: true
   validates :reference,  presence: true, unless: :draft?
   validates :reference,  uniqueness: { scope: :entity_id, case_sensitive: false }, allow_nil: true

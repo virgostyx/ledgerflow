@@ -16,8 +16,6 @@
 
 <%= render 'shared/filters', fields: [
   { name: :q, label: 'Search', type: :text },
-  { name: :partner_type, label: 'Type', type: :select, options: Accounting::Partner.partner_types.keys.map { |s| [s.humanize, s] } },
-  { name: :country, label: 'Country', type: :select, options: Accounting::Partner.distinct.order(:country).pluck(:country).map { |c| [c, c] } },
   { name: :inactive, label: 'Include inactive', type: :checkbox }
 ] %>
 <% if @partners.empty? && !filters_active? %>
@@ -34,14 +32,15 @@
     <% end %>
   <% end %>
 <% else %>
-  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+  <%= render 'shared/clear_column_filters' %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-x-clip">
     <table class="w-full text-sm">
       <thead class="bg-gray-50 border-b border-gray-200">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VAT number</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Partner, :name, 'Name', resource: 'partners') %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Partner, :partner_type, 'Type', resource: 'partners') %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Partner, :vat_number, 'VAT number', resource: 'partners') %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::Partner, :country, 'Country', resource: 'partners') %></th>
           <th class="px-4 py-3"></th>
         </tr>
       </thead>

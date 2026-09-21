@@ -42,6 +42,24 @@ RSpec.describe "Accounting::Settings::Accounts", type: :request do
     end
   end
 
+  describe "GET /accounting/settings/accounts with column filters" do
+    let!(:inactive_account) { create(:account, code: "699999", label_fr: "ZZInactive", account_type: :revenue, active: false) }
+
+    it "filters on status and type, sorts by code" do
+      get accounting_settings_accounts_path, params: { f: { active: %w[false] } }
+      expect(response.body).to include("ZZInactive").and not_include("Services divers")
+      get accounting_settings_accounts_path, params: { f: { account_type: %w[revenue] } }
+      expect(response.body).to include("ZZInactive").and not_include("Services divers")
+      get accounting_settings_accounts_path, params: { sort: "code", dir: "desc" }
+      expect(response.body.index("ZZInactive")).to be < response.body.index("Services divers")
+    end
+
+    it "keeps the class tab when filtering" do
+      get accounting_settings_accounts_path, params: { account_class: "6", f: { active: %w[false] } }
+      expect(response.body).to include("account_class").and include("ZZInactive")
+    end
+  end
+
   describe "GET /accounting/settings/accounts/:id/edit" do
     it "returns 200" do
       get edit_accounting_settings_account_path(child_account)

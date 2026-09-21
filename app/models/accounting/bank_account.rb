@@ -8,6 +8,12 @@ class Accounting::BankAccount < ApplicationRecord
   has_many :transactions, class_name: "Accounting::BankTransaction",
            foreign_key: :bank_account_id, dependent: :destroy
 
+  autofilter_column :journal,  sql: "accounting_journals.code", type: :string, joins: :journal
+  autofilter_column :label_fr, sql: "accounting_bank_accounts.label_fr", type: :string, filter: false
+  autofilter_column :iban,     sql: "accounting_bank_accounts.iban", type: :string, filter: false
+  autofilter_column :bic,      sql: "accounting_bank_accounts.bic", type: :string, filter: false
+  autofilter_column :active,   sql: "accounting_bank_accounts.active", type: :boolean
+
   validates :label_fr,   presence: true
   validates :iban,       presence: true, uniqueness: { scope: :entity_id }
   validates :currency,   presence: true, inclusion: { in: %w[EUR] }

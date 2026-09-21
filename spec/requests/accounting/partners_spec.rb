@@ -54,6 +54,29 @@ RSpec.describe 'Accounting::Partners', type: :request do
     end
   end
 
+  describe 'GET /accounting/partners with column filters' do
+    let!(:belgian) { create(:partner, :supplier, name: 'ZZBelge', country: 'BE') }
+    let!(:dutch) { create(:partner, :customer, name: 'ZZDutch', country: 'NL') }
+
+    it 'filters on country list and type' do
+      get accounting_partners_path, params: { f: { country: %w[NL] } }
+      expect(response.body).to include('ZZDutch').and not_include('ZZBelge')
+      get accounting_partners_path, params: { f: { partner_type: %w[supplier] } }
+      expect(response.body).to include('ZZBelge').and not_include('ZZDutch')
+    end
+
+    it 'sorts by name' do
+      get accounting_partners_path, params: { sort: 'name', dir: 'desc' }
+      expect(response.body.index('ZZDutch')).to be < response.body.index('ZZBelge')
+    end
+
+    it 'keeps Search and Include inactive but drops the redundant type and country selects' do
+      get accounting_partners_path
+      expect(response.body).to include('name="q[q]"', 'name="q[inactive]"')
+      expect(response.body).not_to include('name="q[partner_type]"', 'name="q[country]"')
+    end
+  end
+
   describe 'GET /accounting/partners/new' do
     it 'retourne 200' do
       get new_accounting_partner_path

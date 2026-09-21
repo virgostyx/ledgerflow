@@ -9,6 +9,10 @@ class Accounting::VatDeclaration < ApplicationRecord
   enum :status,      { draft: 0, submitted: 1, accepted: 2 }
   enum :period_type, { monthly: 0, quarterly: 1 }
 
+  autofilter_column :period_start, sql: "accounting_vat_declarations.period_start", type: :date
+  autofilter_column :period_type,  sql: "accounting_vat_declarations.period_type", type: :enum
+  autofilter_column :status,       sql: "accounting_vat_declarations.status", type: :enum
+
   validates :period_start, presence: true
   validates :period_end,   presence: true
   validates :period_type,  presence: true

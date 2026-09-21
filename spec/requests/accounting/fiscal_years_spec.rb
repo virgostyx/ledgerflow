@@ -19,6 +19,21 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
     end
   end
 
+  describe "GET /accounting/fiscal_years with column filters" do
+    let!(:old_year) do
+      create(:fiscal_year, year: 2020, start_date: Date.new(2020, 1, 1), end_date: Date.new(2020, 12, 31), status: :closed, closed_at: Time.zone.local(2021, 2, 1, 23))
+    end
+
+    it "filters on status and closing date, sorts by year" do
+      get accounting_fiscal_years_path, params: { f: { status: %w[closed] } }
+      expect(response.body).to include(accounting_fiscal_year_path(old_year)).and not_include(accounting_fiscal_year_path(fiscal_year))
+      get accounting_fiscal_years_path, params: { f: { closed_at: { from: "2021-02-01", to: "2021-02-01" } } }
+      expect(response.body).to include(accounting_fiscal_year_path(old_year))
+      get accounting_fiscal_years_path, params: { sort: "year", dir: "asc" }
+      expect(response.body.index(accounting_fiscal_year_path(old_year))).to be < response.body.index(accounting_fiscal_year_path(fiscal_year))
+    end
+  end
+
   describe "GET /accounting/fiscal_years/:id" do
     it "retourne 200" do
       get accounting_fiscal_year_path(fiscal_year)

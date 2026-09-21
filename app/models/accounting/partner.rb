@@ -8,6 +8,11 @@ class Accounting::Partner < ApplicationRecord
 
   enum :partner_type, { customer: 0, supplier: 1, both: 2 }
 
+  autofilter_column :name,         sql: "accounting_partners.name", type: :string, filter: false
+  autofilter_column :partner_type, sql: "accounting_partners.partner_type", type: :enum
+  autofilter_column :vat_number,   sql: "accounting_partners.vat_number", type: :string, filter: false
+  autofilter_column :country,      sql: "accounting_partners.country", type: :string
+
   validates :name,         presence: true
   validates :partner_type, presence: true
   validates :vat_number,   format: { with: BELGIAN_VAT_FORMAT }, allow_blank: true

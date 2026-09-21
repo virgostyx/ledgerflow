@@ -14,12 +14,6 @@
   <% end %>
 <% end %>
 
-<%= render 'shared/filters', fields: [
-  { name: :status, label: 'Status', type: :select, options: Accounting::PaymentBatch.statuses.keys.map { |s| [s.humanize, s] } },
-  { name: :bank_account_id, label: 'Bank account', type: :select, options: Accounting::BankAccount.order(:label_fr).map { |b| [b.label_fr, b.id] } },
-  { name: :from, label: 'Execution from', type: :date },
-  { name: :to, label: 'Execution to', type: :date }
-] %>
 <% if @payment_batches.empty? && !filters_active? %>
   <%= render Ui::EmptyStateComponent.new(
         title: 'No payment batches yet',
@@ -34,15 +28,16 @@
     <% end %>
   <% end %>
 <% else %>
-  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+  <%= render 'shared/clear_column_filters' %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-x-clip">
     <table class="w-full text-sm">
       <thead class="bg-gray-50 border-b border-gray-200">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bank account</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Execution date</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::PaymentBatch, :bank_account, 'Bank account', resource: 'payment_batches') %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::PaymentBatch, :requested_execution_date, 'Execution date', resource: 'payment_batches') %></th>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoices</th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::PaymentBatch, :total_amount, 'Total', resource: 'payment_batches', align: :right) %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::PaymentBatch, :status, 'Status', resource: 'payment_batches') %></th>
           <th class="px-4 py-3"></th>
         </tr>
       </thead>
