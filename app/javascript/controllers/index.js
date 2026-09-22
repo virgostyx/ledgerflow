@@ -53,3 +53,6 @@ application.register("invoice-form", InvoiceFormController)
 
 import LetteringTotalController from "controllers/lettering_total_controller"
 application.register("lettering-total", LetteringTotalController)
+
+import ToggleController from "controllers/toggle_controller"
+application.register("toggle", ToggleController)

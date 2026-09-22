@@ -179,6 +179,7 @@
       <table class="min-w-full text-sm">
         <thead>
           <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th class="px-2 py-2"></th>
             <th class="px-4 py-2 text-left">Reference</th>
             <th class="px-4 py-2 text-left">Journal</th>
             <th class="px-4 py-2 text-left">Date</th>
@@ -187,9 +188,16 @@
             <th class="px-4 py-2"></th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
-          <% entries.each do |entry| %>
+        <% entries.each do |entry| %>
+          <tbody data-controller="toggle" class="divide-y divide-gray-100">
             <tr class="hover:bg-gray-50">
+              <td class="px-2 py-3">
+                <button type="button" data-action="toggle#toggle" class="text-gray-400 hover:text-gray-600" aria-label="Show accounting lines">
+                  <svg data-toggle-target="icon" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </td>
               <td class="px-4 py-3 font-mono text-xs text-primary-700"><%= entry.reference || '—' %></td>
               <td class="px-4 py-3 text-gray-500"><%= entry.journal.code %></td>
               <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(entry.entry_date).format %></td>
@@ -199,8 +207,37 @@
                 <%= link_to 'View', accounting_journal_entry_path(entry), class: 'text-primary-600 hover:text-primary-800 text-sm font-medium' %>
               </td>
             </tr>
-          <% end %>
-        </tbody>
+            <tr data-toggle-target="content" hidden>
+              <td></td>
+              <td colspan="6" class="px-4 py-3 bg-gray-50">
+                <table class="w-full text-xs">
+                  <thead>
+                    <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th class="px-2 py-1 text-left">Account</th>
+                      <th class="px-2 py-1 text-left">Label</th>
+                      <th class="px-2 py-1 text-left">Partner</th>
+                      <th class="px-2 py-1 text-right">Debit</th>
+                      <th class="px-2 py-1 text-right">Credit</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    <% entry.lines.each do |line| %>
+                      <tr>
+                        <td class="px-2 py-1 font-mono text-gray-600">
+                          <%= line.account.code %> <span class="text-gray-400"><%= line.account.label_fr %></span>
+                        </td>
+                        <td class="px-2 py-1 text-gray-700"><%= line.label %></td>
+                        <td class="px-2 py-1 text-gray-500"><%= line.partner&.name %></td>
+                        <td class="px-2 py-1 text-right font-mono"><%= Accounting::MoneyPresenter.new(line.debit).format if line.debit > 0 %></td>
+                        <td class="px-2 py-1 text-right font-mono"><%= Accounting::MoneyPresenter.new(line.credit).format if line.credit > 0 %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        <% end %>
       </table>
     </div>
   </div>

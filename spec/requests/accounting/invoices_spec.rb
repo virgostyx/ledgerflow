@@ -390,6 +390,15 @@ RSpec.describe 'Accounting::Invoices', type: :request do
         expect(response.body).to include(receipt_entry.reference)
         expect(response.body).to include(accounting_journal_entry_path(receipt_entry))
       end
+
+      it 'renders the receipt entry\'s accounting lines in a collapsible row' do
+        get accounting_invoice_path(customer_invoice)
+        receipt_entry = customer_invoice.related_journal_entries.first
+        line = receipt_entry.lines.first
+
+        expect(response.body).to include('data-controller="toggle"')
+        expect(response.body).to include(line.account.code)
+      end
     end
 
     context 'invoice with no related journal entry' do
