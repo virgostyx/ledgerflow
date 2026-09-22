@@ -185,6 +185,42 @@ RSpec.describe Accounting::Invoice, type: :model do
     end
   end
 
+  describe '#related_journal_entries' do
+    include_context 'with_open_fiscal_year'
+
+    let(:invoice) { create(:invoice, fiscal_year: fiscal_year) }
+    let(:account) { create(:account) }
+
+    it 'inclut l\'écriture de comptabilisation (journal_entry)' do
+      entry = create(:journal_entry, fiscal_year: fiscal_year)
+      invoice.update!(journal_entry: entry)
+
+      expect(invoice.related_journal_entries).to contain_exactly(entry)
+    end
+
+    it 'inclut les écritures dont une ligne référence la facture via invoice_id' do
+      settlement_entry = create(:journal_entry, fiscal_year: fiscal_year)
+      ApplicationRecord.connection.execute('SET CONSTRAINTS enforce_double_entry DEFERRED')
+      create(:journal_entry_line, :credit, journal_entry: settlement_entry, account: account, invoice: invoice)
+
+      expect(invoice.related_journal_entries).to contain_exactly(settlement_entry)
+    end
+
+    it 'combine les deux sans doublon' do
+      posting_entry    = create(:journal_entry, fiscal_year: fiscal_year)
+      settlement_entry = create(:journal_entry, fiscal_year: fiscal_year)
+      invoice.update!(journal_entry: posting_entry)
+      ApplicationRecord.connection.execute('SET CONSTRAINTS enforce_double_entry DEFERRED')
+      create(:journal_entry_line, :credit, journal_entry: settlement_entry, account: account, invoice: invoice)
+
+      expect(invoice.related_journal_entries).to contain_exactly(posting_entry, settlement_entry)
+    end
+
+    it 'retourne une relation vide quand aucune écriture n\'est liée' do
+      expect(invoice.related_journal_entries).to be_empty
+    end
+  end
+
   describe '#compute_totals' do
     include_context 'with_open_fiscal_year'
 

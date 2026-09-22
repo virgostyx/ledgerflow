@@ -167,3 +167,41 @@
     No lines yet. <% if @invoice.draft? %><%= link_to 'Add lines', edit_accounting_invoice_path(@invoice), class: 'text-primary-600 hover:underline' %><% end %>
   </div>
 <% end %>
+
+<%# ── Journal entries ────────────────────────────────────────────────── %>
+<% entries = @invoice.related_journal_entries %>
+<% if entries.any? %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+    <div class="px-6 py-3 border-b border-gray-100 bg-gray-50">
+      <h3 class="text-sm font-semibold text-gray-700">Journal entries</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th class="px-4 py-2 text-left">Reference</th>
+            <th class="px-4 py-2 text-left">Journal</th>
+            <th class="px-4 py-2 text-left">Date</th>
+            <th class="px-4 py-2 text-left">Description</th>
+            <th class="px-4 py-2 text-left">Status</th>
+            <th class="px-4 py-2"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% entries.each do |entry| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 font-mono text-xs text-primary-700"><%= entry.reference || '—' %></td>
+              <td class="px-4 py-3 text-gray-500"><%= entry.journal.code %></td>
+              <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(entry.entry_date).format %></td>
+              <td class="px-4 py-3 text-gray-700"><%= entry.description %></td>
+              <td class="px-4 py-3"><%= render Accounting::StatusBadgeComponent.new(status: entry.status.to_sym) %></td>
+              <td class="px-4 py-3 text-right">
+                <%= link_to 'View', accounting_journal_entry_path(entry), class: 'text-primary-600 hover:text-primary-800 text-sm font-medium' %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>

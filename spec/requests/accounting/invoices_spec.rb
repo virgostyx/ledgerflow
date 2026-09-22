@@ -381,6 +381,24 @@ RSpec.describe 'Accounting::Invoices', type: :request do
 
         expect(response.body).not_to include('Remaining')
       end
+
+      it 'lists the receipt entry under "Journal entries"' do
+        get accounting_invoice_path(customer_invoice)
+        receipt_entry = customer_invoice.related_journal_entries.first
+
+        expect(response.body).to include('Journal entries')
+        expect(response.body).to include(receipt_entry.reference)
+        expect(response.body).to include(accounting_journal_entry_path(receipt_entry))
+      end
+    end
+
+    context 'invoice with no related journal entry' do
+      it 'shows no "Journal entries" card' do
+        draft_invoice = create(:invoice, :draft, partner: partner, fiscal_year: fiscal_year)
+        get accounting_invoice_path(draft_invoice)
+
+        expect(response.body).not_to include('Journal entries')
+      end
     end
   end
 

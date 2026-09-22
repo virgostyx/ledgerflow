@@ -87,6 +87,17 @@ class Accounting::Invoice < ApplicationRecord
     [ paid_amount - total_incl_vat, 0 ].max
   end
 
+  # The posting entry (belongs_to journal_entry) plus any later entry whose
+  # lines reference this invoice (payment/lettering, via journal_entry_lines.invoice_id).
+  def related_journal_entries
+    Accounting::JournalEntry
+      .left_joins(:lines)
+      .where("accounting_journal_entries.id = :id OR accounting_journal_entry_lines.invoice_id = :invoice_id",
+             id: journal_entry_id, invoice_id: id)
+      .distinct
+      .order(:entry_date)
+  end
+
   private
 
   def journal_matches_invoice_type
