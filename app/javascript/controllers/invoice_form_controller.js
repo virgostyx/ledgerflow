@@ -4,12 +4,14 @@ export default class extends Controller {
   static targets = [
     // Header fields (existing)
     "invoiceDate", "dueDate", "journalSelect", "entryNumberPreview",
+    // Currency
+    "currencySelect", "exchangeRate", "currencyCode",
     // Lines management
     "linesContainer", "lineTemplate", "lineRow",
     // Per-line computed display (readonly)
     "lineVat", "lineTotal",
     // Invoice-level totals display
-    "invoiceSubtotal", "invoiceVat", "invoiceTotal"
+    "invoiceSubtotal", "invoiceVat", "invoiceTotal", "eurCounterpart", "invoiceTotalEur"
   ]
   static values = {
     days:  { type: Number, default: 0 },
@@ -46,6 +48,17 @@ export default class extends Controller {
     const select = this.journalSelectTarget
     const option = select.options[select.selectedIndex]
     this.entryNumberPreviewTarget.value = option?.dataset.nextNumber ?? ""
+  }
+
+  // ------------------------------------------------------------------
+  // Currency
+  // ------------------------------------------------------------------
+
+  onCurrencyChanged() {
+    const code = this.currencySelectTarget.value
+    this.currencyCodeTargets.forEach(el => { el.textContent = code })
+    if (this.hasEurCounterpartTarget) this.eurCounterpartTarget.classList.toggle("hidden", code === "EUR")
+    this.computeInvoiceTotals()
   }
 
   // ------------------------------------------------------------------
@@ -132,6 +145,11 @@ export default class extends Controller {
     if (this.hasInvoiceSubtotalTarget) this.invoiceSubtotalTarget.textContent = fmt(totalSubtotal)
     if (this.hasInvoiceVatTarget)      this.invoiceVatTarget.textContent      = fmt(totalVat)
     if (this.hasInvoiceTotalTarget)    this.invoiceTotalTarget.textContent    = fmt(totalTotal)
+
+    if (this.hasInvoiceTotalEurTarget) {
+      const rate = this.hasExchangeRateTarget ? parseFloat(this.exchangeRateTarget.value) || 0 : 1
+      this.invoiceTotalEurTarget.textContent = fmt(Math.round(totalTotal * rate * 100) / 100)
+    }
   }
 
   // ------------------------------------------------------------------

@@ -56,4 +56,20 @@ RSpec.describe Accounting::MoneyPresenter, type: :presenter do
       expect(described_class.new(1)).not_to be_zero
     end
   end
+
+  describe '::SUPPORTED_CURRENCIES' do
+    it 'inclut les devises majeures au-delà de EUR/USD/GBP' do
+      expect(described_class::SUPPORTED_CURRENCIES).to include('EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD')
+    end
+
+    it "n'inclut pas de code fantaisiste" do
+      expect(described_class::SUPPORTED_CURRENCIES).not_to include('ABC')
+    end
+  end
+
+  describe '#format for a currency with no dedicated symbol' do
+    it 'utilise le code ISO comme unité' do
+      expect(described_class.new(1234.56, currency: 'CHF').format).to eq('1 234,56 CHF')
+    end
+  end
 end

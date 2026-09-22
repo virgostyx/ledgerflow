@@ -100,17 +100,19 @@
 
     <div class="relative" data-controller="floating-label">
       <%= f.select :currency,
-            Accounting::MoneyPresenter::CURRENCY_SYMBOLS.keys,
+            Accounting::MoneyPresenter::SUPPORTED_CURRENCIES,
             { include_blank: false },
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+            data: { floating_label_target: 'input', invoice_form_target: 'currencySelect',
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#onCurrencyChanged' } %>
       <%= f.label :currency, 'Currency', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
 
     <div class="relative" data-controller="floating-label">
       <%= f.number_field :exchange_rate, step: '0.000001', min: '0.000001',
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+            data: { floating_label_target: 'input', invoice_form_target: 'exchangeRate',
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue input->invoice-form#computeInvoiceTotals' } %>
       <%= f.label :exchange_rate, 'Exchange rate to EUR', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
 
@@ -179,9 +181,12 @@
                   class: 'block w-full rounded border border-gray-300 text-sm' %>
 
             <%# Amount HT (unit_price with qty=1) %>
-            <%= lf.number_field :unit_price, step: '0.01', min: '0', placeholder: '0,00',
-                  class: 'block w-full rounded border border-gray-300 text-sm text-right font-mono',
-                  data: { line_amount: true, action: 'input->invoice-form#computeLineTotals' } %>
+            <div class="flex items-center gap-1">
+              <%= lf.number_field :unit_price, step: '0.01', min: '0', placeholder: '0,00',
+                    class: 'block w-full rounded border border-gray-300 text-sm text-right font-mono',
+                    data: { line_amount: true, action: 'input->invoice-form#computeLineTotals' } %>
+              <span class="text-xs text-gray-400 font-mono" data-invoice-form-target="currencyCode"><%= invoice.currency %></span>
+            </div>
 
             <%# VAT rate select %>
             <%= lf.select :vat_rate,
@@ -259,11 +264,14 @@
                  name="accounting_invoice[lines_attributes][NEW_INDEX][description]"
                  class="block w-full rounded border border-gray-300 text-sm">
 
-          <input type="number" step="0.01" min="0" placeholder="0,00" value="0"
-                 name="accounting_invoice[lines_attributes][NEW_INDEX][unit_price]"
-                 class="block w-full rounded border border-gray-300 text-sm text-right font-mono"
-                 data-line-amount="true"
-                 data-action="input->invoice-form#computeLineTotals">
+          <div class="flex items-center gap-1">
+            <input type="number" step="0.01" min="0" placeholder="0,00" value="0"
+                   name="accounting_invoice[lines_attributes][NEW_INDEX][unit_price]"
+                   class="block w-full rounded border border-gray-300 text-sm text-right font-mono"
+                   data-line-amount="true"
+                   data-action="input->invoice-form#computeLineTotals">
+            <span class="text-xs text-gray-400 font-mono" data-invoice-form-target="currencyCode"><%= invoice.currency %></span>
+          </div>
 
           <select name="accounting_invoice[lines_attributes][NEW_INDEX][vat_rate]"
                   class="block w-full rounded border border-gray-300 text-sm"
@@ -322,24 +330,35 @@
     </button>
 
     <%# Invoice totals ── %>
-    <div class="mt-6 border-t border-gray-200 pt-4 flex justify-end">
+    <div class="mt-6 border-t border-gray-200 pt-4 flex justify-end gap-8">
       <dl class="space-y-1 text-sm text-right min-w-56">
         <div class="flex justify-between gap-8">
           <dt class="text-gray-500">Subtotal excl. VAT</dt>
           <dd class="font-mono text-gray-900" data-invoice-form-target="invoiceSubtotal">
-            <%= Accounting::MoneyPresenter.new(invoice.subtotal_excl_vat || 0).format %>
+            <%= Accounting::MoneyPresenter.new(invoice.subtotal_excl_vat || 0, currency: invoice.currency).format %>
           </dd>
         </div>
         <div class="flex justify-between gap-8">
           <dt class="text-gray-500">VAT</dt>
           <dd class="font-mono text-gray-900" data-invoice-form-target="invoiceVat">
-            <%= Accounting::MoneyPresenter.new(invoice.vat_amount || 0).format %>
+            <%= Accounting::MoneyPresenter.new(invoice.vat_amount || 0, currency: invoice.currency).format %>
           </dd>
         </div>
         <div class="flex justify-between gap-8 border-t border-gray-300 pt-2 mt-1">
           <dt class="font-semibold text-gray-900">Total incl. VAT</dt>
           <dd class="font-mono font-bold text-lg text-gray-900" data-invoice-form-target="invoiceTotal">
-            <%= Accounting::MoneyPresenter.new(invoice.total_incl_vat || 0).format %>
+            <%= Accounting::MoneyPresenter.new(invoice.total_incl_vat || 0, currency: invoice.currency).format %>
+          </dd>
+        </div>
+      </dl>
+
+      <%# EUR counterpart — hidden for EUR invoices %>
+      <dl class="space-y-1 text-sm text-right min-w-40 <%= 'hidden' if invoice.currency == 'EUR' %>"
+          data-invoice-form-target="eurCounterpart">
+        <div class="flex justify-between gap-8 pt-6 mt-1 border-t border-gray-300">
+          <dt class="font-semibold text-gray-900">EUR equivalent</dt>
+          <dd class="font-mono font-bold text-lg text-gray-900" data-invoice-form-target="invoiceTotalEur">
+            <%= Accounting::MoneyPresenter.new(invoice.total_incl_vat_eur || 0).format %>
           </dd>
         </div>
       </dl>

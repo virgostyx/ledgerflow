@@ -32,7 +32,7 @@ class Accounting::Invoice < ApplicationRecord
   validates :invoice_type, presence: true
   validates :invoice_date, presence: true
   validates :partner,      presence: true
-  validates :currency,      inclusion: { in: Accounting::MoneyPresenter::CURRENCY_SYMBOLS.keys }
+  validates :currency,      inclusion: { in: Accounting::MoneyPresenter::SUPPORTED_CURRENCIES }
   validates :exchange_rate, numericality: { greater_than: 0 }
 
   validate :journal_matches_invoice_type, if: -> { journal.present? }

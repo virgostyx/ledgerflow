@@ -24,8 +24,12 @@ RSpec.describe Accounting::Invoice, type: :model do
       expect(build(:invoice, currency: 'USD', exchange_rate: '0.92')).to be_valid
     end
 
+    it 'is valid with a currency that has no dedicated symbol (e.g. CHF)' do
+      expect(build(:invoice, currency: 'CHF', exchange_rate: '1.05')).to be_valid
+    end
+
     it 'is invalid with an unsupported currency' do
-      invoice = build(:invoice, currency: 'JPY')
+      invoice = build(:invoice, currency: 'ABC')
       expect(invoice).not_to be_valid
       expect(invoice.errors[:currency]).to be_present
     end
