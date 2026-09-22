@@ -58,7 +58,12 @@ export default class extends Controller {
     const code = this.currencySelectTarget.value
     this.currencyCodeTargets.forEach(el => { el.textContent = code })
     if (this.hasEurCounterpartTarget) this.eurCounterpartTarget.classList.toggle("hidden", code === "EUR")
+    this.linesContainerTarget.querySelectorAll(".invoice-line-row").forEach(row => this.recomputeRow(row))
     this.computeInvoiceTotals()
+  }
+
+  currentCurrencyCode() {
+    return this.hasCurrencySelectTarget ? this.currencySelectTarget.value : "EUR"
   }
 
   // ------------------------------------------------------------------
@@ -105,21 +110,25 @@ export default class extends Controller {
     const row = event.target.closest(".invoice-line-row")
     if (!row) return
 
+    this.recomputeRow(row)
+    this.computeInvoiceTotals()
+  }
+
+  recomputeRow(row) {
     const amount = parseFloat(row.querySelector("[data-line-amount]")?.value) || 0
     const rate   = parseFloat(row.querySelector("[data-line-vat-rate]")?.value) || 0
 
     const vat   = Math.round(amount * rate / 100 * 100) / 100
     const total = Math.round((amount + vat) * 100) / 100
 
-    const fmt = (n) => n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const code = this.currentCurrencyCode()
+    const fmt  = (n) => `${n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${code}`
 
     const vatEl   = row.querySelector("[data-line-vat-display]")
     const totalEl = row.querySelector("[data-line-total-display]")
 
     if (vatEl)   vatEl.textContent   = fmt(vat)
     if (totalEl) totalEl.textContent = fmt(total)
-
-    this.computeInvoiceTotals()
   }
 
   computeInvoiceTotals() {
@@ -140,7 +149,9 @@ export default class extends Controller {
       totalTotal    += amount + vat
     })
 
-    const fmt = (n) => n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const code   = this.currentCurrencyCode()
+    const number = (n) => n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const fmt    = (n) => `${number(n)} ${code}`
 
     if (this.hasInvoiceSubtotalTarget) this.invoiceSubtotalTarget.textContent = fmt(totalSubtotal)
     if (this.hasInvoiceVatTarget)      this.invoiceVatTarget.textContent      = fmt(totalVat)
@@ -148,7 +159,7 @@ export default class extends Controller {
 
     if (this.hasInvoiceTotalEurTarget) {
       const rate = this.hasExchangeRateTarget ? parseFloat(this.exchangeRateTarget.value) || 0 : 1
-      this.invoiceTotalEurTarget.textContent = fmt(Math.round(totalTotal * rate * 100) / 100)
+      this.invoiceTotalEurTarget.textContent = `${number(Math.round(totalTotal * rate * 100) / 100)} EUR`
     }
   }
 
