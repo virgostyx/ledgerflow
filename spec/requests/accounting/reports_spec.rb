@@ -231,6 +231,25 @@ RSpec.describe "Accounting::Reports", type: :request do
       expect(rows.last["Total"]).to eq("100.00")
     end
 
+    it "shows unallocated credits older than the threshold, and honors a custom stale_days" do
+      partner = create(:partner, name: "Old Credit Co")
+      customer_account = create(:account, :customer, reconcilable: true)
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: Date.current - 95)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: expense_account, debit: BigDecimal("0"), credit: BigDecimal("40"))
+      create(:journal_entry_line, journal_entry: entry, account: customer_account, partner: partner,
+             debit: BigDecimal("0"), credit: BigDecimal("40"))
+      entry.post!
+
+      get accounting_reports_aged_balance_path
+      expect(response.body).to include(I18n.t("accounting.reports.aged_balance.stale_title", days: 90))
+      expect(response.body.scan("Old Credit Co").size).to eq(2) # main table + stale section
+
+      get accounting_reports_aged_balance_path(stale_days: 100)
+      expect(response.body).not_to include(I18n.t("accounting.reports.aged_balance.stale_title", days: 100))
+      expect(response.body.scan("Old Credit Co").size).to eq(1) # main table only
+    end
+
     it "redirects a user without report access" do
       sign_out accountant
       budget_user = create(:user, role: :budget_user)

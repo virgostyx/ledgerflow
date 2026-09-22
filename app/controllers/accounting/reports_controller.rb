@@ -77,6 +77,9 @@ class Accounting::ReportsController < ApplicationController
     @rows   = Accounting::AgedBalanceQuery.new(kind: @kind, as_of: @as_of).call
     @totals = Accounting::AgedBalanceQuery.totals(@rows)
 
+    @stale_days    = params[:stale_days].presence&.to_i || 90
+    @stale_credits = Accounting::StaleCreditsQuery.new(kind: @kind, as_of: @as_of, min_age_days: @stale_days).call
+
     respond_to do |format|
       format.html
       format.csv { send_data aged_balance_csv, filename: "aged_balance_#{@kind}_#{@as_of}.csv",

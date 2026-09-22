@@ -6,7 +6,7 @@
   ]) %>
 <% end %>
 
-<% t_ab = ->(key) { t("accounting.reports.aged_balance.#{key}") } %>
+<% t_ab = ->(key, **opts) { t("accounting.reports.aged_balance.#{key}", **opts) } %>
 
 <div class="mx-auto max-w-7xl px-4 py-8">
   <div class="mb-6 flex items-center justify-between">
@@ -64,4 +64,28 @@
       </tfoot>
     </table>
   </div>
+
+  <% if @stale_credits.any? %>
+    <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700"><%= t_ab.(:stale_title, days: @stale_days) %></h2>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t_ab.(:partner) %></th>
+          <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t_ab.(:reference) %></th>
+          <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t_ab.(:age_days) %></th>
+          <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t_ab.(:total) %></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @stale_credits.each do |row| %>
+          <tr>
+            <td class="px-4 py-2"><%= row.partner_name || t_ab.(:no_partner) %></td>
+            <td class="px-4 py-2"><%= row.reference %></td>
+            <td class="px-4 py-2 text-right"><%= row.age_days %></td>
+            <td class="px-4 py-2 text-right"><%= number_to_currency(row.amount, unit: "€") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
 </div>

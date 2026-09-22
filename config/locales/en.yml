@@ -145,6 +145,9 @@ en:
       date_to:     "To"
       aged_balance:
         title:       "Aged Balance"
+        stale_title: "Unallocated credits older than %{days} days"
+        reference:   "Reference"
+        age_days:    "Age (days)"
         as_of:       "As of"
         kind:        "Type"
         customer:    "Customers"

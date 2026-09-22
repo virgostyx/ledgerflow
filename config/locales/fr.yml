@@ -138,6 +138,9 @@ fr:
       date_to:      "Au"
       aged_balance:
         title:       "Balance âgée"
+        stale_title: "Reliquats non affectés depuis plus de %{days} jours"
+        reference:   "Référence"
+        age_days:    "Âge (jours)"
         as_of:       "Au"
         kind:        "Type"
         customer:    "Clients"
