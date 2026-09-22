@@ -197,9 +197,9 @@
 
             <%# Computed VAT and total (readonly display) %>
             <div class="text-right text-sm font-mono text-gray-600"
-                 data-line-vat-display><%= Accounting::MoneyPresenter.new(lf.object.vat_amount || 0).format %></div>
+                 data-line-vat-display><%= Accounting::MoneyPresenter.new(lf.object.vat_amount || 0, currency: invoice.currency).format %></div>
             <div class="text-right text-sm font-mono font-semibold text-gray-900"
-                 data-line-total-display><%= Accounting::MoneyPresenter.new(lf.object.total_incl_vat || 0).format %></div>
+                 data-line-total-display><%= Accounting::MoneyPresenter.new(lf.object.total_incl_vat || 0, currency: invoice.currency).format %></div>
 
             <%# Remove button %>
             <button type="button"
