@@ -32,6 +32,8 @@ class Accounting::Invoice < ApplicationRecord
   validates :invoice_type, presence: true
   validates :invoice_date, presence: true
   validates :partner,      presence: true
+  validates :currency,      inclusion: { in: Accounting::MoneyPresenter::CURRENCY_SYMBOLS.keys }
+  validates :exchange_rate, numericality: { greater_than: 0 }
 
   validate :journal_matches_invoice_type, if: -> { journal.present? }
   validate :cash_journal_is_cash, if: -> { cash_journal.present? }
@@ -74,17 +76,22 @@ class Accounting::Invoice < ApplicationRecord
     self.total_incl_vat    = lines.sum(&:total_incl_vat)
   end
 
+  # EUR-equivalent of total_incl_vat, for comparison against journal entry lines (always EUR).
+  def total_incl_vat_eur
+    (total_incl_vat * exchange_rate).round(2)
+  end
+
   # Customer receipts credit the receivable through lines linked to the invoice (journal_entry_lines.invoice_id).
   def paid_amount
     Accounting::JournalEntryLine.where(invoice_id: id).sum(:credit)
   end
 
   def remaining_amount
-    [ total_incl_vat - paid_amount, 0 ].max
+    [ total_incl_vat_eur - paid_amount, 0 ].max
   end
 
   def overpaid_amount
-    [ paid_amount - total_incl_vat, 0 ].max
+    [ paid_amount - total_incl_vat_eur, 0 ].max
   end
 
   # The posting entry (belongs_to journal_entry) plus any later entry whose

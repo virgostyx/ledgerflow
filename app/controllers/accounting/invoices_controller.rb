@@ -129,7 +129,7 @@ class Accounting::InvoicesController < ApplicationController
   def invoice_params
     params.require(:accounting_invoice).permit(
       :invoice_date, :due_date, :partner_id, :journal_id, :cash_journal_id,
-      :fiscal_year_id, :currency, :description, :notes, :external_ref,
+      :fiscal_year_id, :currency, :exchange_rate, :description, :notes, :external_ref,
       lines_attributes: [
         :id, :description, :account_id, :quantity, :unit_price,
         :vat_rate, :vat_code, :position, :_destroy,

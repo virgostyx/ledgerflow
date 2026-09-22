@@ -212,6 +212,52 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
   end
 
   # -----------------------------------------------------------------------
+  # FACTURE EN DEVISE ÉTRANGÈRE
+  # -----------------------------------------------------------------------
+
+  describe 'facture client en devise étrangère' do
+    subject(:invoice) do
+      inv = create(:invoice, invoice_type: :customer, partner: partner,
+                   fiscal_year: fiscal_year, journal: sale_journal,
+                   currency: 'USD', exchange_rate: '0.92')
+      create(:invoice_line, invoice: inv, account: account_700,
+             quantity: 1, unit_price: '1000.00', vat_rate: '21.00', position: 1)
+      inv.compute_totals
+      inv.save!
+      Accounting::PostInvoice.call(invoice: inv)
+      inv.reload
+    end
+
+    it "convertit la ligne client (400000) en EUR au taux de la facture" do
+      receivable_line = invoice.journal_entry.lines.find { |l| l.account == account_400 }
+      expect(receivable_line.debit).to eq(BigDecimal('1113.20'))
+    end
+
+    it 'stocke le montant original en devise facture sur amount_currency' do
+      receivable_line = invoice.journal_entry.lines.find { |l| l.account == account_400 }
+      expect(receivable_line.amount_currency).to eq(BigDecimal('1210.00'))
+    end
+
+    it 'stocke la devise et le taux de change sur la ligne' do
+      receivable_line = invoice.journal_entry.lines.find { |l| l.account == account_400 }
+      expect(receivable_line.currency).to eq('USD')
+      expect(receivable_line.exchange_rate).to eq(BigDecimal('0.92'))
+    end
+
+    it 'convertit aussi les lignes produit et TVA en EUR' do
+      revenue_line = invoice.journal_entry.lines.find { |l| l.account == account_700 }
+      vat_line     = invoice.journal_entry.lines.find { |l| l.account == account_451 }
+      expect(revenue_line.credit).to eq(BigDecimal('920.00'))
+      expect(vat_line.credit).to eq(BigDecimal('193.20'))
+    end
+
+    it "l'écriture reste équilibrée en EUR" do
+      entry = invoice.journal_entry
+      expect(entry.lines.sum(:debit)).to eq(entry.lines.sum(:credit))
+    end
+  end
+
+  # -----------------------------------------------------------------------
   # PROPAGATION DES ANNOTATIONS ANALYTIQUES
   # -----------------------------------------------------------------------
 

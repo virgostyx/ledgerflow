@@ -109,10 +109,10 @@
                 <span class="text-gray-400 ml-1"><%= line.account.label_fr %></span>
               </td>
               <td class="px-4 py-3 text-gray-900"><%= line.description %></td>
-              <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(line.subtotal_excl_vat).format %></td>
+              <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(line.subtotal_excl_vat, currency: @invoice.currency).format %></td>
               <td class="px-4 py-3 text-right"><%= line.vat_rate.to_f %>%</td>
-              <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(line.vat_amount).format %></td>
-              <td class="px-4 py-3 text-right font-mono font-semibold"><%= Accounting::MoneyPresenter.new(line.total_incl_vat).format %></td>
+              <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(line.vat_amount, currency: @invoice.currency).format %></td>
+              <td class="px-4 py-3 text-right font-mono font-semibold"><%= Accounting::MoneyPresenter.new(line.total_incl_vat, currency: @invoice.currency).format %></td>
             </tr>
             <% if line.analytical_annotations.any? %>
               <tr class="bg-indigo-50">
@@ -132,11 +132,11 @@
           <tr class="text-sm">
             <td colspan="2" class="px-4 py-3 text-right text-gray-500 font-medium">Totals</td>
             <td class="px-4 py-3 text-right font-mono font-semibold">
-              <%= Accounting::MoneyPresenter.new(@invoice.subtotal_excl_vat).format %>
+              <%= Accounting::MoneyPresenter.new(@invoice.subtotal_excl_vat, currency: @invoice.currency).format %>
             </td>
             <td class="px-4 py-3"></td>
             <td class="px-4 py-3 text-right font-mono font-semibold">
-              <%= Accounting::MoneyPresenter.new(@invoice.vat_amount).format %>
+              <%= Accounting::MoneyPresenter.new(@invoice.vat_amount, currency: @invoice.currency).format %>
             </td>
             <td class="px-4 py-3 text-right font-mono font-bold text-gray-900">
               <%= presenter.formatted_total %>

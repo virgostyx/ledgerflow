@@ -13,6 +13,8 @@ RSpec.shared_context 'with_pcmn_accounts' do
   let!(:account_451) { create(:account, code: '451000', label_fr: 'TVA à reverser', entity: entity) }
   let!(:account_550) { create(:account, code: '550000', label_fr: 'ING Compte courant', account_class: 5, entity: entity) }
   let!(:account_570) { create(:account, code: '570000', label_fr: 'Caisse principale', account_class: 5, entity: entity) }
+  let!(:account_651200) { create(:account, code: '651200', label_fr: 'Différences de change', account_class: 6, entity: entity) }
+  let!(:account_751100) { create(:account, code: '751100', label_fr: 'Gains de change', account_class: 7, entity: entity) }
 end
 
 RSpec.shared_context 'with_authenticated_api' do

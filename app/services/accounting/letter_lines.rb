@@ -7,6 +7,7 @@ class Accounting::LetterLines
     result = nil
     ApplicationRecord.transaction do
       result = with(lines: Array(lines)).reduce(
+        Accounting::Actions::PostFxAdjustment,
         Accounting::Actions::ValidateLettering,
         Accounting::Actions::CreateLettering,
         Accounting::Actions::PayLetteredInvoices

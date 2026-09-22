@@ -19,6 +19,42 @@ RSpec.describe Accounting::Invoice, type: :model do
     it { should validate_presence_of(:partner) }
   end
 
+  describe 'currency and exchange_rate validations' do
+    it 'is valid with a supported currency' do
+      expect(build(:invoice, currency: 'USD', exchange_rate: '0.92')).to be_valid
+    end
+
+    it 'is invalid with an unsupported currency' do
+      invoice = build(:invoice, currency: 'JPY')
+      expect(invoice).not_to be_valid
+      expect(invoice.errors[:currency]).to be_present
+    end
+
+    it 'is invalid with a zero exchange_rate' do
+      invoice = build(:invoice, exchange_rate: '0')
+      expect(invoice).not_to be_valid
+      expect(invoice.errors[:exchange_rate]).to be_present
+    end
+
+    it 'is invalid with a negative exchange_rate' do
+      invoice = build(:invoice, exchange_rate: '-1')
+      expect(invoice).not_to be_valid
+      expect(invoice.errors[:exchange_rate]).to be_present
+    end
+  end
+
+  describe '#total_incl_vat_eur' do
+    it 'equals total_incl_vat for an EUR invoice (rate 1)' do
+      invoice = build(:invoice, currency: 'EUR', exchange_rate: '1', total_incl_vat: '1000.00')
+      expect(invoice.total_incl_vat_eur).to eq(BigDecimal('1000.00'))
+    end
+
+    it 'converts a foreign-currency total to EUR using the exchange_rate' do
+      invoice = build(:invoice, currency: 'USD', exchange_rate: '0.92', total_incl_vat: '1000.00')
+      expect(invoice.total_incl_vat_eur).to eq(BigDecimal('920.00'))
+    end
+  end
+
   describe 'cash journal validation' do
     it 'is valid for a supplier invoice with a cash journal' do
       expect(build(:invoice, :supplier, cash_journal: create(:journal, :cash))).to be_valid

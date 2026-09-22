@@ -1,6 +1,7 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -140,9 +141,9 @@ ALTER SEQUENCE public.accounting_analytical_accounts_id_seq OWNED BY public.acco
 
 CREATE TABLE public.accounting_analytical_annotations (
     id bigint NOT NULL,
-    journal_entry_line_id bigint NOT NULL,
+    journal_entry_line_id bigint CONSTRAINT accounting_analytical_annotation_journal_entry_line_id_not_null NOT NULL,
     analytical_axis_id bigint NOT NULL,
-    analytical_account_id bigint NOT NULL,
+    analytical_account_id bigint CONSTRAINT accounting_analytical_annotation_analytical_account_id_not_null NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     entity_id bigint NOT NULL
@@ -370,7 +371,7 @@ CREATE TABLE public.accounting_invoice_line_annotations (
     id bigint NOT NULL,
     invoice_line_id bigint NOT NULL,
     analytical_axis_id bigint NOT NULL,
-    analytical_account_id bigint NOT NULL,
+    analytical_account_id bigint CONSTRAINT accounting_invoice_line_annotati_analytical_account_id_not_null NOT NULL,
     entity_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
@@ -466,7 +467,8 @@ CREATE TABLE public.accounting_invoices (
     peppol_status integer DEFAULT 0 NOT NULL,
     entity_id bigint NOT NULL,
     journal_id bigint,
-    cash_journal_id bigint
+    cash_journal_id bigint,
+    exchange_rate numeric(10,6) DEFAULT 1.0 NOT NULL
 );
 
 
@@ -2541,6 +2543,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260922100000'),
 ('20260921100000'),
 ('20260920200000'),
 ('20260920100100'),

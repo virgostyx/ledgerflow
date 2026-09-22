@@ -65,6 +65,12 @@ RSpec.describe Accounting::InvoicePresenter, type: :presenter do
       presenter = described_class.new(invoice)
       expect(presenter.formatted_total).to eq('1 234,56 €')
     end
+
+    it 'formate le total dans la devise de la facture' do
+      invoice = build(:invoice, currency: 'USD', total_incl_vat: BigDecimal('1234.56'))
+      presenter = described_class.new(invoice)
+      expect(presenter.formatted_total).to eq('1 234,56 $')
+    end
   end
 
   describe '#type_label' do

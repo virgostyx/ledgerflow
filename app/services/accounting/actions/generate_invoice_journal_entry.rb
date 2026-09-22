@@ -58,8 +58,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     receivable_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::CUSTOMERS)
     vat_account        = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
 
-    create_line(entry, :debit, invoice.total_incl_vat, account: receivable_account, partner: invoice.partner,
-                label: invoice.partner.name)
+    create_line(entry, :debit, invoice.total_incl_vat, invoice: invoice, account: receivable_account,
+                partner: invoice.partner, label: invoice.partner.name)
     build_item_lines(invoice, entry, :credit, VAT_GRID_SALE)
     build_vat_lines(invoice, entry, :credit, account: vat_account, vat_code: VAT_CODE_SALE_VAT, label: "VAT")
   end
@@ -70,15 +70,15 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
     build_item_lines(invoice, entry, :debit, VAT_GRID_PURCHASE)
     build_vat_lines(invoice, entry, :debit, account: vat_account, vat_code: VAT_CODE_PURCHASE_VAT, label: "Recoverable VAT")
-    create_line(entry, :credit, invoice.total_incl_vat, account: payable_account, partner: invoice.partner,
-                label: invoice.partner.name)
+    create_line(entry, :credit, invoice.total_incl_vat, invoice: invoice, account: payable_account,
+                partner: invoice.partner, label: invoice.partner.name)
   end
 
   # One journal line per invoice line, on `side`, carrying the VAT grid code.
   def self.build_item_lines(invoice, entry, side, vat_grid)
     invoice.lines.each do |line|
-      journal_line = create_line(entry, side, line.subtotal_excl_vat, account: line.account, label: line.description,
-                                 vat_code: vat_grid[line.vat_rate.to_i])
+      journal_line = create_line(entry, side, line.subtotal_excl_vat, invoice: invoice, account: line.account,
+                                 label: line.description, vat_code: vat_grid[line.vat_rate.to_i])
       propagate_annotations(line, journal_line)
     end
   end
@@ -88,17 +88,22 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     invoice.lines.group_by { |l| l.vat_rate.to_i }.each do |rate, lines|
       next if rate.zero?
       grouped_vat = lines.sum(&:vat_amount)
-      create_line(entry, side, grouped_vat, account: account, label: "#{label} #{rate}%",
-                  vat_code: vat_code, vat_amount: grouped_vat)
+      create_line(entry, side, grouped_vat, invoice: invoice, account: account, label: "#{label} #{rate}%",
+                  vat_code: vat_code, vat_amount: (grouped_vat * invoice.exchange_rate).round(2))
     end
   end
 
-  def self.create_line(entry, side, amount, **attrs)
+  # `amount` is in the invoice's currency; debit/credit are always posted in EUR.
+  def self.create_line(entry, side, amount, invoice:, **attrs)
     zero = BigDecimal("0")
+    eur_amount = (amount * invoice.exchange_rate).round(2)
     Accounting::JournalEntryLine.create!(
-      journal_entry: entry,
-      debit:         side == :debit ? amount : zero,
-      credit:        side == :credit ? amount : zero,
+      journal_entry:   entry,
+      debit:           side == :debit ? eur_amount : zero,
+      credit:          side == :credit ? eur_amount : zero,
+      currency:        invoice.currency,
+      amount_currency: amount,
+      exchange_rate:   invoice.exchange_rate,
       **attrs
     )
   end

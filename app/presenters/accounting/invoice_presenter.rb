@@ -46,7 +46,7 @@ class Accounting::InvoicePresenter
   end
 
   def formatted_total
-    Accounting::MoneyPresenter.new(@invoice.total_incl_vat).format
+    Accounting::MoneyPresenter.new(@invoice.total_incl_vat, currency: @invoice.currency).format
   end
 
   def type_label

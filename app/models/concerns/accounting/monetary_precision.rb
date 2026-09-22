@@ -4,7 +4,7 @@ module Accounting::MonetaryPrecision
   MONETARY_COLUMNS = %w[debit credit amount vat_amount amount_currency
                         balance_debit balance_credit opening_balance
                         unit_price subtotal_excl_vat total_incl_vat
-                        vat_rate quantity].freeze
+                        vat_rate quantity exchange_rate].freeze
 
   included do
     before_validation :coerce_monetary_fields_to_bigdecimal

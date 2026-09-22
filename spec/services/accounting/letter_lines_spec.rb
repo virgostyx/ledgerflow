@@ -145,4 +145,33 @@ RSpec.describe Accounting::LetterLines, type: :service do
         .not_to raise_error
     end
   end
+
+  describe 'foreign-currency customer invoice settled at a different EUR rate' do
+    let!(:misc_journal) { create(:journal) }
+    let(:sale_journal)  { create(:journal, :sale) }
+    let(:customer)      { create(:partner, :customer) }
+    let(:invoice) do
+      create(:invoice, :with_lines, invoice_type: :customer, partner: customer,
+             fiscal_year: fiscal_year, journal: sale_journal, currency: 'USD', exchange_rate: '0.92')
+    end
+    let(:receivable_line) do
+      Accounting::PostInvoice.call(invoice: invoice)
+      invoice.reload.journal_entry.lines.find_by!(account: account_400)
+    end
+    # Invoice total is 1210.00 USD (1000.00 + 21% VAT) * 0.92 = 1113.20 EUR at invoice date;
+    # the bank actually receives 1143.20 EUR at a slightly better rate.
+    let(:payment_line) { line(account: account_400, credit: 1143.20, partner: customer) }
+
+    it 'succeeds despite the EUR mismatch and posts the FX gain' do
+      result = described_class.call(lines: [ receivable_line, payment_line ])
+      expect(result).to be_success
+      expect(invoice.reload).to be_paid
+    end
+
+    it 'books the 30.00 EUR gain to 751100' do
+      described_class.call(lines: [ receivable_line, payment_line ])
+      gain_line = Accounting::JournalEntryLine.find_by(account: account_751100)
+      expect(gain_line.credit).to eq(BigDecimal('30.00'))
+    end
+  end
 end
