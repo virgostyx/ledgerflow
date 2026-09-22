@@ -76,6 +76,12 @@ class Accounting::ReportsController < ApplicationController
     end
     @rows   = Accounting::AgedBalanceQuery.new(kind: @kind, as_of: @as_of).call
     @totals = Accounting::AgedBalanceQuery.totals(@rows)
+
+    respond_to do |format|
+      format.html
+      format.csv { send_data aged_balance_csv, filename: "aged_balance_#{@kind}_#{@as_of}.csv",
+                              type: "text/csv; charset=utf-8" }
+    end
   end
 
   def analytic_by_project
@@ -129,6 +135,20 @@ class Accounting::ReportsController < ApplicationController
   # Raises ArgumentError on an invalid date (rescued by trial_balance).
   def parse_date(value, default)
     value.present? ? Date.parse(value) : default
+  end
+
+  def aged_balance_csv
+    require "csv"
+    t = ->(key) { I18n.t("accounting.reports.aged_balance.#{key}") }
+    "\uFEFF" + CSV.generate(headers: true) do |csv|
+      csv << [ t.(:partner), *Accounting::AgedBalanceQuery::BUCKETS.map { |b| t.(b) }, t.(:unallocated), t.(:total) ]
+      @rows.each do |row|
+        csv << [ row.partner_name || t.(:no_partner),
+                *(Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated total]).map { |col| format("%.2f", row[col]) } ]
+      end
+      csv << [ I18n.t("accounting.reports.totals"),
+              *(Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated total]).map { |col| format("%.2f", @totals[col]) } ]
+    end
   end
 
   def trial_balance_csv

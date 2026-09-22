@@ -210,6 +210,27 @@ RSpec.describe "Accounting::Reports", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it "returns CSV with ?format=csv, BOM-prefixed and one row per partner plus totals" do
+      partner = create(:partner, name: "Acme Supplies")
+      customer_account = create(:account, :customer, reconcilable: true)
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 10)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: expense_account, debit: BigDecimal("100"), credit: BigDecimal("0"))
+      create(:journal_entry_line, journal_entry: entry, account: customer_account, partner: partner,
+             debit: BigDecimal("100"), credit: BigDecimal("0"))
+      entry.post!
+
+      get accounting_reports_aged_balance_path(as_of: Date.current, format: :csv)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.content_type).to include("text/csv")
+      expect(response.body).to start_with("\uFEFF")
+      body = response.body.delete_prefix("\uFEFF")
+      rows = CSV.parse(body, headers: true).map(&:to_h)
+      expect(rows.map { |r| r["Partner"] }).to eq([ "Acme Supplies", "Totals" ])
+      expect(rows.last["Total"]).to eq("100.00")
+    end
+
     it "redirects a user without report access" do
       sign_out accountant
       budget_user = create(:user, role: :budget_user)
