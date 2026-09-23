@@ -1,0 +1,67 @@
+<%= form_with model: fixed_asset, scope: :accounting_fixed_asset,
+              url: fixed_asset.persisted? ? accounting_fixed_asset_path(fixed_asset) : accounting_fixed_assets_path,
+              html: { class: 'space-y-6 max-w-2xl' } do |f| %>
+  <% if fixed_asset.errors.any? %>
+    <div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
+      <ul class="list-disc list-inside">
+        <% fixed_asset.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.text_field :description,
+          placeholder: ' ',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :description, 'Description', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.select :asset_category,
+          Accounting::FixedAsset.asset_categories.keys.map { |k| [k.humanize, k] },
+          {},
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur change->floating-label#checkValue' } %>
+    <%= f.label :asset_category, 'Category', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    <p class="mt-1 text-xs text-gray-400">Movable → 5-year VAT review period. Immovable → 15-year.</p>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.date_field :acquisition_date,
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :acquisition_date, 'Acquisition date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.number_field :vat_amount_initial, step: '0.01', min: '0',
+          placeholder: ' ',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :vat_amount_initial, 'Initial VAT amount deducted', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.number_field :prorata_at_acquisition, step: '0.01', min: '0', max: '100',
+          placeholder: ' ',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :prorata_at_acquisition, 'Prorata at acquisition (%)', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    <p class="mt-1 text-xs text-gray-400">100 if fully deducted (default).</p>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.date_field :disposed_on,
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :disposed_on, 'Disposed on (leave blank if still held)', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <%= f.submit class: 'btn-primary' %>
+    <%= link_to 'Cancel', accounting_fixed_assets_path, class: 'btn-secondary' %>
+  </div>
+<% end %>

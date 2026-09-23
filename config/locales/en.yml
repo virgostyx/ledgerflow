@@ -81,7 +81,14 @@ en:
         cancel_not_posted: "Only a posted invoice can be cancelled."
         cancel_paid:       "This invoice has payments or is in a payment batch, undo them first."
 
+    fixed_assets:
+      created: "Fixed asset created."
+      updated: "Fixed asset updated."
+      deleted: "Fixed asset deleted."
+
     settings:
+      vat_settings:
+        updated: "VAT settings updated."
       journals:
         created:          "Journal created successfully."
         updated:          "Journal updated."

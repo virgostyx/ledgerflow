@@ -65,6 +65,8 @@ Rails.application.routes.draw do
 
       resources :intracom_listings, only: [ :index, :new, :create, :show ]
 
+      resources :fixed_assets, except: [ :show ]
+
       resources :letterings, only: [ :new, :create, :destroy ]
       resources :line_allocations, only: [ :create, :destroy ]
 
@@ -110,6 +112,7 @@ Rails.application.routes.draw do
         resources :analytical_axes do
           resources :analytical_accounts, shallow: true
         end
+        resource :vat_settings, only: [ :edit, :update ]
       end
     end
   end

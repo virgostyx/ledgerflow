@@ -1,0 +1,15 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Fixed Assets', path: accounting_fixed_assets_path },
+    { label: @fixed_asset.description }
+  ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(
+      title: "Edit #{@fixed_asset.description}",
+      back_path: accounting_fixed_assets_path,
+      back_text: 'Fixed Assets'
+    ) %>
+
+<%= render 'form', fixed_asset: @fixed_asset %>
