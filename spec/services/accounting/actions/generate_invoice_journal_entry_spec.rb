@@ -39,6 +39,11 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
         expect(expense_line.vat_code).to eq(81)
       end
 
+      it 'la ligne dépense porte le montant HT en vat_amount (pour la grille 81)' do
+        expense_line = invoice.journal_entry.lines.find { |l| l.account == account_604 }
+        expect(expense_line.vat_amount).to eq(BigDecimal('1000.00'))
+      end
+
       it 'la ligne TVA (410100) a vat_code 59' do
         vat_line = invoice.journal_entry.lines.find { |l| l.account == account_411 }
         expect(vat_line.vat_code).to eq(59)
@@ -168,6 +173,11 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
         expect(revenue_line.vat_code).to eq(1)
       end
 
+      it 'la ligne produit porte le montant HT en vat_amount (pour la grille 01)' do
+        revenue_line = invoice.journal_entry.lines.find { |l| l.account == account_700 }
+        expect(revenue_line.vat_amount).to eq(BigDecimal('2000.00'))
+      end
+
       it 'la ligne TVA (450100) a vat_code 54' do
         vat_line = invoice.journal_entry.lines.find { |l| l.account == account_451 }
         expect(vat_line.vat_code).to eq(54)
@@ -207,6 +217,34 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
       it 'la ligne produit a vat_code 2' do
         revenue_line = invoice.journal_entry.lines.find { |l| l.account == account_700 }
         expect(revenue_line.vat_code).to eq(2)
+      end
+    end
+
+    context 'taux 0% (exonéré/exporté)' do
+      subject(:invoice) do
+        post_invoice_with_lines(type: :customer, journal: sale_journal,
+                                lines_data: [{ account: account_700,
+                                               unit_price: '500.00', vat_rate: '0.00' }])
+      end
+
+      it 'la ligne produit a vat_code 0 (grille 00)' do
+        revenue_line = invoice.journal_entry.lines.find { |l| l.account == account_700 }
+        expect(revenue_line.vat_code).to eq(0)
+      end
+
+      it 'la ligne produit porte le montant HT en vat_amount (pour la grille 00)' do
+        revenue_line = invoice.journal_entry.lines.find { |l| l.account == account_700 }
+        expect(revenue_line.vat_amount).to eq(BigDecimal('500.00'))
+      end
+
+      it 'aucune ligne TVA n est créée' do
+        vat_lines = invoice.journal_entry.lines.select { |l| l.account == account_451 }
+        expect(vat_lines).to be_empty
+      end
+
+      it "l écriture est équilibrée" do
+        entry = invoice.journal_entry
+        expect(entry.lines.sum(:debit)).to eq(entry.lines.sum(:credit))
       end
     end
   end

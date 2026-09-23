@@ -1,12 +1,13 @@
 module Accounting::VatGrid
   RATE_TO_GRID = {
-    sale:     { 21 => 1, 12 => 2, 6 => 3 },
+    sale:     { 21 => 1, 12 => 2, 6 => 3, 0 => 0 },
     purchase: { 21 => 81, 12 => 82, 6 => 83 }
   }.freeze
 
   VAT_LINE_GRID = { sale: 54, purchase: 59 }.freeze
 
   LABELS = {
+    0  => "Exempt/exported sales",
     1  => "Sales at 21%",
     2  => "Sales at 12%",
     3  => "Sales at 6%",

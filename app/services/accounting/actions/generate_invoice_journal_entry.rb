@@ -74,7 +74,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   def self.build_item_lines(invoice, entry, side, vat_grid)
     invoice.lines.each do |line|
       journal_line = create_line(entry, side, line.subtotal_excl_vat, invoice: invoice, account: line.account,
-                                 label: line.description, vat_code: vat_grid[line.vat_rate.to_i])
+                                 label: line.description, vat_code: vat_grid[line.vat_rate.to_i],
+                                 vat_amount: (line.subtotal_excl_vat * invoice.exchange_rate).round(2))
       propagate_annotations(line, journal_line)
     end
   end

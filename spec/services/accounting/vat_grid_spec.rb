@@ -21,7 +21,7 @@ RSpec.describe Accounting::VatGrid do
 
   describe 'RATE_TO_GRID' do
     it 'mappe les taux de vente vers les grilles de base' do
-      expect(described_class::RATE_TO_GRID[:sale]).to eq(21 => 1, 12 => 2, 6 => 3)
+      expect(described_class::RATE_TO_GRID[:sale]).to eq(21 => 1, 12 => 2, 6 => 3, 0 => 0)
     end
 
     it 'mappe les taux d achat vers les grilles de base' do
