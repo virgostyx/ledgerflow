@@ -190,6 +190,7 @@
   {"code":"640100","label_fr":"Taxes et impôts liés à l'exploitation","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":true,"reconcilable":false},
   {"code":"640200","label_fr":"Amendes et pénalités","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":true,"reconcilable":false},
   {"code":"640300","label_fr":"Pertes sur créances irrecouvrables","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":true,"reconcilable":false},
+  {"code":"640400","label_fr":"TVA non déductible","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":true,"reconcilable":false},
   {"code":"641000","label_fr":"Dons et libéralités accordés","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":false,"reconcilable":false},
   {"code":"641100","label_fr":"Dons en numéraire","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":true,"reconcilable":false},
   {"code":"641200","label_fr":"Dons en nature","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":true,"reconcilable":false},

@@ -51,6 +51,20 @@ RSpec.describe Entity, type: :model do
     it { should define_enum_for(:vat_regime).with_values(normal: 0, franchise: 1) }
   end
 
+  describe 'vat_scheme' do
+    it { should define_enum_for(:vat_scheme).with_values(normal: 0, mixed: 1).with_prefix(:vat_scheme) }
+
+    it 'vaut normal par défaut' do
+      expect(Entity.new).to be_vat_scheme_normal
+    end
+  end
+
+  describe 'vat_prorata_rate' do
+    it 'est nil par défaut (déduction totale)' do
+      expect(Entity.new.vat_prorata_rate).to be_nil
+    end
+  end
+
   describe 'vat_number uniqueness' do
     it 'accepte deux entités sans vat_number' do
       create(:entity, vat_number: nil)

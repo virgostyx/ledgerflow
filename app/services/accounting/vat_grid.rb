@@ -34,6 +34,8 @@ module Accounting::VatGrid
 
   LABELS = {
     0  => "Exempt/exported sales",
+    61 => "VAT prorata regularization (owed to the State)",
+    62 => "VAT prorata regularization (recovered)",
     1  => "Sales at 21%",
     2  => "Sales at 12%",
     3  => "Sales at 6%",

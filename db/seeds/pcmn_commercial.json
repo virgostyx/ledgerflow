@@ -1719,6 +1719,15 @@
     "reconcilable": false
   },
   {
+    "code": "640400",
+    "label_fr": "TVA non déductible",
+    "account_class": 6,
+    "account_type": "expense",
+    "normal_balance": "debit",
+    "is_leaf": true,
+    "reconcilable": false
+  },
+  {
     "code": "641000",
     "label_fr": "Dons et libéralités accordés",
     "account_class": 6,

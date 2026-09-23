@@ -73,21 +73,42 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   end
 
   def self.build_supplier_vat_lines(invoice, entry)
-    deductible_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_DEDUCTIBLE)
-
-    if invoice.domestic?
-      build_vat_lines(invoice, entry, :debit, account: deductible_account, vat_code: VAT_CODE_PURCHASE_VAT,
-                      label: "Recoverable VAT")
-      return
+    unless invoice.domestic?
+      due_grid = Accounting::VatGrid::SELF_ASSESSED_VAT_GRID[invoice.vat_treatment.to_sym]
+      if due_grid
+        due_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
+        build_vat_lines(invoice, entry, :credit, account: due_account, vat_code: due_grid,
+                        label: "Self-assessed VAT due")
+      end
+      return unless due_grid # e.g. export: not a reverse-charge treatment, nothing to self-assess
     end
 
-    due_grid = Accounting::VatGrid::SELF_ASSESSED_VAT_GRID[invoice.vat_treatment.to_sym]
-    return unless due_grid # e.g. export: not a reverse-charge treatment, nothing to self-assess
+    build_deductible_vat_lines(invoice, entry)
+  end
 
-    due_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
-    build_vat_lines(invoice, entry, :credit, account: due_account, vat_code: due_grid, label: "Self-assessed VAT due")
-    build_vat_lines(invoice, entry, :debit, account: deductible_account, vat_code: VAT_CODE_PURCHASE_VAT,
-                    label: "Recoverable VAT")
+  # Recoverable VAT, split by the entity's deduction prorata (nil = fully deductible,
+  # the pre-Phase-5 default). The non-recoverable share is posted as a plain cost,
+  # outside any VAT grid.
+  def self.build_deductible_vat_lines(invoice, entry)
+    deductible_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_DEDUCTIBLE)
+    prorata = invoice.entity.vat_prorata_rate
+
+    invoice.lines.group_by { |l| l.vat_rate.to_i }.each do |rate, lines|
+      next if rate.zero?
+      grouped_vat = lines.sum(&:vat_amount)
+      deductible  = prorata.present? ? (grouped_vat * prorata / 100).round(2) : grouped_vat
+
+      create_line(entry, :debit, deductible, invoice: invoice, account: deductible_account,
+                  label: "Recoverable VAT #{rate}%", vat_code: VAT_CODE_PURCHASE_VAT,
+                  vat_amount: (deductible * invoice.exchange_rate).round(2))
+
+      non_deductible = grouped_vat - deductible
+      next unless non_deductible.positive?
+
+      non_deductible_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_NON_DEDUCTIBLE)
+      create_line(entry, :debit, non_deductible, invoice: invoice, account: non_deductible_account,
+                  label: "Non-deductible VAT #{rate}%")
+    end
   end
 
   # Rate-based grids for domestic invoices; a single fixed grid (any rate) otherwise.
@@ -148,7 +169,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
   private_class_method :find_journal, :build_entry_lines,
                        :build_customer_lines, :build_supplier_lines, :build_supplier_vat_lines,
-                       :sale_grid, :purchase_grid,
+                       :build_deductible_vat_lines, :sale_grid, :purchase_grid,
                        :build_item_lines, :build_vat_lines, :create_line,
                        :propagate_annotations
 end

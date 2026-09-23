@@ -5,6 +5,7 @@ class Entity < ApplicationRecord
 
   enum :vat_filing_frequency, { monthly: 0, quarterly: 1 }
   enum :vat_regime,           { normal: 0, franchise: 1 }
+  enum :vat_scheme,           { normal: 0, mixed: 1 }, prefix: :vat_scheme
 
   validates :name,       presence: true
   validates :legal_name, presence: true

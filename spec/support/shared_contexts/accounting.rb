@@ -15,6 +15,7 @@ RSpec.shared_context 'with_pcmn_accounts' do
   let!(:account_570) { create(:account, code: '570000', label_fr: 'Caisse principale', account_class: 5, entity: entity) }
   let!(:account_651200) { create(:account, code: '651200', label_fr: 'Différences de change', account_class: 6, entity: entity) }
   let!(:account_751100) { create(:account, code: '751100', label_fr: 'Gains de change', account_class: 7, entity: entity) }
+  let!(:account_640400) { create(:account, code: '640400', label_fr: 'TVA non déductible', account_class: 6, entity: entity) }
 end
 
 RSpec.shared_context 'with_authenticated_api' do

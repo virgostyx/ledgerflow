@@ -427,4 +427,89 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
       end
     end
   end
+
+  # -----------------------------------------------------------------------
+  # PRORATA DE DÉDUCTION (ASSUJETTI MIXTE)
+  # -----------------------------------------------------------------------
+
+  describe 'facture fournisseur — prorata de déduction' do
+    context 'entité sans prorata (déduction totale, comportement inchangé)' do
+      subject(:invoice) do
+        post_invoice_with_lines(type: :supplier, journal: purchase_journal,
+                                lines_data: [{ account: account_604, unit_price: '1000.00', vat_rate: '21.00' }])
+      end
+
+      it 'aucune ligne de TVA non déductible n est créée' do
+        expect(invoice.journal_entry.lines.map(&:account)).not_to include(account_640400)
+      end
+
+      it 'la ligne TVA déductible porte le montant complet' do
+        vat_line = invoice.journal_entry.lines.find { |l| l.account == account_411 }
+        expect(vat_line.debit).to eq(BigDecimal('210.00'))
+      end
+    end
+
+    context 'entité avec un prorata de 70%' do
+      before { entity.update!(vat_prorata_rate: '70.00') }
+
+      subject(:invoice) do
+        post_invoice_with_lines(type: :supplier, journal: purchase_journal,
+                                lines_data: [{ account: account_604, unit_price: '1000.00', vat_rate: '21.00' }])
+      end
+
+      it 'la ligne TVA déductible ne porte que 70% du montant (147,00)' do
+        vat_line = invoice.journal_entry.lines.find { |l| l.account == account_411 }
+        expect(vat_line.debit).to eq(BigDecimal('147.00'))
+        expect(vat_line.vat_code).to eq(59)
+      end
+
+      it 'la part non déductible (63,00) est postée en charge (640400), sans grille TVA' do
+        non_deductible_line = invoice.journal_entry.lines.find { |l| l.account == account_640400 }
+        expect(non_deductible_line.debit).to eq(BigDecimal('63.00'))
+        expect(non_deductible_line.vat_code).to be_nil
+      end
+
+      it "l écriture reste équilibrée" do
+        entry = invoice.journal_entry
+        expect(entry.lines.sum(:debit)).to eq(entry.lines.sum(:credit))
+      end
+
+      it 'le montant dû au fournisseur (440000) reste le TTC complet, non affecté par le prorata' do
+        payable_line = invoice.journal_entry.lines.find { |l| l.account == account_440 }
+        expect(payable_line.credit).to eq(BigDecimal('1210.00'))
+      end
+    end
+
+    context 'entité avec prorata, en régime cocontractant (intracom_services)' do
+      let(:eu_partner) { create(:partner, vat_number: 'DE123456789', country: 'DE') }
+
+      before { entity.update!(vat_prorata_rate: '50.00') }
+
+      subject(:invoice) do
+        post_invoice_with_lines(type: :supplier, journal: purchase_journal, invoice_partner: eu_partner,
+                                vat_treatment: :intracom_services,
+                                lines_data: [{ account: account_604, unit_price: '1000.00', vat_rate: '21.00' }])
+      end
+
+      it 'la ligne de TVA due (auto-liquidée) porte le montant complet, non affecté par le prorata' do
+        due_line = invoice.journal_entry.lines.find { |l| l.account == account_451 }
+        expect(due_line.credit).to eq(BigDecimal('210.00'))
+      end
+
+      it 'seule la part déductible (105,00) est portée en TVA récupérable' do
+        deductible_line = invoice.journal_entry.lines.find { |l| l.account == account_411 }
+        expect(deductible_line.debit).to eq(BigDecimal('105.00'))
+      end
+
+      it 'la part non déductible (105,00) est postée en charge' do
+        non_deductible_line = invoice.journal_entry.lines.find { |l| l.account == account_640400 }
+        expect(non_deductible_line.debit).to eq(BigDecimal('105.00'))
+      end
+
+      it "l écriture reste équilibrée" do
+        entry = invoice.journal_entry
+        expect(entry.lines.sum(:debit)).to eq(entry.lines.sum(:credit))
+      end
+    end
+  end
 end
