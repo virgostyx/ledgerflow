@@ -22,4 +22,8 @@ class Accounting::FiscalYearPolicy < ApplicationPolicy
   def destroy?
     false
   end
+
+  def vat_regularization?
+    user.admin? || user.accountant?
+  end
 end

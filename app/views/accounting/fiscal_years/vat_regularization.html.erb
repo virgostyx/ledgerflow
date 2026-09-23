@@ -1,0 +1,84 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: t("accounting.fiscal_years.index.title"), path: accounting_fiscal_years_path },
+    { label: t("accounting.fiscal_years.show.title", year: @fiscal_year.year), path: accounting_fiscal_year_path(@fiscal_year) },
+    { label: t("accounting.fiscal_years.vat_regularization.title") }
+  ]) %>
+<% end %>
+
+<div class="mx-auto max-w-3xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900">
+    <%= t("accounting.fiscal_years.vat_regularization.title") %>
+  </h1>
+
+  <div class="rounded-lg bg-white border border-gray-200 p-6 mb-6">
+    <h2 class="text-sm font-semibold text-gray-700 mb-3"><%= t("accounting.fiscal_years.vat_regularization.regularize_prorata") %></h2>
+
+    <%= form_with url: regularize_prorata_accounting_fiscal_year_path(@fiscal_year), method: :post, class: "flex items-end gap-3" do |f| %>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">
+          <%= t("accounting.fiscal_years.vat_regularization.final_prorata_rate", year: @fiscal_year.year) %>
+        </label>
+        <%= f.number_field :final_prorata_rate, step: "0.01", min: "0", max: "100",
+              value: @suggested_prorata_rate,
+              class: "rounded-lg border border-gray-300 px-3 py-2 text-sm w-32" %>
+      </div>
+      <%= f.submit t("accounting.fiscal_years.vat_regularization.regularize_prorata"),
+            class: "px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700" %>
+    <% end %>
+
+    <% if @suggested_prorata_rate %>
+      <p class="mt-2 text-xs text-gray-500">
+        <%= t("accounting.fiscal_years.vat_regularization.suggested_rate_hint", rate: @suggested_prorata_rate) %>
+      </p>
+    <% end %>
+  </div>
+
+  <div class="rounded-lg bg-white border border-gray-200 p-6">
+    <h2 class="text-sm font-semibold text-gray-700 mb-3"><%= t("accounting.fiscal_years.vat_regularization.review_all_assets") %></h2>
+
+    <% if @fixed_assets.any? %>
+      <table class="w-full text-sm border-collapse mb-4">
+        <thead>
+          <tr class="bg-gray-50 border-b border-gray-200">
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500"><%= t("accounting.fiscal_years.vat_regularization.assets_table.description") %></th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500"><%= t("accounting.fiscal_years.vat_regularization.assets_table.category") %></th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500"><%= t("accounting.fiscal_years.vat_regularization.assets_table.acquisition") %></th>
+            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500"><%= t("accounting.fiscal_years.vat_regularization.assets_table.acquisition_prorata") %></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @fixed_assets.each do |asset| %>
+            <tr>
+              <td class="px-3 py-2 text-gray-900"><%= asset.description %></td>
+              <td class="px-3 py-2 text-gray-700 capitalize"><%= asset.asset_category %></td>
+              <td class="px-3 py-2 text-gray-700"><%= l(asset.acquisition_date) %></td>
+              <td class="px-3 py-2 text-right font-mono text-gray-700"><%= asset.prorata_at_acquisition %>%</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <%= form_with url: review_fixed_assets_accounting_fiscal_year_path(@fiscal_year), method: :post, class: "flex items-end gap-3" do |f| %>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">
+            <%= t("accounting.fiscal_years.vat_regularization.final_prorata_rate", year: @fiscal_year.year) %>
+          </label>
+          <%= f.number_field :final_prorata_rate, step: "0.01", min: "0", max: "100",
+                value: @suggested_prorata_rate,
+                class: "rounded-lg border border-gray-300 px-3 py-2 text-sm w-32" %>
+        </div>
+        <%= f.submit t("accounting.fiscal_years.vat_regularization.review_all_assets"),
+              class: "px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700" %>
+      <% end %>
+    <% else %>
+      <%= render Ui::EmptyStateComponent.new(title: t("accounting.fiscal_years.vat_regularization.no_assets"), icon: :inbox) %>
+    <% end %>
+  </div>
+
+  <div class="mt-6">
+    <%= link_to "← Back to Fiscal Year #{@fiscal_year.year}", accounting_fiscal_year_path(@fiscal_year),
+                class: "text-sm text-primary-600 hover:text-primary-800" %>
+  </div>
+</div>

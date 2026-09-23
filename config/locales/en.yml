@@ -139,6 +139,23 @@ en:
         missing_carry_account: "Account %{code} (carry-forward) not found. Please create account %{code} before opening a new fiscal year."
         missing_opening_journal: "No active misc journal found. Please create one before opening a new fiscal year."
 
+      vat_regularization:
+        title:               "Year-end VAT regularization"
+        final_prorata_rate:  "Final prorata rate for %{year}"
+        suggested_rate_hint: "Suggested from this year's filed declarations: %{rate}% — review before applying."
+        regularize_prorata:  "Regularize prorata"
+        review_all_assets:   "Review all assets"
+        prorata_regularized: "Prorata regularization posted."
+        no_adjustment_needed: "No adjustment needed — the final rate matches what was already deducted."
+        assets_reviewed:     "%{count} of %{total} asset(s) adjusted."
+        invalid_rate:        "Invalid rate."
+        no_assets:           "No fixed asset is under review for this fiscal year."
+        assets_table:
+          description:  "Description"
+          category:     "Category"
+          acquisition:  "Acquisition date"
+          acquisition_prorata: "Prorata at acquisition"
+
     reports:
       filter:      "Filter"
       export_csv:  "Export CSV"

@@ -67,7 +67,12 @@ Rails.application.routes.draw do
       resources :line_allocations, only: [ :create, :destroy ]
 
       resources :fiscal_years do
-        member { post :close }
+        member do
+          post :close
+          get  :vat_regularization
+          post :regularize_prorata
+          post :review_fixed_assets
+        end
       end
 
       resource :bank_reconciliation, only: [ :show, :update ] do
