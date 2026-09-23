@@ -50,4 +50,16 @@
   <% else %>
     <%= render Ui::EmptyStateComponent.new(title: 'No VAT boxes for this period.', icon: :inbox) %>
   <% end %>
+
+  <div class="flex gap-3 pt-6 mt-6 border-t border-gray-200">
+    <%= link_to 'Download Intervat XML', intervat_xml_accounting_vat_declaration_path(@declaration),
+          class: 'px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md' %>
+    <% if @declaration.draft? && policy(@declaration).submit? %>
+      <%= button_to 'Mark as submitted', submit_accounting_vat_declaration_path(@declaration),
+            class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700' %>
+    <% elsif @declaration.submitted? && policy(@declaration).accept? %>
+      <%= button_to 'Mark as accepted', accept_accounting_vat_declaration_path(@declaration),
+            class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700' %>
+    <% end %>
+  </div>
 </div>

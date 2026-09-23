@@ -140,6 +140,53 @@ RSpec.describe 'Accounting::VatDeclarations', type: :request do
     end
   end
 
+  describe 'POST /accounting/vat_declarations/:id/submit' do
+    let(:declaration) { create(:vat_declaration, fiscal_year: fiscal_year, status: :draft) }
+
+    it 'passe la déclaration en submitted et redirige' do
+      post submit_accounting_vat_declaration_path(declaration)
+      expect(declaration.reload).to be_submitted
+      expect(response).to redirect_to(accounting_vat_declaration_path(declaration))
+    end
+
+    it 'refuse si la déclaration n est pas en draft' do
+      declaration.update!(status: :submitted)
+      post submit_accounting_vat_declaration_path(declaration)
+      expect(response).to redirect_to(accounting_vat_declaration_path(declaration))
+      follow_redirect!
+      expect(response.body).to include('cannot change status')
+    end
+  end
+
+  describe 'POST /accounting/vat_declarations/:id/accept' do
+    let(:declaration) { create(:vat_declaration, fiscal_year: fiscal_year, status: :submitted) }
+
+    it 'passe la déclaration en accepted et redirige' do
+      post accept_accounting_vat_declaration_path(declaration)
+      expect(declaration.reload).to be_accepted
+      expect(response).to redirect_to(accounting_vat_declaration_path(declaration))
+    end
+
+    it 'refuse si la déclaration n est pas en submitted' do
+      declaration.update!(status: :draft)
+      post accept_accounting_vat_declaration_path(declaration)
+      expect(declaration.reload).to be_draft
+    end
+  end
+
+  describe 'GET /accounting/vat_declarations/:id/intervat_xml' do
+    let(:declaration) do
+      create(:vat_declaration, fiscal_year: fiscal_year, grids: { '01' => '1000.00', '54' => '210.00' })
+    end
+
+    it 'retourne un document XML téléchargeable' do
+      get intervat_xml_accounting_vat_declaration_path(declaration)
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('application/xml')
+      expect(response.body).to include('<?xml')
+    end
+  end
+
   describe 'accès manager' do
     before { sign_in manager }
 

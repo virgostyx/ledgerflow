@@ -24,6 +24,14 @@ class Accounting::VatDeclaration < ApplicationRecord
     BigDecimal(grids[code] || "0")
   end
 
+  def submit!
+    draft? && update(status: :submitted)
+  end
+
+  def accept!
+    submitted? && update(status: :accepted)
+  end
+
   private
 
   def period_end_after_period_start

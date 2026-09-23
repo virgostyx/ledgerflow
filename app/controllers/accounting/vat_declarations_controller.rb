@@ -1,5 +1,5 @@
 class Accounting::VatDeclarationsController < ApplicationController
-  before_action :set_declaration, only: [ :show ]
+  before_action :set_declaration, only: [ :show, :submit, :accept, :intervat_xml ]
 
   def index
     @pagy, @declarations = pagy(policy_scope(Accounting::VatDeclaration).filter_by(filter_params).order(period_start: :desc).autofilter(**autofilter_params))
@@ -7,6 +7,34 @@ class Accounting::VatDeclarationsController < ApplicationController
 
   def show
     authorize @declaration
+  end
+
+  def submit
+    authorize @declaration
+
+    if @declaration.submit!
+      redirect_to accounting_vat_declaration_path(@declaration), notice: t("accounting.vat_declarations.submitted")
+    else
+      redirect_to accounting_vat_declaration_path(@declaration), alert: t("accounting.vat_declarations.errors.invalid_transition")
+    end
+  end
+
+  def accept
+    authorize @declaration
+
+    if @declaration.accept!
+      redirect_to accounting_vat_declaration_path(@declaration), notice: t("accounting.vat_declarations.accepted")
+    else
+      redirect_to accounting_vat_declaration_path(@declaration), alert: t("accounting.vat_declarations.errors.invalid_transition")
+    end
+  end
+
+  def intervat_xml
+    authorize @declaration
+
+    send_data Accounting::BuildIntervatXml.new(@declaration).build,
+              filename: "intervat_#{@declaration.period_start.iso8601}.xml",
+              type: "application/xml", disposition: "attachment"
   end
 
   def new

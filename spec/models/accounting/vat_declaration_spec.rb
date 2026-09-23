@@ -61,4 +61,32 @@ RSpec.describe Accounting::VatDeclaration, type: :model do
       expect(decl.grid_total('99')).to eq(BigDecimal('0'))
     end
   end
+
+  describe '#submit!' do
+    it 'passe de draft à submitted' do
+      decl = create(:vat_declaration, fiscal_year: fiscal_year, status: :draft)
+      expect(decl.submit!).to be true
+      expect(decl.reload).to be_submitted
+    end
+
+    it 'échoue si la déclaration n est pas en draft' do
+      decl = create(:vat_declaration, fiscal_year: fiscal_year, status: :submitted)
+      expect(decl.submit!).to be false
+      expect(decl.reload).to be_submitted
+    end
+  end
+
+  describe '#accept!' do
+    it 'passe de submitted à accepted' do
+      decl = create(:vat_declaration, fiscal_year: fiscal_year, status: :submitted)
+      expect(decl.accept!).to be true
+      expect(decl.reload).to be_accepted
+    end
+
+    it 'échoue si la déclaration n est pas en submitted' do
+      decl = create(:vat_declaration, fiscal_year: fiscal_year, status: :draft)
+      expect(decl.accept!).to be false
+      expect(decl.reload).to be_draft
+    end
+  end
 end

@@ -60,6 +60,10 @@ en:
 
     vat_declarations:
       created: "VAT declaration generated successfully."
+      submitted: "VAT declaration marked as submitted."
+      accepted: "VAT declaration marked as accepted."
+      errors:
+        invalid_transition: "This declaration cannot change status from here."
 
     invoices:
       created: "Invoice created."

@@ -55,7 +55,13 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :vat_declarations, only: [ :index, :new, :create, :show ]
+      resources :vat_declarations, only: [ :index, :new, :create, :show ] do
+        member do
+          post :submit
+          post :accept
+          get  :intervat_xml
+        end
+      end
 
       resources :letterings, only: [ :new, :create, :destroy ]
       resources :line_allocations, only: [ :create, :destroy ]
