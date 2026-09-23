@@ -58,6 +58,9 @@ en:
       invalid_amount: "Enter valid amounts."
       invalid_invoice: "Unknown or closed invoice."
 
+    intracom_listings:
+      created: "Intracommunity listing generated successfully."
+
     vat_declarations:
       created: "VAT declaration generated successfully."
       submitted: "VAT declaration marked as submitted."

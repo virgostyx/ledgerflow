@@ -1,0 +1,63 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Intracommunity Listings' }
+  ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: 'Intracommunity Listings') do |header| %>
+  <% if policy(Accounting::IntracomListing).create? %>
+    <% header.with_actions do %>
+      <%= link_to 'New listing', new_accounting_intracom_listing_path,
+            class: 'inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<%= render 'shared/filters', fields: [
+  { name: :fiscal_year_id, label: 'Fiscal year', type: :select, options: Accounting::FiscalYear.order(year: :desc).map { |f| [f.year, f.id] } }
+] %>
+<% if @listings.empty? && !filters_active? %>
+  <%= render Ui::EmptyStateComponent.new(
+        title: 'No intracommunity listings yet',
+        description: 'Generate your first quarterly listing for intracommunity sales.',
+        icon: :clipboard
+      ) do |state| %>
+    <% if policy(Accounting::IntracomListing).create? %>
+      <% state.with_actions do %>
+        <%= link_to 'New listing', new_accounting_intracom_listing_path,
+              class: 'inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
+      <% end %>
+    <% end %>
+  <% end %>
+<% else %>
+  <%= render 'shared/clear_column_filters' %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-x-clip">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::IntracomListing, :period_start, 'Period', resource: 'intracom_listings') %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><%= column_header(Accounting::IntracomListing, :status, 'Status', resource: 'intracom_listings') %></th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @listings.each do |listing| %>
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-3 text-gray-700">
+              <%= Accounting::DatePresenter.new(listing.period_start).format %> —
+              <%= Accounting::DatePresenter.new(listing.period_end).format %>
+            </td>
+            <td class="px-4 py-3 text-gray-500"><%= listing.status %></td>
+            <td class="px-4 py-3 text-right">
+              <%= link_to 'View', accounting_intracom_listing_path(listing),
+                    class: 'text-primary-600 hover:text-primary-800 text-sm font-medium' %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <%= render 'shared/pagination', pagy: @pagy %>
+<% end %>
+<%= turbo_stream_from ActsAsTenant.current_tenant, :intracom_listings %>

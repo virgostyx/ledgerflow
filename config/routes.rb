@@ -63,6 +63,8 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :intracom_listings, only: [ :index, :new, :create, :show ]
+
       resources :letterings, only: [ :new, :create, :destroy ]
       resources :line_allocations, only: [ :create, :destroy ]
 

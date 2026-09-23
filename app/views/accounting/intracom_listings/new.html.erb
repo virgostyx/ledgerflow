@@ -1,0 +1,37 @@
+<h1 class="text-lg font-semibold text-primary-700 mb-4">New Intracommunity Listing</h1>
+
+<%= form_with model: @listing, scope: :accounting_intracom_listing,
+              url: accounting_intracom_listings_path,
+              html: { class: 'space-y-6 max-w-lg' } do |f| %>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.collection_select :fiscal_year_id, @fiscal_years, :id,
+          ->(fy) { "#{fy.start_date.year}" },
+          { include_blank: false },
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur change->floating-label#checkValue' } %>
+    <%= f.label :fiscal_year_id, 'Fiscal year', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.date_field :period_start,
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :period_start, 'Period start', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
+    <%= f.date_field :period_end,
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :period_end, 'Period end', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <%= f.submit 'Generate listing',
+          class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700' %>
+    <%= link_to 'Cancel', accounting_intracom_listings_path,
+          class: 'px-4 py-2 text-sm text-gray-600 hover:text-gray-800' %>
+  </div>
+
+<% end %>

@@ -402,6 +402,76 @@ ALTER SEQUENCE public.accounting_fixed_assets_id_seq OWNED BY public.accounting_
 
 
 --
+-- Name: accounting_intracom_listing_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_intracom_listing_lines (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    intracom_listing_id bigint NOT NULL,
+    partner_id bigint NOT NULL,
+    code character varying NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_intracom_listing_lines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_intracom_listing_lines_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_intracom_listing_lines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_intracom_listing_lines_id_seq OWNED BY public.accounting_intracom_listing_lines.id;
+
+
+--
+-- Name: accounting_intracom_listings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_intracom_listings (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    fiscal_year_id bigint NOT NULL,
+    period_start date NOT NULL,
+    period_end date NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_intracom_listings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_intracom_listings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_intracom_listings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_intracom_listings_id_seq OWNED BY public.accounting_intracom_listings.id;
+
+
+--
 -- Name: accounting_invoice_line_annotations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1134,6 +1204,20 @@ ALTER TABLE ONLY public.accounting_fixed_assets ALTER COLUMN id SET DEFAULT next
 
 
 --
+-- Name: accounting_intracom_listing_lines id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_intracom_listing_lines ALTER COLUMN id SET DEFAULT nextval('public.accounting_intracom_listing_lines_id_seq'::regclass);
+
+
+--
+-- Name: accounting_intracom_listings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_intracom_listings ALTER COLUMN id SET DEFAULT nextval('public.accounting_intracom_listings_id_seq'::regclass);
+
+
+--
 -- Name: accounting_invoice_line_annotations id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1315,6 +1399,22 @@ ALTER TABLE ONLY public.accounting_fiscal_years
 
 ALTER TABLE ONLY public.accounting_fixed_assets
     ADD CONSTRAINT accounting_fixed_assets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_intracom_listing_lines accounting_intracom_listing_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_intracom_listing_lines
+    ADD CONSTRAINT accounting_intracom_listing_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_intracom_listings accounting_intracom_listings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_intracom_listings
+    ADD CONSTRAINT accounting_intracom_listings_pkey PRIMARY KEY (id);
 
 
 --
@@ -1704,6 +1804,41 @@ CREATE INDEX index_accounting_fixed_assets_on_entity_id ON public.accounting_fix
 --
 
 CREATE INDEX index_accounting_fixed_assets_on_invoice_line_id ON public.accounting_fixed_assets USING btree (invoice_line_id);
+
+
+--
+-- Name: index_accounting_intracom_listing_lines_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_intracom_listing_lines_on_entity_id ON public.accounting_intracom_listing_lines USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_intracom_listing_lines_on_intracom_listing_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_intracom_listing_lines_on_intracom_listing_id ON public.accounting_intracom_listing_lines USING btree (intracom_listing_id);
+
+
+--
+-- Name: index_accounting_intracom_listing_lines_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_intracom_listing_lines_on_partner_id ON public.accounting_intracom_listing_lines USING btree (partner_id);
+
+
+--
+-- Name: index_accounting_intracom_listings_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_intracom_listings_on_entity_id ON public.accounting_intracom_listings USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_intracom_listings_on_fiscal_year_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_intracom_listings_on_fiscal_year_id ON public.accounting_intracom_listings USING btree (fiscal_year_id);
 
 
 --
@@ -2361,6 +2496,22 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: accounting_intracom_listing_lines fk_rails_70ee9c6548; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_intracom_listing_lines
+    ADD CONSTRAINT fk_rails_70ee9c6548 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
+-- Name: accounting_intracom_listings fk_rails_720bd52763; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_intracom_listings
+    ADD CONSTRAINT fk_rails_720bd52763 FOREIGN KEY (fiscal_year_id) REFERENCES public.accounting_fiscal_years(id);
+
+
+--
 -- Name: accounting_payment_batches fk_rails_73ac73592a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2545,6 +2696,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 
 --
+-- Name: accounting_intracom_listings fk_rails_d6237e4acb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_intracom_listings
+    ADD CONSTRAINT fk_rails_d6237e4acb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_journal_entries fk_rails_daa313bbd9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2585,6 +2744,14 @@ ALTER TABLE ONLY public.user_entities
 
 
 --
+-- Name: accounting_intracom_listing_lines fk_rails_ebb9da0d3a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_intracom_listing_lines
+    ADD CONSTRAINT fk_rails_ebb9da0d3a FOREIGN KEY (intracom_listing_id) REFERENCES public.accounting_intracom_listings(id);
+
+
+--
 -- Name: accounting_letterings fk_rails_ed96a62b21; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2598,6 +2765,14 @@ ALTER TABLE ONLY public.accounting_letterings
 
 ALTER TABLE ONLY public.accounting_payment_batch_lines
     ADD CONSTRAINT fk_rails_f036501dd6 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
+-- Name: accounting_intracom_listing_lines fk_rails_f227b86af3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_intracom_listing_lines
+    ADD CONSTRAINT fk_rails_f227b86af3 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -2631,6 +2806,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260923140000'),
 ('20260923130000'),
 ('20260923120000'),
 ('20260923110000'),
