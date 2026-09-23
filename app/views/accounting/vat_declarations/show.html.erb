@@ -31,6 +31,7 @@
       <thead>
         <tr class="bg-gray-50 border-b border-gray-200">
           <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Box code</th>
+          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Description</th>
           <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Amount (€)</th>
         </tr>
       </thead>
@@ -38,6 +39,7 @@
         <% @declaration.grids.sort.each do |code, amount| %>
           <tr>
             <td class="px-3 py-2 font-mono text-gray-700"><%= code %></td>
+            <td class="px-3 py-2 text-gray-700"><%= Accounting::VatGrid.label(code) %></td>
             <td class="px-3 py-2 text-right font-mono text-gray-900">
               <%= Accounting::MoneyPresenter.new(BigDecimal(amount)).format %>
             </td>

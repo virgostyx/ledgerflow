@@ -4,14 +4,10 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   expects  :invoice
   promises :invoice
 
-  # Belgian VAT grid codes — grilles de la déclaration TVA périodique belge
-  # Purchase expense lines: base amount excl. VAT per rate
-  VAT_GRID_PURCHASE = { 21 => 81, 12 => 82, 6 => 83 }.freeze
-  # Sale revenue lines: base amount excl. VAT per rate
-  VAT_GRID_SALE     = { 21 => 1, 12 => 2, 6 => 3 }.freeze
-  # TVA code for the VAT journal entry lines
-  VAT_CODE_PURCHASE_VAT = 59  # TVA récupérable (411000)
-  VAT_CODE_SALE_VAT     = 54  # TVA à reverser (451000)
+  VAT_GRID_PURCHASE     = Accounting::VatGrid::RATE_TO_GRID[:purchase]
+  VAT_GRID_SALE         = Accounting::VatGrid::RATE_TO_GRID[:sale]
+  VAT_CODE_PURCHASE_VAT = Accounting::VatGrid::VAT_LINE_GRID[:purchase]  # 410100
+  VAT_CODE_SALE_VAT     = Accounting::VatGrid::VAT_LINE_GRID[:sale]      # 450100
 
   executed do |ctx|
     invoice = ctx.invoice

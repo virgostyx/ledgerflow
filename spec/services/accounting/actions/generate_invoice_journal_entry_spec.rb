@@ -39,7 +39,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
         expect(expense_line.vat_code).to eq(81)
       end
 
-      it 'la ligne TVA (411000) a vat_code 59' do
+      it 'la ligne TVA (410100) a vat_code 59' do
         vat_line = invoice.journal_entry.lines.find { |l| l.account == account_411 }
         expect(vat_line.vat_code).to eq(59)
       end
@@ -103,7 +103,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
         expect(expense_line.vat_code).to be_nil
       end
 
-      it 'aucune ligne TVA (411000) n est créée' do
+      it 'aucune ligne TVA (410100) n est créée' do
         vat_lines = invoice.journal_entry.lines.select { |l| l.account == account_411 }
         expect(vat_lines).to be_empty
       end
@@ -168,7 +168,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
         expect(revenue_line.vat_code).to eq(1)
       end
 
-      it 'la ligne TVA (451000) a vat_code 54' do
+      it 'la ligne TVA (450100) a vat_code 54' do
         vat_line = invoice.journal_entry.lines.find { |l| l.account == account_451 }
         expect(vat_line.vat_code).to eq(54)
       end
