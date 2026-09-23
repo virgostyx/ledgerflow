@@ -39,6 +39,18 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
       get accounting_fiscal_year_path(fiscal_year)
       expect(response).to have_http_status(:ok)
     end
+
+    it "affiche le titre avec l année (pas une traduction manquante)" do
+      get accounting_fiscal_year_path(fiscal_year)
+      expect(response.body).to include("Fiscal Year #{fiscal_year.year}")
+    end
+  end
+
+  describe "GET /accounting/fiscal_years — lien Voir" do
+    it "affiche un lien 'View' vers chaque exercice" do
+      get accounting_fiscal_years_path
+      expect(response.body).to include(">View<")
+    end
   end
 
   describe "GET /accounting/fiscal_years/new" do

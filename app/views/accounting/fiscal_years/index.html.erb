@@ -40,7 +40,7 @@
             <%= fy.closed_at ? l(fy.closed_at, format: :short) : "—" %>
           </td>
           <td class="px-4 py-3 text-right">
-            <%= link_to t("accounting.fiscal_years.show"), accounting_fiscal_year_path(fy),
+            <%= link_to "View", accounting_fiscal_year_path(fy),
                         class: "text-primary-600 hover:underline text-sm" %>
           </td>
         </tr>

@@ -126,7 +126,6 @@ en:
       start_date:    "Start Date"
       end_date:      "End Date"
       closed_at:     "Closed On"
-      show:          "View"
       statuses:
         open:        "Open"
         pre_closing: "Pre-closing"
