@@ -20,16 +20,36 @@ RSpec.describe Accounting::Partner, type: :model do
         expect(build(:partner, vat_number: nil)).to be_valid
       end
 
-      it 'rejette un préfixe non belge' do
-        expect(build(:partner, vat_number: 'FR12345678901')).not_to be_valid
-      end
-
       it 'rejette un format trop court' do
         expect(build(:partner, vat_number: 'BE012345')).not_to be_valid
       end
 
       it 'rejette un premier chiffre autre que 0 ou 1' do
         expect(build(:partner, vat_number: 'BE2123456789')).not_to be_valid
+      end
+
+      it 'accepte un numéro de TVA français' do
+        expect(build(:partner, vat_number: 'FR32123456789', country: 'FR')).to be_valid
+      end
+
+      it 'accepte un numéro de TVA allemand' do
+        expect(build(:partner, vat_number: 'DE123456789', country: 'DE')).to be_valid
+      end
+
+      it 'accepte un numéro de TVA néerlandais' do
+        expect(build(:partner, vat_number: 'NL123456789B01', country: 'NL')).to be_valid
+      end
+
+      it 'accepte un numéro de TVA luxembourgeois' do
+        expect(build(:partner, vat_number: 'LU12345678', country: 'LU')).to be_valid
+      end
+
+      it 'rejette un préfixe pays inconnu' do
+        expect(build(:partner, vat_number: 'XX123456789')).not_to be_valid
+      end
+
+      it 'rejette un numéro allemand trop court' do
+        expect(build(:partner, vat_number: 'DE12345678')).not_to be_valid
       end
     end
 
@@ -53,6 +73,30 @@ RSpec.describe Accounting::Partner, type: :model do
       it 'rejette un IBAN au checksum invalide' do
         expect(build(:partner, iban: 'BE00539007547034')).not_to be_valid
       end
+    end
+  end
+
+  describe '#eu_country?' do
+    it 'est vrai pour un partenaire français' do
+      expect(build(:partner, country: 'FR')).to be_eu_country
+    end
+
+    it 'est vrai pour un partenaire belge' do
+      expect(build(:partner, country: 'BE')).to be_eu_country
+    end
+
+    it 'est faux pour un partenaire hors UE' do
+      expect(build(:partner, country: 'US')).not_to be_eu_country
+    end
+  end
+
+  describe '#domestic?' do
+    it 'est vrai pour un partenaire belge' do
+      expect(build(:partner, country: 'BE')).to be_domestic
+    end
+
+    it 'est faux pour un partenaire français' do
+      expect(build(:partner, country: 'FR')).not_to be_domestic
     end
   end
 
