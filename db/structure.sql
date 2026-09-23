@@ -364,6 +364,44 @@ ALTER SEQUENCE public.accounting_fiscal_years_id_seq OWNED BY public.accounting_
 
 
 --
+-- Name: accounting_fixed_assets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_fixed_assets (
+    id bigint NOT NULL,
+    description character varying NOT NULL,
+    acquisition_date date NOT NULL,
+    vat_amount_initial numeric(15,2) NOT NULL,
+    prorata_at_acquisition numeric(5,2) DEFAULT 100.0 NOT NULL,
+    asset_category integer DEFAULT 0 NOT NULL,
+    disposed_on date,
+    invoice_line_id bigint,
+    entity_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_fixed_assets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_fixed_assets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_fixed_assets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_fixed_assets_id_seq OWNED BY public.accounting_fixed_assets.id;
+
+
+--
 -- Name: accounting_invoice_line_annotations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1089,6 +1127,13 @@ ALTER TABLE ONLY public.accounting_fiscal_years ALTER COLUMN id SET DEFAULT next
 
 
 --
+-- Name: accounting_fixed_assets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_fixed_assets ALTER COLUMN id SET DEFAULT nextval('public.accounting_fixed_assets_id_seq'::regclass);
+
+
+--
 -- Name: accounting_invoice_line_annotations id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1262,6 +1307,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 ALTER TABLE ONLY public.accounting_fiscal_years
     ADD CONSTRAINT accounting_fiscal_years_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_fixed_assets accounting_fixed_assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_fixed_assets
+    ADD CONSTRAINT accounting_fixed_assets_pkey PRIMARY KEY (id);
 
 
 --
@@ -1637,6 +1690,20 @@ CREATE UNIQUE INDEX index_accounting_fiscal_years_on_entity_and_year ON public.a
 --
 
 CREATE INDEX index_accounting_fiscal_years_on_entity_id ON public.accounting_fiscal_years USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_fixed_assets_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_fixed_assets_on_entity_id ON public.accounting_fixed_assets USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_fixed_assets_on_invoice_line_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_fixed_assets_on_invoice_line_id ON public.accounting_fixed_assets USING btree (invoice_line_id);
 
 
 --
@@ -2222,6 +2289,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: accounting_fixed_assets fk_rails_44960acfb0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_fixed_assets
+    ADD CONSTRAINT fk_rails_44960acfb0 FOREIGN KEY (invoice_line_id) REFERENCES public.accounting_invoice_lines(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_479b19d12c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2446,6 +2521,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: accounting_fixed_assets fk_rails_cd5d96ebe8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_fixed_assets
+    ADD CONSTRAINT fk_rails_cd5d96ebe8 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoice_lines fk_rails_d08162bbbf; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2548,6 +2631,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260923130000'),
 ('20260923120000'),
 ('20260923110000'),
 ('20260923100000'),
