@@ -195,6 +195,18 @@ RSpec.describe 'Accounting::Invoices', type: :request do
         expect(response).to have_http_status(:unprocessable_content)
       end
     end
+
+    context 'avec un vat_treatment non-domestic' do
+      let(:eu_partner) { create(:partner, vat_number: 'FR32123456789', country: 'FR') }
+
+      it 'enregistre le vat_treatment' do
+        post accounting_sales_path, params: {
+          accounting_invoice: { invoice_date: Date.current, partner_id: eu_partner.id,
+                                fiscal_year_id: fiscal_year.id, vat_treatment: 'intracom_services' }
+        }
+        expect(Accounting::Invoice.last.vat_treatment).to eq('intracom_services')
+      end
+    end
   end
 
   # ---------------------------------------------------------------------------
