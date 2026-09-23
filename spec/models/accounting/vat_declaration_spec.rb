@@ -21,6 +21,13 @@ RSpec.describe Accounting::VatDeclaration, type: :model do
       expect(decl).not_to be_valid
       expect(decl.errors[:period_end]).to be_present
     end
+
+    it "rejette si l entité est en régime de franchise" do
+      entity.update!(vat_regime: :franchise)
+      decl = build(:vat_declaration, fiscal_year: fiscal_year)
+      expect(decl).not_to be_valid
+      expect(decl.errors[:base]).to be_present
+    end
   end
 
   describe 'enums' do

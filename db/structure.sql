@@ -880,7 +880,9 @@ CREATE TABLE public.entities (
     active boolean DEFAULT true NOT NULL,
     created_by_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    vat_filing_frequency integer DEFAULT 1 NOT NULL,
+    vat_regime integer DEFAULT 0 NOT NULL
 );
 
 
@@ -2544,6 +2546,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260923110000'),
 ('20260923100000'),
 ('20260922100000'),
 ('20260921100000'),

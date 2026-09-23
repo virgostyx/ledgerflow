@@ -18,6 +18,7 @@ class Accounting::VatDeclaration < ApplicationRecord
   validates :period_type,  presence: true
 
   validate :period_end_after_period_start
+  validate :entity_not_in_franchise
 
   def grid_total(code)
     BigDecimal(grids[code] || "0")
@@ -28,6 +29,11 @@ class Accounting::VatDeclaration < ApplicationRecord
   def period_end_after_period_start
     return unless period_start && period_end
     errors.add(:period_end, :greater_than, count: period_start) if period_end < period_start
+  end
+
+  def entity_not_in_franchise
+    return unless entity&.franchise?
+    errors.add(:base, "cannot file a VAT declaration for an entity under the franchise scheme")
   end
 
   def self.filter_by(q)

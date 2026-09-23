@@ -58,6 +58,27 @@ RSpec.describe 'Accounting::VatDeclarations', type: :request do
       get new_accounting_vat_declaration_path
       expect(response).to have_http_status(:ok)
     end
+
+    it "préremplit period_type avec la périodicité de dépôt de l entité" do
+      entity.update!(vat_filing_frequency: :quarterly)
+      get new_accounting_vat_declaration_path
+      expect(response.body).to include('<option selected="selected" value="quarterly">Quarterly</option>')
+    end
+  end
+
+  describe 'POST /accounting/vat_declarations — entité en franchise' do
+    it 'retourne 422' do
+      entity.update!(vat_regime: :franchise)
+      post accounting_vat_declarations_path, params: {
+        accounting_vat_declaration: {
+          fiscal_year_id: fiscal_year.id,
+          period_type:    'quarterly',
+          period_start:   Date.new(2025, 1, 1).iso8601,
+          period_end:     Date.new(2025, 3, 31).iso8601
+        }
+      }
+      expect(response).to have_http_status(:unprocessable_content)
+    end
   end
 
   describe 'POST /accounting/vat_declarations' do

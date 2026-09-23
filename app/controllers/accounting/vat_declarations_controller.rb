@@ -10,7 +10,7 @@ class Accounting::VatDeclarationsController < ApplicationController
   end
 
   def new
-    @declaration = Accounting::VatDeclaration.new
+    @declaration = Accounting::VatDeclaration.new(period_type: ActsAsTenant.current_tenant.vat_filing_frequency)
     @fiscal_years = Accounting::FiscalYear.all.order(start_date: :desc)
     authorize @declaration
   end

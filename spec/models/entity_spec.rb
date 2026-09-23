@@ -33,6 +33,22 @@ RSpec.describe Entity, type: :model do
     it 'a BE comme pays par défaut' do
       expect(Entity.new.country).to eq('BE')
     end
+
+    it 'a une périodicité de dépôt TVA trimestrielle par défaut' do
+      expect(Entity.new).to be_quarterly
+    end
+
+    it 'a un régime TVA normal par défaut' do
+      expect(Entity.new).to be_normal
+    end
+  end
+
+  describe 'vat_filing_frequency' do
+    it { should define_enum_for(:vat_filing_frequency).with_values(monthly: 0, quarterly: 1) }
+  end
+
+  describe 'vat_regime' do
+    it { should define_enum_for(:vat_regime).with_values(normal: 0, franchise: 1) }
   end
 
   describe 'vat_number uniqueness' do
