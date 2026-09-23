@@ -52,22 +52,53 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
   def self.build_customer_lines(invoice, entry)
     receivable_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::CUSTOMERS)
-    vat_account        = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
 
     create_line(entry, :debit, invoice.total_incl_vat, invoice: invoice, account: receivable_account,
                 partner: invoice.partner, label: invoice.partner.name)
-    build_item_lines(invoice, entry, :credit, VAT_GRID_SALE)
+    build_item_lines(invoice, entry, :credit, sale_grid(invoice))
+
+    return unless invoice.domestic? # otherwise the partner self-assesses, or nothing is due
+
+    vat_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
     build_vat_lines(invoice, entry, :credit, account: vat_account, vat_code: VAT_CODE_SALE_VAT, label: "VAT")
   end
 
   def self.build_supplier_lines(invoice, entry)
     payable_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::SUPPLIERS)
-    vat_account     = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_DEDUCTIBLE)
 
-    build_item_lines(invoice, entry, :debit, VAT_GRID_PURCHASE)
-    build_vat_lines(invoice, entry, :debit, account: vat_account, vat_code: VAT_CODE_PURCHASE_VAT, label: "Recoverable VAT")
+    build_item_lines(invoice, entry, :debit, purchase_grid(invoice))
+    build_supplier_vat_lines(invoice, entry)
     create_line(entry, :credit, invoice.total_incl_vat, invoice: invoice, account: payable_account,
                 partner: invoice.partner, label: invoice.partner.name)
+  end
+
+  def self.build_supplier_vat_lines(invoice, entry)
+    deductible_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_DEDUCTIBLE)
+
+    if invoice.domestic?
+      build_vat_lines(invoice, entry, :debit, account: deductible_account, vat_code: VAT_CODE_PURCHASE_VAT,
+                      label: "Recoverable VAT")
+      return
+    end
+
+    due_grid = Accounting::VatGrid::SELF_ASSESSED_VAT_GRID[invoice.vat_treatment.to_sym]
+    return unless due_grid # e.g. export: not a reverse-charge treatment, nothing to self-assess
+
+    due_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
+    build_vat_lines(invoice, entry, :credit, account: due_account, vat_code: due_grid, label: "Self-assessed VAT due")
+    build_vat_lines(invoice, entry, :debit, account: deductible_account, vat_code: VAT_CODE_PURCHASE_VAT,
+                    label: "Recoverable VAT")
+  end
+
+  # Rate-based grids for domestic invoices; a single fixed grid (any rate) otherwise.
+  def self.sale_grid(invoice)
+    return VAT_GRID_SALE if invoice.domestic?
+    Hash.new(Accounting::VatGrid::TREATMENT_BASE_GRID[:sale][invoice.vat_treatment.to_sym])
+  end
+
+  def self.purchase_grid(invoice)
+    return VAT_GRID_PURCHASE if invoice.domestic?
+    Hash.new(Accounting::VatGrid::TREATMENT_BASE_GRID[:purchase][invoice.vat_treatment.to_sym])
   end
 
   # One journal line per invoice line, on `side`, carrying the VAT grid code.
@@ -116,7 +147,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   end
 
   private_class_method :find_journal, :build_entry_lines,
-                       :build_customer_lines, :build_supplier_lines,
+                       :build_customer_lines, :build_supplier_lines, :build_supplier_vat_lines,
+                       :sale_grid, :purchase_grid,
                        :build_item_lines, :build_vat_lines, :create_line,
                        :propagate_annotations
 end

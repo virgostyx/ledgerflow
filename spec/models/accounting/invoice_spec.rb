@@ -19,6 +19,43 @@ RSpec.describe Accounting::Invoice, type: :model do
     it { should validate_presence_of(:partner) }
   end
 
+  describe 'vat_treatment' do
+    it { should define_enum_for(:vat_treatment).with_values(
+      domestic: 0, intracom_goods: 1, intracom_services: 2,
+      construction_reverse_charge: 3, export: 4, exempt: 5
+    ) }
+
+    it 'vaut domestic par défaut' do
+      expect(build(:invoice)).to be_domestic
+    end
+
+    describe 'validation du numéro de TVA du partenaire' do
+      let(:partner_without_vat) { create(:partner) }
+      let(:partner_with_vat)    { create(:partner, vat_number: 'FR32123456789', country: 'FR') }
+
+      it "est invalide en intracom_goods si le partenaire n a pas de numéro de TVA" do
+        invoice = build(:invoice, vat_treatment: :intracom_goods, partner: partner_without_vat)
+        expect(invoice).not_to be_valid
+        expect(invoice.errors[:vat_treatment]).to be_present
+      end
+
+      it "est valide en intracom_goods si le partenaire a un numéro de TVA" do
+        invoice = build(:invoice, vat_treatment: :intracom_goods, partner: partner_with_vat)
+        expect(invoice).to be_valid
+      end
+
+      it "est invalide en intracom_services si le partenaire n a pas de numéro de TVA" do
+        invoice = build(:invoice, vat_treatment: :intracom_services, partner: partner_without_vat)
+        expect(invoice).not_to be_valid
+      end
+
+      it "n exige pas de numéro de TVA en régime domestic" do
+        invoice = build(:invoice, vat_treatment: :domestic, partner: partner_without_vat)
+        expect(invoice).to be_valid
+      end
+    end
+  end
+
   describe 'currency and exchange_rate validations' do
     it 'is valid with a supported currency' do
       expect(build(:invoice, currency: 'USD', exchange_rate: '0.92')).to be_valid
@@ -288,6 +325,23 @@ RSpec.describe Accounting::Invoice, type: :model do
     it 'calcule correctement total_incl_vat' do
       invoice.compute_totals
       expect(invoice.total_incl_vat).to eq(BigDecimal('295.00'))
+    end
+
+    context 'en régime non-domestic (autoliquidation/export/exempté)' do
+      let(:invoice) do
+        create(:invoice, fiscal_year: fiscal_year, vat_treatment: :intracom_services,
+               partner: create(:partner, vat_number: 'FR32123456789', country: 'FR'))
+      end
+
+      it 'total_incl_vat égale le HT (rien à payer au partenaire au titre de la TVA)' do
+        invoice.compute_totals
+        expect(invoice.total_incl_vat).to eq(BigDecimal('250.00'))
+      end
+
+      it 'vat_amount reste calculé (utilisé pour l auto-liquidation)' do
+        invoice.compute_totals
+        expect(invoice.vat_amount).to eq(BigDecimal('45.00'))
+      end
     end
   end
 end

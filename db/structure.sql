@@ -468,7 +468,8 @@ CREATE TABLE public.accounting_invoices (
     entity_id bigint NOT NULL,
     journal_id bigint,
     cash_journal_id bigint,
-    exchange_rate numeric(10,6) DEFAULT 1.0 NOT NULL
+    exchange_rate numeric(10,6) DEFAULT 1.0 NOT NULL,
+    vat_treatment integer DEFAULT 0 NOT NULL
 );
 
 
@@ -2543,6 +2544,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260923100000'),
 ('20260922100000'),
 ('20260921100000'),
 ('20260920200000'),

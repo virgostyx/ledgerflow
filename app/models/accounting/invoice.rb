@@ -11,6 +11,12 @@ class Accounting::Invoice < ApplicationRecord
   enum :invoice_type,   { customer: 0, supplier: 1 }
   enum :status,         { draft: 0, posted: 1, paid: 2, cancelled: 3, partially_paid: 4 }
   enum :peppol_status,  { not_sent: 0, queued: 1, delivered: 2, failed: 3 }
+  enum :vat_treatment,  { domestic: 0, intracom_goods: 1, intracom_services: 2,
+                          construction_reverse_charge: 3, export: 4, exempt: 5 }
+
+  # Treatments where VAT is not invoiced to the partner: either self-assessed by
+  # the buyer (reverse charge) or genuinely not due (export, exempt).
+  REVERSE_CHARGE_TREATMENTS = %w[intracom_goods intracom_services construction_reverse_charge].freeze
 
   belongs_to :partner,       class_name: "Accounting::Partner"
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
@@ -37,6 +43,7 @@ class Accounting::Invoice < ApplicationRecord
 
   validate :journal_matches_invoice_type, if: -> { journal.present? }
   validate :cash_journal_is_cash, if: -> { cash_journal.present? }
+  validate :vat_treatment_requires_partner_vat_number, if: -> { REVERSE_CHARGE_TREATMENTS.include?(vat_treatment) }
 
   aasm column: :status, enum: true do
     state :draft, initial: true
@@ -73,7 +80,9 @@ class Accounting::Invoice < ApplicationRecord
   def compute_totals
     self.subtotal_excl_vat = lines.sum(&:subtotal_excl_vat)
     self.vat_amount        = lines.sum(&:vat_amount)
-    self.total_incl_vat    = lines.sum(&:total_incl_vat)
+    # Non-domestic treatments never charge VAT to the partner (self-assessed,
+    # exempt or exported) — only vat_amount is kept, for self-assessment.
+    self.total_incl_vat    = domestic? ? lines.sum(&:total_incl_vat) : subtotal_excl_vat
   end
 
   # EUR-equivalent of total_incl_vat, for comparison against journal entry lines (always EUR).
@@ -116,6 +125,11 @@ class Accounting::Invoice < ApplicationRecord
 
   def cash_journal_is_cash
     errors.add(:cash_journal, "must be a cash journal") unless cash_journal.cash?
+  end
+
+  def vat_treatment_requires_partner_vat_number
+    return if partner&.vat_number.present?
+    errors.add(:vat_treatment, "requires the partner to have a VAT number")
   end
 
   def self.filter_by(q)

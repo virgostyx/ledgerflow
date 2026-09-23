@@ -38,4 +38,32 @@ RSpec.describe Accounting::VatGrid do
       expect(described_class::VAT_LINE_GRID[:purchase]).to eq(59)
     end
   end
+
+  describe 'TREATMENT_BASE_GRID' do
+    it 'donne la grille de base pour une vente en régime intracom_goods' do
+      expect(described_class::TREATMENT_BASE_GRID[:sale][:intracom_goods]).to eq(46)
+    end
+
+    it 'donne la grille de base pour un achat en régime intracom_services' do
+      expect(described_class::TREATMENT_BASE_GRID[:purchase][:intracom_services]).to eq(87)
+    end
+
+    it 'donne la grille de base pour un achat en régime construction_reverse_charge' do
+      expect(described_class::TREATMENT_BASE_GRID[:purchase][:construction_reverse_charge]).to eq(88)
+    end
+
+    it "n a pas de grille d achat pour un traitement qui n implique pas d autoliquidation" do
+      expect(described_class::TREATMENT_BASE_GRID[:purchase][:export]).to be_nil
+    end
+  end
+
+  describe 'SELF_ASSESSED_VAT_GRID' do
+    it 'donne la grille de TVA due auto-liquidée pour intracom_goods' do
+      expect(described_class::SELF_ASSESSED_VAT_GRID[:intracom_goods]).to eq(56)
+    end
+
+    it 'donne la grille de TVA due auto-liquidée pour construction_reverse_charge' do
+      expect(described_class::SELF_ASSESSED_VAT_GRID[:construction_reverse_charge]).to eq(57)
+    end
+  end
 end
