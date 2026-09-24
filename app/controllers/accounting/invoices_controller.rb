@@ -1,6 +1,6 @@
 class Accounting::InvoicesController < ApplicationController
   before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :send_peppol,
-                                      :create_credit_note, :apply_credit_note, :pdf ]
+                                      :create_credit_note, :apply_credit_note, :pdf, :send_email ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
@@ -97,7 +97,7 @@ class Accounting::InvoicesController < ApplicationController
   def create_credit_note
     authorize @invoice
 
-    unless @invoice.invoice? && (@invoice.posted? || @invoice.partially_paid? || @invoice.paid?)
+    unless @invoice.invoice? && @invoice.issued?
       return redirect_to accounting_invoice_path(@invoice), alert: t("accounting.invoices.errors.credit_note_needs_posted")
     end
 
@@ -120,11 +120,22 @@ class Accounting::InvoicesController < ApplicationController
     end
   end
 
+  def send_email
+    authorize @invoice
+
+    result = Accounting::SendInvoiceEmail.call(invoice: @invoice, recipient: params[:recipient], user: current_user)
+    if result.success?
+      redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.email_queued", recipient: result[:email].recipient)
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: result.message
+    end
+  end
+
   def pdf
     authorize @invoice
 
-    error = if !@invoice.customer?                                                then "pdf_customer_only"
-    elsif !(@invoice.posted? || @invoice.partially_paid? || @invoice.paid?)         then "pdf_not_issued"
+    error = if !@invoice.customer? then "pdf_customer_only"
+    elsif !@invoice.issued?        then "pdf_not_issued"
     end
     return redirect_to accounting_invoice_path(@invoice), alert: t("accounting.invoices.errors.#{error}") if error
 

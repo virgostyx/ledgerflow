@@ -1,0 +1,43 @@
+<%# E-mail card of an issued customer document: send form and history of attempts. %>
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+  <div class="px-6 py-3 border-b border-gray-100 bg-gray-50">
+    <h3 class="text-sm font-semibold text-gray-700">Emails</h3>
+  </div>
+
+  <%= form_with url: send_email_accounting_invoice_path(invoice), method: :post, class: "flex items-end gap-3 px-6 py-4" do |f| %>
+    <div class="flex-1 max-w-sm">
+      <%= label_tag :recipient, "Recipient", class: "block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1" %>
+      <%= email_field_tag :recipient, invoice.partner.email, required: true, placeholder: "client@example.com",
+            class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+    </div>
+    <%= f.submit "Send by email",
+          class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors cursor-pointer" %>
+  <% end %>
+
+  <% if invoice.emails.any? %>
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+        <tr>
+          <th class="px-6 py-2 text-left">Date</th>
+          <th class="px-6 py-2 text-left">Recipient</th>
+          <th class="px-6 py-2 text-left">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% invoice.emails.each do |email| %>
+          <tr>
+            <td class="px-6 py-2 text-gray-600"><%= l(email.created_at, format: :short) %></td>
+            <td class="px-6 py-2 text-gray-900"><%= email.recipient %></td>
+            <td class="px-6 py-2">
+              <% badge = { "queued" => "bg-gray-100 text-gray-700", "sent" => "bg-emerald-100 text-emerald-800", "failed" => "bg-red-100 text-red-800" }.fetch(email.status) %>
+              <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium <%= badge %>"><%= email.status.capitalize %></span>
+              <% if email.error.present? %>
+                <span class="ml-2 text-xs text-red-700"><%= email.error %></span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>

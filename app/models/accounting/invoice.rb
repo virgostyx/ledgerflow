@@ -26,6 +26,8 @@ class Accounting::Invoice < ApplicationRecord
   belongs_to :cash_journal,  class_name: "Accounting::Journal", optional: true
   has_many   :credit_notes,  class_name: "Accounting::Invoice", foreign_key: :credited_invoice_id,
                              inverse_of: :credited_invoice, dependent: :restrict_with_error
+  has_many   :emails,        -> { order(created_at: :desc) }, class_name: "Accounting::InvoiceEmail",
+                             foreign_key: :invoice_id, inverse_of: :invoice, dependent: :destroy
   has_many   :lines,         class_name: "Accounting::InvoiceLine",
                              foreign_key: :invoice_id, dependent: :destroy,
                              inverse_of: :invoice
@@ -114,9 +116,12 @@ class Accounting::Invoice < ApplicationRecord
     Accounting::JournalEntryLine.where(invoice_id: id).sum(:credit)
   end
 
+  # Numbered and not cancelled: posted, partially paid or paid.
+  def issued? = posted? || partially_paid? || paid?
+
   # Posted credit notes count as soon as they exist, applied to the invoice or not.
   def credited_amount
-    credit_notes.select { |n| n.posted? || n.partially_paid? || n.paid? }.sum(&:total_incl_vat_eur) # in memory: preload :credit_notes in batch callers
+    credit_notes.select(&:issued?).sum(&:total_incl_vat_eur) # in memory: preload :credit_notes in batch callers
   end
 
   def remaining_amount

@@ -46,6 +46,11 @@ RSpec.describe Accounting::InvoicePdf, type: :service do
       expect(text).to include('Acme Consulting', 'BE0123456789', 'Rue de la Loi 16', '1000 Bruxelles')
     end
 
+    it 'does not repeat the legal form when the legal name already ends with it' do
+      entity.update!(legal_name: 'Acme Consulting SRL', legal_form: 'SRL')
+      expect(pdf_text(invoice)).to include('Acme Consulting SRL').and(satisfy { |t| !t.include?('SRL SRL') })
+    end
+
     it 'shows the customer' do
       expect(text).to include('Sodexo Belgium', 'Avenue Louise 1', '1050 Ixelles', 'BE0987654321')
     end

@@ -2,7 +2,7 @@
 
 Objectif de la prochaine session : combler les écarts qui séparent LedgerFlow d'un outil qu'une PME ou un indépendant belge peut utiliser seul. La liste priorisée et le contexte technique sont ci-dessous. Lis d'abord `CLAUDE.md` et `MEMORY.md`, puis ce fichier.
 
-État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1811 exemples, 97,35 % de couverture (après avoirs, édition de l'entité et PDF de facture), un seul échec connu et flaky (voir "Pièges").
+État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1847 exemples, 97,53 % de couverture (après avoirs, édition de l'entité, PDF de facture et envoi par e-mail), un seul échec connu et flaky (voir "Pièges").
 
 ---
 
@@ -62,6 +62,7 @@ Vérifié à la main dans l'app réelle (bin/dev + navigateur) : facture fournis
 - Formatage monétaire : `Accounting::MoneyPresenter#format` → `1 000,00 €` (espace comme séparateur de milliers).
 
 **Vérification manuelle dans l'app**
+- Ne jamais lancer deux `rspec` en même temps (même base de test, `DatabaseCleaner` tronque au démarrage : deadlock, résultats faussés). `pgrep -f "bundle exec rspec"` se reconnaît lui-même : se fier à la notification de fin de tâche.
 - Automatisation Chrome : si une capture expire (« renderer may be frozen ») ou si des clics restent sans effet, lire `document.visibilityState` : un onglet `hidden` (fenêtre masquée) ne peint pas et ne reçoit pas les clics. Demander de mettre Chrome au premier plan, et vérifier un clic par le `POST` dans `log/development.log`.
 - Les journaux d'audit sont immuables (trigger) : le nettoyage de données de test laisse leurs lignes d'audit.
 - Base de dev : le PostgreSQL 18 du système sur le port 5432 (`ledgerflow` / `password`), déjà migré. `docker compose up` échoue (port pris) et n'est pas nécessaire.
@@ -101,7 +102,9 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 
 **#3 Facture imprimable et envoyée** — découpé en 3 sous-projets ; **3a fait**, 3b et 3c à faire.
 - **3a PDF — FAIT (2026-09-24)** : `Accounting::InvoicePdf` (Prawn, anglais uniquement), `GET /accounting/invoices/:id/pdf`, bouton « Download PDF » sur les factures et avoirs clients émis. Émetteur lu depuis l'entité, IBAN/BIC du premier `BankAccount` actif, communication structurée pour les factures (pas les avoirs), mention légale générique par `vat_treatment` et pour la franchise. Dépendance de test ajoutée : `pdf-reader`. Limites : caractères hors Windows-1252 remplacés par `?` (police Helvetica intégrée), un seul compte bancaire, pas de logo ; **les mentions légales sont génériques, sans article du Code TVA : à faire valider par un comptable**.
-- **3b Envoi par e-mail — À FAIRE** : ActionMailer + Solid Queue, PDF en pièce jointe (réutiliser `InvoicePdf`), `Partner#email` existe déjà, historique/statut d'envoi par facture. Il n'y a qu'un `ApplicationMailer` vide et le SMTP de production est commenté dans `config/environments/production.rb` : l'utilisateur utilisera un **SMTP classique, paramètres à préciser** (serveur, port, authentification, adresse d'expédition ; credentials via `bin/rails credentials:edit`).
+- **3b Envoi par e-mail — FAIT en mode test (2026-09-24)** : table `accounting_invoice_emails` (destinataire, sujet, statut queued/sent/failed, erreur, auteur), `Accounting::SendInvoiceEmail` (crée l'envoi et met `Accounting::InvoiceEmailJob` en file), `Accounting::InvoiceMailer` (texte anglais, PDF de `InvoicePdf` en pièce jointe), carte « Emails » sur les factures/avoirs clients émis (destinataire prérempli avec `Partner#email` et modifiable, historique avec statut et erreur), rôles admin/comptable. Le job prend l'**id** (pas un GlobalID) : `ActsAsTenant.require_tenant` est vrai et un job n'a pas de tenant. `Invoice#issued?` (posted/partially_paid/paid) remplace la condition dupliquée. En développement, les e-mails sont écrits dans `tmp/mails/` (`delivery_method = :file`) ; en test, `:test`.
+  - **À FAIRE pour la production (paramètres SMTP fournis par l'utilisateur le moment venu)** : renseigner `config.action_mailer.smtp_settings` dans `config/environments/production.rb` (credentials `smtp` via `bin/rails credentials:edit`), définir la variable d'environnement `MAILER_FROM` (adresse d'expédition ; le défaut `invoices@ledgerflow.example` n'est valable qu'en dev/test) et l'hôte de `default_url_options` (aujourd'hui `example.com`). `raise_delivery_errors` est déjà `true` : sans SMTP, un envoi est enregistré `failed` avec son erreur (vérifié).
+  - Limites : pas de relance automatique d'un envoi `failed` (l'utilisateur renvoie à la main), un seul destinataire, pas de corps personnalisable, texte seul.
 - **3c Peppol — À FAIRE, après choix de l'Access Point** : l'intégration actuelle (`Peppol::Actions::SendToDigiteal`, `Peppol::WebhooksController`) est un squelette écrit de mémoire, jamais validé contre une vraie API ni un compte Digiteal. Manques constatés : pas d'`EndpointID` (identifiant Peppol, en Belgique `0208:` + numéro d'entreprise) dans l'UBL, aucun identifiant Peppol sur l'entité ni sur les partenaires, émetteur lu dans des constantes d'environnement (`PEPPOL_COMPANY_*`) et non depuis l'entité, réception d'une facture rattachée à un exercice/entité choisi arbitrairement (`FiscalYear.current` sans tenant). L'utilisateur veut comprendre le fonctionnement de Peppol avant de décider : expliquer (réseau d'Access Points, identifiants dans un annuaire, format UBL BIS 3.0), puis lire la vraie documentation de l'AP choisi avant de recoder. À ma connaissance la facturation électronique B2B via Peppol est obligatoire en Belgique depuis le 1er janvier 2026 (à vérifier).
 
 ### P1 — nécessaires pour une PME
@@ -135,7 +138,7 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 ## 4. Ordre de travail recommandé
 
 1. ~~#1 Avoirs~~ (fait), en réservant la décision sur les grilles au point #2.
-2. #3 PDF + envoi (débloque #6) : 3a PDF fait ; reste 3b e-mail SMTP, puis 3c Peppol.
+2. #3 PDF + envoi (débloque #6) : 3a PDF et 3b e-mail (mode test) faits ; reste la config SMTP de production, puis 3c Peppol.
 3. #2 Conformité TVA, avec un comptable.
 4. #4 Amortissements, puis ~~#7~~ (fait), puis #5/#6.
 5. Lot P2 en fin de parcours, ou au fil de l'eau.

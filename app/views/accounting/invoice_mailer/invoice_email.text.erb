@@ -1,0 +1,9 @@
+Hello,
+
+Please find attached <%= @invoice.credit_note? ? "credit note" : "invoice" %> <%= @invoice.invoice_number %> from <%= @entity.legal_name %>, dated <%= Accounting::DatePresenter.new(@invoice.invoice_date).format %>, for <%= Accounting::MoneyPresenter.new(@invoice.total_incl_vat, currency: @invoice.currency).format %>.
+<% if @invoice.invoice? && @invoice.due_date %>
+Payment is due by <%= Accounting::DatePresenter.new(@invoice.due_date).format %>.
+<% end %>
+
+Kind regards,
+<%= @entity.legal_name %>

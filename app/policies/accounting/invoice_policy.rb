@@ -11,6 +11,10 @@ class Accounting::InvoicePolicy < ApplicationPolicy
     user.admin? || user.accountant?
   end
 
+  def send_email?
+    user.admin? || user.accountant?
+  end
+
   def pdf?
     show?
   end

@@ -586,6 +586,101 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     end
   end
 
+  describe 'e-mailing an invoice' do
+    include_context 'with_pcmn_accounts'
+
+    let!(:sale_journal)     { create(:journal, :sale) }
+    let!(:purchase_journal) { create(:journal, :purchase) }
+
+    around do |example|
+      previous = ActiveJob::Base.queue_adapter
+      ActiveJob::Base.queue_adapter = :test
+      example.run
+    ensure
+      ActiveJob::Base.queue_adapter = previous
+    end
+
+    def posted(type, journal, partner_email: nil)
+      inv = create(:invoice, :with_lines, invoice_type: type, fiscal_year: fiscal_year, journal: journal,
+                   partner: create(:partner, email: partner_email))
+      Accounting::PostInvoice.call(invoice: inv).invoice.reload
+    end
+
+    describe 'POST /accounting/invoices/:id/send_email' do
+      it 'queues the e-mail and goes back to the invoice with a notice' do
+        invoice = posted(:customer, sale_journal)
+
+        expect { post send_email_accounting_invoice_path(invoice), params: { recipient: 'accounts@client.example' } }
+          .to change(Accounting::InvoiceEmail, :count).by(1)
+          .and have_enqueued_job(Accounting::InvoiceEmailJob)
+
+        expect(response).to redirect_to(accounting_invoice_path(invoice))
+        expect(flash[:notice]).to include('accounts@client.example')
+        expect(Accounting::InvoiceEmail.last).to have_attributes(recipient: 'accounts@client.example', sent_by: accountant,
+                                                                 status: 'queued')
+      end
+
+      it 'refuses an invalid recipient with an alert' do
+        invoice = posted(:customer, sale_journal)
+
+        expect { post send_email_accounting_invoice_path(invoice), params: { recipient: 'nope' } }
+          .not_to change(Accounting::InvoiceEmail, :count)
+
+        expect(response).to redirect_to(accounting_invoice_path(invoice))
+        expect(flash[:alert]).to be_present
+      end
+
+      it 'refuses a draft and a supplier invoice' do
+        draft = create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal)
+        post send_email_accounting_invoice_path(draft), params: { recipient: 'a@b.example' }
+        expect(flash[:alert]).to be_present
+
+        supplier = posted(:supplier, purchase_journal)
+        post send_email_accounting_invoice_path(supplier), params: { recipient: 'a@b.example' }
+        expect(flash[:alert]).to be_present
+        expect(Accounting::InvoiceEmail.count).to eq(0)
+      end
+
+      it 'is refused to a user who cannot post invoices' do
+        invoice = posted(:customer, sale_journal)
+        sign_in create(:user, role: :auditor).tap { |u| create(:user_entity, :auditor, user: u, entity: entity) }
+
+        post send_email_accounting_invoice_path(invoice), params: { recipient: 'a@b.example' }
+
+        expect(Accounting::InvoiceEmail.count).to eq(0)
+        expect(response).not_to have_http_status(:ok)
+      end
+    end
+
+    describe 'the e-mail card on the invoice page' do
+      it 'offers a form prefilled with the partner e-mail' do
+        get accounting_invoice_path(posted(:customer, sale_journal, partner_email: 'billing@partner.example'))
+
+        expect(response.body).to include('Send by email')
+        expect(response.body).to include('value="billing@partner.example"')
+      end
+
+      it 'lists past attempts with their status and error' do
+        invoice = posted(:customer, sale_journal)
+        create(:invoice_email, :sent, invoice: invoice, recipient: 'ok@client.example')
+        create(:invoice_email, :failed, invoice: invoice, recipient: 'ko@client.example', error: 'Connection refused')
+
+        get accounting_invoice_path(invoice)
+
+        expect(response.body).to include('ok@client.example', 'ko@client.example', 'Connection refused')
+      end
+
+      it 'is absent on a draft and on a supplier invoice' do
+        draft = create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal)
+        get accounting_invoice_path(draft)
+        expect(response.body).not_to include('Send by email')
+
+        get accounting_invoice_path(posted(:supplier, purchase_journal))
+        expect(response.body).not_to include('Send by email')
+      end
+    end
+  end
+
   describe 'credit notes' do
     include_context 'with_pcmn_accounts'
 

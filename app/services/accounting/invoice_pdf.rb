@@ -57,7 +57,7 @@ class Accounting::InvoicePdf
   def header(pdf)
     top = pdf.cursor
     pdf.bounding_box([ 0, top ], width: 260) do
-      pdf.text t([ entity.legal_name, entity.legal_form ].compact_blank.join(" ")), size: 13, style: :bold
+      pdf.text t(issuer_name), size: 13, style: :bold
       address_lines(entity.address_line1, entity.address_line2, [ entity.zip_code, entity.city ].compact_blank.join(" "),
                     entity.vat_number.presence && "VAT #{entity.vat_number}").each { |l| pdf.text t(l), size: 9 }
     end
@@ -84,6 +84,14 @@ class Accounting::InvoicePdf
   end
 
   def address_lines(*lines) = lines.compact_blank
+
+  # The legal name often already ends with the form ("Acme SRL"): do not print it twice.
+  def issuer_name
+    form = entity.legal_form.to_s
+    return entity.legal_name if form.blank? || entity.legal_name.to_s.downcase.end_with?(form.downcase)
+
+    "#{entity.legal_name} #{form}"
+  end
 
   def charge_vat? = invoice.domestic?
 

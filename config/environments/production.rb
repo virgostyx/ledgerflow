@@ -54,9 +54,10 @@ Rails.application.configure do
   config.active_job.queue_adapter = :solid_queue
   config.solid_queue.connects_to = { database: { writing: :queue } }
 
-  # Ignore bad email addresses and do not raise email delivery errors.
-  # Set this to true and configure the email server for immediate delivery to raise delivery errors.
-  # config.action_mailer.raise_delivery_errors = false
+  # Raise delivery errors so a failed invoice e-mail is recorded as "failed" (with its error) instead of getting lost.
+  # TODO: SMTP is not configured yet: until the settings below are filled in, sending fails with a recorded error.
+  # The sender address comes from the MAILER_FROM environment variable (see Accounting::InvoiceMailer).
+  config.action_mailer.raise_delivery_errors = true
 
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "example.com" }
