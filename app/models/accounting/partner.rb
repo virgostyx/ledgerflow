@@ -71,12 +71,16 @@ class Accounting::Partner < ApplicationRecord
     country == "BE"
   end
 
+  # Shared with Entity: the country prefix must be an EU one and the rest must fit that country's format.
+  def self.valid_vat_number?(number)
+    format = EU_VAT_FORMATS[number[0, 2]]
+    format.present? && format.match?(number[2..])
+  end
+
   private
 
   def vat_number_format
-    return if vat_number.blank?
-    format = EU_VAT_FORMATS[vat_number[0, 2]]
-    errors.add(:vat_number, :invalid) unless format && format.match?(vat_number[2..])
+    errors.add(:vat_number, :invalid) unless vat_number.blank? || self.class.valid_vat_number?(vat_number)
   end
 
   def iban_format

@@ -2,7 +2,7 @@
 
 Objectif de la prochaine session : combler les écarts qui séparent LedgerFlow d'un outil qu'une PME ou un indépendant belge peut utiliser seul. La liste priorisée et le contexte technique sont ci-dessous. Lis d'abord `CLAUDE.md` et `MEMORY.md`, puis ce fichier.
 
-État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1711 exemples, 97,26 % de couverture, un seul échec connu et flaky (voir "Pièges").
+État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1781 exemples, 97,29 % de couverture (après avoirs et édition de l'entité), un seul échec connu et flaky (voir "Pièges").
 
 ---
 
@@ -62,6 +62,8 @@ Vérifié à la main dans l'app réelle (bin/dev + navigateur) : facture fournis
 - Formatage monétaire : `Accounting::MoneyPresenter#format` → `1 000,00 €` (espace comme séparateur de milliers).
 
 **Vérification manuelle dans l'app**
+- Automatisation Chrome : si une capture expire (« renderer may be frozen ») ou si des clics restent sans effet, lire `document.visibilityState` : un onglet `hidden` (fenêtre masquée) ne peint pas et ne reçoit pas les clics. Demander de mettre Chrome au premier plan, et vérifier un clic par le `POST` dans `log/development.log`.
+- Les journaux d'audit sont immuables (trigger) : le nettoyage de données de test laisse leurs lignes d'audit.
 - Base de dev : le PostgreSQL 18 du système sur le port 5432 (`ledgerflow` / `password`), déjà migré. `docker compose up` échoue (port pris) et n'est pas nécessaire.
 - Démarrer avec `bin/dev` en arrière-plan ; le journal de requêtes est `log/development.log`. Utilisateurs de démo : `admin@ledgerflow.test`, `comptable@ledgerflow.test`, `manager@…`, `auditeur@…`, `budget@…`, mot de passe `password123!`.
 - Champs date HTML : cliquer sur le segment jour (extrémité gauche) puis taper les chiffres d'une traite (`02022026`). Vérifier chaque saisie par capture d'écran : la page défile et les clics par coordonnées dérivent.
@@ -76,11 +78,18 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 
 ### P0 — bloquants pour un usage réel
 
-**#1 Notes de crédit (avoirs)**
-- Aujourd'hui `Invoice#invoice_type` ne vaut que `customer` ou `supplier`. Corriger une facture postée impose de l'annuler.
-- Piste : ajouter un type de document (facture / avoir) et un lien `credited_invoice_id`. Le postage inverse les sens débit/crédit ; l'avoir peut être imputé sur la facture d'origine via le lettrage existant (`Accounting::Lettering`, `LineAllocation`) — `stale_credits_query.rb` et `aged_balance_query.rb` manipulent déjà des crédits non imputés.
-- Décision de conception à prendre tôt : `VatGridQuery` additionne sans signe. Soit les lignes d'avoir portent des `vat_amount` négatifs dans les grilles existantes, soit elles vont dans des grilles dédiées. Les grilles officielles pour les avoirs (ventes et achats) sont à confirmer avec un comptable ; ne pas les inventer.
-- Doit couvrir : avoir partiel, avoir sur facture en devise, avoir sous régime cocontractant/intracom (impact sur le relevé intracom), avoir sur facture déjà payée, PDF/Peppol (UBL CreditNote), rapports (balance âgée).
+**#1 Notes de crédit (avoirs) — FAIT (commit `aa2ee55`, 2026-09-24)**
+- Modèle : `Invoice#document_type` (`invoice`/`credit_note`) et `credited_invoice_id` optionnel. Les lignes d'avoir sont positives ; le postage (`GenerateInvoiceJournalEntry#create_line`) inverse le sens et le signe de `vat_amount`, donc `VatGridQuery` sort des grilles nettes sans grille dédiée.
+- Validations : même partenaire, type et régime TVA que la facture créditée, facture postée, plafond cumulé (`ValidateCreditNoteAmount`). Numérotation : même séquence que les factures.
+- Imputation : `Accounting::ApplyCreditNote` (via `AllocateLines`), bouton « Apply to invoice ». **Refusée si des encaissements sont déjà enregistrés sur la facture** : `BookInvoiceReceipt` ne lettre pas la ligne client, son `open_amount` resterait plein.
+- Aussi couvert : relevé intracom net des avoirs, lots SEPA excluent les avoirs, Peppol envoi (`CreditNote` 381 + `BillingReference`) et réception, `remaining_amount` tient compte des avoirs, annulation d'une facture créditée refusée, rapprochement bancaire ignore les avoirs.
+- À traiter plus tard :
+  - **Remboursement d'un avoir sur facture déjà encaissée** : l'avoir reste non imputé (visible en « unallocated » de la balance âgée) ; le flux de remboursement (rapprochement bancaire, ou lettrage manuel) n'est ni conçu ni vérifié.
+  - Grilles officielles pour les avoirs (48/49 ventes, 85 achats) : à confirmer avec un comptable, voir #2.
+  - Cosmétique : l'écriture d'un avoir s'intitule « Invoice … », la page brouillon propose « Post invoice » / « Cancel invoice ».
+  - Les annotations analytiques ne sont pas copiées de la facture vers l'avoir préremplie.
+  - Le formulaire d'édition redirige vers l'édition après « Create credit note » ; la TVA des lignes était mal préselectionnée (corrigé dans le même commit).
+  - Pas de PDF d'avoir (dépend de #3).
 
 **#2 Conformité de la déclaration TVA**
 - Les grilles 46, 47, 48, 49 (ventes) et 86, 87, 88 (achats) sont des codes INTERNES approximatifs. Attention : 48 et 49 ont une signification officielle différente (avoirs) qui entrera en collision avec l'implémentation des avoirs.
@@ -104,7 +113,7 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 
 **#6 Relances clients** : modèle de relance (niveaux, gabarits), sélection à partir de `AgedBalanceQuery`, envoi par mail (dépend de #3), historique par facture.
 
-**#7 Édition de l'entité** : ajouter `edit`/`update` (nom, dénomination, numéro de TVA, adresse, forme juridique, pays). L'écran VAT Settings existant (`Accounting::Settings::VatSettingsController`) peut servir de modèle et être fusionné dans une page "Entity settings".
+**#7 Édition de l'entité — FAIT (2026-09-24)** : écran Settings > Entity (`Accounting::Settings::EntitiesController`), format du numéro de TVA validé (`Partner.valid_vat_number?`, partagé), un numéro vide est stocké en NULL (`Entity` `normalizes`, l'index unique partiel ne saute que les NULL). VAT Settings reste un écran séparé (pas fusionné).
 
 ### P2 — simplicité pour un non-comptable
 
@@ -124,10 +133,10 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 
 ## 4. Ordre de travail recommandé
 
-1. #1 Avoirs (touche le modèle comptable : le plus tôt possible), en réservant la décision sur les grilles au point #2.
+1. ~~#1 Avoirs~~ (fait), en réservant la décision sur les grilles au point #2.
 2. #3 PDF + envoi (débloque #6).
 3. #2 Conformité TVA, avec un comptable.
-4. #4 Amortissements, puis #7, puis #5/#6.
+4. #4 Amortissements, puis ~~#7~~ (fait), puis #5/#6.
 5. Lot P2 en fin de parcours, ou au fil de l'eau.
 
 Chaque point devrait suivre : brainstorming court → plan → TDD → vérification manuelle dans l'app → commit. Faire valider les décisions de modèle de données (notamment #1, #2, #4) par l'utilisateur avant de coder.

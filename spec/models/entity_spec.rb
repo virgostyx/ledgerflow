@@ -78,4 +78,44 @@ RSpec.describe Entity, type: :model do
       expect(entity2).not_to be_valid
     end
   end
+
+  describe 'vat_number normalization' do
+    it 'stocke un numéro vide comme NULL, pour ne pas heurter l index unique partiel' do
+      entity = create(:entity, vat_number: '  ')
+      expect(entity.reload.vat_number).to be_nil
+    end
+
+    it 'accepte deux entités dont le numéro de TVA est saisi vide' do
+      create(:entity, vat_number: '')
+      expect { create(:entity, vat_number: '') }.not_to raise_error
+    end
+
+    it 'retire les espaces autour d un numéro valide' do
+      expect(create(:entity, vat_number: ' BE0123456789 ').reload.vat_number).to eq('BE0123456789')
+    end
+  end
+
+  describe 'vat_number format' do
+    it 'accepte un numéro de TVA valide' do
+      expect(build(:entity, vat_number: 'BE0123456789')).to be_valid
+    end
+
+    it 'accepte un numéro de TVA d un autre État membre' do
+      expect(build(:entity, vat_number: 'FR32123456789')).to be_valid
+    end
+
+    it 'accepte un numéro vide' do
+      expect(build(:entity, vat_number: '')).to be_valid
+    end
+
+    it 'rejette un préfixe pays inconnu' do
+      entity = build(:entity, vat_number: 'XX123456789')
+      expect(entity).not_to be_valid
+      expect(entity.errors[:vat_number]).to be_present
+    end
+
+    it 'rejette un numéro mal formé pour son pays' do
+      expect(build(:entity, vat_number: 'BE12')).not_to be_valid
+    end
+  end
 end

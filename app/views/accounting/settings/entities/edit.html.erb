@@ -1,0 +1,84 @@
+<% content_for :breadcrumb do %>
+  <%= link_to "Settings", accounting_settings_root_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <span class="text-gray-700 font-medium">Entity</span>
+<% end %>
+
+<div class="max-w-2xl">
+  <%= render Ui::PageHeaderComponent.new(title: "Entity", description: "Identity and address printed on your invoices") %>
+
+  <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
+    <%= form_with model: @entity, url: accounting_settings_entity_path, method: :patch,
+          scope: :entity, class: "space-y-5" do |f| %>
+
+      <% if @entity.errors.any? %>
+        <div class="rounded-md bg-danger-50 border border-danger-200 p-4">
+          <ul class="list-disc list-inside text-sm text-danger-700 space-y-1">
+            <% @entity.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="grid grid-cols-2 gap-5">
+        <div>
+          <%= f.label :name, "Entity name *", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :name, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500", required: true %>
+        </div>
+        <div>
+          <%= f.label :legal_name, "Legal name *", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :legal_name, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500", required: true %>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-5">
+        <div>
+          <%= f.label :legal_form, "Legal form", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :legal_form,
+                [["ASBL / VZW", "ASBL"], ["Fondation / Stichting", "Fondation"],
+                 ["SA / NV", "SA"], ["SRL / BV", "SRL"], ["SCRL / CVBA", "SCRL"],
+                 ["Sole proprietorship", "Self-employed"], ["Other", "Other"]],
+                { include_blank: "Select" },
+                class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+        </div>
+        <div>
+          <%= f.label :vat_number, "VAT number", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :vat_number, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500", placeholder: "BE0123456789" %>
+        </div>
+      </div>
+
+      <div>
+        <%= f.label :address_line1, "Address", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.text_field :address_line1, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+      </div>
+
+      <div>
+        <%= f.label :address_line2, "Address line 2", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.text_field :address_line2, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+      </div>
+
+      <div class="grid grid-cols-3 gap-5">
+        <div>
+          <%= f.label :zip_code, "Postal code", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :zip_code, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+        </div>
+        <div>
+          <%= f.label :city, "City", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :city, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+        </div>
+        <div>
+          <%= f.label :country, "Country", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :country, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500", required: true %>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <%= f.submit "Save entity",
+              class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer" %>
+        <%= link_to "Cancel", accounting_settings_root_path,
+              class: "px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors" %>
+      </div>
+    <% end %>
+  </div>
+</div>

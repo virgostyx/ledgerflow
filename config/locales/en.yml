@@ -96,6 +96,8 @@ en:
     settings:
       vat_settings:
         updated: "VAT settings updated."
+      entity:
+        updated: "Entity updated."
       journals:
         created:          "Journal created successfully."
         updated:          "Journal updated."

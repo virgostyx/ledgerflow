@@ -115,6 +115,7 @@ Rails.application.routes.draw do
           resources :analytical_accounts, shallow: true
         end
         resource :vat_settings, only: [ :edit, :update ]
+        resource :entity, only: [ :edit, :update ]
       end
     end
   end
