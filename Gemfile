@@ -89,6 +89,7 @@ group :development do
 end
 
 group :test do
+  gem "pdf-reader" # reads back generated invoice PDFs in specs
   gem "capybara"
   gem "selenium-webdriver"
   gem "webmock"

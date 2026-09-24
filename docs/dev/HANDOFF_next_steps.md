@@ -2,7 +2,7 @@
 
 Objectif de la prochaine session : combler les écarts qui séparent LedgerFlow d'un outil qu'une PME ou un indépendant belge peut utiliser seul. La liste priorisée et le contexte technique sont ci-dessous. Lis d'abord `CLAUDE.md` et `MEMORY.md`, puis ce fichier.
 
-État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1781 exemples, 97,29 % de couverture (après avoirs et édition de l'entité), un seul échec connu et flaky (voir "Pièges").
+État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1811 exemples, 97,35 % de couverture (après avoirs, édition de l'entité et PDF de facture), un seul échec connu et flaky (voir "Pièges").
 
 ---
 
@@ -99,9 +99,10 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 - Le listing annuel des clients assujettis (distinct du relevé intracom trimestriel) n'existe pas — à confirmer avec le comptable.
 - Livrable attendu : tableau officiel des grilles validé par un comptable, refonte de `VatGrid`, calcul des totaux, validation XSD dans un test.
 
-**#3 Facture imprimable et envoyée**
-- Générer un PDF de facture (Prawn + prawn-table, ou HTML→PDF via Ferrum) avec : entité (adresse, TVA, IBAN via `BankAccount`), partenaire, lignes, TVA par taux, mentions légales obligatoires du régime (ex. "Autoliquidation" pour le cocontractant), communication structurée (`Accounting::StructuredCommunication` existe).
-- Envoi par mail (ActionMailer + jobs Solid Queue déjà en place) avec suivi de statut.
+**#3 Facture imprimable et envoyée** — découpé en 3 sous-projets ; **3a fait**, 3b et 3c à faire.
+- **3a PDF — FAIT (2026-09-24)** : `Accounting::InvoicePdf` (Prawn, anglais uniquement), `GET /accounting/invoices/:id/pdf`, bouton « Download PDF » sur les factures et avoirs clients émis. Émetteur lu depuis l'entité, IBAN/BIC du premier `BankAccount` actif, communication structurée pour les factures (pas les avoirs), mention légale générique par `vat_treatment` et pour la franchise. Dépendance de test ajoutée : `pdf-reader`. Limites : caractères hors Windows-1252 remplacés par `?` (police Helvetica intégrée), un seul compte bancaire, pas de logo ; **les mentions légales sont génériques, sans article du Code TVA : à faire valider par un comptable**.
+- **3b Envoi par e-mail — À FAIRE** : ActionMailer + Solid Queue, PDF en pièce jointe (réutiliser `InvoicePdf`), `Partner#email` existe déjà, historique/statut d'envoi par facture. Il n'y a qu'un `ApplicationMailer` vide et le SMTP de production est commenté dans `config/environments/production.rb` : l'utilisateur utilisera un **SMTP classique, paramètres à préciser** (serveur, port, authentification, adresse d'expédition ; credentials via `bin/rails credentials:edit`).
+- **3c Peppol — À FAIRE, après choix de l'Access Point** : l'intégration actuelle (`Peppol::Actions::SendToDigiteal`, `Peppol::WebhooksController`) est un squelette écrit de mémoire, jamais validé contre une vraie API ni un compte Digiteal. Manques constatés : pas d'`EndpointID` (identifiant Peppol, en Belgique `0208:` + numéro d'entreprise) dans l'UBL, aucun identifiant Peppol sur l'entité ni sur les partenaires, émetteur lu dans des constantes d'environnement (`PEPPOL_COMPANY_*`) et non depuis l'entité, réception d'une facture rattachée à un exercice/entité choisi arbitrairement (`FiscalYear.current` sans tenant). L'utilisateur veut comprendre le fonctionnement de Peppol avant de décider : expliquer (réseau d'Access Points, identifiants dans un annuaire, format UBL BIS 3.0), puis lire la vraie documentation de l'AP choisi avant de recoder. À ma connaissance la facturation électronique B2B via Peppol est obligatoire en Belgique depuis le 1er janvier 2026 (à vérifier).
 
 ### P1 — nécessaires pour une PME
 
@@ -134,7 +135,7 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 ## 4. Ordre de travail recommandé
 
 1. ~~#1 Avoirs~~ (fait), en réservant la décision sur les grilles au point #2.
-2. #3 PDF + envoi (débloque #6).
+2. #3 PDF + envoi (débloque #6) : 3a PDF fait ; reste 3b e-mail SMTP, puis 3c Peppol.
 3. #2 Conformité TVA, avec un comptable.
 4. #4 Amortissements, puis ~~#7~~ (fait), puis #5/#6.
 5. Lot P2 en fin de parcours, ou au fil de l'eau.

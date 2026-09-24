@@ -84,6 +84,8 @@ en:
         cancel_paid:       "This invoice has payments or is in a payment batch, undo them first."
         cancel_credited:   "This invoice has credit notes, cancel them first."
         credit_exceeds_invoice: "Credit notes cannot exceed the credited invoice total."
+        pdf_customer_only: "Only customer invoices and credit notes can be printed."
+        pdf_not_issued:    "Post the document before printing it."
         credit_note_needs_posted: "Only a posted invoice can be credited."
         credit_note_invoice_has_receipts: "Receipts are already booked on this invoice, so the credit note stays open: settle it by lettering or refund it."
         credit_note_needs_invoice: "This credit note is not linked to an invoice."

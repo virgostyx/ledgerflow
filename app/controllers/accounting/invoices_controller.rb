@@ -1,6 +1,6 @@
 class Accounting::InvoicesController < ApplicationController
   before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :send_peppol,
-                                      :create_credit_note, :apply_credit_note ]
+                                      :create_credit_note, :apply_credit_note, :pdf ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
@@ -118,6 +118,18 @@ class Accounting::InvoicesController < ApplicationController
     else
       redirect_to accounting_invoice_path(@invoice), alert: result.message
     end
+  end
+
+  def pdf
+    authorize @invoice
+
+    error = if !@invoice.customer?                                                then "pdf_customer_only"
+    elsif !(@invoice.posted? || @invoice.partially_paid? || @invoice.paid?)         then "pdf_not_issued"
+    end
+    return redirect_to accounting_invoice_path(@invoice), alert: t("accounting.invoices.errors.#{error}") if error
+
+    send_data Accounting::InvoicePdf.new(@invoice).render, type: "application/pdf", disposition: :inline,
+              filename: "#{@invoice.invoice_number.tr('/', '-')}.pdf"
   end
 
   def send_peppol

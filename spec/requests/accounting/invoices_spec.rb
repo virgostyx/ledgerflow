@@ -506,6 +506,86 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     end
   end
 
+  describe 'GET /accounting/invoices/:id/pdf' do
+    include_context 'with_pcmn_accounts'
+
+    let!(:sale_journal)     { create(:journal, :sale) }
+    let!(:purchase_journal) { create(:journal, :purchase) }
+
+    def posted(type, journal)
+      inv = create(:invoice, :with_lines, invoice_type: type, fiscal_year: fiscal_year, journal: journal)
+      Accounting::PostInvoice.call(invoice: inv).invoice.reload
+    end
+
+    it 'returns the invoice as a PDF, with a file name free of slashes' do
+      invoice = posted(:customer, sale_journal)
+      get pdf_accounting_invoice_path(invoice)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('application/pdf')
+      expect(response.body).to start_with('%PDF')
+      expect(response.headers['Content-Disposition']).to include(%(filename="#{invoice.invoice_number.tr('/', '-')}.pdf"))
+    end
+
+    it 'works for a credit note' do
+      original = posted(:customer, sale_journal)
+      note = original.build_credit_note.tap(&:save!)
+      note = Accounting::PostInvoice.call(invoice: note).invoice.reload
+
+      get pdf_accounting_invoice_path(note)
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('application/pdf')
+    end
+
+    it 'refuses a draft' do
+      draft = create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal)
+      get pdf_accounting_invoice_path(draft)
+
+      expect(response).to redirect_to(accounting_invoice_path(draft))
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'refuses a cancelled invoice' do
+      invoice = posted(:customer, sale_journal)
+      invoice.update_columns(status: Accounting::Invoice.statuses[:cancelled])
+      get pdf_accounting_invoice_path(invoice)
+
+      expect(response).to redirect_to(accounting_invoice_path(invoice))
+    end
+
+    it 'refuses a supplier invoice' do
+      invoice = posted(:supplier, purchase_journal)
+      get pdf_accounting_invoice_path(invoice)
+
+      expect(response).to redirect_to(accounting_invoice_path(invoice))
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'refuses a user who is not a member of the entity' do
+      invoice = posted(:customer, sale_journal)
+      sign_in create(:user)
+      get pdf_accounting_invoice_path(invoice)
+
+      expect(response).not_to have_http_status(:ok)
+    end
+
+    describe 'the download button' do
+      it 'shows on a posted customer invoice' do
+        get accounting_invoice_path(posted(:customer, sale_journal))
+        expect(response.body).to include('Download PDF')
+      end
+
+      it 'is absent on a draft and on a supplier invoice' do
+        draft = create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal)
+        get accounting_invoice_path(draft)
+        expect(response.body).not_to include('Download PDF')
+
+        get accounting_invoice_path(posted(:supplier, purchase_journal))
+        expect(response.body).not_to include('Download PDF')
+      end
+    end
+  end
+
   describe 'credit notes' do
     include_context 'with_pcmn_accounts'
 

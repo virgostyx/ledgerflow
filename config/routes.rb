@@ -54,6 +54,7 @@ Rails.application.routes.draw do
           post :send_peppol
           post :create_credit_note
           post :apply_credit_note
+          get  :pdf
         end
       end
 
