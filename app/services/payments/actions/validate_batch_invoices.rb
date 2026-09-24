@@ -24,7 +24,7 @@ class Payments::Actions::ValidateBatchInvoices
   def self.eligibility_problems(invoice)
     problems = []
 
-    unless invoice.supplier? && invoice.posted?
+    unless invoice.supplier? && invoice.invoice? && invoice.posted?
       problems << I18n.t("payments.errors.invoice_not_eligible", number: invoice.invoice_number || invoice.id)
     end
 

@@ -143,7 +143,12 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   end
 
   # `amount` is in the invoice's currency; debit/credit are always posted in EUR.
+  # A credit note mirrors its invoice: sides are swapped and grid amounts negated, so grids net out.
   def self.create_line(entry, side, amount, invoice:, **attrs)
+    if invoice.credit_note?
+      side = side == :debit ? :credit : :debit
+      attrs[:vat_amount] = -attrs[:vat_amount] if attrs[:vat_amount]
+    end
     zero = BigDecimal("0")
     eur_amount = (amount * invoice.exchange_rate).round(2)
     Accounting::JournalEntryLine.create!(

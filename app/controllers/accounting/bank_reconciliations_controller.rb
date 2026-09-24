@@ -4,7 +4,7 @@ class Accounting::BankReconciliationsController < ApplicationController
     @pagy, @pending_transactions = pagy(Accounting::BankTransaction.pending.filter_by(filter_params)
                                           .includes(bank_account: :journal)
                                           .order(transaction_date: :desc))
-    open_invoices = Accounting::Invoice.customer.posted.where.not(invoice_number: nil).to_a
+    open_invoices = Accounting::MatchBankTransaction.open_customer_invoices.to_a
     @suggestions  = @pending_transactions.index_with do |tx|
       Accounting::MatchBankTransaction.call(transaction: tx, open_invoices: open_invoices)
     end

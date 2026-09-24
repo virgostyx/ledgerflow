@@ -1,5 +1,6 @@
 class Accounting::InvoicesController < ApplicationController
-  before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :send_peppol ]
+  before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :send_peppol,
+                                      :create_credit_note, :apply_credit_note ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
@@ -88,6 +89,32 @@ class Accounting::InvoicesController < ApplicationController
 
     if result.success?
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.posted")
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: result.message
+    end
+  end
+
+  def create_credit_note
+    authorize @invoice
+
+    unless @invoice.invoice? && (@invoice.posted? || @invoice.partially_paid? || @invoice.paid?)
+      return redirect_to accounting_invoice_path(@invoice), alert: t("accounting.invoices.errors.credit_note_needs_posted")
+    end
+
+    note = @invoice.build_credit_note
+    if note.save
+      redirect_to edit_accounting_invoice_path(note), notice: t("accounting.invoices.credit_note_created")
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: note.errors.full_messages.to_sentence
+    end
+  end
+
+  def apply_credit_note
+    authorize @invoice
+
+    result = Accounting::ApplyCreditNote.call(credit_note: @invoice)
+    if result.success?
+      redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.credit_note_applied")
     else
       redirect_to accounting_invoice_path(@invoice), alert: result.message
     end

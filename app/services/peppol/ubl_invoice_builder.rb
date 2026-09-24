@@ -1,5 +1,6 @@
 class Peppol::UblInvoiceBuilder
   UBL_NS     = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+  CREDIT_NOTE_NS = "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2"
   CAC_NS     = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
   CBC_NS     = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
   CUSTOMIZATION_ID = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0"
@@ -10,18 +11,25 @@ class Peppol::UblInvoiceBuilder
     @partner = invoice.partner
     @lines   = invoice.lines.to_a
     @currency = invoice.currency || "EUR"
+    @credit_note = invoice.credit_note?
   end
 
   def build
     builder = Nokogiri::XML::Builder.new(encoding: "UTF-8") do |xml|
-      xml.Invoice("xmlns" => UBL_NS, "xmlns:cac" => CAC_NS, "xmlns:cbc" => CBC_NS) do
+      xml.send(@credit_note ? "CreditNote" : "Invoice",
+               "xmlns" => @credit_note ? CREDIT_NOTE_NS : UBL_NS, "xmlns:cac" => CAC_NS, "xmlns:cbc" => CBC_NS) do
         xml["cbc"].CustomizationID CUSTOMIZATION_ID
         xml["cbc"].ProfileID PROFILE_ID
         xml["cbc"].ID @invoice.invoice_number
         xml["cbc"].IssueDate @invoice.invoice_date.to_s
-        xml["cbc"].DueDate @invoice.due_date.to_s if @invoice.due_date.present?
-        xml["cbc"].InvoiceTypeCode "380"
+        xml["cbc"].DueDate @invoice.due_date.to_s if @invoice.due_date.present? && !@credit_note
+        if @credit_note
+          xml["cbc"].CreditNoteTypeCode "381"
+        else
+          xml["cbc"].InvoiceTypeCode "380"
+        end
         xml["cbc"].DocumentCurrencyCode @currency
+        build_billing_reference(xml)
 
         build_supplier_party(xml)
         build_customer_party(xml)
@@ -35,6 +43,14 @@ class Peppol::UblInvoiceBuilder
   end
 
   private
+
+  def build_billing_reference(xml)
+    return unless @credit_note && @invoice.credited_invoice&.invoice_number
+
+    xml["cac"].BillingReference do
+      xml["cac"].InvoiceDocumentReference { xml["cbc"].ID @invoice.credited_invoice.invoice_number }
+    end
+  end
 
   def build_supplier_party(xml)
     xml["cac"].AccountingSupplierParty do
@@ -104,9 +120,9 @@ class Peppol::UblInvoiceBuilder
 
   def build_invoice_lines(xml)
     @lines.each_with_index do |line, index|
-      xml["cac"].InvoiceLine do
+      xml["cac"].send(@credit_note ? "CreditNoteLine" : "InvoiceLine") do
         xml["cbc"].ID (index + 1).to_s
-        xml["cbc"].InvoicedQuantity(line.quantity.to_s, "unitCode" => "C62")
+        xml["cbc"].send(@credit_note ? "CreditedQuantity" : "InvoicedQuantity", line.quantity.to_s, "unitCode" => "C62")
         xml["cbc"].LineExtensionAmount(format("%.2f", line.subtotal_excl_vat), "currencyID" => @currency)
         xml["cac"].Item do
           xml["cbc"].Name line.description

@@ -107,7 +107,7 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
 
     it 'matches against preloaded open invoices without querying them again' do
       transaction = tx
-      open_invoices = Accounting::Invoice.customer.posted.where.not(invoice_number: nil).to_a
+      open_invoices = Accounting::Invoice.customer.invoice.posted.where.not(invoice_number: nil).includes(:credit_notes).to_a
       queries = []
       subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
         queries << payload[:sql] if payload[:sql].include?('FROM "accounting_invoices"')
@@ -118,6 +118,16 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
 
       expect(suggestion.target).to contain_exactly(first, second)
       expect(queries).to be_empty
+    end
+
+    it 'never suggests a credit note as an open invoice' do
+      note = create(:invoice, :customer, :posted, partner: partner, fiscal_year: fiscal_year, invoice_number: '2026-0044',
+                    document_type: :credit_note)
+      note.update_columns(total_incl_vat: BigDecimal('300'))
+
+      suggestion = described_class.call(transaction: tx(amount: 1800, description: 'Invoices 2026-0041, 2026-0043 and 2026-0044'))
+
+      expect(suggestion).to be_nil
     end
 
     it 'suggests all invoices named in the description when the sum of balances matches' do

@@ -9,6 +9,7 @@ class Accounting::Invoice < ApplicationRecord
   include Accounting::FiscalYearScoped
 
   enum :invoice_type,   { customer: 0, supplier: 1 }
+  enum :document_type,  { invoice: 0, credit_note: 1 }
   enum :status,         { draft: 0, posted: 1, paid: 2, cancelled: 3, partially_paid: 4 }
   enum :peppol_status,  { not_sent: 0, queued: 1, delivered: 2, failed: 3 }
   enum :vat_treatment,  { domestic: 0, intracom_goods: 1, intracom_services: 2,
@@ -19,9 +20,12 @@ class Accounting::Invoice < ApplicationRecord
   REVERSE_CHARGE_TREATMENTS = %w[intracom_goods intracom_services construction_reverse_charge].freeze
 
   belongs_to :partner,       class_name: "Accounting::Partner"
+  belongs_to :credited_invoice, class_name: "Accounting::Invoice", optional: true
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
   belongs_to :journal,       class_name: "Accounting::Journal", optional: true
   belongs_to :cash_journal,  class_name: "Accounting::Journal", optional: true
+  has_many   :credit_notes,  class_name: "Accounting::Invoice", foreign_key: :credited_invoice_id,
+                             inverse_of: :credited_invoice, dependent: :restrict_with_error
   has_many   :lines,         class_name: "Accounting::InvoiceLine",
                              foreign_key: :invoice_id, dependent: :destroy,
                              inverse_of: :invoice
@@ -44,6 +48,7 @@ class Accounting::Invoice < ApplicationRecord
   validate :journal_matches_invoice_type, if: -> { journal.present? }
   validate :cash_journal_is_cash, if: -> { cash_journal.present? }
   validate :vat_treatment_requires_partner_vat_number, if: -> { REVERSE_CHARGE_TREATMENTS.include?(vat_treatment) }
+  validate :credited_invoice_matches, if: -> { credited_invoice_id? || credited_invoice.present? }
 
   aasm column: :status, enum: true do
     state :draft, initial: true
@@ -77,6 +82,20 @@ class Accounting::Invoice < ApplicationRecord
     end
   end
 
+  # A draft credit note mirroring this invoice (lines included); edit the lines for a partial credit.
+  def build_credit_note
+    credit_notes.build(
+      document_type: :credit_note, partner: partner, invoice_type: invoice_type, vat_treatment: vat_treatment,
+      currency: currency, exchange_rate: exchange_rate, journal: journal, fiscal_year: fiscal_year,
+      invoice_date: Date.current
+    ).tap do |note|
+      lines.each do |l|
+        note.lines.build(description: l.description, account: l.account, quantity: l.quantity,
+                         unit_price: l.unit_price, vat_rate: l.vat_rate, position: l.position)
+      end
+    end
+  end
+
   def compute_totals
     self.subtotal_excl_vat = lines.sum(&:subtotal_excl_vat)
     self.vat_amount        = lines.sum(&:vat_amount)
@@ -95,8 +114,13 @@ class Accounting::Invoice < ApplicationRecord
     Accounting::JournalEntryLine.where(invoice_id: id).sum(:credit)
   end
 
+  # Posted credit notes count as soon as they exist, applied to the invoice or not.
+  def credited_amount
+    credit_notes.select { |n| n.posted? || n.partially_paid? || n.paid? }.sum(&:total_incl_vat_eur) # in memory: preload :credit_notes in batch callers
+  end
+
   def remaining_amount
-    [ total_incl_vat_eur - paid_amount, 0 ].max
+    [ total_incl_vat_eur - paid_amount - credited_amount, 0 ].max
   end
 
   def overpaid_amount
@@ -125,6 +149,18 @@ class Accounting::Invoice < ApplicationRecord
 
   def cash_journal_is_cash
     errors.add(:cash_journal, "must be a cash journal") unless cash_journal.cash?
+  end
+
+  def credited_invoice_matches
+    return errors.add(:credited_invoice, "is only allowed on a credit note") unless credit_note?
+
+    original = credited_invoice
+    if original.credit_note? || !(original.posted? || original.paid? || original.partially_paid?)
+      errors.add(:credited_invoice, "must be a posted invoice")
+    elsif [ original.partner_id, original.invoice_type, original.vat_treatment ] !=
+          [ partner_id, invoice_type, vat_treatment ]
+      errors.add(:credited_invoice, "must have the same partner, type and VAT treatment")
+    end
   end
 
   def vat_treatment_requires_partner_vat_number

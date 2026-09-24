@@ -71,4 +71,24 @@ RSpec.describe Peppol::ReceiveInvoice do
       expect(result).to be_failure
     end
   end
+
+  context "avec un document CreditNote" do
+    let(:credit_ubl) do
+      sample_ubl.sub("<Invoice ", "<CreditNote ").sub("</Invoice>", "</CreditNote>")
+                .sub("urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
+                     "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2")
+                .sub("<cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>", "<cbc:CreditNoteTypeCode>381</cbc:CreditNoteTypeCode>")
+    end
+
+    it "crée une note de crédit fournisseur en brouillon" do
+      partner
+      result = described_class.call(xml: credit_ubl, fiscal_year: fiscal_year)
+
+      invoice = Accounting::Invoice.last
+      expect(result).to be_success
+      expect(invoice).to be_credit_note
+      expect(invoice).to be_supplier
+      expect(invoice.total_incl_vat).to eq(BigDecimal("605.00"))
+    end
+  end
 end

@@ -430,6 +430,19 @@ RSpec.describe 'Accounting::Invoices', type: :request do
       get edit_accounting_invoice_path(invoice)
       expect(response).to have_http_status(:ok)
     end
+
+    %w[0 6 12 21].each do |rate|
+      it "preselects the #{rate}% option for a line at #{rate}%" do
+        create(:invoice_line, invoice: invoice, account: create(:account), quantity: 1, unit_price: '100.00',
+               vat_rate: rate, position: 1)
+
+        get edit_accounting_invoice_path(invoice)
+
+        line_selects = Nokogiri::HTML(response.body).css("select[name$='[vat_rate]']").reject { |sel| sel.ancestors('template').any? }
+        expect(line_selects.size).to eq(1)
+        expect(line_selects.first.css('option[selected]').map { |o| o['value'] }).to eq([ format('%.2f', rate.to_f) ])
+      end
+    end
   end
 
   describe 'PATCH /accounting/invoices/:id' do
@@ -490,6 +503,84 @@ RSpec.describe 'Accounting::Invoices', type: :request do
       post cancel_invoice_accounting_invoice_path(invoice)
       expect(invoice.reload).to be_paid
       expect(flash[:alert]).to be_present
+    end
+  end
+
+  describe 'credit notes' do
+    include_context 'with_pcmn_accounts'
+
+    let!(:sale_journal) { create(:journal, :sale) }
+    let(:original) do
+      inv = create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal)
+      Accounting::PostInvoice.call(invoice: inv).invoice.reload
+    end
+
+    describe 'POST /accounting/invoices/:id/create_credit_note' do
+      it 'creates a draft credit note prefilled from the invoice and opens it for editing' do
+        expect { post create_credit_note_accounting_invoice_path(original) }
+          .to change(Accounting::Invoice.credit_note, :count).by(1)
+
+        note = Accounting::Invoice.credit_note.last
+        expect(response).to redirect_to(edit_accounting_invoice_path(note))
+        expect(note).to be_draft
+        expect(note.credited_invoice).to eq(original)
+        expect(note).to have_attributes(partner: original.partner, invoice_type: 'customer',
+                                        currency: original.currency, vat_treatment: original.vat_treatment)
+        expect(note.lines.map { |l| [ l.description, l.unit_price, l.vat_rate ] })
+          .to eq(original.lines.map { |l| [ l.description, l.unit_price, l.vat_rate ] })
+      end
+
+      it 'refuses a draft invoice' do
+        draft = create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year)
+        expect { post create_credit_note_accounting_invoice_path(draft) }
+          .not_to change(Accounting::Invoice, :count)
+        expect(flash[:alert]).to be_present
+      end
+    end
+
+    describe 'POST /accounting/invoices/:id/apply_credit_note' do
+      let(:note) do
+        n = create(:invoice, invoice_type: :customer, partner: original.partner, fiscal_year: fiscal_year,
+                   journal: sale_journal, document_type: :credit_note, credited_invoice: original)
+        create(:invoice_line, invoice: n, account: original.lines.first.account, quantity: 1,
+               unit_price: '400.00', vat_rate: '21.00', position: 1)
+        Accounting::PostInvoice.call(invoice: n).invoice.reload
+      end
+
+      it 'settles the credit note against its invoice and redirects to the credit note' do
+        post apply_credit_note_accounting_invoice_path(note)
+
+        expect(response).to redirect_to(accounting_invoice_path(note))
+        expect(flash[:notice]).to be_present
+        expect(original.reload).to be_partially_paid
+        expect(note.reload).to be_paid
+      end
+
+      it 'redirects with an alert when it cannot be applied' do
+        note.update_columns(credited_invoice_id: nil)
+        post apply_credit_note_accounting_invoice_path(note)
+        expect(flash[:alert]).to be_present
+      end
+    end
+
+    describe 'GET /accounting/invoices/:id' do
+      it 'offers "Create credit note" on a posted invoice' do
+        get accounting_invoice_path(original)
+        expect(response.body).to include('Create credit note')
+      end
+
+      it 'offers "Apply to invoice" and labels a posted credit note' do
+        n = create(:invoice, invoice_type: :customer, partner: original.partner, fiscal_year: fiscal_year,
+                   journal: sale_journal, document_type: :credit_note, credited_invoice: original)
+        create(:invoice_line, invoice: n, account: original.lines.first.account, quantity: 1,
+               unit_price: '100.00', vat_rate: '21.00', position: 1)
+        n = Accounting::PostInvoice.call(invoice: n).invoice.reload
+
+        get accounting_invoice_path(n)
+        expect(response.body).to include('Apply to invoice')
+        expect(response.body).to include('Credit note')
+        expect(response.body).not_to include('Create credit note')
+      end
     end
   end
 

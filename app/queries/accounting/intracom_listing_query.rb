@@ -11,6 +11,6 @@ class Accounting::IntracomListingQuery
       .where(invoice_date: period_start..period_end)
 
     invoices.group_by { |inv| [ inv.partner_id, CODES.fetch(inv.vat_treatment) ] }
-            .transform_values { |invs| invs.sum(&:total_incl_vat_eur) }
+            .transform_values { |invs| invs.sum { |inv| inv.credit_note? ? -inv.total_incl_vat_eur : inv.total_incl_vat_eur } }
   end
 end

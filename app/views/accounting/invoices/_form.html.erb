@@ -200,7 +200,7 @@
             <%# VAT rate select %>
             <%= lf.select :vat_rate,
                   [['0%', '0.00'], ['6%', '6.00'], ['12%', '12.00'], ['21%', '21.00']],
-                  { selected: lf.object.vat_rate.to_s.sub(/\.?0+$/, '') == '0' ? '0.00' : lf.object.vat_rate&.to_s },
+                  { selected: lf.object.vat_rate && format('%.2f', lf.object.vat_rate) }, # options are "21.00", a BigDecimal prints "21.0"
                   class: 'block w-full rounded border border-gray-300 text-sm',
                   data: { line_vat_rate: true, action: 'change->invoice-form#computeLineTotals' } %>
 

@@ -52,6 +52,8 @@ Rails.application.routes.draw do
           post :validate_invoice
           post :cancel_invoice
           post :send_peppol
+          post :create_credit_note
+          post :apply_credit_note
         end
       end
 

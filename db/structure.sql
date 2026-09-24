@@ -577,7 +577,9 @@ CREATE TABLE public.accounting_invoices (
     journal_id bigint,
     cash_journal_id bigint,
     exchange_rate numeric(10,6) DEFAULT 1.0 NOT NULL,
-    vat_treatment integer DEFAULT 0 NOT NULL
+    vat_treatment integer DEFAULT 0 NOT NULL,
+    document_type integer DEFAULT 0 NOT NULL,
+    credited_invoice_id bigint
 );
 
 
@@ -1891,6 +1893,13 @@ CREATE INDEX index_accounting_invoices_on_cash_journal_id ON public.accounting_i
 
 
 --
+-- Name: index_accounting_invoices_on_credited_invoice_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoices_on_credited_invoice_id ON public.accounting_invoices USING btree (credited_invoice_id);
+
+
+--
 -- Name: index_accounting_invoices_on_entity_and_invoice_number; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2432,6 +2441,14 @@ ALTER TABLE ONLY public.accounting_fixed_assets
 
 
 --
+-- Name: accounting_invoices fk_rails_470177bd08; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoices
+    ADD CONSTRAINT fk_rails_470177bd08 FOREIGN KEY (credited_invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_479b19d12c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2806,6 +2823,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260924100000'),
 ('20260923150000'),
 ('20260923140000'),
 ('20260923130000'),

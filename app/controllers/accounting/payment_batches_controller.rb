@@ -90,7 +90,7 @@ class Accounting::PaymentBatchesController < ApplicationController
 
   def eligible_invoices
     excluded_ids = Accounting::PaymentBatchLine.active.select(:invoice_id)
-    Accounting::Invoice.supplier.posted.where.not(id: excluded_ids).order(:due_date)
+    Accounting::Invoice.supplier.invoice.posted.where.not(id: excluded_ids).order(:due_date)
   end
 
   def payment_batch_params

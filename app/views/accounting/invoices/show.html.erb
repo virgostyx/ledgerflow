@@ -11,7 +11,7 @@
 <% end %>
 
 <%= render Ui::PageHeaderComponent.new(
-      title: presenter.invoice_number_or_draft,
+      title: (@invoice.credit_note? ? 'Credit note ' : '') + presenter.invoice_number_or_draft,
       back_path: section_path,
       back_text: section_label
     ) do |header| %>
@@ -25,6 +25,14 @@
       <%= button_to 'Cancel invoice', cancel_invoice_accounting_invoice_path(@invoice), method: :post,
             form: { data: { turbo_confirm: 'Cancel this invoice? Its journal entry will be reversed.' } },
             class: 'px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50 transition-colors' %>
+    <% end %>
+    <% if @invoice.invoice? && (@invoice.posted? || @invoice.partially_paid? || @invoice.paid?) && policy(@invoice).create_credit_note? %>
+      <%= button_to 'Create credit note', create_credit_note_accounting_invoice_path(@invoice), method: :post,
+            class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
+    <% end %>
+    <% if @invoice.credit_note? && @invoice.posted? && @invoice.credited_invoice && policy(@invoice).apply_credit_note? %>
+      <%= button_to 'Apply to invoice', apply_credit_note_accounting_invoice_path(@invoice), method: :post,
+            class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
     <% end %>
     <% if policy(@invoice).update? && @invoice.draft? %>
       <%= link_to 'Edit', edit_accounting_invoice_path(@invoice),
@@ -40,6 +48,15 @@
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Type</dt>
       <dd class="mt-1 text-sm text-gray-900"><%= presenter.type_label %></dd>
     </div>
+    <% if @invoice.credited_invoice %>
+      <div>
+        <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Credits invoice</dt>
+        <dd class="mt-1 text-sm text-gray-900">
+          <%= link_to Accounting::InvoicePresenter.new(@invoice.credited_invoice).invoice_number_or_draft,
+                accounting_invoice_path(@invoice.credited_invoice), class: "text-primary-600 hover:underline" %>
+        </dd>
+      </div>
+    <% end %>
     <div>
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Partner</dt>
       <dd class="mt-1 text-sm font-medium text-gray-900"><%= @invoice.partner.name %></dd>

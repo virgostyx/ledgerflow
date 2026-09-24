@@ -23,6 +23,8 @@ class Accounting::CancelInvoice
 
   def self.refusal_for(invoice)
     return I18n.t("accounting.invoices.errors.cancel_not_posted") unless invoice.posted? && invoice.journal_entry
+    return I18n.t("accounting.invoices.errors.cancel_credited") if invoice.credit_notes.where(status: %i[posted partially_paid paid]).exists?
+
     I18n.t("accounting.invoices.errors.cancel_paid") if invoice.paid_amount.positive? ||
                                                               Accounting::PaymentBatchLine.active.exists?(invoice_id: invoice.id)
   end

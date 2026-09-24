@@ -9,7 +9,7 @@ class Accounting::MatchBankTransaction
       match_fees(transaction)
   end
 
-  def self.open_customer_invoices = Accounting::Invoice.customer.posted.where.not(invoice_number: nil)
+  def self.open_customer_invoices = Accounting::Invoice.customer.invoice.posted.where.not(invoice_number: nil).includes(:credit_notes)
 
   def self.match_batch(tx)
     return unless tx.debit? && tx.reference.present?
@@ -21,7 +21,7 @@ class Accounting::MatchBankTransaction
   def self.match_invoice(tx)
     return unless tx.credit? && (digits = Accounting::StructuredCommunication.extract(tx.description))
 
-    invoice = Accounting::Invoice.customer.posted.find_by(id: Accounting::StructuredCommunication.id_from(digits))
+    invoice = Accounting::Invoice.customer.invoice.posted.find_by(id: Accounting::StructuredCommunication.id_from(digits))
     return unless invoice
 
     excess = [ tx.amount - invoice.remaining_amount, 0 ].max
@@ -52,5 +52,5 @@ class Accounting::MatchBankTransaction
     account = Accounting::Account.find_by(code: FEES_ACCOUNT_CODE)
     Suggestion.new(kind: :expense, target: account, excess: 0, confidence: :medium) if account
   end
-  private_class_method :open_customer_invoices, :match_batch, :match_invoice, :match_invoices, :match_fees
+  private_class_method :match_batch, :match_invoice, :match_invoices, :match_fees
 end

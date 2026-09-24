@@ -95,4 +95,41 @@ RSpec.describe Peppol::UblInvoiceBuilder do
     doc = Nokogiri::XML(xml)
     expect(doc.errors).to be_empty
   end
+
+  describe "pour une note de crédit" do
+    let(:credit_note) do
+      create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year, invoice_number: "VTE2025/0002",
+             invoice_date: Date.new(2025, 1, 20), currency: "EUR",
+             document_type: :credit_note, credited_invoice: invoice)
+    end
+
+    before do
+      create(:invoice_line, invoice: credit_note, account: Accounting::Account.find_by!(code: "700000"),
+             description: "Remise", quantity: 1, unit_price: "100.00", vat_rate: "21.00", position: 1)
+      credit_note.compute_totals
+      credit_note.save!
+    end
+
+    subject(:credit_xml) { described_class.new(credit_note).build }
+    let(:doc) { Nokogiri::XML(credit_xml).tap(&:remove_namespaces!) }
+
+    it "a la racine CreditNote dans le namespace CreditNote-2" do
+      expect(doc.root.name).to eq("CreditNote")
+      expect(credit_xml).to include("urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2")
+    end
+
+    it "porte le code de type 381" do
+      expect(doc.at_xpath("//CreditNoteTypeCode").text).to eq("381")
+      expect(doc.at_xpath("//InvoiceTypeCode")).to be_nil
+    end
+
+    it "référence la facture créditée" do
+      expect(doc.at_xpath("//BillingReference/InvoiceDocumentReference/ID").text).to eq("VTE2025/0001")
+    end
+
+    it "utilise CreditNoteLine et CreditedQuantity" do
+      expect(doc.at_xpath("//CreditNoteLine/CreditedQuantity").text).to eq("1.0")
+      expect(doc.at_xpath("//InvoiceLine")).to be_nil
+    end
+  end
 end

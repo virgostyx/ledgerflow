@@ -19,6 +19,13 @@ RSpec.describe Payments::Actions::ValidateBatchInvoices, type: :service do
     expect(result.invoices).to contain_exactly(invoice)
   end
 
+  it 'fails when an invoice is a credit note' do
+    credit_note = create(:invoice, :supplier, :posted, :with_lines, partner: supplier, document_type: :credit_note)
+    ctx = LightService::Context.make(invoice_ids: [ credit_note.id ])
+
+    expect(described_class.execute(ctx)).to be_failure
+  end
+
   it 'fails when no invoice_ids are given' do
     ctx = LightService::Context.make(invoice_ids: [])
 

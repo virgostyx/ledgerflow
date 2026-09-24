@@ -56,6 +56,83 @@ RSpec.describe Accounting::Invoice, type: :model do
     end
   end
 
+  describe 'credit notes' do
+    it { should define_enum_for(:document_type).with_values(invoice: 0, credit_note: 1) }
+    it { should belong_to(:credited_invoice).class_name('Accounting::Invoice').optional }
+
+    it 'is a regular invoice by default' do
+      expect(build(:invoice)).to be_invoice
+    end
+
+    describe '#remaining_amount' do
+      include_context 'with_open_fiscal_year'
+      include_context 'with_pcmn_accounts'
+      let!(:sale_journal) { create(:journal, :sale) }
+
+      it 'is reduced by the active credit notes of the invoice' do
+        original = create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal)
+        original = Accounting::PostInvoice.call(invoice: original).invoice.reload # 1210
+        note = create(:invoice, invoice_type: :customer, partner: original.partner, fiscal_year: fiscal_year,
+                      journal: sale_journal, document_type: :credit_note, credited_invoice: original)
+        create(:invoice_line, invoice: note, account: original.lines.first.account, quantity: 1,
+               unit_price: '500.00', vat_rate: '21.00', position: 1)
+        Accounting::PostInvoice.call(invoice: note)
+
+        expect(original.remaining_amount).to eq(BigDecimal('605.00')) # 1210 - 605
+      end
+    end
+
+    describe 'credited invoice validations' do
+      let(:partner)  { create(:partner) }
+      let(:original) do
+        create(:invoice, :posted, :with_lines, partner: partner, invoice_type: :customer,
+               vat_treatment: :domestic)
+      end
+
+      def credit_note(**attrs)
+        build(:invoice, document_type: :credit_note, credited_invoice: original, partner: partner,
+              invoice_type: :customer, fiscal_year: original.fiscal_year, **attrs)
+      end
+
+      it 'is valid when it matches the credited invoice' do
+        expect(credit_note).to be_valid
+      end
+
+      it 'requires the same partner' do
+        note = credit_note(partner: create(:partner))
+        expect(note).not_to be_valid
+        expect(note.errors[:credited_invoice]).to be_present
+      end
+
+      it 'requires the same invoice type' do
+        note = credit_note(invoice_type: :supplier)
+        expect(note).not_to be_valid
+        expect(note.errors[:credited_invoice]).to be_present
+      end
+
+      it 'requires the same VAT treatment' do
+        original.update_columns(vat_treatment: Accounting::Invoice.vat_treatments[:export])
+        expect(credit_note).not_to be_valid
+      end
+
+      it 'requires the credited invoice to be posted or paid' do
+        original.update_columns(status: Accounting::Invoice.statuses[:draft])
+        note = credit_note
+        expect(note).not_to be_valid
+        expect(note.errors[:credited_invoice]).to be_present
+      end
+
+      it 'cannot credit a credit note' do
+        original.update_columns(document_type: Accounting::Invoice.document_types[:credit_note])
+        expect(credit_note).not_to be_valid
+      end
+
+      it 'is not allowed on a regular invoice' do
+        expect(build(:invoice, credited_invoice: original)).not_to be_valid
+      end
+    end
+  end
+
   describe 'currency and exchange_rate validations' do
     it 'is valid with a supported currency' do
       expect(build(:invoice, currency: 'USD', exchange_rate: '0.92')).to be_valid

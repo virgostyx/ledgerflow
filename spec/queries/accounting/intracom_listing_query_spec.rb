@@ -18,6 +18,20 @@ RSpec.describe Accounting::IntracomListingQuery, type: :query do
   end
 
   describe '.call' do
+    it "déduit les notes de crédit du total du partenaire" do
+      original = post_sale(partner: fr_partner, vat_treatment: :intracom_goods, unit_price: '1000.00').invoice
+      note = create(:invoice, invoice_type: :customer, partner: fr_partner, fiscal_year: fiscal_year,
+                    journal: sale_journal, vat_treatment: :intracom_goods, invoice_date: Date.new(2025, 2, 20),
+                    document_type: :credit_note, credited_invoice: original)
+      create(:invoice_line, invoice: note, account: account_700, quantity: 1, unit_price: '300.00',
+             vat_rate: '21.00', position: 1)
+      Accounting::PostInvoice.call(invoice: note)
+
+      result = described_class.call(fiscal_year_id: fiscal_year.id,
+                                    period_start: Date.new(2025, 1, 1), period_end: Date.new(2025, 3, 31))
+      expect(result[[ fr_partner.id, 'L' ]]).to eq(BigDecimal('700.00'))
+    end
+
     it "additionne les livraisons de biens intracommunautaires par partenaire, avec le code L" do
       post_sale(partner: fr_partner, vat_treatment: :intracom_goods, unit_price: '1000.00')
       post_sale(partner: fr_partner, vat_treatment: :intracom_goods, unit_price: '500.00')

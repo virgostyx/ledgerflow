@@ -7,6 +7,7 @@ class Accounting::PostInvoice
       result = with(invoice: invoice).reduce(
         Accounting::Actions::ValidateInvoice,
         Accounting::Actions::ComputeInvoiceTotals,
+        Accounting::Actions::ValidateCreditNoteAmount,
         Accounting::Actions::AssignInvoiceNumber,
         Accounting::Actions::GenerateInvoiceJournalEntry,
         Accounting::Actions::UpdateInvoiceStatus,

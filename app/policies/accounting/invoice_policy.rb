@@ -11,6 +11,14 @@ class Accounting::InvoicePolicy < ApplicationPolicy
     user.admin? || user.accountant?
   end
 
+  def create_credit_note?
+    user.admin? || user.accountant?
+  end
+
+  def apply_credit_note?
+    user.admin? || user.accountant?
+  end
+
   def send_peppol?
     user.admin? || user.accountant?
   end

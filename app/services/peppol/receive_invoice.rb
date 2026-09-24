@@ -24,6 +24,7 @@ class Peppol::ReceiveInvoice
 
     invoice = Accounting::Invoice.create!(
       invoice_type:    :supplier,
+      document_type:   doc.root.name == "CreditNote" ? :credit_note : :invoice,
       invoice_date:    Date.parse(issue_date),
       due_date:        due_date.present? ? Date.parse(due_date) : nil,
       currency:        currency,
