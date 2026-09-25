@@ -11,6 +11,9 @@ module Ledgerflow
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
 
+    # The Peppol simulator fakes deliveries: only development and test switch it on (validated by Entity).
+    config.x.peppol_simulator_allowed = false
+
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.

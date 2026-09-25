@@ -27,6 +27,8 @@ class Accounting::Invoice < ApplicationRecord
   belongs_to :cash_journal,  class_name: "Accounting::Journal", optional: true
   has_many   :credit_notes,  class_name: "Accounting::Invoice", foreign_key: :credited_invoice_id,
                              inverse_of: :credited_invoice, dependent: :restrict_with_error
+  has_many   :peppol_events, -> { order(occurred_at: :desc) }, class_name: "Accounting::PeppolEvent",
+                             foreign_key: :invoice_id, inverse_of: :invoice, dependent: :destroy
   has_many   :emails,        -> { order(created_at: :desc) }, class_name: "Accounting::InvoiceEmail",
                              foreign_key: :invoice_id, inverse_of: :invoice, dependent: :destroy
   has_many   :lines,         class_name: "Accounting::InvoiceLine",

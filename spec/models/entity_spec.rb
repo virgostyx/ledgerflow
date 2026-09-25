@@ -1,6 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe Entity, type: :model do
+  let(:digiteal_credentials) { { 'api_key' => 'k', 'webhook_secret' => 's' } }
   subject { build(:entity) }
 
   describe 'validations' do
@@ -116,6 +117,112 @@ RSpec.describe Entity, type: :model do
 
     it 'rejette un numéro mal formé pour son pays' do
       expect(build(:entity, vat_number: 'BE12')).not_to be_valid
+    end
+  end
+
+  describe 'Peppol settings' do
+    it { should define_enum_for(:peppol_access_point).with_values(simulator: 0, digiteal: 1).with_prefix(:peppol_ap) }
+
+    it 'n a pas d Access Point tant qu il n est pas choisi' do
+      expect(Entity.new.peppol_access_point).to be_nil
+    end
+
+    describe 'peppol_participant_id' do
+      it 'accepte un identifiant schéma:valeur' do
+        expect(build(:entity, peppol_participant_id: '0208:0123456789')).to be_valid
+      end
+
+      it 'accepte un identifiant vide' do
+        expect(build(:entity, peppol_participant_id: '')).to be_valid
+      end
+
+      it 'rejette un identifiant mal formé' do
+        %w[0123456789 abc:123 0208: 0208:01 23].each do |bad|
+          expect(build(:entity, peppol_participant_id: bad)).not_to be_valid, "#{bad.inspect} should be refused"
+        end
+      end
+
+      it 'est unique entre entités, car il sert à router les factures reçues' do
+        create(:entity, peppol_participant_id: '0208:0123456789')
+        expect(build(:entity, peppol_participant_id: '0208:0123456789')).not_to be_valid
+      end
+
+      it 'accepte plusieurs entités sans identifiant (stocké NULL, pas chaîne vide)' do
+        create(:entity, peppol_participant_id: '')
+        expect { create(:entity, peppol_participant_id: '  ') }.not_to raise_error
+        expect(Entity.where(peppol_participant_id: nil).count).to be >= 2
+      end
+    end
+
+    describe 'peppol_credentials' do
+      it 'se relit tel quel, sous forme de Hash' do
+        entity = create(:entity, peppol_credentials: { 'api_key' => 'k-123', 'webhook_secret' => 's-456' })
+
+        expect(entity.reload.peppol_credentials).to eq('api_key' => 'k-123', 'webhook_secret' => 's-456')
+      end
+
+      it 'est chiffré en base : le secret n y apparaît jamais en clair' do
+        entity = create(:entity, peppol_credentials: { 'api_key' => 'super-secret-key' })
+        raw = Entity.connection.select_value("SELECT peppol_credentials FROM entities WHERE id = #{entity.id}")
+
+        expect(raw).to be_present
+        expect(raw).not_to include('super-secret-key')
+      end
+
+      it 'est vide par défaut' do
+        expect(create(:entity).peppol_credentials).to be_blank
+      end
+    end
+
+    describe 'peppol_webhook_token' do
+      it 'est généré à la création, unique et illisible à deviner' do
+        a, b = create(:entity), create(:entity)
+
+        expect(a.peppol_webhook_token).to be_present.and(have_attributes(length: be >= 24))
+        expect(a.peppol_webhook_token).not_to eq(b.peppol_webhook_token)
+      end
+
+      it 'peut être renouvelé' do
+        entity = create(:entity)
+        expect { entity.regenerate_peppol_webhook_token }.to change { entity.reload.peppol_webhook_token }
+      end
+    end
+
+    describe 'le simulateur' do
+      it 'est autorisé là où la configuration le permet (développement et test)' do
+        expect(build(:entity, peppol_access_point: :simulator)).to be_valid
+      end
+
+      it 'est refusé quand la configuration ne le permet pas (production)' do
+        allow(Rails.configuration.x).to receive(:peppol_simulator_allowed).and_return(false)
+        entity = build(:entity, peppol_access_point: :simulator)
+
+        expect(entity).not_to be_valid
+        expect(entity.errors[:peppol_access_point]).to be_present
+      end
+
+      it 'ne bloque pas un vrai fournisseur en production' do
+        allow(Rails.configuration.x).to receive(:peppol_simulator_allowed).and_return(false)
+        expect(build(:entity, peppol_access_point: :digiteal, peppol_credentials: digiteal_credentials)).to be_valid
+      end
+    end
+
+    describe 'credentials required by the Access Point' do
+      it 'are asked for when a provider needing them is chosen' do
+        entity = build(:entity, peppol_access_point: :digiteal, peppol_credentials: { 'api_key' => 'k' })
+
+        expect(entity).not_to be_valid
+        expect(entity.errors[:peppol_credentials].join).to include('Webhook secret')
+      end
+
+      it 'are accepted when complete' do
+        expect(build(:entity, peppol_access_point: :digiteal, peppol_credentials: digiteal_credentials)).to be_valid
+      end
+
+      it 'are not needed by the simulator, nor without an Access Point' do
+        expect(build(:entity, peppol_access_point: :simulator)).to be_valid
+        expect(build(:entity, peppol_access_point: nil)).to be_valid
+      end
     end
   end
 end

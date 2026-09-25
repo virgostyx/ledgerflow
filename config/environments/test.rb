@@ -28,6 +28,15 @@ Rails.application.configure do
   # Disable request forgery protection in test environment.
   config.action_controller.allow_forgery_protection = false
 
+  config.x.peppol_simulator_allowed = true
+
+  # Column encryption (per-entity Peppol credentials). Fixed keys, NOT secret: test only.
+  # Production reads its own from the credentials (active_record_encryption: primary_key, deterministic_key,
+  # key_derivation_salt), generated with `bin/rails db:encryption:init`.
+  config.active_record.encryption.primary_key         = "test-primary-key-not-a-secret-0123456789"
+  config.active_record.encryption.deterministic_key   = "test-deterministic-key-not-a-secret-0123"
+  config.active_record.encryption.key_derivation_salt = "test-key-derivation-salt-not-a-secret-01"
+
   # Store uploaded files on the local file system in a temporary directory.
   config.active_storage.service = :test
 

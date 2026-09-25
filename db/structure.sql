@@ -907,7 +907,8 @@ CREATE TABLE public.accounting_partners (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     entity_id bigint NOT NULL,
-    payment_terms_days integer DEFAULT 30 NOT NULL
+    payment_terms_days integer DEFAULT 30 NOT NULL,
+    peppol_participant_id character varying
 );
 
 
@@ -1003,6 +1004,41 @@ CREATE SEQUENCE public.accounting_payment_batches_id_seq
 --
 
 ALTER SEQUENCE public.accounting_payment_batches_id_seq OWNED BY public.accounting_payment_batches.id;
+
+
+--
+-- Name: accounting_peppol_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_peppol_events (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    invoice_id bigint NOT NULL,
+    kind integer NOT NULL,
+    message text,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_peppol_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_peppol_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_peppol_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_peppol_events_id_seq OWNED BY public.accounting_peppol_events.id;
 
 
 --
@@ -1115,7 +1151,11 @@ CREATE TABLE public.entities (
     vat_filing_frequency integer DEFAULT 1 NOT NULL,
     vat_regime integer DEFAULT 0 NOT NULL,
     vat_scheme integer DEFAULT 0 NOT NULL,
-    vat_prorata_rate numeric(5,2)
+    vat_prorata_rate numeric(5,2),
+    peppol_access_point integer,
+    peppol_participant_id character varying,
+    peppol_credentials text,
+    peppol_webhook_token character varying
 );
 
 
@@ -1432,6 +1472,13 @@ ALTER TABLE ONLY public.accounting_payment_batches ALTER COLUMN id SET DEFAULT n
 
 
 --
+-- Name: accounting_peppol_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_peppol_events ALTER COLUMN id SET DEFAULT nextval('public.accounting_peppol_events_id_seq'::regclass);
+
+
+--
 -- Name: accounting_recurring_invoices id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1663,6 +1710,14 @@ ALTER TABLE ONLY public.accounting_payment_batch_lines
 
 ALTER TABLE ONLY public.accounting_payment_batches
     ADD CONSTRAINT accounting_payment_batches_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_peppol_events accounting_peppol_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_peppol_events
+    ADD CONSTRAINT accounting_peppol_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -2444,6 +2499,27 @@ CREATE UNIQUE INDEX index_accounting_payment_batches_on_message_id ON public.acc
 
 
 --
+-- Name: index_accounting_peppol_events_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_peppol_events_on_entity_id ON public.accounting_peppol_events USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_peppol_events_on_invoice_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_peppol_events_on_invoice_id ON public.accounting_peppol_events USING btree (invoice_id);
+
+
+--
+-- Name: index_accounting_peppol_events_on_invoice_id_and_occurred_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_peppol_events_on_invoice_id_and_occurred_at ON public.accounting_peppol_events USING btree (invoice_id, occurred_at);
+
+
+--
 -- Name: index_accounting_recurring_invoices_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2497,6 +2573,20 @@ CREATE UNIQUE INDEX index_depreciation_entries_on_asset_and_fiscal_year ON publi
 --
 
 CREATE INDEX index_entities_on_created_by_id ON public.entities USING btree (created_by_id);
+
+
+--
+-- Name: index_entities_on_peppol_participant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_entities_on_peppol_participant_id ON public.entities USING btree (peppol_participant_id) WHERE (peppol_participant_id IS NOT NULL);
+
+
+--
+-- Name: index_entities_on_peppol_webhook_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_entities_on_peppol_webhook_token ON public.entities USING btree (peppol_webhook_token);
 
 
 --
@@ -3049,6 +3139,14 @@ ALTER TABLE ONLY public.accounting_fixed_assets
 
 
 --
+-- Name: accounting_peppol_events fk_rails_cdf528e0a8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_peppol_events
+    ADD CONSTRAINT fk_rails_cdf528e0a8 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoice_lines fk_rails_d08162bbbf; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3086,6 +3184,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 ALTER TABLE ONLY public.accounting_fiscal_years
     ADD CONSTRAINT fk_rails_dd957818bc FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_peppol_events fk_rails_df7afcf17c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_peppol_events
+    ADD CONSTRAINT fk_rails_df7afcf17c FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
 
 
 --
@@ -3183,6 +3289,8 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260925160000'),
+('20260925150000'),
 ('20260925140000'),
 ('20260925130000'),
 ('20260925120000'),

@@ -28,6 +28,15 @@ Rails.application.configure do
   # Change to :null_store to avoid any caching.
   config.cache_store = :memory_store
 
+  config.x.peppol_simulator_allowed = true
+
+  # Column encryption (per-entity Peppol credentials). Fixed keys, NOT secret: development only.
+  # Production reads its own from the credentials (active_record_encryption: primary_key, deterministic_key,
+  # key_derivation_salt), generated with `bin/rails db:encryption:init`.
+  config.active_record.encryption.primary_key         = "dev-primary-key-not-a-secret-0123456789"
+  config.active_record.encryption.deterministic_key   = "dev-deterministic-key-not-a-secret-0123"
+  config.active_record.encryption.key_derivation_salt = "dev-key-derivation-salt-not-a-secret-01"
+
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 

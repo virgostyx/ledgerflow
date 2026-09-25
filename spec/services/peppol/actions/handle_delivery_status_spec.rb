@@ -16,6 +16,13 @@ RSpec.describe Peppol::Actions::HandleDeliveryStatus do
       expect(invoice.reload.peppol_status).to eq("queued")
     end
 
+    it "note dans l historique que la facture a été transmise" do
+      ctx = LightService::Context.make(invoice: invoice, peppol_id: "PEPPOL-TEST-001")
+      described_class.execute(ctx)
+
+      expect(invoice.reload.peppol_events.sole).to have_attributes(kind: "sent", message: a_string_including("PEPPOL-TEST-001"))
+    end
+
     it "ne fail pas le contexte" do
       ctx = LightService::Context.make(invoice: invoice, peppol_id: "PEPPOL-TEST-001")
       described_class.execute(ctx)

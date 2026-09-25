@@ -37,6 +37,14 @@
   </div>
 
   <div class="relative" data-controller="floating-label">
+    <%= f.text_field :peppol_participant_id,
+          placeholder: ' ',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :peppol_participant_id, 'Peppol identifier (e.g. 0208:0123456789, empty = from Belgian VAT number)', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
     <%= f.email_field :email,
           autocomplete: 'email',
           placeholder: ' ',

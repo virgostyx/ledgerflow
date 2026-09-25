@@ -7,6 +7,37 @@ RSpec.describe Accounting::Partner, type: :model do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:partner_type) }
 
+    describe 'peppol_participant_id' do
+      it 'accepte un identifiant schéma:valeur ou aucun' do
+        expect(build(:partner, peppol_participant_id: '0208:0123456789')).to be_valid
+        expect(build(:partner, peppol_participant_id: nil)).to be_valid
+      end
+
+      it 'rejette un identifiant mal formé' do
+        expect(build(:partner, peppol_participant_id: 'pas-un-id')).not_to be_valid
+      end
+
+      it 'stocke un identifiant vide comme NULL' do
+        expect(create(:partner, peppol_participant_id: '  ').reload.peppol_participant_id).to be_nil
+      end
+    end
+
+    describe '#peppol_participant_id_or_default' do
+      it 'prend l identifiant saisi en priorité' do
+        partner = build(:partner, vat_number: 'BE0123456789', peppol_participant_id: '9925:BE0123456789')
+        expect(partner.peppol_participant_id_or_default).to eq('9925:BE0123456789')
+      end
+
+      it 'déduit 0208 + le numéro d entreprise d un numéro de TVA belge' do
+        expect(build(:partner, vat_number: 'BE0123456789').peppol_participant_id_or_default).to eq('0208:0123456789')
+      end
+
+      it 'ne devine rien pour un numéro de TVA étranger ou absent' do
+        expect(build(:partner, vat_number: 'FR32123456789').peppol_participant_id_or_default).to be_nil
+        expect(build(:partner, vat_number: nil).peppol_participant_id_or_default).to be_nil
+      end
+    end
+
     describe 'payment_terms_days' do
       it { is_expected.to validate_numericality_of(:payment_terms_days).only_integer.is_greater_than_or_equal_to(0) }
 

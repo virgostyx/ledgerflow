@@ -48,8 +48,10 @@ class Accounting::Partner < ApplicationRecord
   validates :name,         presence: true
   validates :partner_type, presence: true
 
+  normalizes :peppol_participant_id, with: ->(id) { id.strip.presence }
   validates :payment_terms_days, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validate :vat_number_format
+  validate :peppol_participant_id_format
   validate :iban_format
 
   has_many :journal_entry_lines, class_name: "Accounting::JournalEntryLine",
@@ -78,7 +80,16 @@ class Accounting::Partner < ApplicationRecord
     format.present? && format.match?(number[2..])
   end
 
+  # The identifier entered, else 0208 + the enterprise number of a Belgian VAT number. Nothing else is guessed.
+  def peppol_participant_id_or_default
+    peppol_participant_id.presence || Peppol::ParticipantId.from_belgian_vat(vat_number)
+  end
+
   private
+
+  def peppol_participant_id_format
+    errors.add(:peppol_participant_id, :invalid) unless peppol_participant_id.nil? || Peppol::ParticipantId.valid?(peppol_participant_id)
+  end
 
   def vat_number_format
     errors.add(:vat_number, :invalid) unless vat_number.blank? || self.class.valid_vat_number?(vat_number)

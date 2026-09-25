@@ -96,6 +96,100 @@ RSpec.describe Peppol::UblInvoiceBuilder do
     expect(doc.errors).to be_empty
   end
 
+  describe "les parties, le paiement et les catégories de TVA" do
+    let(:doc) { Nokogiri::XML(xml).tap(&:remove_namespaces!) }
+    let(:supplier) { "//AccountingSupplierParty/Party" }
+    let(:customer) { "//AccountingCustomerParty/Party" }
+
+    before do
+      entity.update!(legal_name: "Ma Société SRL", vat_number: "BE0999999999", peppol_participant_id: "0208:0999999999",
+                     address_line1: "Rue du Test 1", city: "Namur", zip_code: "5000")
+      partner.update!(street: "Avenue Client 2", city: "Liège", zip: "4000", peppol_participant_id: nil)
+    end
+
+    it "prend l'émetteur dans l'entité, pas dans des constantes" do
+      expect(doc.at_xpath("#{supplier}/PartyLegalEntity/RegistrationName").text).to eq("Ma Société SRL")
+      expect(doc.at_xpath("#{supplier}/PartyTaxScheme/CompanyID").text).to eq("BE0999999999")
+      expect(xml).not_to include("LedgerFlow ASBL")
+    end
+
+    it "indique l'EndpointID des deux parties avec leur schéma" do
+      expect(doc.at_xpath("#{supplier}/EndpointID")).to have_attributes(text: "0999999999")
+      expect(doc.at_xpath("#{supplier}/EndpointID")["schemeID"]).to eq("0208")
+      expect(doc.at_xpath("#{customer}/EndpointID").text).to eq("0123456789") # dérivé de la TVA belge du partenaire
+      expect(doc.at_xpath("#{customer}/EndpointID")["schemeID"]).to eq("0208")
+    end
+
+    it "utilise l'identifiant Peppol saisi sur le partenaire quand il existe" do
+      partner.update!(peppol_participant_id: "9925:BE0555666777")
+      expect(doc.at_xpath("#{customer}/EndpointID").text).to eq("BE0555666777")
+      expect(doc.at_xpath("#{customer}/EndpointID")["schemeID"]).to eq("9925")
+    end
+
+    it "donne l'adresse postale complète des deux parties" do
+      expect(doc.at_xpath("#{supplier}/PostalAddress/StreetName").text).to eq("Rue du Test 1")
+      expect(doc.at_xpath("#{supplier}/PostalAddress/CityName").text).to eq("Namur")
+      expect(doc.at_xpath("#{supplier}/PostalAddress/PostalZone").text).to eq("5000")
+      expect(doc.at_xpath("#{customer}/PostalAddress/StreetName").text).to eq("Avenue Client 2")
+      expect(doc.at_xpath("#{customer}/PostalAddress/CityName").text).to eq("Liège")
+    end
+
+    it "porte la référence de l'acheteur (référence externe, sinon numéro de facture)" do
+      expect(doc.at_xpath("/Invoice/BuyerReference").text).to eq("VTE2025/0001")
+      invoice.update!(external_ref: "PO-77")
+      expect(Nokogiri::XML(described_class.new(invoice).build).tap(&:remove_namespaces!).at_xpath("/Invoice/BuyerReference").text).to eq("PO-77")
+    end
+
+    it "indique le moyen de paiement avec l'IBAN du premier compte bancaire actif" do
+      bank = create(:bank_account)
+      expect(doc.at_xpath("//PaymentMeans/PaymentMeansCode").text).to eq("30")
+      expect(doc.at_xpath("//PaymentMeans/PayeeFinancialAccount/ID").text).to eq(bank.iban)
+    end
+
+    it "omet le moyen de paiement sans compte bancaire" do
+      expect(doc.at_xpath("//PaymentMeans")).to be_nil
+    end
+
+    it "classe une vente belge à 21 % en catégorie S" do
+      expect(doc.at_xpath("//TaxSubtotal/TaxCategory/ID").text).to eq("S")
+      expect(doc.at_xpath("//TaxSubtotal/TaxCategory/TaxExemptionReason")).to be_nil
+    end
+
+    {
+      "intracom_goods"              => %w[K Intra-community],
+      "intracom_services"           => %w[AE reverse],
+      "construction_reverse_charge" => %w[AE reverse],
+      "export"                      => %w[G Export],
+      "exempt"                      => %w[E exempt]
+    }.each do |treatment, (category, reason)|
+      it "classe #{treatment} en catégorie #{category}, à 0 %, avec le motif" do
+        invoice.update_columns(vat_treatment: Accounting::Invoice.vat_treatments.fetch(treatment))
+        invoice.lines.each { |l| l.update_columns(vat_rate: 0) }
+        d = Nokogiri::XML(described_class.new(invoice.reload).build).tap(&:remove_namespaces!)
+
+        expect(d.at_xpath("//TaxSubtotal/TaxCategory/ID").text).to eq(category)
+        expect(d.at_xpath("//TaxSubtotal/TaxCategory/Percent").text.to_f).to eq(0)
+        expect(d.at_xpath("//TaxSubtotal/TaxCategory/TaxExemptionReason").text).to include(reason)
+        expect(d.at_xpath("//InvoiceLine/Item/ClassifiedTaxCategory/ID").text).to eq(category)
+      end
+    end
+
+    it "classe en exonéré (E) une franchise de TVA, avec son motif" do
+      entity.update!(vat_regime: :franchise)
+      invoice.lines.each { |l| l.update_columns(vat_rate: 0) }
+      d = Nokogiri::XML(described_class.new(invoice.reload).build).tap(&:remove_namespaces!)
+
+      expect(d.at_xpath("//TaxSubtotal/TaxCategory/ID").text).to eq("E")
+      expect(d.at_xpath("//TaxSubtotal/TaxCategory/TaxExemptionReason").text).to include("small business")
+    end
+
+    it "classe en Z une vente belge à 0 %" do
+      invoice.lines.each { |l| l.update_columns(vat_rate: 0) }
+      d = Nokogiri::XML(described_class.new(invoice.reload).build).tap(&:remove_namespaces!)
+      expect(d.at_xpath("//TaxSubtotal/TaxCategory/ID").text).to eq("Z")
+    end
+  end
+
   describe "pour une note de crédit" do
     let(:credit_note) do
       create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year, invoice_number: "VTE2025/0002",

@@ -51,6 +51,10 @@ Rails.application.configure do
   config.solid_cache.connects_to = { database: { writing: :cache } }
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
+  # Column encryption (per-entity Peppol credentials): the keys come from the credentials, nothing is set here.
+  # Before the first deploy: `bin/rails db:encryption:init`, then copy the three keys under `active_record_encryption:`
+  # with `bin/rails credentials:edit`. Without them, reading or writing an encrypted attribute raises.
+
   config.active_job.queue_adapter = :solid_queue
   config.solid_queue.connects_to = { database: { writing: :queue } }
 

@@ -881,6 +881,7 @@ RSpec.describe 'Accounting::Invoices', type: :request do
 
   describe 'POST /accounting/invoices/:id/send_peppol' do
     context 'facture validée (posted)' do
+      let(:partner) { create(:partner, :with_vat) }
       let(:invoice) do
         inv = create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year,
                      invoice_number: "VTE2025/0001", invoice_date: Date.current)
@@ -891,14 +892,7 @@ RSpec.describe 'Accounting::Invoices', type: :request do
         inv
       end
 
-      before do
-        stub_request(:post, %r{#{Regexp.escape(DIGITEAL_API_URL)}/api/invoices})
-          .to_return(
-            status: 201,
-            body: { 'id' => 'PEPPOL-TEST-001', 'status' => 'queued' }.to_json,
-            headers: { 'Content-Type' => 'application/json' }
-          )
-      end
+      before { entity.update!(peppol_access_point: :simulator, peppol_participant_id: '0208:0999999999') }
 
       it 'envoie la facture et redirige' do
         post send_peppol_accounting_invoice_path(invoice)
@@ -908,6 +902,46 @@ RSpec.describe 'Accounting::Invoices', type: :request do
       it 'met à jour peppol_status' do
         post send_peppol_accounting_invoice_path(invoice)
         expect(invoice.reload.peppol_status).to eq('queued')
+      end
+
+      it 'refuse quand l\'entité n\'a pas d\'Access Point, en disant pourquoi' do
+        entity.update!(peppol_access_point: nil)
+        post send_peppol_accounting_invoice_path(invoice)
+        expect(flash[:alert]).to match(/Access Point/)
+        expect(invoice.reload.peppol_status).to eq('not_sent')
+      end
+
+      describe 'la page de la facture' do
+        it 'propose l\'envoi Peppol quand l\'entité a un Access Point' do
+          get accounting_invoice_path(invoice)
+          expect(response.body).to include('Send via Peppol')
+        end
+
+        it 'ne le propose pas sans Access Point' do
+          entity.update!(peppol_access_point: nil)
+          get accounting_invoice_path(invoice)
+          expect(response.body).not_to include('Send via Peppol')
+        end
+
+        it 'ne le propose plus une fois envoyée, et montre le statut et l\'historique' do
+          post send_peppol_accounting_invoice_path(invoice)
+          get accounting_invoice_path(invoice)
+          expect(response.body).not_to include('Send via Peppol')
+          expect(response.body).to include('Peppol', 'queued', 'Handed to the Access Point')
+        end
+
+        it 'propose de renvoyer après un échec' do
+          invoice.update!(peppol_status: :failed)
+          invoice.peppol_events.create!(kind: :failed, message: 'Receiver rejected the document')
+          get accounting_invoice_path(invoice)
+          expect(response.body).to include('Send via Peppol', 'Receiver rejected the document')
+        end
+
+        it 'ne le propose pas pour une facture fournisseur' do
+          supplier = create(:invoice, :posted, invoice_type: :supplier, partner: partner, fiscal_year: fiscal_year)
+          get accounting_invoice_path(supplier)
+          expect(response.body).not_to include('Send via Peppol')
+        end
       end
     end
 

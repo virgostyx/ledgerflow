@@ -147,6 +147,10 @@ en:
       deleted: "Fixed asset deleted."
 
     settings:
+      peppol_settings:
+        updated: "Peppol settings updated."
+        simulated: "Simulated incoming invoice booked as a draft supplier invoice."
+        simulator_only: "Only available with the simulator."
       vat_settings:
         updated: "VAT settings updated."
         help:
@@ -318,6 +322,11 @@ en:
       sent: "Invoice sent via Peppol network."
     errors:
       invoice_not_posted: "Only posted invoices can be sent via Peppol."
+      not_customer:       "Only customer invoices and credit notes can be sent via Peppol."
+      already_sent:       "This document has already been sent via Peppol (status: %{status})."
+      no_sender_id:       "Set your Peppol identifier in Settings, Peppol, before sending."
+      no_receiver_id:     "%{partner} has no Peppol identifier: add it to the partner, or its Belgian VAT number, before sending."
+      not_registered:     "%{receiver} is not registered on the Peppol network."
       hmac_invalid:       "Invalid HMAC signature."
 
   payments:

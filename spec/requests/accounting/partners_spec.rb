@@ -148,6 +148,18 @@ RSpec.describe 'Accounting::Partners', type: :request do
       end
     end
 
+    context 'avec un identifiant Peppol' do
+      it 'le enregistre' do
+        patch accounting_partner_path(partner), params: { accounting_partner: { peppol_participant_id: '0208:0123456789' } }
+        expect(partner.reload.peppol_participant_id).to eq('0208:0123456789')
+      end
+
+      it 'refuse un format invalide' do
+        patch accounting_partner_path(partner), params: { accounting_partner: { peppol_participant_id: 'nonsense' } }
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
+
     context 'avec un numéro TVA invalide' do
       it 'retourne 422' do
         patch accounting_partner_path(partner), params: {

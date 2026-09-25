@@ -125,6 +125,9 @@ Rails.application.routes.draw do
           resources :analytical_accounts, shallow: true
         end
         resource :vat_settings, only: [ :edit, :update ]
+        resource :peppol_settings, only: [ :edit, :update ] do
+          post :simulate_incoming
+        end
         resource :entity, only: [ :edit, :update ]
       end
     end
@@ -141,8 +144,8 @@ Rails.application.routes.draw do
     end
   end
 
-  # Webhooks Peppol (public, HMAC-signed)
-  post "/peppol/webhooks", to: "peppol/webhooks#receive"
+  # Webhooks Peppol (public; the token designates the entity, the signature is checked with its Access Point secret)
+  post "/peppol/webhooks/:token", to: "peppol/webhooks#receive", as: :peppol_webhook
 
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check

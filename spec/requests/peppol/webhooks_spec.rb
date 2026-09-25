@@ -3,173 +3,83 @@ require "rails_helper"
 RSpec.describe "Peppol::Webhooks", type: :request do
   include_context "with_open_fiscal_year"
 
-  def hmac_signature(body)
-    OpenSSL::HMAC.hexdigest("SHA256", DIGITEAL_HMAC_SECRET, body)
+  let(:partner) { create(:partner, :with_vat) }
+  let!(:invoice) do
+    create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year, peppol_id: "MSG-1", peppol_status: :queued)
   end
 
-  describe "POST /peppol/webhooks" do
-    context "delivery_confirmed — signature HMAC valide" do
-      let(:partner) { create(:partner, :with_vat) }
-      let!(:invoice) do
-        create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year,
-               peppol_id: "PEPPOL-2025-001", peppol_status: :queued)
-      end
+  def post_webhook(token, body, headers = {})
+    post "/peppol/webhooks/#{token}", params: body, headers: { "Content-Type" => "application/json" }.merge(headers)
+  end
 
-      let(:payload) do
-        {
-          event: "INVOICE_DELIVERED",
-          document_id: "PEPPOL-2025-001",
-          status: "DELIVERED"
-        }.to_json
-      end
+  context "with an entity on the simulator" do
+    let(:token) { entity.peppol_webhook_token }
+    let(:body)  { { event: "delivered", message_id: "MSG-1" }.to_json }
 
-      it "retourne 200" do
-        post "/peppol/webhooks",
-             params: payload,
-             headers: {
-               "Content-Type"       => "application/json",
-               "X-Peppol-Signature" => hmac_signature(payload)
-             }
-        expect(response).to have_http_status(:ok)
-      end
+    before { entity.update!(peppol_access_point: :simulator) }
 
-      it "met à jour peppol_status à delivered" do
-        post "/peppol/webhooks",
-             params: payload,
-             headers: {
-               "Content-Type"       => "application/json",
-               "X-Peppol-Signature" => hmac_signature(payload)
-             }
-        expect(invoice.reload.peppol_status).to eq("delivered")
-      end
+    def signature(payload) = OpenSSL::HMAC.hexdigest("SHA256", entity.peppol_webhook_token, payload)
+
+    it "applies the event to the invoice of that entity" do
+      post_webhook(token, body, "X-Simulator-Signature" => signature(body))
+      expect(response).to have_http_status(:ok)
+      expect(invoice.reload.peppol_status).to eq("delivered")
     end
 
-    context "invoice_received — nouvelle facture fournisseur entrante" do
-      let(:partner) { create(:partner, :with_vat, partner_type: :supplier) }
-      let(:ubl_xml) do
-        <<~XML
-          <?xml version="1.0" encoding="UTF-8"?>
-          <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-                   xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-                   xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-            <cbc:ID>INCOMING-001</cbc:ID>
-            <cbc:IssueDate>2025-06-01</cbc:IssueDate>
-            <cbc:DueDate>2025-07-01</cbc:DueDate>
-            <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
-            <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
-            <cac:AccountingSupplierParty>
-              <cac:Party>
-                <cac:PartyName><cbc:Name>Fournisseur Externe</cbc:Name></cac:PartyName>
-                <cac:PartyTaxScheme>
-                  <cbc:CompanyID>BE0123456789</cbc:CompanyID>
-                  <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
-                </cac:PartyTaxScheme>
-              </cac:Party>
-            </cac:AccountingSupplierParty>
-            <cac:LegalMonetaryTotal>
-              <cbc:TaxExclusiveAmount currencyID="EUR">500.00</cbc:TaxExclusiveAmount>
-              <cbc:TaxInclusiveAmount currencyID="EUR">605.00</cbc:TaxInclusiveAmount>
-              <cbc:PayableAmount currencyID="EUR">605.00</cbc:PayableAmount>
-            </cac:LegalMonetaryTotal>
-            <cac:TaxTotal>
-              <cbc:TaxAmount currencyID="EUR">105.00</cbc:TaxAmount>
-            </cac:TaxTotal>
-          </Invoice>
-        XML
-      end
-
-      let(:payload) do
-        {
-          event: "INVOICE_RECEIVED",
-          ubl_xml: ubl_xml
-        }.to_json
-      end
-
-      it "retourne 200" do
-        post "/peppol/webhooks",
-             params: payload,
-             headers: {
-               "Content-Type"       => "application/json",
-               "X-Peppol-Signature" => hmac_signature(payload)
-             }
-        expect(response).to have_http_status(:ok)
-      end
-
-      it "crée une facture fournisseur" do
-        expect {
-          post "/peppol/webhooks",
-               params: payload,
-               headers: {
-                 "Content-Type"       => "application/json",
-                 "X-Peppol-Signature" => hmac_signature(payload)
-               }
-        }.to change(Accounting::Invoice, :count).by(1)
-      end
+    it "rejects a bad signature" do
+      post_webhook(token, body, "X-Simulator-Signature" => "nope")
+      expect(response).to have_http_status(:unauthorized)
+      expect(invoice.reload.peppol_status).to eq("queued")
     end
 
-    context "INVOICE_DELIVERED avec statut FAILED" do
-      let(:partner) { create(:partner, :with_vat) }
-      let!(:invoice) do
-        create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year,
-               peppol_id: "PEPPOL-2025-002", peppol_status: :queued)
-      end
-
-      let(:payload) do
-        {
-          event: "INVOICE_DELIVERED",
-          document_id: "PEPPOL-2025-002",
-          status: "FAILED"
-        }.to_json
-      end
-
-      it "met à jour peppol_status à failed" do
-        post "/peppol/webhooks",
-             params: payload,
-             headers: {
-               "Content-Type"       => "application/json",
-               "X-Peppol-Signature" => hmac_signature(payload)
-             }
-        expect(invoice.reload.peppol_status).to eq("failed")
-      end
+    it "rejects a missing signature" do
+      post_webhook(token, body)
+      expect(response).to have_http_status(:unauthorized)
     end
 
-    context "corps JSON invalide" do
-      let(:malformed) { "{ invalid json" }
-
-      it "retourne 400" do
-        post "/peppol/webhooks",
-             params: malformed,
-             headers: {
-               "Content-Type"       => "application/json",
-               "X-Peppol-Signature" => hmac_signature(malformed)
-             }
-        expect(response).to have_http_status(:bad_request)
-      end
+    it "answers 400 to a body that is not JSON" do
+      bad = "{ invalid"
+      post_webhook(token, bad, "X-Simulator-Signature" => signature(bad))
+      expect(response).to have_http_status(:bad_request)
     end
 
-    context "signature HMAC invalide" do
-      let(:payload) { { event: "INVOICE_DELIVERED", document_id: "X" }.to_json }
-
-      it "retourne 401" do
-        post "/peppol/webhooks",
-             params: payload,
-             headers: {
-               "Content-Type"       => "application/json",
-               "X-Peppol-Signature" => "invalide"
-             }
-        expect(response).to have_http_status(:unauthorized)
-      end
+    it "answers 404 to an unknown token" do
+      post_webhook("unknown", body, "X-Simulator-Signature" => signature(body))
+      expect(response).to have_http_status(:not_found)
     end
 
-    context "sans signature" do
-      let(:payload) { { event: "INVOICE_DELIVERED" }.to_json }
+    it "answers 404 when the entity has no Access Point" do
+      entity.update!(peppol_access_point: nil)
+      post_webhook(token, body, "X-Simulator-Signature" => signature(body))
+      expect(response).to have_http_status(:not_found)
+    end
+  end
 
-      it "retourne 401" do
-        post "/peppol/webhooks",
-             params: payload,
-             headers: { "Content-Type" => "application/json" }
-        expect(response).to have_http_status(:unauthorized)
-      end
+  context "with an entity on Digiteal" do
+    before { entity.update!(peppol_access_point: :digiteal, peppol_credentials: { "api_key" => "k", "webhook_secret" => "s3cret" }) }
+
+    it "verifies the signature with the secret of that entity" do
+      body = { event: "INVOICE_DELIVERED", document_id: "MSG-1", status: "FAILED", error: "refused" }.to_json
+      post_webhook(entity.peppol_webhook_token, body,
+                   "X-Peppol-Signature" => OpenSSL::HMAC.hexdigest("SHA256", "s3cret", body))
+      expect(invoice.reload.peppol_status).to eq("failed")
+    end
+
+    it "books a received invoice in the entity addressed, found from the receiver identifier" do
+      entity.update!(peppol_participant_id: "0208:0555666777")
+      ubl = '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" ' \
+            'xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" ' \
+            'xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">' \
+            "<cbc:ID>IN-1</cbc:ID><cbc:IssueDate>2025-06-01</cbc:IssueDate>" \
+            "<cac:AccountingSupplierParty><cac:Party><cac:PartyName><cbc:Name>Fournisseur</cbc:Name></cac:PartyName>" \
+            "<cac:PartyTaxScheme><cbc:CompanyID>BE0123456789</cbc:CompanyID></cac:PartyTaxScheme></cac:Party></cac:AccountingSupplierParty>" \
+            "<cac:LegalMonetaryTotal><cbc:TaxInclusiveAmount>605.00</cbc:TaxInclusiveAmount></cac:LegalMonetaryTotal></Invoice>"
+      body = { event: "INVOICE_RECEIVED", receiver: "0208:0555666777", ubl_xml: ubl }.to_json
+
+      expect {
+        post_webhook(entity.peppol_webhook_token, body, "X-Peppol-Signature" => OpenSSL::HMAC.hexdigest("SHA256", "s3cret", body))
+      }.to change { Accounting::Invoice.where(external_ref: "IN-1").count }.by(1)
+      expect(response).to have_http_status(:ok)
     end
   end
 end

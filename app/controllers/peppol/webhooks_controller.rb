@@ -1,64 +1,22 @@
+# Public endpoint called by an entity's Access Point. The token in the URL designates the entity (and so which
+# adapter and which secret check the signature); the adapter turns the call into normalized events.
 class Peppol::WebhooksController < ApplicationController
   skip_before_action :authenticate_user!
   skip_forgery_protection
 
-  before_action :verify_hmac_signature!
-
   def receive
-    payload = JSON.parse(request.body.read)
-    event   = payload["event"]
+    entity = ActsAsTenant.without_tenant { Entity.find_by(peppol_webhook_token: request.path_parameters[:token]) }
+    return head :not_found unless entity&.peppol_access_point
 
-    case event
-    when "INVOICE_DELIVERED"
-      handle_delivery(payload)
-    when "INVOICE_RECEIVED"
-      handle_incoming(payload)
+    events = Peppol::AccessPoint.for(entity).parse_webhook(headers: request.headers, body: request.body.read)
+    events.each do |event|
+      result = Peppol::HandleEvent.call(event: event)
+      Rails.logger.warn("[Peppol] #{event.kind} event not applied: #{result.message}") if result.failure?
     end
-
     head :ok
-  rescue JSON::ParserError
+  rescue Peppol::AccessPoint::InvalidSignature
+    head :unauthorized
+  rescue Peppol::AccessPoint::Error
     head :bad_request
-  end
-
-  private
-
-  def verify_hmac_signature!
-    signature = request.headers["X-Peppol-Signature"]
-    raw_body  = request.body.read
-    request.body.rewind
-
-    return head :unauthorized if signature.blank?
-
-    expected = OpenSSL::HMAC.hexdigest("SHA256", DIGITEAL_HMAC_SECRET, raw_body)
-    head :unauthorized unless ActiveSupport::SecurityUtils.secure_compare(expected, signature)
-  end
-
-  def handle_delivery(payload)
-    peppol_id = payload["document_id"]
-    status    = payload["status"]
-
-    invoice = ActsAsTenant.without_tenant { Accounting::Invoice.find_by(peppol_id: peppol_id) }
-    return unless invoice
-
-    peppol_status = map_peppol_status(status)
-    ActsAsTenant.with_tenant(invoice.entity) { invoice.update!(peppol_status: peppol_status) }
-  end
-
-  def handle_incoming(payload)
-    ubl_xml     = payload["ubl_xml"]
-    fiscal_year = ActsAsTenant.without_tenant { Accounting::FiscalYear.current }
-    return unless fiscal_year && ubl_xml.present?
-
-    ActsAsTenant.with_tenant(fiscal_year.entity) do
-      Peppol::ReceiveInvoice.call(xml: ubl_xml, fiscal_year: fiscal_year)
-    end
-  end
-
-  def map_peppol_status(status)
-    case status&.upcase
-    when "DELIVERED" then :delivered
-    when "FAILED"    then :failed
-    else :queued
-    end
   end
 end
