@@ -140,6 +140,13 @@ RSpec.describe Peppol::UblInvoiceBuilder do
       expect(Nokogiri::XML(described_class.new(invoice).build).tap(&:remove_namespaces!).at_xpath("/Invoice/BuyerReference").text).to eq("PO-77")
     end
 
+    it "donne l'e-mail du partenaire comme contact de l'acheteur (exigé par certains Access Points)" do
+      expect(doc.at_xpath("#{customer}/Contact/ElectronicMail")).to be_nil
+      partner.update!(email: "client@example.com")
+      d = Nokogiri::XML(described_class.new(invoice).build).tap(&:remove_namespaces!)
+      expect(d.at_xpath("#{customer}/Contact/ElectronicMail").text).to eq("client@example.com")
+    end
+
     it "indique le moyen de paiement avec l'IBAN du premier compte bancaire actif" do
       bank = create(:bank_account)
       expect(doc.at_xpath("//PaymentMeans/PaymentMeansCode").text).to eq("30")

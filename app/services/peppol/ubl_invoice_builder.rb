@@ -94,6 +94,7 @@ class Peppol::UblInvoiceBuilder
         xml["cac"].PartyLegalEntity do
           xml["cbc"].RegistrationName @partner.name
         end
+        xml["cac"].Contact { xml["cbc"].ElectronicMail @partner.email } if @partner.email.present?
       end
     end
   end

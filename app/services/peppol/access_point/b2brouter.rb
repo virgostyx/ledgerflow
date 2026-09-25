@@ -79,7 +79,8 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
   end
 
   def api_message(response)
-    JSON.parse(response[:body].to_s).dig("error", "message")
+    body = JSON.parse(response[:body].to_s)
+    body.dig("error", "message") || Array(body["errors"]).join(", ").presence
   rescue JSON::ParserError, TypeError
     nil
   end

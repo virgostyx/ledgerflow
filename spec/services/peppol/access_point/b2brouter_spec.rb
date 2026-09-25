@@ -74,6 +74,18 @@ RSpec.describe Peppol::AccessPoint::B2brouter do
       expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error, /Not on Peppol/)
     end
 
+    it 'gives the reason when the send is refused with the errors list format' do
+      stub_request(:post, import_url).to_return(status: 201, body: { invoice: { id: 555 } }.to_json, headers: json)
+      stub_request(:post, send_url).to_return(status: 422, body: { errors: [ "Contact Email can't be blank" ] }.to_json, headers: json)
+      expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error, /Contact Email/)
+    end
+
+    it 'accepts the empty 204 answer of a successful send' do
+      stub_request(:post, import_url).to_return(status: 201, body: { invoice: { id: 555 } }.to_json, headers: json)
+      stub_request(:post, send_url).to_return(status: 204, body: '')
+      expect(access_point.send_document(**send_args)).to eq('555')
+    end
+
     it 'raises Error on a network failure' do
       stub_request(:post, import_url).to_timeout
       expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error)
