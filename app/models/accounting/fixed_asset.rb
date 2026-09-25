@@ -23,6 +23,7 @@ class Accounting::FixedAsset < ApplicationRecord
 
   belongs_to :invoice_line, class_name: "Accounting::InvoiceLine", optional: true
   belongs_to :asset_account, class_name: "Accounting::Account", optional: true
+  belongs_to :disposal_journal_entry, class_name: "Accounting::JournalEntry", optional: true
   has_many   :depreciation_entries, class_name: "Accounting::DepreciationEntry", foreign_key: :fixed_asset_id,
                                     inverse_of: :fixed_asset, dependent: :restrict_with_error
 
@@ -38,6 +39,7 @@ class Accounting::FixedAsset < ApplicationRecord
   validates :asset_account, :useful_life_years, presence: true, if: -> { acquisition_value.present? }
   validate  :residual_within_acquisition_value
   validate  :asset_account_depreciable
+  validate  :disposal_only_through_dispose
 
   def review_period_years
     REVIEW_PERIOD_YEARS.fetch(asset_category.to_sym)
@@ -69,6 +71,8 @@ class Accounting::FixedAsset < ApplicationRecord
   def self.asset_accounts
     Accounting::Account.active.leaf.where("code ~ '^2[1-4]'").where.not(code: NON_DEPRECIABLE_ACCOUNTS).order(:code)
   end
+
+  def disposed? = disposed_on.present?
 
   def depreciable?
     acquisition_value.present? && useful_life_years.present? && asset_account.present?
@@ -125,6 +129,14 @@ class Accounting::FixedAsset < ApplicationRecord
     return if acquisition_value.blank? || residual_value.blank?
 
     errors.add(:residual_value, "cannot exceed the acquisition value") if residual_value > acquisition_value
+  end
+
+  # For an asset that depreciates, the disposal date is only set together with its exit entry
+  # (Accounting::DisposeFixedAsset): typing it freely would skip the accounting.
+  def disposal_only_through_dispose
+    return unless depreciable? && disposed_on_changed? && !disposal_journal_entry_id_changed?
+
+    errors.add(:disposed_on, "cannot be changed here: use Dispose")
   end
 
   def asset_account_depreciable

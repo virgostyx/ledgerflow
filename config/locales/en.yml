@@ -96,7 +96,15 @@ en:
     fixed_assets:
       errors:
         fiscal_year_closed: "This fiscal year is closed: its depreciation can no longer be posted."
+        invalid_date:       "Enter a valid disposal date."
+        not_depreciable:    "This asset has no depreciation setup: set its acquisition value, asset account and useful life first."
+        already_disposed:   "This asset has already been disposed of."
+        before_in_service:  "The disposal date cannot be before the asset was put in service."
+        no_fiscal_year:     "No fiscal year covers this date."
+        earlier_year_pending: "Post the depreciation of %{year} first."
+        year_already_depreciated: "The depreciation of %{year} is already booked for the whole year: reverse it before disposing of the asset."
         no_misc_journal:    "No active miscellaneous journal found to post the depreciation."
+      disposed:            "Asset disposed of. Net book value written off: %{value}."
       depreciation_posted: "Depreciation posted: %{count} entries, %{total} in total."
       nothing_to_post:     "No depreciation left to post for this fiscal year."
       created: "Fixed asset created."

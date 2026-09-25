@@ -71,6 +71,10 @@ Rails.application.routes.draw do
 
       resources :fixed_assets, except: [ :show ] do
         post :post_depreciation, on: :collection
+        member do
+          get  :disposal
+          post :dispose
+        end
       end
 
       resources :letterings, only: [ :new, :create, :destroy ]

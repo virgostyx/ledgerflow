@@ -1,5 +1,5 @@
 class Accounting::FixedAssetsController < ApplicationController
-  before_action :set_fixed_asset, only: [ :edit, :update, :destroy ]
+  before_action :set_fixed_asset, only: [ :edit, :update, :destroy, :disposal, :dispose ]
 
   def index
     @pagy, @fixed_assets = pagy(policy_scope(Accounting::FixedAsset).order(acquisition_date: :desc))
@@ -36,6 +36,28 @@ class Accounting::FixedAssetsController < ApplicationController
     end
   end
 
+  def disposal
+    authorize @fixed_asset
+
+    error = disposal_refusal
+    redirect_to accounting_fixed_assets_path, alert: error if error
+  end
+
+  def dispose
+    authorize @fixed_asset
+
+    disposed_on = parsed_date(params[:disposed_on])
+    return redirect_to disposal_accounting_fixed_asset_path(@fixed_asset), alert: t("accounting.fixed_assets.errors.invalid_date") unless disposed_on
+
+    result = Accounting::DisposeFixedAsset.call(fixed_asset: @fixed_asset, disposed_on: disposed_on)
+    if result.success?
+      redirect_to accounting_fixed_assets_path,
+                  notice: t("accounting.fixed_assets.disposed", value: Accounting::MoneyPresenter.new(result[:book_value]).format)
+    else
+      redirect_to disposal_accounting_fixed_asset_path(@fixed_asset), alert: result.message
+    end
+  end
+
   def edit
     authorize @fixed_asset
   end
@@ -61,6 +83,18 @@ class Accounting::FixedAssetsController < ApplicationController
   end
 
   private
+
+  def disposal_refusal
+    return t("accounting.fixed_assets.errors.not_depreciable") unless @fixed_asset.depreciable?
+
+    t("accounting.fixed_assets.errors.already_disposed") if @fixed_asset.disposed?
+  end
+
+  def parsed_date(value)
+    Date.iso8601(value.to_s)
+  rescue Date::Error
+    nil
+  end
 
   # [[asset, amount, posted?], ...] for the open (or requested) fiscal year: what the depreciation posting will book or has booked.
   def set_depreciation_rows

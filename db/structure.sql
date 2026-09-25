@@ -419,7 +419,8 @@ CREATE TABLE public.accounting_fixed_assets (
     in_service_date date,
     useful_life_years integer,
     residual_value numeric(15,2) DEFAULT 0.0 NOT NULL,
-    depreciation_method integer DEFAULT 0 NOT NULL
+    depreciation_method integer DEFAULT 0 NOT NULL,
+    disposal_journal_entry_id bigint
 );
 
 
@@ -1939,6 +1940,13 @@ CREATE INDEX index_accounting_fixed_assets_on_asset_account_id ON public.account
 
 
 --
+-- Name: index_accounting_fixed_assets_on_disposal_journal_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_fixed_assets_on_disposal_journal_entry_id ON public.accounting_fixed_assets USING btree (disposal_journal_entry_id);
+
+
+--
 -- Name: index_accounting_fixed_assets_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2757,6 +2765,14 @@ ALTER TABLE ONLY public.entities
 
 
 --
+-- Name: accounting_fixed_assets fk_rails_89ceae2139; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_fixed_assets
+    ADD CONSTRAINT fk_rails_89ceae2139 FOREIGN KEY (disposal_journal_entry_id) REFERENCES public.accounting_journal_entries(id);
+
+
+--
 -- Name: accounting_line_allocations fk_rails_8bda82b65e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3059,6 +3075,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260925110000'),
 ('20260925100000'),
 ('20260925091000'),
 ('20260925090000'),

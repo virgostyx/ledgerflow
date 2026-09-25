@@ -242,4 +242,55 @@ RSpec.describe Accounting::FixedAsset, type: :model do
       expect(build(:fixed_asset).depreciation_plan).to eq([])
     end
   end
+
+  describe 'disposal' do
+    it { should belong_to(:disposal_journal_entry).class_name('Accounting::JournalEntry').optional }
+
+    def exit_entry = create(:journal_entry)
+
+    context 'sur une immobilisation configurée en amortissement' do
+      let(:asset) { create(:fixed_asset, :depreciable) }
+
+      it 'refuse de saisir la date de cession librement' do
+        asset.disposed_on = Date.new(2027, 3, 20)
+
+        expect(asset).not_to be_valid
+        expect(asset.errors[:disposed_on]).to be_present
+      end
+
+      it 'accepte la date de cession quand elle vient avec l écriture de sortie' do
+        asset.assign_attributes(disposed_on: Date.new(2027, 3, 20), disposal_journal_entry: exit_entry)
+        expect(asset).to be_valid
+      end
+
+      it 'refuse de modifier ou d effacer la date de cession après coup' do
+        asset.update!(disposed_on: Date.new(2027, 3, 20), disposal_journal_entry: exit_entry)
+
+        asset.disposed_on = Date.new(2027, 4, 20)
+        expect(asset).not_to be_valid
+
+        asset.disposed_on = nil
+        expect(asset).not_to be_valid
+      end
+
+      it 'reste modifiable pour le reste (description) après la cession' do
+        asset.update!(disposed_on: Date.new(2027, 3, 20), disposal_journal_entry: exit_entry)
+        expect(asset.update(description: 'Renamed')).to be true
+      end
+    end
+
+    context 'sur une immobilisation suivie pour la seule révision de TVA' do
+      it 'garde la saisie libre de la date de cession' do
+        asset = create(:fixed_asset)
+        expect(asset.update(disposed_on: Date.new(2027, 3, 20))).to be true
+      end
+    end
+
+    describe '#disposed?' do
+      it 'suit la date de cession' do
+        expect(build(:fixed_asset).disposed?).to be false
+        expect(build(:fixed_asset, disposed_on: Date.new(2027, 3, 20)).disposed?).to be true
+      end
+    end
+  end
 end

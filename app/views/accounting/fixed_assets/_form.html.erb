@@ -57,7 +57,7 @@
     <%= f.date_field :disposed_on,
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
           data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
-    <%= f.label :disposed_on, 'Disposed on (leave blank if still held)', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    <%= f.label :disposed_on, 'Disposed on (leave blank if still held; for an asset that depreciates, use Dispose)', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
   <div class="pt-2 border-t border-gray-200">

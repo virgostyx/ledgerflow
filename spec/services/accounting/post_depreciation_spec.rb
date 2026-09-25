@@ -106,6 +106,24 @@ RSpec.describe Accounting::PostDepreciation, type: :service do
     expect(Accounting::JournalEntry.count).to eq(0)
   end
 
+  it 'dates the depreciation of the disposal year at the disposal date, through the disposal month' do
+    a = asset(acquisition_date: Date.new(2026, 1, 1), in_service_date: Date.new(2026, 1, 1)) # 200 per month
+    a.update_columns(disposed_on: Date.new(2026, 4, 20))
+
+    result = described_class.call(fiscal_year: fy2026)
+
+    entry = result[:entries].sole
+    expect(entry.amount).to eq(BigDecimal('800.00')) # January to April
+    expect(entry.journal_entry.entry_date).to eq(Date.new(2026, 4, 20))
+  end
+
+  it 'keeps the fiscal year end date for an asset disposed in another year' do
+    a = asset(acquisition_date: Date.new(2026, 1, 1), in_service_date: Date.new(2026, 1, 1))
+    a.update_columns(disposed_on: Date.new(2027, 4, 20))
+
+    expect(described_class.call(fiscal_year: fy2026)[:entries].sole.journal_entry.entry_date).to eq(Date.new(2026, 12, 31))
+  end
+
   it 'is all or nothing: one asset that cannot be posted cancels the others' do
     asset
     intangible = Accounting::Account.create!(code: '210200', label_fr: 'Logiciels', account_class: 2, account_type: :asset, normal_balance: :debit) # no 219000

@@ -196,6 +196,102 @@ RSpec.describe "Accounting::FixedAssets", type: :request do
       end
     end
 
+    describe "disposal" do
+      let!(:disposal_account) { create(:account, code: "660100", label_fr: "Moins-values", account_class: 6, account_type: :expense, normal_balance: :debit) }
+      let!(:asset) { create(:fixed_asset, :depreciable, description: "Company laptops") }
+
+      describe "GET /accounting/fixed_assets/:id/disposal" do
+        it "shows the form with the date and the hint about the sales invoice" do
+          get disposal_accounting_fixed_asset_path(asset)
+
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to include("Dispose of Company laptops", "760100", "Dispose")
+        end
+
+        it "redirects with an alert for an asset without depreciation setup" do
+          get disposal_accounting_fixed_asset_path(create(:fixed_asset))
+
+          expect(response).to redirect_to(accounting_fixed_assets_path)
+          expect(flash[:alert]).to be_present
+        end
+
+        it "redirects with an alert for an asset already disposed of" do
+          Accounting::DisposeFixedAsset.call(fixed_asset: asset, disposed_on: Date.new(2026, 12, 5))
+          get disposal_accounting_fixed_asset_path(asset)
+
+          expect(response).to redirect_to(accounting_fixed_assets_path)
+          expect(flash[:alert]).to be_present
+        end
+
+        it "is refused to a read-only auditor" do
+          sign_in auditor
+          get disposal_accounting_fixed_asset_path(asset)
+          expect(response).not_to have_http_status(:ok)
+        end
+      end
+
+      describe "POST /accounting/fixed_assets/:id/dispose" do
+        it "disposes of the asset and reports the net book value written off" do
+          post dispose_accounting_fixed_asset_path(asset), params: { disposed_on: "2026-12-05" }
+
+          expect(response).to redirect_to(accounting_fixed_assets_path)
+          expect(flash[:notice]).to include("11 400,00 €")
+          expect(asset.reload).to have_attributes(disposed_on: Date.new(2026, 12, 5))
+          expect(asset.disposal_journal_entry).to be_posted
+        end
+
+        it "goes back to the form with the reason when the disposal is refused" do
+          fy2026.update!(status: :closed, closed_at: Time.current)
+          post dispose_accounting_fixed_asset_path(asset), params: { disposed_on: "2026-12-05" }
+
+          expect(response).to redirect_to(disposal_accounting_fixed_asset_path(asset))
+          expect(flash[:alert]).to be_present
+          expect(asset.reload.disposed_on).to be_nil
+        end
+
+        it "refuses a missing or invalid date" do
+          post dispose_accounting_fixed_asset_path(asset), params: { disposed_on: "" }
+
+          expect(response).to redirect_to(disposal_accounting_fixed_asset_path(asset))
+          expect(flash[:alert]).to be_present
+          expect(Accounting::JournalEntry.count).to eq(0)
+        end
+
+        it "is refused to a read-only auditor" do
+          sign_in auditor
+          post dispose_accounting_fixed_asset_path(asset), params: { disposed_on: "2026-12-05" }
+          expect(asset.reload.disposed_on).to be_nil
+        end
+      end
+
+      describe "PATCH /accounting/fixed_assets/:id" do
+        it "does not let the disposal date be typed on an asset that depreciates" do
+          patch accounting_fixed_asset_path(asset), params: { accounting_fixed_asset: { disposed_on: "2026-12-05" } }
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(asset.reload.disposed_on).to be_nil
+        end
+      end
+
+      describe "GET /accounting/fixed_assets (Dispose link)" do
+        it "offers Dispose for an asset that depreciates and is still held" do
+          get accounting_fixed_assets_path
+          expect(response.body).to include(disposal_accounting_fixed_asset_path(asset))
+        end
+
+        it "hides it once the asset is disposed of, and from an auditor" do
+          sign_in auditor
+          get accounting_fixed_assets_path
+          expect(response.body).not_to include(disposal_accounting_fixed_asset_path(asset))
+
+          sign_in accountant
+          Accounting::DisposeFixedAsset.call(fixed_asset: asset, disposed_on: Date.new(2026, 12, 5))
+          get accounting_fixed_assets_path
+          expect(response.body).not_to include(disposal_accounting_fixed_asset_path(asset))
+        end
+      end
+    end
+
     describe "POST /accounting/fixed_assets/post_depreciation" do
       let!(:asset) { create(:fixed_asset, :depreciable) }
 

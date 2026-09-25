@@ -30,13 +30,16 @@ class Accounting::PostDepreciation
     end
   end
 
+  # Books one asset's depreciation for the year. The caller runs it inside a transaction with
+  # `SET CONSTRAINTS enforce_double_entry DEFERRED`. Dated at the disposal date in the year the asset is disposed of,
+  # at the fiscal year end otherwise.
   def self.post(asset, amount, fiscal_year, journal)
     codes   = asset.depreciation_accounts
     expense = Accounting::Account.find_by!(code: codes[:expense])
     contra  = Accounting::Account.find_by!(code: codes[:accumulated])
 
     entry = Accounting::JournalEntry.create!(
-      journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.end_date, status: :draft,
+      journal: journal, fiscal_year: fiscal_year, entry_date: entry_date(asset, fiscal_year), status: :draft,
       reference: "DEP-ASSET-#{asset.id}-#{fiscal_year.year}",
       description: "Depreciation #{fiscal_year.year}: #{asset.description}"
     )
@@ -48,5 +51,10 @@ class Accounting::PostDepreciation
     Accounting::DepreciationEntry.create!(fixed_asset: asset, fiscal_year: fiscal_year, journal_entry: entry, amount: amount)
   end
 
-  private_class_method :post
+  def self.entry_date(asset, fiscal_year)
+    disposed_this_year = asset.disposed_on && asset.disposed_on.between?(fiscal_year.start_date, fiscal_year.end_date)
+    disposed_this_year ? asset.disposed_on : fiscal_year.end_date
+  end
+
+  private_class_method :entry_date
 end

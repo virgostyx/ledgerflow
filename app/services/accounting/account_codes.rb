@@ -7,6 +7,7 @@ module Accounting::AccountCodes
   CARRY_FORWARD   = "130000"
   BANK_FEES       = "651100"
   RESULT          = "699000"
+  ASSET_DISPOSAL  = "660100" # net book value of the fixed assets disposed of
   FX_LOSS         = "651200"
   FX_GAIN         = "751100"
 end
