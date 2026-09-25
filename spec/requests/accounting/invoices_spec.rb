@@ -736,6 +736,71 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     end
   end
 
+  describe 'duplicating an invoice' do
+    include_context 'with_pcmn_accounts'
+
+    let!(:sale_journal) { create(:journal, :sale) }
+    let(:original) do
+      inv = create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal, partner: partner)
+      Accounting::PostInvoice.call(invoice: inv).invoice.reload
+    end
+
+    describe 'POST /accounting/invoices/:id/duplicate' do
+      it 'creates a draft copy and opens it for editing' do
+        original
+        expect { post duplicate_accounting_invoice_path(original) }.to change(Accounting::Invoice, :count).by(1)
+
+        copy = Accounting::Invoice.order(:id).last
+        expect(response).to redirect_to(edit_accounting_invoice_path(copy))
+        expect(flash[:notice]).to be_present
+        expect(copy).to be_draft
+        expect(copy.partner).to eq(partner)
+        expect(copy.invoice_date).to eq(Date.current)
+        expect(copy.lines.count).to eq(original.lines.count)
+      end
+
+      it 'refuses a credit note with an alert' do
+        note = original.build_credit_note.tap(&:save!)
+
+        expect { post duplicate_accounting_invoice_path(note) }.not_to change(Accounting::Invoice, :count)
+        expect(response).to redirect_to(accounting_invoice_path(note))
+        expect(flash[:alert]).to be_present
+      end
+
+      it 'refuses when no fiscal year is open' do
+        original
+        fiscal_year.update!(status: :closed, closed_at: Time.current)
+
+        expect { post duplicate_accounting_invoice_path(original) }.not_to change(Accounting::Invoice, :count)
+        expect(flash[:alert]).to be_present
+      end
+
+      it 'is refused to a read-only auditor' do
+        original
+        sign_in create(:user, role: :auditor).tap { |u| create(:user_entity, :auditor, user: u, entity: entity) }
+
+        expect { post duplicate_accounting_invoice_path(original) }.not_to change(Accounting::Invoice, :count)
+      end
+    end
+
+    describe 'the Duplicate button' do
+      it 'shows on an invoice, sales or purchases' do
+        get accounting_invoice_path(original)
+        expect(response.body).to include('Duplicate', duplicate_accounting_invoice_path(original))
+      end
+
+      it 'is absent on a credit note and for an auditor' do
+        note = original.build_credit_note.tap(&:save!)
+        get accounting_invoice_path(note)
+        expect(response.body).not_to include(duplicate_accounting_invoice_path(note))
+
+        sign_in create(:user, role: :auditor).tap { |u| create(:user_entity, :auditor, user: u, entity: entity) }
+        get accounting_invoice_path(original)
+        expect(response.body).not_to include(duplicate_accounting_invoice_path(original))
+      end
+    end
+  end
+
   describe 'credit notes' do
     include_context 'with_pcmn_accounts'
 

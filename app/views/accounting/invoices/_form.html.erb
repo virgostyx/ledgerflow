@@ -94,7 +94,7 @@
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
             data: { floating_label_target: 'input',
                     invoice_form_target: 'dueDate',
-                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue input->invoice-form#markDueDateTouched' } %>
       <%= f.label :due_date, 'Due date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
 
@@ -117,11 +117,13 @@
     </div>
 
     <div class="relative col-span-2" data-controller="floating-label">
-      <%= f.collection_select :partner_id,
-            Accounting::Partner.active.order(:name), :id, :name,
+      <%# Each option carries the payment terms of the partner: the due date follows the partner chosen. %>
+      <%= f.select :partner_id,
+            options_for_select(Accounting::Partner.active.order(:name).map { |p| [p.name, p.id, { data: { days: p.payment_terms_days } }] }, invoice.partner_id),
             { include_blank: true },
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+            data: { floating_label_target: 'input', invoice_form_target: 'partnerSelect',
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#fillDueDate' } %>
       <%= f.label :partner_id, 'Partner', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
 

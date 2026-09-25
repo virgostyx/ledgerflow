@@ -54,6 +54,15 @@
   </div>
 
   <div class="relative" data-controller="floating-label">
+    <%= f.number_field :payment_terms_days, step: '1', min: '0',
+          placeholder: ' ',
+          class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
+          data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
+    <%= f.label :payment_terms_days, 'Payment terms (days)', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    <p class="mt-1 text-xs text-gray-400">Due date of this partner's invoices: invoice date plus this number of days (0 = due on receipt).</p>
+  </div>
+
+  <div class="relative" data-controller="floating-label">
     <%= f.text_field :iban,
           placeholder: ' ',
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',

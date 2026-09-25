@@ -905,7 +905,8 @@ CREATE TABLE public.accounting_partners (
     notes text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    entity_id bigint NOT NULL
+    entity_id bigint NOT NULL,
+    payment_terms_days integer DEFAULT 30 NOT NULL
 );
 
 
@@ -3082,6 +3083,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260925130000'),
 ('20260925120000'),
 ('20260925110000'),
 ('20260925100000'),

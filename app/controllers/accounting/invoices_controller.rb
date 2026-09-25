@@ -1,6 +1,6 @@
 class Accounting::InvoicesController < ApplicationController
   before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :send_peppol,
-                                      :create_credit_note, :apply_credit_note, :pdf, :send_email ]
+                                      :create_credit_note, :apply_credit_note, :pdf, :send_email, :duplicate ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
@@ -16,7 +16,7 @@ class Accounting::InvoicesController < ApplicationController
   end
 
   def new
-    @invoice = Accounting::Invoice.new(invoice_type: @invoice_type)
+    @invoice = Accounting::Invoice.new(invoice_type: @invoice_type, invoice_date: Date.current)
     if @invoice_type.present?
       journal_type = @invoice.customer? ? :sale : :purchase
       @invoice.journal = Accounting::Journal.active.find_by(journal_type: journal_type)
@@ -115,6 +115,17 @@ class Accounting::InvoicesController < ApplicationController
     result = Accounting::ApplyCreditNote.call(credit_note: @invoice)
     if result.success?
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.credit_note_applied")
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: result.message
+    end
+  end
+
+  def duplicate
+    authorize @invoice
+
+    result = Accounting::DuplicateInvoice.call(invoice: @invoice)
+    if result.success?
+      redirect_to edit_accounting_invoice_path(result[:invoice]), notice: t("accounting.invoices.duplicated")
     else
       redirect_to accounting_invoice_path(@invoice), alert: result.message
     end

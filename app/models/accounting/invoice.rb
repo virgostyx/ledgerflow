@@ -47,6 +47,8 @@ class Accounting::Invoice < ApplicationRecord
   validates :currency,      inclusion: { in: Accounting::MoneyPresenter::SUPPORTED_CURRENCIES }
   validates :exchange_rate, numericality: { greater_than: 0 }
 
+  before_validation :default_due_date, on: :create
+
   validate :journal_matches_invoice_type, if: -> { journal.present? }
   validate :cash_journal_is_cash, if: -> { cash_journal.present? }
   validate :vat_treatment_requires_partner_vat_number, if: -> { REVERSE_CHARGE_TREATMENTS.include?(vat_treatment) }
@@ -145,6 +147,13 @@ class Accounting::Invoice < ApplicationRecord
   end
 
   private
+
+  # No due date typed: the invoice date plus the payment terms of the partner (not for credit notes).
+  def default_due_date
+    return if due_date.present? || !invoice? || partner.nil? || invoice_date.nil?
+
+    self.due_date = invoice_date + partner.payment_terms_days
+  end
 
   def journal_matches_invoice_type
     expected = customer? ? "sale" : "purchase"

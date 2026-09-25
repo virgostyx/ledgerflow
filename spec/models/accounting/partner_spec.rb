@@ -7,6 +7,23 @@ RSpec.describe Accounting::Partner, type: :model do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:partner_type) }
 
+    describe 'payment_terms_days' do
+      it { is_expected.to validate_numericality_of(:payment_terms_days).only_integer.is_greater_than_or_equal_to(0) }
+
+      it 'vaut 30 jours par défaut' do
+        expect(described_class.new.payment_terms_days).to eq(30)
+      end
+
+      it 'accepte 0 (paiement à réception)' do
+        expect(build(:partner, payment_terms_days: 0)).to be_valid
+      end
+
+      it 'rejette une valeur négative ou décimale' do
+        expect(build(:partner, payment_terms_days: -1)).not_to be_valid
+        expect(build(:partner, payment_terms_days: 2.5)).not_to be_valid
+      end
+    end
+
     describe 'vat_number' do
       it 'accepte BE + 10 chiffres commençant par 0' do
         expect(build(:partner, vat_number: 'BE0123456789')).to be_valid

@@ -48,6 +48,7 @@ class Accounting::Partner < ApplicationRecord
   validates :name,         presence: true
   validates :partner_type, presence: true
 
+  validates :payment_terms_days, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validate :vat_number_format
   validate :iban_format
 

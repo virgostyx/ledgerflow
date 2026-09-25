@@ -133,6 +133,48 @@ RSpec.describe Accounting::Invoice, type: :model do
     end
   end
 
+  describe 'default due date' do
+    include_context 'with_open_fiscal_year'
+
+    let(:partner) { create(:partner, payment_terms_days: 45) }
+
+    def saved(**attrs)
+      create(:invoice, partner: partner, fiscal_year: fiscal_year, invoice_date: Date.new(2026, 3, 10), **attrs)
+    end
+
+    it 'prend la date de facture plus le délai de paiement du partenaire quand aucune échéance n est saisie' do
+      expect(saved(due_date: nil).due_date).to eq(Date.new(2026, 4, 24))
+    end
+
+    it 'garde une échéance saisie à la main' do
+      expect(saved(due_date: Date.new(2026, 3, 20)).due_date).to eq(Date.new(2026, 3, 20))
+    end
+
+    it 'vaut la date de facture pour un partenaire payable à réception (0 jour)' do
+      partner.update!(payment_terms_days: 0)
+      expect(saved(due_date: nil).due_date).to eq(Date.new(2026, 3, 10))
+    end
+
+    it 'sert aussi aux factures fournisseur' do
+      expect(saved(due_date: nil, invoice_type: :supplier).due_date).to eq(Date.new(2026, 4, 24))
+    end
+
+    it 'ne donne pas d échéance à une note de crédit' do
+      original = create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year)
+      note = saved(due_date: nil, document_type: :credit_note, credited_invoice: original)
+
+      expect(note.due_date).to be_nil
+    end
+
+    it 'ne recalcule pas l échéance d un enregistrement suivant quand le délai du partenaire change' do
+      invoice = saved(due_date: nil)
+      partner.update!(payment_terms_days: 10)
+      invoice.update!(description: 'Touched')
+
+      expect(invoice.reload.due_date).to eq(Date.new(2026, 4, 24))
+    end
+  end
+
   describe 'currency and exchange_rate validations' do
     it 'is valid with a supported currency' do
       expect(build(:invoice, currency: 'USD', exchange_rate: '0.92')).to be_valid

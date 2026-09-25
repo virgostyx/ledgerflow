@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = [
     // Header fields (existing)
-    "invoiceDate", "dueDate", "journalSelect", "entryNumberPreview",
+    "invoiceDate", "dueDate", "partnerSelect", "journalSelect", "entryNumberPreview",
     // Currency
     "currencySelect", "exchangeRate", "currencyCode",
     // Lines management
@@ -16,13 +16,14 @@ export default class extends Controller {
     "vatTreatmentSelect", "vatNotice", "treatmentHelp"
   ]
   static values = {
-    days:  { type: Number, default: 0 },
     axes:  { type: Array,  default: [] }
   }
 
   connect() {
+    if (this.hasDueDateTarget && this.dueDateTarget.value) this.dueDateTarget.dataset.touched = "true" // an existing due date is kept
     this.recomputeAll()
     this.showTreatmentHelp()
+    this.fillDueDate()
   }
 
   // ------------------------------------------------------------------
@@ -59,18 +60,21 @@ export default class extends Controller {
   // Existing: due date auto-fill
   // ------------------------------------------------------------------
 
+  // The due date follows the invoice date and the payment terms of the partner (data-days of its option), until it is
+  // typed by hand or the form shows an existing one.
   fillDueDate() {
-    if (this.dueDateTarget.value) return
+    if (this.dueDateTarget.dataset.touched === "true") return
 
-    const raw = this.invoiceDateTarget.value
-    if (!raw) return
+    const days = this.partnerTermsDays()
+    const raw  = this.invoiceDateTarget.value
+    if (days === null || !raw) return
 
     const [year, month, day] = raw.split("-").map(Number)
     if (!year || !month || !day || year < 1000) return
 
     const date = new Date(0)
     date.setFullYear(year, month - 1, day)
-    date.setDate(date.getDate() + this.daysValue)
+    date.setDate(date.getDate() + days)
 
     const yyyy = date.getFullYear()
     const mm   = String(date.getMonth() + 1).padStart(2, "0")
@@ -78,6 +82,17 @@ export default class extends Controller {
     this.dueDateTarget.value = `${yyyy}-${mm}-${dd}`
 
     this.dueDateTarget.dispatchEvent(new Event("change"))
+  }
+
+  markDueDateTouched() {
+    this.dueDateTarget.dataset.touched = "true"
+  }
+
+  partnerTermsDays() {
+    if (!this.hasPartnerSelectTarget) return null
+
+    const days = this.partnerSelectTarget.selectedOptions[0]?.dataset.days
+    return days === undefined || days === "" ? null : Number(days)
   }
 
   updateEntryNumber() {
