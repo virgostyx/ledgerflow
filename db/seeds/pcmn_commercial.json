@@ -1872,6 +1872,15 @@
     "reconcilable": false
   },
   {
+    "code": "699000",
+    "label_fr": "Résultat de l'exercice",
+    "account_class": 6,
+    "account_type": "expense",
+    "normal_balance": "debit",
+    "is_leaf": true,
+    "reconcilable": false
+  },
+  {
     "code": "700000",
     "label_fr": "Chiffre d'affaires et produits d'exploitation",
     "account_class": 7,

@@ -108,4 +108,28 @@ RSpec.describe Entities::ProvisionEntity, type: :service do
       end
     end
   end
+
+  describe 'the result account (699000) needed to close a fiscal year' do
+    %w[ASBL SRL].each do |legal_form|
+      context "for a #{legal_form} entity" do
+        let(:entity) { create(:entity, created_by: user, legal_form: legal_form) }
+
+        it 'provisions the account as a debit-normal expense account' do
+          result
+          account = ActsAsTenant.with_tenant(entity) { Accounting::Account.find_by(code: Accounting::AccountCodes::RESULT) }
+
+          expect(account).to have_attributes(account_class: 6, account_type: 'expense', normal_balance: 'debit', is_leaf: true)
+        end
+
+        it 'lets a brand new entity close its fiscal year' do
+          result
+          closed = ActsAsTenant.with_tenant(entity) do
+            Accounting::CloseFiscalYear.call(fiscal_year: Accounting::FiscalYear.open_years.first, closed_by: user)
+          end
+
+          expect(closed).to be_success, closed.message
+        end
+      end
+    end
+  end
 end

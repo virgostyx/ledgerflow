@@ -132,7 +132,7 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 ### P3 — à vérifier avant tout lancement
 
 - Sauvegardes et restauration, revue de sécurité en production (`bin/brakeman`, `bin/bundler-audit`), reprise des soldes d'ouverture, import depuis un autre logiciel comptable.
-- **Le compte 699000 (résultat de l'exercice, `AccountCodes::RESULT`) n'est dans aucun seed PCMN ni créé à la création d'une entité** : `CloseFiscalYear` échoue avec « Closing journal (active misc) or account 699000 not found » sur toute entité neuve tant que l'utilisateur ne le crée pas à la main (les tests le créent). Trouvé en vérifiant 4a ; à corriger avant tout usage réel (seeds des deux PCMN + migration de rattrapage, voir la règle « nouveaux comptes PCMN » de la section 2), idéalement avec la checklist de clôture de #5.
+- **Compte 699000 (résultat de l'exercice) — CORRIGÉ (2026-09-25)** : il n'était dans aucun seed PCMN ni créé à la création d'une entité, donc `CloseFiscalYear` échouait (« account 699000 not found ») sur toute entité neuve. Ajouté aux deux seeds (`pcmn_asbl.json` au format compact une ligne par compte, `pcmn_commercial.json` indenté : insérer dans le style de chaque fichier), migration de rattrapage `20260925100000` (relance `PcmnSeeder`), et deux gardes : une entité neuve (ASBL ou SRL) peut clore son exercice, et tout code de `Accounting::AccountCodes` doit exister dans les deux PCMN (`spec/lib/seeders/pcmn_seeder_spec.rb`). Piège à retenir : un aller-retour JSON reformate le seed ASBL.
 - Corriger le flaky `grouped_receipt_spec`.
 - **Validation par un comptable belge d'un cycle complet réel** (facture, avoir, TVA, clôture) : sans cela, ne pas parler de produit "prêt".
 

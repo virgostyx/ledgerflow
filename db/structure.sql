@@ -3059,6 +3059,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260925100000'),
 ('20260925091000'),
 ('20260925090000'),
 ('20260924210000'),

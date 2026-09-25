@@ -207,6 +207,7 @@
   {"code":"670000","label_fr":"Impôts sur le résultat","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":false,"reconcilable":false},
   {"code":"670100","label_fr":"Impôt des sociétés / des personnes morales","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":true,"reconcilable":false},
   {"code":"670200","label_fr":"Précomptes non récupérables","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":true,"reconcilable":false},
+  {"code":"699000","label_fr":"Résultat de l'exercice","account_class":6,"account_type":"expense","normal_balance":"debit","is_leaf":true,"reconcilable":false},
   {"code":"700000","label_fr":"Chiffre d'affaires et produits d'exploitation","account_class":7,"account_type":"revenue","normal_balance":"credit","is_leaf":false,"reconcilable":false},
   {"code":"700100","label_fr":"Ventes de biens — produits et publications","account_class":7,"account_type":"revenue","normal_balance":"credit","is_leaf":true,"reconcilable":false},
   {"code":"700200","label_fr":"Prestations de services","account_class":7,"account_type":"revenue","normal_balance":"credit","is_leaf":true,"reconcilable":false},
