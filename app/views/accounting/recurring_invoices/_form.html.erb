@@ -1,0 +1,49 @@
+<%# The source invoice is read-only: it is the model that is copied at each due date. %>
+<% input_class = 'block w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500' %>
+<%= form_with model: recurring_invoice, scope: :accounting_recurring_invoice,
+              url: recurring_invoice.persisted? ? accounting_recurring_invoice_path(recurring_invoice) : accounting_recurring_invoices_path,
+              html: { class: 'space-y-5 max-w-2xl bg-white rounded-lg border border-gray-200 p-6' } do |f| %>
+  <% if recurring_invoice.errors.any? %>
+    <div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
+      <ul class="list-disc list-inside">
+        <% recurring_invoice.errors.full_messages.each do |msg| %><li><%= msg %></li><% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <% source = recurring_invoice.source_invoice %>
+  <div class="rounded-md bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700">
+    Source invoice:
+    <%= link_to source.invoice_number, accounting_invoice_path(source), class: 'text-primary-600 hover:underline' %>
+    — <%= source.partner.name %>, <%= Accounting::MoneyPresenter.new(source.total_incl_vat, currency: source.currency).format %>.
+    It is copied as it is at each due date: to change its amount, pause this one and make a new recurring invoice from an up-to-date invoice.
+  </div>
+
+  <% if recurring_invoice.new_record? %>
+    <%= f.hidden_field :source_invoice_id %>
+    <div>
+      <%= f.label :frequency, 'Frequency', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.select :frequency, Accounting::RecurringInvoice.frequencies.keys.map { |k| [k.capitalize, k] }, {}, class: input_class %>
+    </div>
+    <div>
+      <%= f.label :start_on, 'First draft on', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.date_field :start_on, class: input_class %>
+      <p class="mt-1 text-xs text-gray-400">Later dates keep this day of the month (a 31st falls on the last day of a shorter month).</p>
+    </div>
+  <% else %>
+    <p class="text-sm text-gray-600">
+      <%= recurring_invoice.frequency.capitalize %> from <%= Accounting::DatePresenter.new(recurring_invoice.start_on).format %>.
+      The schedule cannot be changed: delete this one and make a new one instead.
+    </p>
+  <% end %>
+
+  <div>
+    <%= f.label :end_on, 'Last draft on or before (optional)', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+    <%= f.date_field :end_on, class: input_class %>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <%= f.submit class: 'btn-primary' %>
+    <%= link_to 'Cancel', accounting_recurring_invoices_path, class: 'btn-secondary' %>
+  </div>
+<% end %>

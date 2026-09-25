@@ -21,6 +21,7 @@ class Accounting::Invoice < ApplicationRecord
 
   belongs_to :partner,       class_name: "Accounting::Partner"
   belongs_to :credited_invoice, class_name: "Accounting::Invoice", optional: true
+  belongs_to :recurring_invoice, class_name: "Accounting::RecurringInvoice", optional: true
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
   belongs_to :journal,       class_name: "Accounting::Journal", optional: true
   belongs_to :cash_journal,  class_name: "Accounting::Journal", optional: true

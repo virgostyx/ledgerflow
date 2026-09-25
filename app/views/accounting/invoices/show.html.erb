@@ -30,6 +30,10 @@
       <%= link_to 'Download PDF', pdf_accounting_invoice_path(@invoice), target: '_blank', rel: 'noopener',
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
+    <% if @invoice.invoice? && @invoice.issued? && policy(Accounting::RecurringInvoice).create? %>
+      <%= link_to 'Make recurring', new_accounting_recurring_invoice_path(invoice_id: @invoice.id),
+            class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
+    <% end %>
     <% if @invoice.invoice? && policy(@invoice).duplicate? %>
       <%= button_to 'Duplicate', duplicate_accounting_invoice_path(@invoice), method: :post,
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
@@ -47,6 +51,13 @@
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
   <% end %>
+<% end %>
+
+<% if @invoice.recurring_invoice %>
+  <div class="mb-4 max-w-2xl rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+    Generated from a recurring invoice. Review it, then post it.
+    <%= link_to 'Recurring invoices', accounting_recurring_invoices_path, class: 'underline' %>
+  </div>
 <% end %>
 
 <%# ── Invoice metadata ───────────────────────────────────────────────── %>

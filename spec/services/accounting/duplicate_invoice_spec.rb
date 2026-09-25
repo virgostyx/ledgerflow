@@ -43,6 +43,33 @@ RSpec.describe Accounting::DuplicateInvoice, type: :service do
     expect(copy).to have_attributes(invoice_date: Date.current, due_date: Date.current + 30, fiscal_year: fiscal_year)
   end
 
+  describe 'at a given date' do
+    let(:date) { fiscal_year.start_date + 40 }
+
+    it 'dates the copy on that date and moves the due date with it' do
+      result = described_class.call(invoice: original, invoice_date: date)
+
+      expect(result).to be_success
+      expect(result[:invoice]).to have_attributes(invoice_date: date, due_date: date + 30, fiscal_year: fiscal_year)
+    end
+
+    it 'refuses a date outside every open fiscal year, creating nothing' do
+      result = nil
+      expect { result = described_class.call(invoice: original, invoice_date: fiscal_year.end_date + 400) }
+        .not_to change(Accounting::Invoice, :count)
+
+      expect(result).to be_failure
+      expect(result.message).to be_present
+    end
+
+    it 'refuses a date in a closed fiscal year' do
+      fiscal_year.update!(status: :closed, closed_at: Time.current)
+      create(:fiscal_year, year: fiscal_year.year + 1, start_date: fiscal_year.end_date + 1, end_date: fiscal_year.end_date + 365, status: :open)
+
+      expect(described_class.call(invoice: original, invoice_date: date)).to be_failure
+    end
+  end
+
   it 'does not copy what belongs to the original document' do
     expect(copy).to have_attributes(invoice_number: nil, journal_entry: nil, external_ref: nil, peppol_id: nil,
                                     peppol_status: 'not_sent', credited_invoice: nil, cash_journal: nil)

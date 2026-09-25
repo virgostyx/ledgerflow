@@ -1,0 +1,77 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Recurring invoices' }
+  ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: 'Recurring invoices',
+      description: 'A draft copy of the source invoice is created at each due date. Nothing is posted or sent automatically.') %>
+
+<% if @recurring_invoices.empty? %>
+  <%= render Ui::EmptyStateComponent.new(
+        title: 'No recurring invoices yet',
+        description: 'Open an issued invoice and choose "Make recurring" to have it copied into a draft every month, quarter or year.',
+        icon: :inbox
+      ) %>
+<% else %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-x-clip">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <th class="px-4 py-3 text-left">Source invoice</th>
+          <th class="px-4 py-3 text-left">Frequency</th>
+          <th class="px-4 py-3 text-left">Next run</th>
+          <th class="px-4 py-3 text-left">Last run</th>
+          <th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3 text-left">Drafts</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @recurring_invoices.each do |recurring| %>
+          <% source = recurring.source_invoice %>
+          <tr class="hover:bg-gray-50 transition-colors align-top">
+            <td class="px-4 py-3">
+              <%= link_to source.invoice_number, accounting_invoice_path(source), class: 'text-primary-600 hover:underline' %>
+              <div class="text-xs text-gray-500"><%= source.partner.name %></div>
+            </td>
+            <td class="px-4 py-3 text-gray-700"><%= recurring.frequency.capitalize %></td>
+            <td class="px-4 py-3 text-gray-700">
+              <%= Accounting::DatePresenter.new(recurring.next_run_on).format %>
+              <% if recurring.end_on %><div class="text-xs text-gray-400">until <%= Accounting::DatePresenter.new(recurring.end_on).format %></div><% end %>
+            </td>
+            <td class="px-4 py-3 text-gray-500"><%= recurring.last_run_on ? Accounting::DatePresenter.new(recurring.last_run_on).format : '—' %></td>
+            <td class="px-4 py-3">
+              <% badge = { active: 'bg-emerald-100 text-emerald-800', paused: 'bg-amber-100 text-amber-800', ended: 'bg-gray-100 text-gray-700' }.fetch(recurring.status) %>
+              <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium <%= badge %>"><%= recurring.status.to_s.capitalize %></span>
+              <% if recurring.last_error.present? %>
+                <div class="mt-1 text-xs text-red-700"><%= recurring.last_error %></div>
+              <% end %>
+            </td>
+            <td class="px-4 py-3 text-gray-700">
+              <% drafts = recurring.pending_drafts_count %>
+              <% if drafts.positive? %>
+                <%= link_to "#{pluralize(drafts, 'draft')} to review", (source.customer? ? accounting_sales_path : accounting_purchases_path), class: 'text-primary-600 hover:underline' %>
+              <% else %>—<% end %>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <% if policy(recurring).update? %>
+                <div class="flex items-center justify-end gap-3">
+                  <%= link_to 'Edit', edit_accounting_recurring_invoice_path(recurring), class: 'text-sm text-primary-600 hover:text-primary-800' %>
+                  <%= button_to (recurring.active? ? 'Pause' : 'Resume'), accounting_recurring_invoice_path(recurring), method: :patch,
+                        params: { accounting_recurring_invoice: { active: !recurring.active? } }, class: 'text-sm text-primary-600 hover:text-primary-800' %>
+                  <% if policy(recurring).destroy? %>
+                    <%= button_to 'Delete', accounting_recurring_invoice_path(recurring), method: :delete,
+                          data: { turbo_confirm: "Delete this recurring invoice? The drafts it generated are kept." },
+                          class: 'text-sm text-danger-600 hover:text-danger-800' %>
+                  <% end %>
+                </div>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

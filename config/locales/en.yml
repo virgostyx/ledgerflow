@@ -117,6 +117,14 @@ en:
         credit_note_invoice_has_receipts: "Receipts are already booked on this invoice, so the credit note stays open: settle it by lettering or refund it."
         credit_note_needs_invoice: "This credit note is not linked to an invoice."
 
+    recurring_invoices:
+      created: "Recurring invoice created. A draft will be generated at each due date, for you to review and post."
+      updated: "Recurring invoice updated."
+      deleted: "Recurring invoice deleted. The drafts it generated are kept."
+      errors:
+        not_a_source: "Only an issued invoice (not a draft or a credit note) can be made recurring."
+        source_cancelled: "The source invoice has been cancelled: pause this recurring invoice or make a new one from a valid invoice."
+
     fixed_assets:
       errors:
         fiscal_year_closed: "This fiscal year is closed: its depreciation can no longer be posted."

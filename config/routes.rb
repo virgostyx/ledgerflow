@@ -70,6 +70,7 @@ Rails.application.routes.draw do
 
       resources :intracom_listings, only: [ :index, :new, :create, :show ]
 
+      resources :recurring_invoices, except: [ :show ]
       resources :fixed_assets, except: [ :show ] do
         post :post_depreciation, on: :collection
         member do
