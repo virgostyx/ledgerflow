@@ -56,4 +56,22 @@ RSpec.describe "Accounting::Settings::VatSettings", type: :request do
       expect(response).to redirect_to(accounting_root_path)
     end
   end
+
+  describe "help" do
+    before { get edit_accounting_settings_vat_settings_path }
+
+    it "explains the franchise, the mixed scheme and the prorata in a native disclosure" do
+      doc = Nokogiri::HTML(response.body)
+      details = doc.at_css("details[data-help='vat-settings']")
+
+      expect(details).to be_present
+      text = details.text.squish
+      expect(text).to include("Franchise (small business exemption)", "no VAT is charged on your sales",
+                              "Mixed taxpayer", "Prorata", "640400", "year-end")
+    end
+
+    it "does not use missing translations" do
+      expect(response.body).not_to include("translation missing")
+    end
+  end
 end

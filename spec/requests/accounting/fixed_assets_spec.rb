@@ -27,6 +27,14 @@ RSpec.describe "Accounting::FixedAssets", type: :request do
     end
   end
 
+  describe "prorata help on the form" do
+    it "explains what the prorata does to the VAT review of the asset" do
+      get new_accounting_fixed_asset_path
+
+      expect(response.body).to include("more than 10 points", "5 years for movable", "15 for immovable")
+    end
+  end
+
   describe "POST /accounting/fixed_assets" do
     let(:valid_attrs) do
       {

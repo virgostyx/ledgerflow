@@ -13,7 +13,7 @@ export default class extends Controller {
     // Invoice-level totals display
     "invoiceSubtotal", "invoiceVat", "invoiceTotal", "eurCounterpart", "invoiceTotalEur",
     // VAT treatment: under a non-domestic one the partner is not charged VAT
-    "vatTreatmentSelect", "vatNotice"
+    "vatTreatmentSelect", "vatNotice", "treatmentHelp"
   ]
   static values = {
     days:  { type: Number, default: 0 },
@@ -22,6 +22,7 @@ export default class extends Controller {
 
   connect() {
     this.recomputeAll()
+    this.showTreatmentHelp()
   }
 
   // ------------------------------------------------------------------
@@ -34,6 +35,17 @@ export default class extends Controller {
 
   onVatTreatmentChanged() {
     this.recomputeAll()
+    this.showTreatmentHelp()
+  }
+
+  // Shows the explanation of the selected VAT treatment only.
+  showTreatmentHelp() {
+    if (!this.hasTreatmentHelpTarget || !this.hasVatTreatmentSelectTarget) return
+
+    const selected = this.vatTreatmentSelectTarget.value
+    this.treatmentHelpTarget.querySelectorAll("[data-treatment]").forEach(p => {
+      p.classList.toggle("hidden", p.dataset.treatment !== selected)
+    })
   }
 
   recomputeAll() {

@@ -133,6 +133,12 @@
             data: { floating_label_target: 'input', invoice_form_target: 'vatTreatmentSelect',
                     action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#onVatTreatmentChanged' } %>
       <%= f.label :vat_treatment, 'VAT treatment', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+      <%# One explanation per treatment, in the wording of a sale or a purchase; the script shows the selected one. %>
+      <div class="mt-1 text-xs text-gray-500" data-invoice-form-target="treatmentHelp">
+        <% Accounting::Invoice.vat_treatments.each_key do |treatment| %>
+          <p data-treatment="<%= treatment %>" class="<%= 'hidden' unless invoice.vat_treatment == treatment %>"><%= t("accounting.invoices.vat_treatment_help.#{treatment}.#{invoice.customer? ? 'customer' : 'supplier'}") %></p>
+        <% end %>
+      </div>
     </div>
 
     <div class="relative col-span-2" data-controller="floating-label">

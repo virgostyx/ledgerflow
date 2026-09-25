@@ -73,6 +73,26 @@ en:
       updated: "Invoice updated."
       deleted: "Invoice deleted."
       posted:  "Invoice validated and posted."
+      # What each VAT treatment means, in the wording of a sale (customer) or a purchase (supplier).
+      vat_treatment_help:
+        domestic:
+          customer: "Belgian VAT applies: VAT is charged at the rate of each line and shown on the invoice."
+          supplier: "Belgian VAT applies: the VAT charged by the supplier is recoverable according to your VAT regime and deduction prorata."
+        intracom_goods:
+          customer: "Supply of goods to a VAT-registered business in another EU country. No VAT is charged: the customer accounts for it in their own country. Reported on the intracommunity listing. The partner needs an EU VAT number."
+          supplier: "Purchase of goods from a VAT-registered supplier in another EU country. The supplier charges no VAT: you account for it yourself (VAT due, then deductible according to your regime and prorata). The partner needs an EU VAT number."
+        intracom_services:
+          customer: "Services supplied to a VAT-registered business in another EU country (reverse charge). No VAT is charged: the customer accounts for it. Reported on the intracommunity listing. The partner needs an EU VAT number."
+          supplier: "Services bought from a VAT-registered supplier in another EU country (reverse charge). The supplier charges no VAT: you account for it yourself in your VAT return. The partner needs an EU VAT number."
+        construction_reverse_charge:
+          customer: "Construction work for a VAT-registered customer under the domestic reverse charge. No VAT is charged: the customer declares it. The partner needs a VAT number."
+          supplier: "Construction work under the domestic reverse charge. The contractor charges no VAT: you declare it yourself. The partner needs a VAT number."
+        export:
+          customer: "Goods sold outside the EU: exempt, no VAT is charged."
+          supplier: "No VAT is charged on this invoice and none is self-assessed, for example for a supplier outside the EU where no VAT applies."
+        exempt:
+          customer: "Exempt operation: no VAT is charged."
+          supplier: "Exempt operation: no VAT is charged and none is recoverable."
       cancelled: "Invoice cancelled and its entry reversed."
       email_queued: "E-mail to %{recipient} queued."
       credit_note_created: "Credit note created. Adjust its lines, then post it."
@@ -118,6 +138,11 @@ en:
     settings:
       vat_settings:
         updated: "VAT settings updated."
+        help:
+          summary: "What do these settings mean?"
+          franchise: "Franchise (small business exemption): no VAT is charged on your sales, none can be deducted on your purchases, and no periodic VAT return is filed. Your invoices carry the exemption mention. Choose it only if you are entitled to the scheme."
+          mixed: "Mixed taxpayer: you make both taxable and VAT-exempt supplies, so only part of the VAT on purchases is deductible. Choose Mixed to apply a prorata and to use the year-end regularization page."
+          prorata: "Prorata: the percentage of purchase VAT you can deduct. The provisional rate is applied to every purchase invoice; at year-end the final rate is calculated on the year's figures and the difference is regularized (Fiscal Years, VAT regularization). The non-deductible share is booked as a cost (account 640400). Leave it empty for full deduction."
       entity:
         updated: "Entity updated."
       journals:

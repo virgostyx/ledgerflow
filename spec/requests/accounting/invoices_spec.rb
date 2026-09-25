@@ -681,6 +681,61 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     end
   end
 
+  describe 'VAT treatment help on the invoice form' do
+    TREATMENTS = Accounting::Invoice.vat_treatments.keys.freeze
+
+    def help(treatment, type) = I18n.t("accounting.invoices.vat_treatment_help.#{treatment}.#{type}")
+
+    def help_paragraphs
+      Nokogiri::HTML(response.body).css('[data-invoice-form-target="treatmentHelp"] p[data-treatment]')
+    end
+
+    it 'explains every treatment for a sale, in customer wording' do
+      get accounting_new_sales_path
+
+      TREATMENTS.each { |t| expect(response.body).to include(ERB::Util.html_escape(help(t, 'customer'))) }
+      expect(response.body).not_to include('translation missing')
+    end
+
+    it 'explains every treatment for a purchase, in supplier wording' do
+      get accounting_new_purchases_path
+
+      TREATMENTS.each { |t| expect(response.body).to include(ERB::Util.html_escape(help(t, 'supplier'))) }
+      expect(response.body).not_to include('translation missing')
+    end
+
+    it 'does not mix the wording of sales and purchases' do
+      get accounting_new_sales_path
+      TREATMENTS.each { |t| expect(response.body).not_to include(ERB::Util.html_escape(help(t, 'supplier'))) }
+
+      get accounting_new_purchases_path
+      TREATMENTS.each { |t| expect(response.body).not_to include(ERB::Util.html_escape(help(t, 'customer'))) }
+    end
+
+    it 'shows only the explanation of the selected treatment when the page loads' do
+      get accounting_new_sales_path
+
+      visible = help_paragraphs.reject { |p| p['class'].to_s.split.include?('hidden') }.map { |p| p['data-treatment'] }
+      expect(visible).to eq([ 'domestic' ])
+    end
+
+    it 'shows the explanation of the treatment of a saved draft' do
+      partner = create(:partner, vat_number: 'FR32123456789', country: 'FR')
+      draft = create(:invoice, invoice_type: :customer, partner: partner, fiscal_year: fiscal_year, vat_treatment: :intracom_services)
+      get edit_accounting_invoice_path(draft)
+
+      visible = help_paragraphs.reject { |p| p['class'].to_s.split.include?('hidden') }.map { |p| p['data-treatment'] }
+      expect(visible).to eq([ 'intracom_services' ])
+    end
+
+    it 'tells the user which treatments need a VAT number of the partner' do
+      %w[intracom_goods intracom_services construction_reverse_charge].each do |t|
+        expect(help(t, 'customer')).to include('VAT number')
+        expect(help(t, 'supplier')).to include('VAT number')
+      end
+    end
+  end
+
   describe 'credit notes' do
     include_context 'with_pcmn_accounts'
 
