@@ -13,3 +13,31 @@
     ) %>
 
 <%= render 'form', fixed_asset: @fixed_asset %>
+
+<% if @fixed_asset.persisted? && @fixed_asset.depreciable? %>
+  <div class="mt-8 max-w-2xl bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="px-6 py-3 border-b border-gray-100 bg-gray-50">
+      <h3 class="text-sm font-semibold text-gray-700">Depreciation plan</h3>
+    </div>
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+        <tr>
+          <th class="px-6 py-2 text-left">Year</th>
+          <th class="px-6 py-2 text-right">Depreciation</th>
+          <th class="px-6 py-2 text-right">Accumulated</th>
+          <th class="px-6 py-2 text-right">Net book value</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @fixed_asset.depreciation_plan.each do |row| %>
+          <tr>
+            <td class="px-6 py-2 text-gray-900"><%= row[:year] %></td>
+            <td class="px-6 py-2 text-right font-mono"><%= Accounting::MoneyPresenter.new(row[:amount]).format %></td>
+            <td class="px-6 py-2 text-right font-mono text-gray-600"><%= Accounting::MoneyPresenter.new(row[:accumulated]).format %></td>
+            <td class="px-6 py-2 text-right font-mono text-gray-900"><%= Accounting::MoneyPresenter.new(row[:net_book_value]).format %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

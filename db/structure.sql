@@ -325,6 +325,41 @@ ALTER SEQUENCE public.accounting_bank_transactions_id_seq OWNED BY public.accoun
 
 
 --
+-- Name: accounting_depreciation_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_depreciation_entries (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    fixed_asset_id bigint NOT NULL,
+    fiscal_year_id bigint NOT NULL,
+    journal_entry_id bigint NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_depreciation_entries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_depreciation_entries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_depreciation_entries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_depreciation_entries_id_seq OWNED BY public.accounting_depreciation_entries.id;
+
+
+--
 -- Name: accounting_fiscal_years; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -371,14 +406,20 @@ CREATE TABLE public.accounting_fixed_assets (
     id bigint NOT NULL,
     description character varying NOT NULL,
     acquisition_date date NOT NULL,
-    vat_amount_initial numeric(15,2) NOT NULL,
+    vat_amount_initial numeric(15,2) DEFAULT 0.0 NOT NULL,
     prorata_at_acquisition numeric(5,2) DEFAULT 100.0 NOT NULL,
     asset_category integer DEFAULT 0 NOT NULL,
     disposed_on date,
     invoice_line_id bigint,
     entity_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    acquisition_value numeric(15,2),
+    asset_account_id bigint,
+    in_service_date date,
+    useful_life_years integer,
+    residual_value numeric(15,2) DEFAULT 0.0 NOT NULL,
+    depreciation_method integer DEFAULT 0 NOT NULL
 );
 
 
@@ -1230,6 +1271,13 @@ ALTER TABLE ONLY public.accounting_bank_transactions ALTER COLUMN id SET DEFAULT
 
 
 --
+-- Name: accounting_depreciation_entries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_depreciation_entries ALTER COLUMN id SET DEFAULT nextval('public.accounting_depreciation_entries_id_seq'::regclass);
+
+
+--
 -- Name: accounting_fiscal_years id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1430,6 +1478,14 @@ ALTER TABLE ONLY public.accounting_bank_accounts
 
 ALTER TABLE ONLY public.accounting_bank_transactions
     ADD CONSTRAINT accounting_bank_transactions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_depreciation_entries accounting_depreciation_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_depreciation_entries
+    ADD CONSTRAINT accounting_depreciation_entries_pkey PRIMARY KEY (id);
 
 
 --
@@ -1834,6 +1890,34 @@ CREATE INDEX index_accounting_bank_transactions_on_journal_entry_id ON public.ac
 
 
 --
+-- Name: index_accounting_depreciation_entries_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_depreciation_entries_on_entity_id ON public.accounting_depreciation_entries USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_depreciation_entries_on_fiscal_year_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_depreciation_entries_on_fiscal_year_id ON public.accounting_depreciation_entries USING btree (fiscal_year_id);
+
+
+--
+-- Name: index_accounting_depreciation_entries_on_fixed_asset_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_depreciation_entries_on_fixed_asset_id ON public.accounting_depreciation_entries USING btree (fixed_asset_id);
+
+
+--
+-- Name: index_accounting_depreciation_entries_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_depreciation_entries_on_journal_entry_id ON public.accounting_depreciation_entries USING btree (journal_entry_id);
+
+
+--
 -- Name: index_accounting_fiscal_years_on_entity_and_year; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1845,6 +1929,13 @@ CREATE UNIQUE INDEX index_accounting_fiscal_years_on_entity_and_year ON public.a
 --
 
 CREATE INDEX index_accounting_fiscal_years_on_entity_id ON public.accounting_fiscal_years USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_fixed_assets_on_asset_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_fixed_assets_on_asset_account_id ON public.accounting_fixed_assets USING btree (asset_account_id);
 
 
 --
@@ -2303,6 +2394,13 @@ CREATE UNIQUE INDEX index_analytical_annotations_on_line_and_axis ON public.acco
 
 
 --
+-- Name: index_depreciation_entries_on_asset_and_fiscal_year; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_depreciation_entries_on_asset_and_fiscal_year ON public.accounting_depreciation_entries USING btree (fixed_asset_id, fiscal_year_id);
+
+
+--
 -- Name: index_entities_on_created_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2523,6 +2621,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: accounting_depreciation_entries fk_rails_4416ad5edd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_depreciation_entries
+    ADD CONSTRAINT fk_rails_4416ad5edd FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_fixed_assets fk_rails_44960acfb0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2699,6 +2805,14 @@ ALTER TABLE ONLY public.accounting_journals
 
 
 --
+-- Name: accounting_depreciation_entries fk_rails_9e0e230664; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_depreciation_entries
+    ADD CONSTRAINT fk_rails_9e0e230664 FOREIGN KEY (fiscal_year_id) REFERENCES public.accounting_fiscal_years(id);
+
+
+--
 -- Name: accounting_payment_batch_lines fk_rails_a27948dec1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2763,6 +2877,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: accounting_depreciation_entries fk_rails_c32703c58c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_depreciation_entries
+    ADD CONSTRAINT fk_rails_c32703c58c FOREIGN KEY (fixed_asset_id) REFERENCES public.accounting_fixed_assets(id);
+
+
+--
 -- Name: accounting_payment_batch_lines fk_rails_c341f8f34d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2776,6 +2898,14 @@ ALTER TABLE ONLY public.accounting_payment_batch_lines
 
 ALTER TABLE ONLY public.accounting_letterings
     ADD CONSTRAINT fk_rails_c7d391d5f5 FOREIGN KEY (account_id) REFERENCES public.accounting_accounts(id);
+
+
+--
+-- Name: accounting_fixed_assets fk_rails_c7d3e0d904; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_fixed_assets
+    ADD CONSTRAINT fk_rails_c7d3e0d904 FOREIGN KEY (asset_account_id) REFERENCES public.accounting_accounts(id);
 
 
 --
@@ -2907,6 +3037,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 
 --
+-- Name: accounting_depreciation_entries fk_rails_f91c2bc427; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_depreciation_entries
+    ADD CONSTRAINT fk_rails_f91c2bc427 FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id);
+
+
+--
 -- Name: accounting_analytical_annotations fk_rails_fec4fb0e51; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2921,6 +3059,8 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260925091000'),
+('20260925090000'),
 ('20260924210000'),
 ('20260924100000'),
 ('20260923150000'),

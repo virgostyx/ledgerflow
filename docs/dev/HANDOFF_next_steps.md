@@ -2,7 +2,7 @@
 
 Objectif de la prochaine session : combler les écarts qui séparent LedgerFlow d'un outil qu'une PME ou un indépendant belge peut utiliser seul. La liste priorisée et le contexte technique sont ci-dessous. Lis d'abord `CLAUDE.md` et `MEMORY.md`, puis ce fichier.
 
-État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1847 exemples, 97,53 % de couverture (après avoirs, édition de l'entité, PDF de facture et envoi par e-mail), un seul échec connu et flaky (voir "Pièges").
+État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1915 exemples, 97,59 % de couverture (après avoirs, édition de l'entité, PDF, e-mail et amortissements), un seul échec connu et flaky (voir "Pièges").
 
 ---
 
@@ -109,9 +109,11 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 
 ### P1 — nécessaires pour une PME
 
-**#4 Amortissements**
-- `FixedAsset` ne contient que la TVA initiale. Il manque : valeur d'acquisition, compte d'immobilisation, date de mise en service, méthode (linéaire/dégressif), durée, valeur résiduelle, plan d'amortissement, écritures (dotation en classe 63, amortissements actés en 2xxxx9) via un service annuel/mensuel dans le journal OD, gestion de la cession (sortie d'actif, plus/moins-value). S'intégrer à `CloseFiscalYear`.
-- Le lien `invoice_line_id` (optionnel) existe : envisager de créer l'immobilisation depuis une ligne de facture d'achat.
+**#4 Amortissements** — découpé en 3 sous-projets ; **4a fait**, 4b et 4c à faire.
+- **4a Amortissement linéaire annuel — FAIT (2026-09-25)** : `FixedAsset` étendu (valeur d'acquisition, `asset_account`, `in_service_date`, `useful_life_years`, `residual_value`, `depreciation_method` = `linear`) ; la TVA initiale peut valoir 0. Comptes déduits du compte d'immobilisation (`FixedAsset::DEPRECIATION_ACCOUNTS` : 21→630100/219000, 22→630200/229000, 23→630200/239000, 24→630200/249000 ; terrains `220100` exclus) : **tous déjà dans les seeds PCMN, aucune migration de rattrapage**. Calcul prorata temporis au mois à partir du mois de mise en service : les montants cumulés sont arrondis (pas les annuels), donc la somme du plan égale exactement la base (`depreciation_for(fiscal_year)`, `depreciation_plan` par année civile, affichage seulement). `Accounting::PostDepreciation` : une écriture d'OD par immobilisation (`DEP-ASSET-<id>-<année>`, date de fin d'exercice), idempotente et tout-ou-rien, tracée par `Accounting::DepreciationEntry` (unique par immobilisation et exercice) ; refuse un exercice clos, accepte `pre_closing`. `CloseFiscalYear` est **bloquée** par `Actions::ValidateDepreciationPosted` tant qu'une dotation est due. UI : champs dans le formulaire, tableau « Depreciation <année> » et bouton « Post depreciation » sur Fixed Assets (comptable), plan complet sur la page d'édition. Supprimer une immobilisation déjà amortie affiche un message (`restrict_with_error`).
+  - Hypothèses à raffiner : un bien cédé est amorti jusqu'au mois de cession inclus (à revoir en 4b) ; le plan affiché suit les années civiles alors que la comptabilisation suit les vrais exercices ; l'immobilisation n'est pas encore créée depuis une facture d'achat (4c) ; l'écran d'index annonce encore « VAT review » seulement dans son texte d'état vide.
+- **4b Cession — À FAIRE** : sortie d'actif (date, produit de cession), reprise de l'amortissement cumulé (2x9xxx), plus-value 760100 / moins-value 660100, lien possible avec la facture de vente, interaction avec `ReviewFixedAssetVat`.
+- **4c Extensions — À FAIRE** : amortissement dégressif, création depuis une ligne de facture d'achat (`invoice_line_id` existe déjà), amortissement mensuel, réductions de valeur.
 
 **#5 Comptes annuels** : bilan et compte de résultat au format de dépôt (schéma BNB, abrégé/micro selon la taille), checklist de clôture guidée, annexes. Sujet volumineux : commencer par une recherche et un cadrage avec un comptable.
 
@@ -130,6 +132,7 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 ### P3 — à vérifier avant tout lancement
 
 - Sauvegardes et restauration, revue de sécurité en production (`bin/brakeman`, `bin/bundler-audit`), reprise des soldes d'ouverture, import depuis un autre logiciel comptable.
+- **Le compte 699000 (résultat de l'exercice, `AccountCodes::RESULT`) n'est dans aucun seed PCMN ni créé à la création d'une entité** : `CloseFiscalYear` échoue avec « Closing journal (active misc) or account 699000 not found » sur toute entité neuve tant que l'utilisateur ne le crée pas à la main (les tests le créent). Trouvé en vérifiant 4a ; à corriger avant tout usage réel (seeds des deux PCMN + migration de rattrapage, voir la règle « nouveaux comptes PCMN » de la section 2), idéalement avec la checklist de clôture de #5.
 - Corriger le flaky `grouped_receipt_spec`.
 - **Validation par un comptable belge d'un cycle complet réel** (facture, avoir, TVA, clôture) : sans cela, ne pas parler de produit "prêt".
 
@@ -140,7 +143,7 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 1. ~~#1 Avoirs~~ (fait), en réservant la décision sur les grilles au point #2.
 2. #3 PDF + envoi (débloque #6) : 3a PDF et 3b e-mail (mode test) faits ; reste la config SMTP de production, puis 3c Peppol.
 3. #2 Conformité TVA, avec un comptable.
-4. #4 Amortissements, puis ~~#7~~ (fait), puis #5/#6.
+4. #4 Amortissements (4a fait ; 4b cession puis 4c à faire), ~~#7~~ (fait), puis #5/#6.
 5. Lot P2 en fin de parcours, ou au fil de l'eau.
 
 Chaque point devrait suivre : brainstorming court → plan → TDD → vérification manuelle dans l'app → commit. Faire valider les décisions de modèle de données (notamment #1, #2, #4) par l'utilisateur avant de coder.

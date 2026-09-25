@@ -14,6 +14,38 @@
   <% end %>
 <% end %>
 
+<% if @depreciation_rows.any? %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+    <div class="flex items-center justify-between px-6 py-3 border-b border-gray-100 bg-gray-50">
+      <h3 class="text-sm font-semibold text-gray-700">Depreciation <%= @fiscal_year.year %></h3>
+      <% if @depreciation_rows.any? { |_, _, posted| !posted } && !@fiscal_year.closed? && policy(Accounting::FixedAsset).post_depreciation? %>
+        <%= button_to 'Post depreciation', post_depreciation_accounting_fixed_assets_path(fiscal_year_id: @fiscal_year.id), method: :post,
+              class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
+      <% end %>
+    </div>
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+        <tr>
+          <th class="px-6 py-2 text-left">Asset</th>
+          <th class="px-6 py-2 text-right">Amount</th>
+          <th class="px-6 py-2 text-left">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @depreciation_rows.each do |asset, amount, posted| %>
+          <tr>
+            <td class="px-6 py-2 text-gray-900"><%= asset.description %></td>
+            <td class="px-6 py-2 text-right font-mono"><%= Accounting::MoneyPresenter.new(amount).format %></td>
+            <td class="px-6 py-2">
+              <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium <%= posted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' %>"><%= posted ? 'Posted' : 'Pending' %></span>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
+
 <% if @fixed_assets.empty? %>
   <%= render Ui::EmptyStateComponent.new(
         title: 'No fixed assets yet',

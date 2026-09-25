@@ -94,6 +94,11 @@ en:
         credit_note_needs_invoice: "This credit note is not linked to an invoice."
 
     fixed_assets:
+      errors:
+        fiscal_year_closed: "This fiscal year is closed: its depreciation can no longer be posted."
+        no_misc_journal:    "No active miscellaneous journal found to post the depreciation."
+      depreciation_posted: "Depreciation posted: %{count} entries, %{total} in total."
+      nothing_to_post:     "No depreciation left to post for this fiscal year."
       created: "Fixed asset created."
       updated: "Fixed asset updated."
       deleted: "Fixed asset deleted."
@@ -157,6 +162,7 @@ en:
       opening_entry_label: "Opening balance carry-forward"
       errors:
         open_entries:        "%{count} draft entry/entries must be posted before closing."
+        depreciation_pending: "Post the depreciation before closing: %{assets}."
         already_closed:      "This fiscal year is already closed."
         missing_setup:       "Closing journal (active misc) or account 699000 not found."
         missing_carry_account: "Account %{code} (carry-forward) not found. Please create account %{code} before opening a new fiscal year."

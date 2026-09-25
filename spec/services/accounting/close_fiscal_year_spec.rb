@@ -100,4 +100,43 @@ RSpec.describe Accounting::CloseFiscalYear do
       expect(result).to be_failure
     end
   end
+
+  context "avec des amortissements non comptabilisés" do
+    let!(:expense_account)     { create(:account, code: "630200", label_fr: "Amortissements", account_class: 6, account_type: :expense, normal_balance: :debit) }
+    let!(:accumulated_account) { create(:account, code: "249000", label_fr: "Amortissements mobilier", account_class: 2, account_type: :asset, normal_balance: :credit) }
+    let!(:asset) do
+      create(:fixed_asset, :depreciable, description: "Office laptops",
+             acquisition_date: fiscal_year.start_date, in_service_date: fiscal_year.start_date)
+    end
+
+    subject(:result) { described_class.call(fiscal_year: fiscal_year, closed_by: user) }
+
+    before { create_posted_entry(amount: BigDecimal("1000.00")) }
+
+    it "refuse la clôture et nomme l'immobilisation concernée" do
+      expect(result).to be_failure
+      expect(result.message).to include("Office laptops")
+      expect(fiscal_year.reload.status).to eq("open")
+    end
+
+    it "ne génère aucune écriture de clôture" do
+      expect { result }.not_to change(Accounting::JournalEntry, :count)
+    end
+
+    it "accepte la clôture une fois les amortissements comptabilisés" do
+      Accounting::PostDepreciation.call(fiscal_year: fiscal_year)
+
+      expect(result).to be_success
+      expect(fiscal_year.reload.status).to eq("closed")
+    end
+
+    it "ignore les immobilisations non configurées ou sans dotation pour l'exercice" do
+      Accounting::PostDepreciation.call(fiscal_year: fiscal_year)
+      create(:fixed_asset, description: "VAT only")
+      create(:fixed_asset, :depreciable, description: "Not yet in service",
+             acquisition_date: fiscal_year.end_date + 400, in_service_date: fiscal_year.end_date + 400)
+
+      expect(result).to be_success
+    end
+  end
 end

@@ -69,7 +69,9 @@ Rails.application.routes.draw do
 
       resources :intracom_listings, only: [ :index, :new, :create, :show ]
 
-      resources :fixed_assets, except: [ :show ]
+      resources :fixed_assets, except: [ :show ] do
+        post :post_depreciation, on: :collection
+      end
 
       resources :letterings, only: [ :new, :create, :destroy ]
       resources :line_allocations, only: [ :create, :destroy ]
