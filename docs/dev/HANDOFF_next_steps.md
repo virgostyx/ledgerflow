@@ -2,7 +2,7 @@
 
 Objectif de la prochaine session : combler les écarts qui séparent LedgerFlow d'un outil qu'une PME ou un indépendant belge peut utiliser seul. La liste priorisée et le contexte technique sont ci-dessous. Lis d'abord `CLAUDE.md` et `MEMORY.md`, puis ce fichier.
 
-État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1915 exemples, 97,59 % de couverture (après avoirs, édition de l'entité, PDF, e-mail et amortissements), un seul échec connu et flaky (voir "Pièges").
+État au moment de l'écriture : branche `development`, dernier commit poussé `a017571` (vérifier avec `git log --oneline -5`). Suite de tests : 1971 exemples, 97,68 % de couverture (après avoirs, édition de l'entité, PDF, e-mail, amortissements et totaux du formulaire de facture), un seul échec connu et flaky (voir "Pièges").
 
 ---
 
@@ -42,6 +42,7 @@ Vérifié à la main dans l'app réelle (bin/dev + navigateur) : facture fournis
 - Style : `bin/rubocop` sur les fichiers touchés. Faux positifs normaux : rubocop "lint" les `.erb` et `.yml` comme du Ruby. `spec/services/accounting/actions/generate_invoice_journal_entry_spec.rb` a des offenses préexistantes (espaces dans les crochets).
 
 **Tests**
+- Pour tester du JavaScript (Stimulus), écrire un spec système `type: :system, js: true` (Capybara + Chrome headless, `spec/support/system.rb`) : il tourne ici sans configuration supplémentaire. Se connecter avec `login_as user, scope: :user`. Comparer des **nombres** extraits du texte (`gsub(/[^\d,]/, '')`) plutôt que des chaînes formatées, le JS et le serveur n'écrivent pas la devise pareil.
 - La suite complète dure ~2 min 30 : la lancer en arrière-plan (`run_in_background`), le timeout par défaut est de 2 min.
 - Flaky connu et sans rapport : `spec/services/bank/simulator/grouped_receipt_spec.rb:20` (passe seul, échoue parfois dans la suite).
 - SimpleCov (95 %) n'a de sens que sur la suite complète.
@@ -126,7 +127,7 @@ Constats vérifiés par recherche dans le code : aucun type d'avoir, aucune gén
 
 ### P2 — simplicité pour un non-comptable
 
-- **#8** Le formulaire de facture affiche un total faux pour les régimes non domestiques (1 210 € affichés, 1 000 € dus). Corriger `app/javascript/controllers/invoice_form_controller.js` (`computeInvoiceTotals`) pour tenir compte du select `vat_treatment`.
+- **#8 — FAIT (2026-09-25)** : le formulaire de facture suit maintenant `vat_treatment` comme `Invoice#compute_totals` : sous un régime non domestique, TVA affichée à 0,00 (ligne et total), total = HT, et un avis « VAT is not charged to the partner under this VAT treatment ». `invoice_form_controller.js` : `chargesVat()`, `onVatTreatmentChanged()`, `recomputeAll()` et un `connect()` qui recalcule au chargement (avant, les totaux d'une facture en brouillon s'affichaient à 0,00 en édition, et les lignes d'un brouillon non domestique montraient la TVA du serveur). Testé par `spec/system/accounting/invoice_form_totals_spec.rb` (Chrome headless, 11 exemples). Reste dans le formulaire : le JS affiche le code devise (« 1 000,00 EUR ») là où le serveur affiche « € ».
 - **#9** Aide contextuelle sur `vat_treatment`, le prorata, la franchise.
 - **#10** Mode "indépendant en franchise" simplifié (masquer TVA, grilles, régularisations quand `vat_regime_franchise?`).
 - **#11** Formulaire de facture plus léger : modèles, factures récurrentes, saisie de date fiable, dupliquer une facture.

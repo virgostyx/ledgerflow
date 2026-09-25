@@ -130,7 +130,8 @@
             Accounting::Invoice.vat_treatments.keys.map { |t| [t.tr('_', ' ').capitalize, t] },
             { include_blank: false },
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue' } %>
+            data: { floating_label_target: 'input', invoice_form_target: 'vatTreatmentSelect',
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#onVatTreatmentChanged' } %>
       <%= f.label :vat_treatment, 'VAT treatment', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
 
@@ -359,6 +360,10 @@
             <%= Accounting::MoneyPresenter.new(invoice.total_incl_vat || 0, currency: invoice.currency).format %>
           </dd>
         </div>
+
+        <p class="text-xs text-amber-700 <%= 'hidden' if invoice.domestic? %>" data-invoice-form-target="vatNotice">
+          VAT is not charged to the partner under this VAT treatment.
+        </p>
 
         <%# EUR counterpart — hidden for EUR invoices %>
         <div class="flex justify-between gap-8 <%= 'hidden' if invoice.currency == 'EUR' %>"

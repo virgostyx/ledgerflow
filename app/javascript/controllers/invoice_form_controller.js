@@ -11,11 +11,36 @@ export default class extends Controller {
     // Per-line computed display (readonly)
     "lineVat", "lineTotal",
     // Invoice-level totals display
-    "invoiceSubtotal", "invoiceVat", "invoiceTotal", "eurCounterpart", "invoiceTotalEur"
+    "invoiceSubtotal", "invoiceVat", "invoiceTotal", "eurCounterpart", "invoiceTotalEur",
+    // VAT treatment: under a non-domestic one the partner is not charged VAT
+    "vatTreatmentSelect", "vatNotice"
   ]
   static values = {
     days:  { type: Number, default: 0 },
     axes:  { type: Array,  default: [] }
+  }
+
+  connect() {
+    this.recomputeAll()
+  }
+
+  // ------------------------------------------------------------------
+  // VAT treatment: only a domestic invoice charges VAT (mirrors Invoice#compute_totals)
+  // ------------------------------------------------------------------
+
+  chargesVat() {
+    return !this.hasVatTreatmentSelectTarget || this.vatTreatmentSelectTarget.value === "domestic"
+  }
+
+  onVatTreatmentChanged() {
+    this.recomputeAll()
+  }
+
+  recomputeAll() {
+    if (this.hasLinesContainerTarget) {
+      this.linesContainerTarget.querySelectorAll(".invoice-line-row").forEach(row => this.recomputeRow(row))
+    }
+    this.computeInvoiceTotals()
   }
 
   // ------------------------------------------------------------------
@@ -85,7 +110,7 @@ export default class extends Controller {
     })
 
     this.linesContainerTarget.appendChild(template)
-    this.computeInvoiceTotals()
+    this.recomputeAll()
   }
 
   removeLine(event) {
@@ -118,7 +143,7 @@ export default class extends Controller {
     const amount = parseFloat(row.querySelector("[data-line-amount]")?.value) || 0
     const rate   = parseFloat(row.querySelector("[data-line-vat-rate]")?.value) || 0
 
-    const vat   = Math.round(amount * rate / 100 * 100) / 100
+    const vat   = this.chargesVat() ? Math.round(amount * rate / 100 * 100) / 100 : 0
     const total = Math.round((amount + vat) * 100) / 100
 
     const code = this.currentCurrencyCode()
@@ -142,12 +167,14 @@ export default class extends Controller {
       const amount = parseFloat(row.querySelector("[data-line-amount]")?.value) || 0
       const rate   = parseFloat(row.querySelector("[data-line-vat-rate]")?.value) || 0
 
-      const vat = Math.round(amount * rate / 100 * 100) / 100
+      const vat = this.chargesVat() ? Math.round(amount * rate / 100 * 100) / 100 : 0
 
       totalSubtotal += amount
       totalVat      += vat
       totalTotal    += amount + vat
     })
+
+    if (this.hasVatNoticeTarget) this.vatNoticeTarget.classList.toggle("hidden", this.chargesVat())
 
     const code   = this.currentCurrencyCode()
     const number = (n) => n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
