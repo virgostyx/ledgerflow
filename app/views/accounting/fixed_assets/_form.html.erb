@@ -65,6 +65,17 @@
     <p class="mt-1 text-xs text-gray-400">Straight-line, prorated by month from the month the asset is put in service. Leave the acquisition value empty to track the VAT review only.</p>
   </div>
 
+  <% if fixed_asset.invoice_line %>
+    <%# Bought through an invoice: the cost is already on that account, so it is not editable. %>
+    <%= f.hidden_field :invoice_line_id %>
+    <%= f.hidden_field :asset_account_id %>
+    <div class="rounded-md bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700">
+      From invoice
+      <%= link_to fixed_asset.invoice_line.invoice.invoice_number.presence || 'draft', accounting_invoice_path(fixed_asset.invoice_line.invoice),
+            class: 'text-primary-600 hover:underline' %>,
+      booked on <span class="font-mono"><%= fixed_asset.invoice_line.account.code %> — <%= fixed_asset.invoice_line.account.label_fr %></span>.
+    </div>
+  <% else %>
   <div class="relative" data-controller="floating-label">
     <%= f.collection_select :asset_account_id, Accounting::FixedAsset.asset_accounts, :id,
           ->(account) { "#{account.code} — #{account.label_fr}" }, { include_blank: true },
@@ -72,6 +83,7 @@
           data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
     <%= f.label :asset_account_id, 'Asset account', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
+  <% end %>
 
   <% [[:acquisition_value, 'Acquisition value (excl. VAT)', :number_field, { step: '0.01', min: '0', placeholder: ' ' }],
       [:in_service_date, 'In service since (defaults to the acquisition date)', :date_field, {}],

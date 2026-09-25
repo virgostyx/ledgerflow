@@ -40,6 +40,8 @@ class Accounting::FixedAsset < ApplicationRecord
   validate  :residual_within_acquisition_value
   validate  :asset_account_depreciable
   validate  :disposal_only_through_dispose
+  validates :invoice_line_id, uniqueness: true, allow_nil: true
+  validate  :invoice_line_is_an_asset_purchase, if: :invoice_line
 
   def review_period_years
     REVIEW_PERIOD_YEARS.fetch(asset_category.to_sym)
@@ -65,6 +67,28 @@ class Accounting::FixedAsset < ApplicationRecord
   # Number of review years remaining from `year` (inclusive) through the end of the period.
   def remaining_review_years(year)
     [ review_end_year - year + 1, 0 ].max
+  end
+
+  def self.depreciable_account?(account)
+    DEPRECIATION_ACCOUNTS.key?(account.code[0, 2]) && NON_DEPRECIABLE_ACCOUNTS.exclude?(account.code)
+  end
+
+  # A line of an issued supplier invoice (not a credit note) booked on a depreciable fixed asset account.
+  def self.asset_purchase_line?(line)
+    invoice = line.invoice
+    invoice.supplier? && invoice.invoice? && invoice.issued? && depreciable_account?(line.account)
+  end
+
+  # An unsaved asset prefilled from a purchase invoice line: what is left to enter is the useful life.
+  # Amounts are in EUR; the deducted VAT is the line VAT at the entity's prorata.
+  def self.build_from_invoice_line(line)
+    invoice = line.invoice
+    prorata = invoice.entity.vat_prorata_rate || BigDecimal("100")
+    new(invoice_line: line, description: line.description, acquisition_date: invoice.invoice_date, asset_account: line.account,
+        asset_category: line.account.code.start_with?("22") ? :immovable : :movable,
+        acquisition_value: (line.subtotal_excl_vat * invoice.exchange_rate).round(2),
+        vat_amount_initial: (line.vat_amount * invoice.exchange_rate * prorata / 100).round(2),
+        prorata_at_acquisition: prorata)
   end
 
   # Accounts an asset can be booked on: 21x to 24x, land excluded.
@@ -139,12 +163,16 @@ class Accounting::FixedAsset < ApplicationRecord
     errors.add(:disposed_on, "cannot be changed here: use Dispose")
   end
 
+  # The cost is already on the books through the invoice: the asset only records it, on the same account
+  # (a disposal credits that account).
+  def invoice_line_is_an_asset_purchase
+    errors.add(:invoice_line, "must be a line of an issued supplier invoice, not a credit note, on a fixed asset account") unless self.class.asset_purchase_line?(invoice_line)
+    errors.add(:asset_account, "must be the account of the invoice line") unless asset_account == invoice_line.account
+  end
+
   def asset_account_depreciable
     return if asset_account.blank?
 
-    code = asset_account.code
-    return if DEPRECIATION_ACCOUNTS.key?(code[0, 2]) && NON_DEPRECIABLE_ACCOUNTS.exclude?(code)
-
-    errors.add(:asset_account, "is not a depreciable fixed asset account")
+    errors.add(:asset_account, "is not a depreciable fixed asset account") unless self.class.depreciable_account?(asset_account)
   end
 end

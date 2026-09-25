@@ -2,7 +2,7 @@ class Accounting::FixedAssetsController < ApplicationController
   before_action :set_fixed_asset, only: [ :edit, :update, :destroy, :disposal, :dispose ]
 
   def index
-    @pagy, @fixed_assets = pagy(policy_scope(Accounting::FixedAsset).order(acquisition_date: :desc))
+    @pagy, @fixed_assets = pagy(policy_scope(Accounting::FixedAsset).includes(invoice_line: :invoice).order(acquisition_date: :desc))
     set_depreciation_rows
   end
 
@@ -21,8 +21,10 @@ class Accounting::FixedAssetsController < ApplicationController
   end
 
   def new
+    authorize Accounting::FixedAsset
+    return prefill_from_invoice_line if params[:invoice_line_id].present?
+
     @fixed_asset = Accounting::FixedAsset.new
-    authorize @fixed_asset
   end
 
   def create
@@ -84,6 +86,16 @@ class Accounting::FixedAssetsController < ApplicationController
 
   private
 
+  # The form of a new asset, prefilled from a purchase invoice line; or a redirect when the line cannot become one.
+  def prefill_from_invoice_line
+    line = Accounting::InvoiceLine.find_by(id: params[:invoice_line_id])
+    return redirect_to accounting_fixed_assets_path, alert: t("accounting.fixed_assets.errors.line_not_found") unless line
+    return redirect_to accounting_invoice_path(line.invoice), alert: t("accounting.fixed_assets.errors.not_an_asset_line") unless Accounting::FixedAsset.asset_purchase_line?(line)
+    return redirect_to edit_accounting_fixed_asset_path(line.fixed_asset), notice: t("accounting.fixed_assets.errors.line_already_an_asset") if line.fixed_asset
+
+    @fixed_asset = Accounting::FixedAsset.build_from_invoice_line(line)
+  end
+
   def disposal_refusal
     return t("accounting.fixed_assets.errors.not_depreciable") unless @fixed_asset.depreciable?
 
@@ -117,7 +129,7 @@ class Accounting::FixedAssetsController < ApplicationController
     params.require(:accounting_fixed_asset).permit(
       :description, :acquisition_date, :vat_amount_initial,
       :prorata_at_acquisition, :asset_category, :disposed_on,
-      :acquisition_value, :asset_account_id, :in_service_date, :useful_life_years, :residual_value
+      :acquisition_value, :asset_account_id, :in_service_date, :useful_life_years, :residual_value, :invoice_line_id
     )
   end
 end

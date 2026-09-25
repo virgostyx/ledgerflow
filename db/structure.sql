@@ -1961,6 +1961,13 @@ CREATE INDEX index_accounting_fixed_assets_on_invoice_line_id ON public.accounti
 
 
 --
+-- Name: index_accounting_fixed_assets_on_invoice_line_id_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_fixed_assets_on_invoice_line_id_unique ON public.accounting_fixed_assets USING btree (invoice_line_id) WHERE (invoice_line_id IS NOT NULL);
+
+
+--
 -- Name: index_accounting_intracom_listing_lines_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3075,6 +3082,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260925120000'),
 ('20260925110000'),
 ('20260925100000'),
 ('20260925091000'),

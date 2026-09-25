@@ -7,6 +7,8 @@ class Accounting::InvoiceLine < ApplicationRecord
 
   belongs_to :invoice, class_name: "Accounting::Invoice", inverse_of: :lines
   belongs_to :account, class_name: "Accounting::Account"
+  has_one    :fixed_asset, class_name: "Accounting::FixedAsset", foreign_key: :invoice_line_id,
+                           inverse_of: :invoice_line, dependent: :restrict_with_error
   has_many   :analytical_annotations, class_name: "Accounting::InvoiceLineAnnotation",
              foreign_key: :invoice_line_id, dependent: :destroy,
              inverse_of: :invoice_line

@@ -83,6 +83,7 @@ en:
         no_journal:     "No active journal of type %{type} found."
         cancel_not_posted: "Only a posted invoice can be cancelled."
         cancel_paid:       "This invoice has payments or is in a payment batch, undo them first."
+        cancel_has_fixed_asset: "This invoice created the fixed asset \"%{description}\": delete the asset first."
         cancel_credited:   "This invoice has credit notes, cancel them first."
         credit_exceeds_invoice: "Credit notes cannot exceed the credited invoice total."
         email_customer_only: "Only customer invoices and credit notes can be e-mailed."
@@ -97,6 +98,9 @@ en:
       errors:
         fiscal_year_closed: "This fiscal year is closed: its depreciation can no longer be posted."
         invalid_date:       "Enter a valid disposal date."
+        line_not_found:     "Invoice line not found."
+        not_an_asset_line:  "Only a line of an issued supplier invoice booked on a fixed asset account can become a fixed asset."
+        line_already_an_asset: "This invoice line already has a fixed asset."
         not_depreciable:    "This asset has no depreciation setup: set its acquisition value, asset account and useful life first."
         already_disposed:   "This asset has already been disposed of."
         before_in_service:  "The disposal date cannot be before the asset was put in service."

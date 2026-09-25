@@ -69,6 +69,7 @@
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acquisition</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Initial VAT</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Prorata</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disposed</th>
           <th class="px-4 py-3"></th>
         </tr>
@@ -83,6 +84,12 @@
               <%= Accounting::MoneyPresenter.new(asset.vat_amount_initial).format %>
             </td>
             <td class="px-4 py-3 text-right font-mono text-gray-700"><%= asset.prorata_at_acquisition %>%</td>
+            <td class="px-4 py-3 text-gray-700">
+              <% if asset.invoice_line %>
+                <%= link_to asset.invoice_line.invoice.invoice_number.presence || 'draft', accounting_invoice_path(asset.invoice_line.invoice),
+                      class: 'text-primary-600 hover:underline' %>
+              <% else %>—<% end %>
+            </td>
             <td class="px-4 py-3 text-gray-500">
               <%= asset.disposed_on ? Accounting::DatePresenter.new(asset.disposed_on).format : "—" %>
             </td>

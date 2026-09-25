@@ -93,4 +93,33 @@ RSpec.describe Accounting::CancelInvoice, type: :service do
       expect(described_class.call(invoice: sale.reload)).to be_success
     end
   end
+
+  describe 'an invoice whose line created a fixed asset' do
+    let!(:asset_account) { create(:account, code: '240200', label_fr: 'Matériel informatique', account_class: 2, account_type: :asset, normal_balance: :debit) }
+    let(:asset_invoice) do
+      inv = create(:invoice, invoice_type: :supplier, fiscal_year: fiscal_year, journal: purchase_journal)
+      create(:invoice_line, invoice: inv, account: asset_account, quantity: 1, unit_price: '1000.00', vat_rate: '21.00', position: 1)
+      Accounting::PostInvoice.call(invoice: inv).invoice.reload
+    end
+
+    it 'is refused, naming the asset, and stays posted' do
+      create(:fixed_asset, description: 'Team laptops', invoice_line: asset_invoice.lines.first, asset_account: asset_account)
+      result = described_class.call(invoice: asset_invoice)
+
+      expect(result).to be_failure
+      expect(result.message).to include('Team laptops')
+      expect(asset_invoice.reload).to be_posted
+    end
+
+    it 'can be cancelled again once the asset is deleted' do
+      asset = create(:fixed_asset, invoice_line: asset_invoice.lines.first, asset_account: asset_account)
+      asset.destroy!
+
+      expect(described_class.call(invoice: asset_invoice)).to be_success
+    end
+
+    it 'is not affected when only other lines are assets' do
+      expect(described_class.call(invoice: asset_invoice)).to be_success
+    end
+  end
 end
