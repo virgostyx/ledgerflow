@@ -8,7 +8,8 @@ module Peppol::AccessPoint
 
   PROVIDERS = {
     "simulator" => "Peppol::AccessPoint::Simulator",
-    "digiteal"  => "Peppol::AccessPoint::Digiteal"
+    "digiteal"  => "Peppol::AccessPoint::Digiteal",
+    "b2brouter" => "Peppol::AccessPoint::B2brouter"
   }.freeze
 
   def self.for(entity)

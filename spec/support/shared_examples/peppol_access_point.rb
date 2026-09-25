@@ -4,7 +4,7 @@
 #   send_args          - keyword arguments of a send the AP accepts (after accept_send! has stubbed it)
 #   accept_send!       - makes the AP accept a send
 #   refused_send_args  - keyword arguments of a send the AP refuses (stubbing what it needs)
-#   delivered_webhook  - { headers:, body: } of a genuine delivery confirmation for message "MSG-1"
+#   delivered_webhook  - { headers:, body: } of a genuine delivery confirmation for message "MSG-1" (or delivered_message_id)
 #   forged_webhook     - { headers:, body: } whose signature is wrong
 RSpec.shared_examples 'a Peppol access point' do
   it 'declares the credentials it needs' do
@@ -34,7 +34,7 @@ RSpec.shared_examples 'a Peppol access point' do
     events = access_point.parse_webhook(**delivered_webhook)
 
     expect(events).to all(be_a(Peppol::Event))
-    expect(events.first).to have_attributes(kind: :delivered, message_id: 'MSG-1')
+    expect(events.first).to have_attributes(kind: :delivered, message_id: respond_to?(:delivered_message_id) ? delivered_message_id : 'MSG-1')
   end
 
   it 'refuses a forged webhook' do

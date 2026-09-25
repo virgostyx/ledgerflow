@@ -121,7 +121,7 @@ RSpec.describe Entity, type: :model do
   end
 
   describe 'Peppol settings' do
-    it { should define_enum_for(:peppol_access_point).with_values(simulator: 0, digiteal: 1).with_prefix(:peppol_ap) }
+    it { should define_enum_for(:peppol_access_point).with_values(simulator: 0, digiteal: 1, b2brouter: 2).with_prefix(:peppol_ap) }
 
     it 'n a pas d Access Point tant qu il n est pas choisi' do
       expect(Entity.new.peppol_access_point).to be_nil

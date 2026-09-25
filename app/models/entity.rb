@@ -7,7 +7,7 @@ class Entity < ApplicationRecord
   enum :vat_regime,           { normal: 0, franchise: 1 }
   enum :vat_scheme,           { normal: 0, mixed: 1 }, prefix: :vat_scheme
   # The Peppol Access Point of this entity (one adapter per provider, see Peppol::AccessPoint); nil = not set up.
-  enum :peppol_access_point,  { simulator: 0, digiteal: 1 }, prefix: :peppol_ap
+  enum :peppol_access_point,  { simulator: 0, digiteal: 1, b2brouter: 2 }, prefix: :peppol_ap
 
   serialize :peppol_credentials, type: Hash, coder: JSON
   encrypts  :peppol_credentials
