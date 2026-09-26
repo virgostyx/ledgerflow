@@ -72,9 +72,9 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
                                                unit_price: '500.00', vat_rate: '6.00' }])
       end
 
-      it 'la ligne dépense a vat_code 83' do
+      it 'la ligne dépense (604) reste en grille 81, quel que soit le taux' do
         expense_line = invoice.journal_entry.lines.find { |l| l.account == account_604 }
-        expect(expense_line.vat_code).to eq(83)
+        expect(expense_line.vat_code).to eq(81)
       end
 
       it "l écriture est équilibrée" do
@@ -90,9 +90,22 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
                                                unit_price: '200.00', vat_rate: '12.00' }])
       end
 
-      it 'la ligne dépense a vat_code 82' do
+      it 'la ligne dépense (604) reste en grille 81, quel que soit le taux' do
         expense_line = invoice.journal_entry.lines.find { |l| l.account == account_604 }
-        expect(expense_line.vat_code).to eq(82)
+        expect(expense_line.vat_code).to eq(81)
+      end
+    end
+
+    { '610000' => 82, '230000' => 83 }.each do |code, grid|
+      context "compte #{code}" do
+        let!(:expense_account) { create(:account, code: code) }
+
+        it "la ligne dépense porte la grille #{grid}" do
+          invoice = post_invoice_with_lines(type: :supplier, journal: purchase_journal,
+                                            lines_data: [{ account: expense_account,
+                                                           unit_price: '100.00', vat_rate: '21.00' }])
+          expect(invoice.journal_entry.lines.find { |l| l.account == expense_account }.vat_code).to eq(grid)
+        end
       end
     end
 
@@ -103,9 +116,9 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
                                                unit_price: '300.00', vat_rate: '0.00' }])
       end
 
-      it 'la ligne dépense n a pas de vat_code' do
+      it 'la ligne dépense est quand même en grille 81 (avec ou sans TVA)' do
         expense_line = invoice.journal_entry.lines.find { |l| l.account == account_604 }
-        expect(expense_line.vat_code).to be_nil
+        expect(expense_line.vat_code).to eq(81)
       end
 
       it 'aucune ligne TVA (410100) n est créée' do
@@ -168,9 +181,9 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
                                                unit_price: '2000.00', vat_rate: '21.00' }])
       end
 
-      it 'la ligne produit (700) a vat_code 1' do
+      it 'la ligne produit (700) a vat_code 3' do
         revenue_line = invoice.journal_entry.lines.find { |l| l.account == account_700 }
-        expect(revenue_line.vat_code).to eq(1)
+        expect(revenue_line.vat_code).to eq(3)
       end
 
       it 'la ligne produit porte le montant HT en vat_amount (pour la grille 01)' do
@@ -201,9 +214,9 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
                                                unit_price: '1000.00', vat_rate: '6.00' }])
       end
 
-      it 'la ligne produit a vat_code 3' do
+      it 'la ligne produit a vat_code 1' do
         revenue_line = invoice.journal_entry.lines.find { |l| l.account == account_700 }
-        expect(revenue_line.vat_code).to eq(3)
+        expect(revenue_line.vat_code).to eq(1)
       end
     end
 
@@ -352,9 +365,9 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
                               lines_data: [{ account: account_700, unit_price: '1000.00', vat_rate: '21.00' }])
     end
 
-    it 'la ligne produit porte la grille 47 (services intracommunautaires)' do
+    it 'la ligne produit porte la grille 44 (services intracommunautaires)' do
       revenue_line = invoice.journal_entry.lines.find { |l| l.account == account_700 }
-      expect(revenue_line.vat_code).to eq(47)
+      expect(revenue_line.vat_code).to eq(44)
     end
 
     it 'aucune ligne de TVA n est postée (le client s auto-liquide)' do
@@ -382,9 +395,9 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
                               lines_data: [{ account: account_604, unit_price: '1000.00', vat_rate: '21.00' }])
     end
 
-    it 'la ligne dépense porte la grille 87 (services reçus en autoliquidation)' do
+    it 'la ligne dépense porte la grille 88 (services intracommunautaires reçus)' do
       expense_line = invoice.journal_entry.lines.find { |l| l.account == account_604 }
-      expect(expense_line.vat_code).to eq(87)
+      expect(expense_line.vat_code).to eq(88)
     end
 
     it 'la ligne fournisseur (440000) ne porte que le montant HT' do
@@ -392,9 +405,9 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
       expect(payable_line.credit).to eq(BigDecimal('1000.00'))
     end
 
-    it 'une ligne de TVA due (450100, grille 56) est postée au crédit' do
+    it 'une ligne de TVA due (450100, grille 55) est postée au crédit' do
       due_line = invoice.journal_entry.lines.find { |l| l.account == account_451 }
-      expect(due_line.vat_code).to eq(56)
+      expect(due_line.vat_code).to eq(55)
       expect(due_line.credit).to eq(BigDecimal('210.00'))
     end
 
@@ -416,14 +429,14 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
                                 lines_data: [{ account: account_604, unit_price: '500.00', vat_rate: '21.00' }])
       end
 
-      it 'la ligne dépense porte la grille 88' do
+      it 'la ligne dépense porte la grille 87' do
         expense_line = invoice.journal_entry.lines.find { |l| l.account == account_604 }
-        expect(expense_line.vat_code).to eq(88)
+        expect(expense_line.vat_code).to eq(87)
       end
 
-      it 'la ligne de TVA due porte la grille 57' do
+      it 'la ligne de TVA due porte la grille 56' do
         due_line = invoice.journal_entry.lines.find { |l| l.account == account_451 }
-        expect(due_line.vat_code).to eq(57)
+        expect(due_line.vat_code).to eq(56)
       end
     end
   end

@@ -7,8 +7,8 @@ class Accounting::Actions::RegularizeVatProrata
     ctx = LightService::Context.make(journal_entry: nil)
     fiscal_year = Accounting::FiscalYear.find(fiscal_year_id)
 
-    already_deducted = deductible_vat_lines(fiscal_year).sum(:vat_amount)
-    non_deductible   = non_deductible_lines(fiscal_year).sum(:debit)
+    already_deducted = deductible_vat_lines(fiscal_year).sum(:vat_amount) - credit_note_vat_lines(fiscal_year).sum(:vat_amount)
+    non_deductible   = non_deductible_lines(fiscal_year).sum("debit - credit")
     total_eligible   = already_deducted + non_deductible
     theoretical_deductible = (total_eligible * final_prorata_rate / 100).round(2)
     adjustment = theoretical_deductible - already_deducted
@@ -22,6 +22,11 @@ class Accounting::Actions::RegularizeVatProrata
 
   def self.deductible_vat_lines(fiscal_year)
     posted_lines(fiscal_year).where(vat_code: Accounting::VatGrid::VAT_LINE_GRID[:purchase])
+  end
+
+  # VAT reversed on credit notes received (grid 63) reduces what was deducted.
+  def self.credit_note_vat_lines(fiscal_year)
+    posted_lines(fiscal_year).where(vat_code: Accounting::VatGrid::PURCHASE_CREDIT_VAT_GRID)
   end
 
   def self.non_deductible_lines(fiscal_year)

@@ -26,24 +26,47 @@ RSpec.describe Accounting::BuildIntervatXml do
     expect(xml).to include('0123456789')
   end
 
-  it 'contient un code de période trimestrielle' do
-    expect(xml).to include('2025Q1')
+  it 'contient la période trimestrielle (trimestre et année)' do
+    doc = Nokogiri::XML(xml)
+    doc.remove_namespaces!
+    expect(doc.at_xpath('//Period/Quarter').text).to eq('1')
+    expect(doc.at_xpath('//Period/Year').text).to eq('2025')
   end
 
   it 'contient chaque montant de grille avec son numéro' do
-    expect(xml).to include('GridNumber="01"').and include('1000.00')
+    expect(xml).to include('GridNumber="1"').and include('1000.00')
     expect(xml).to include('GridNumber="54"').and include('210.00')
+  end
+
+  # XSD Intervat v0.7 (schémas de 2012, seule copie disponible : à remplacer par le XSD officiel courant).
+  def xsd_errors(xml)
+    dir = Rails.root.join('spec/fixtures/intervat')
+    schema = Dir.chdir(dir) { Nokogiri::XML::Schema(File.open('NewTVA-in_v0_7.xsd')) }
+    schema.validate(Nokogiri::XML(xml)).map(&:message)
+  end
+
+  it 'est valide contre le XSD Intervat' do
+    expect(xsd_errors(xml)).to be_empty
+  end
+
+  it 'reste valide avec une grille négative (ramenée à zéro) et le solde 72' do
+    declaration.update!(grids: { '81' => '-50.00', '59' => '80.00', '72' => '80.00' })
+    expect(xsd_errors(xml)).to be_empty
+    expect(xml).to include('>0.00<')
   end
 
   context 'période mensuelle' do
     let(:declaration) do
       create(:vat_declaration, fiscal_year: fiscal_year, entity: entity,
              period_type: :monthly, period_start: Date.new(2025, 4, 1), period_end: Date.new(2025, 4, 30),
-             grids: {})
+             grids: { '71' => '0.00' })
     end
 
-    it 'contient un code de période AAAA-MM' do
-      expect(xml).to include('2025-04')
+    it 'contient le mois et l année, et est valide contre le XSD' do
+      doc = Nokogiri::XML(xml)
+      doc.remove_namespaces!
+      expect(doc.at_xpath('//Period/Month').text).to eq('4')
+      expect(xsd_errors(xml)).to be_empty
     end
   end
 end

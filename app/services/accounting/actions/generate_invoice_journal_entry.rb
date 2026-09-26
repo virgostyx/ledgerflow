@@ -4,7 +4,6 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   expects  :invoice
   promises :invoice
 
-  VAT_GRID_PURCHASE     = Accounting::VatGrid::RATE_TO_GRID[:purchase]
   VAT_GRID_SALE         = Accounting::VatGrid::RATE_TO_GRID[:sale]
   VAT_CODE_PURCHASE_VAT = Accounting::VatGrid::VAT_LINE_GRID[:purchase]  # 410100
   VAT_CODE_SALE_VAT     = Accounting::VatGrid::VAT_LINE_GRID[:sale]      # 450100
@@ -60,7 +59,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     return unless invoice.domestic? # otherwise the partner self-assesses, or nothing is due
 
     vat_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
-    build_vat_lines(invoice, entry, :credit, account: vat_account, vat_code: VAT_CODE_SALE_VAT, label: "VAT")
+    build_vat_lines(invoice, entry, :credit, account: vat_account, label: "VAT",
+                    vat_code: invoice.credit_note? ? Accounting::VatGrid::SALE_CREDIT_VAT_GRID : VAT_CODE_SALE_VAT)
   end
 
   def self.build_supplier_lines(invoice, entry)
@@ -77,6 +77,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
       due_grid = Accounting::VatGrid::SELF_ASSESSED_VAT_GRID[invoice.vat_treatment.to_sym]
       if due_grid
         due_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
+        due_grid = Accounting::VatGrid::REVERSE_CHARGE_CREDIT_DUE_GRID if invoice.credit_note?
         build_vat_lines(invoice, entry, :credit, account: due_account, vat_code: due_grid,
                         label: "Self-assessed VAT due")
       end
@@ -93,6 +94,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     deductible_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_DEDUCTIBLE)
     prorata = invoice.entity.franchise? ? 0 : invoice.entity.vat_prorata_rate # a franchise recovers nothing
 
+    deductible_grid = deductible_vat_grid(invoice)
     invoice.lines.group_by { |l| l.vat_rate.to_i }.each do |rate, lines|
       next if rate.zero?
       grouped_vat = lines.sum(&:vat_amount)
@@ -100,7 +102,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
       if deductible.positive?
         create_line(entry, :debit, deductible, invoice: invoice, account: deductible_account,
-                    label: "Recoverable VAT #{rate}%", vat_code: VAT_CODE_PURCHASE_VAT,
+                    label: "Recoverable VAT #{rate}%", vat_code: deductible_grid,
                     vat_amount: (deductible * invoice.exchange_rate).round(2))
       end
 
@@ -113,22 +115,32 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     end
   end
 
-  # Rate-based grids for domestic invoices; a single fixed grid (any rate) otherwise.
+  # A credit note reports its VAT in 63 (domestic) or 61 (reverse charge), not in 59.
+  def self.deductible_vat_grid(invoice)
+    return VAT_CODE_PURCHASE_VAT unless invoice.credit_note?
+    invoice.domestic? ? Accounting::VatGrid::PURCHASE_CREDIT_VAT_GRID : Accounting::VatGrid::REVERSE_CHARGE_CREDIT_DEDUCTIBLE_GRID
+  end
+
+  # Grid of an invoice line: by rate for a domestic sale, by expense account for a domestic
+  # purchase; a single fixed grid (any rate) otherwise.
   def self.sale_grid(invoice)
-    return VAT_GRID_SALE if invoice.domestic?
-    Hash.new(Accounting::VatGrid::TREATMENT_BASE_GRID[:sale][invoice.vat_treatment.to_sym])
+    return fixed_grid(Accounting::VatGrid.sale_credit_grid(invoice.vat_treatment)) if invoice.credit_note?
+    return ->(line) { VAT_GRID_SALE[line.vat_rate.to_i] } if invoice.domestic?
+    fixed_grid(Accounting::VatGrid::TREATMENT_BASE_GRID[:sale][invoice.vat_treatment.to_sym])
   end
 
   def self.purchase_grid(invoice)
-    return VAT_GRID_PURCHASE if invoice.domestic?
-    Hash.new(Accounting::VatGrid::TREATMENT_BASE_GRID[:purchase][invoice.vat_treatment.to_sym])
+    return ->(line) { Accounting::VatGrid.purchase_base_grid(line.account.code) } if invoice.domestic?
+    fixed_grid(Accounting::VatGrid::TREATMENT_BASE_GRID[:purchase][invoice.vat_treatment.to_sym])
   end
+
+  def self.fixed_grid(grid) = ->(_line) { grid }
 
   # One journal line per invoice line, on `side`, carrying the VAT grid code.
   def self.build_item_lines(invoice, entry, side, vat_grid)
     invoice.lines.each do |line|
       journal_line = create_line(entry, side, line.subtotal_excl_vat, invoice: invoice, account: line.account,
-                                 label: line.description, vat_code: vat_grid[line.vat_rate.to_i],
+                                 label: line.description, vat_code: vat_grid.call(line),
                                  vat_amount: (line.subtotal_excl_vat * invoice.exchange_rate).round(2))
       propagate_annotations(line, journal_line)
     end
@@ -149,7 +161,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   def self.create_line(entry, side, amount, invoice:, **attrs)
     if invoice.credit_note?
       side = side == :debit ? :credit : :debit
-      attrs[:vat_amount] = -attrs[:vat_amount] if attrs[:vat_amount]
+      attrs[:vat_amount] = -attrs[:vat_amount] if attrs[:vat_amount] && nets_grid?(invoice, attrs[:vat_code])
     end
     zero = BigDecimal("0")
     eur_amount = (amount * invoice.exchange_rate).round(2)
@@ -164,6 +176,11 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     )
   end
 
+  # Purchase base grids net (a credit note reduces 81-83 and 86-88); credit-note grids stay positive.
+  def self.nets_grid?(invoice, vat_code)
+    invoice.supplier? && (81..88).cover?(vat_code.to_i)
+  end
+
   def self.propagate_annotations(invoice_line, journal_line)
     invoice_line.analytical_annotations.each do |ann|
       Accounting::AnalyticalAnnotation.create!(
@@ -176,7 +193,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
   private_class_method :find_journal, :build_entry_lines,
                        :build_customer_lines, :build_supplier_lines, :build_supplier_vat_lines,
-                       :build_deductible_vat_lines, :sale_grid, :purchase_grid,
+                       :build_deductible_vat_lines, :deductible_vat_grid, :sale_grid, :purchase_grid, :fixed_grid, :nets_grid?,
                        :build_item_lines, :build_vat_lines, :create_line,
                        :propagate_annotations
 end

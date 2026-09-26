@@ -50,22 +50,41 @@ RSpec.describe 'Posting credit notes', type: :service do
       expect(vat.debit).to eq(BigDecimal('84.00'))
     end
 
-    it 'carries negative vat_amounts in the sale grids so the grids net out' do
+    it 'reports the base in grid 49 and the VAT in grid 64, both positive' do
       entry = note.journal_entry
-      expect(entry.lines.find { |l| l.account == account_700 }.vat_amount).to eq(BigDecimal('-400.00'))
-      expect(entry.lines.find { |l| l.account == account_451 }.vat_amount).to eq(BigDecimal('-84.00'))
+      revenue = entry.lines.find { |l| l.account == account_700 }
+      vat     = entry.lines.find { |l| l.account == account_451 }
+      expect([ revenue.vat_code, revenue.vat_amount ]).to eq([ 49, BigDecimal('400.00') ])
+      expect([ vat.vat_code, vat.vat_amount ]).to eq([ 64, BigDecimal('84.00') ])
     end
 
     it 'is balanced' do
       expect(balanced?(note.journal_entry)).to be true
     end
 
-    it 'nets the sale grids of the invoice and its credit note' do
+    it 'leaves grids 03 and 54 untouched and fills 49 and 64' do
       original; note
       grids = Accounting::VatGridQuery.call(fiscal_year_id: fiscal_year.id,
                                             period_start: Date.current.beginning_of_year, period_end: Date.current.end_of_year)
-      expect(grids['01']).to eq(BigDecimal('600.00')) # 1000 - 400 (grid 01 = 21% base)
-      expect(grids['54']).to eq(BigDecimal('126.00')) # 210 - 84
+      expect(grids.slice('03', '54', '49', '64')).to eq('03' => 1000, '54' => 210, '49' => 400, '64' => 84)
+    end
+  end
+
+  describe 'customer credit note on an intracommunity sale' do
+    let(:eu_partner) { create(:partner, vat_number: 'FR32123456789', country: 'FR') }
+    let(:original) do
+      build_and_post(type: :customer, account: account_700, unit_price: '1000.00',
+                     vat_treatment: :intracom_goods, invoice_partner: eu_partner)
+    end
+    subject(:note) do
+      build_and_post(type: :customer, account: account_700, unit_price: '400.00',
+                     vat_treatment: :intracom_goods, invoice_partner: eu_partner,
+                     document_type: :credit_note, credited: original)
+    end
+
+    it 'reports the base in grid 48 (credit notes on grids 44 and 46)' do
+      line = note.journal_entry.lines.find { |l| l.account == account_700 }
+      expect([ line.vat_code, line.vat_amount ]).to eq([ 48, BigDecimal('400.00') ])
     end
   end
 
@@ -83,10 +102,19 @@ RSpec.describe 'Posting credit notes', type: :service do
       expect(entry.lines.find { |l| l.account == account_411 }.credit).to eq(BigDecimal('84.00'))
     end
 
-    it 'carries negative vat_amounts on the purchase grids' do
+    it 'nets the base in grid 81 and reports the VAT to reverse in grid 63' do
       entry = note.journal_entry
-      expect(entry.lines.find { |l| l.account == account_604 }.vat_amount).to eq(BigDecimal('-400.00'))
-      expect(entry.lines.find { |l| l.account == account_411 }.vat_amount).to eq(BigDecimal('-84.00'))
+      expense = entry.lines.find { |l| l.account == account_604 }
+      vat     = entry.lines.find { |l| l.account == account_411 }
+      expect([ expense.vat_code, expense.vat_amount ]).to eq([ 81, BigDecimal('-400.00') ])
+      expect([ vat.vat_code, vat.vat_amount ]).to eq([ 63, BigDecimal('84.00') ])
+    end
+
+    it 'fills grid 85 with the base and leaves grid 59 as deducted on the invoice' do
+      original; note
+      grids = Accounting::VatGridQuery.call(fiscal_year_id: fiscal_year.id,
+                                            period_start: Date.current.beginning_of_year, period_end: Date.current.end_of_year)
+      expect(grids.slice('81', '85', '59', '63')).to eq('81' => 600, '85' => 400, '59' => 210, '63' => 84)
     end
 
     it 'is balanced' do
@@ -117,6 +145,21 @@ RSpec.describe 'Posting credit notes', type: :service do
 
     it 'is balanced' do
       expect(balanced?(note.journal_entry)).to be true
+    end
+
+    it 'regularizes in grids 62 (due VAT recovered) and 61 (deduction reversed), not in 55/59' do
+      entry = note.journal_entry
+      due        = entry.lines.find { |l| l.account == account_451 }
+      deductible = entry.lines.find { |l| l.account == account_411 }
+      expect([ due.vat_code, due.vat_amount ]).to eq([ 62, BigDecimal('210.00') ])
+      expect([ deductible.vat_code, deductible.vat_amount ]).to eq([ 61, BigDecimal('105.00') ])
+    end
+
+    it 'reports the base in grid 84 and nets grid 88 to zero' do
+      original; note
+      grids = Accounting::VatGridQuery.call(fiscal_year_id: fiscal_year.id,
+                                            period_start: Date.current.beginning_of_year, period_end: Date.current.end_of_year)
+      expect(grids.slice('88', '84', '81', '55')).to eq('88' => 0, '84' => 1000, '81' => 0, '55' => 210)
     end
   end
 

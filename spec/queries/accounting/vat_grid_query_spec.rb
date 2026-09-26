@@ -93,6 +93,38 @@ RSpec.describe Accounting::VatGridQuery, type: :query do
       end
     end
 
+    context 'achats en autoliquidation (86, 87, 88)' do
+      let!(:goods_account)    { create(:account, code: '604000') }
+      let!(:services_account) { create(:account, code: '610000') }
+      let!(:other_account)    { create(:account, code: '620000') }
+
+      before do
+        entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year,
+                       entry_date: Date.new(2025, 2, 1))
+        ApplicationRecord.connection.execute('SET CONSTRAINTS enforce_double_entry DEFERRED')
+        { goods_account => [ 86, '500.00' ], services_account => [ 88, '200.00' ], other_account => [ 87, '50.00' ] }
+          .each do |acc, (code, amount)|
+          create(:journal_entry_line, journal_entry: entry, account: acc, debit: BigDecimal(amount),
+                 credit: BigDecimal('0'), vat_code: code, vat_amount: BigDecimal(amount))
+        end
+        create(:journal_entry_line, journal_entry: entry, account: account2, debit: BigDecimal('0'),
+               credit: BigDecimal('750.00'))
+        entry.post!
+      end
+
+      subject(:result) do
+        described_class.call(fiscal_year_id: fiscal_year.id, period_start: period_start, period_end: period_end)
+      end
+
+      it 'garde la grille spéciale de la ligne' do
+        expect(result.slice('86', '87', '88')).to eq('86' => 500, '87' => 50, '88' => 200)
+      end
+
+      it 'ajoute aussi la base en grille 81/82/83 selon le compte' do
+        expect(result.slice('81', '82', '83')).to eq('81' => 500, '82' => 200)
+      end
+    end
+
     context 'écritures en brouillon exclues' do
       before do
         entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year,

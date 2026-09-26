@@ -43,6 +43,11 @@ RSpec.describe Accounting::GenerateVatReturn, type: :service do
       expect(decl.grids['01']).to eq('210.00')
     end
 
+    it 'calcule le solde en grille 71 (aucune taxe due ni déductible ici)' do
+      result
+      expect(Accounting::VatDeclaration.last.grids['71']).to eq('0.00')
+    end
+
     it 'associe la déclaration à l année fiscale' do
       result
       decl = Accounting::VatDeclaration.last
@@ -74,7 +79,7 @@ RSpec.describe Accounting::GenerateVatReturn, type: :service do
 
     it 'retourne un contexte de succès avec grilles vides' do
       expect(result).to be_success
-      expect(result[:vat_declaration].grids).to eq({})
+      expect(result[:vat_declaration].grids).to eq("71" => "0.00") # nil return: grid 71 = 0,00 (n° 259)
     end
   end
 

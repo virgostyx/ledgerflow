@@ -38,6 +38,27 @@ RSpec.describe Accounting::Actions::RegularizeVatProrata, type: :service do
       end
     end
 
+    context "un avoir fournisseur reçu pendant l année (prorata 70%, final 100%)" do
+      before do
+        entity.update!(vat_prorata_rate: '70.00')
+        post_purchase_invoice(unit_price: '1000.00') # 210 VAT: 147 deducted, 63 non-deductible
+        credit = create(:invoice, invoice_type: :supplier, partner: partner, fiscal_year: fiscal_year,
+                        journal: purchase_journal, document_type: :credit_note,
+                        credited_invoice: Accounting::Invoice.last)
+        create(:invoice_line, invoice: credit, account: account_604, quantity: 1, unit_price: '500.00',
+               vat_rate: '21.00', position: 1)
+        credit.compute_totals
+        credit.save!
+        Accounting::PostInvoice.call(invoice: credit) # VAT 105: 73.50 reversed (63), 31.50 non-deductible
+      end
+
+      it "part du net déduit (147 - 73,50) et du net non déductible (63 - 31,50)" do
+        result = described_class.call(fiscal_year_id: fiscal_year.id, final_prorata_rate: BigDecimal('100'))
+        deductible_line = result[:journal_entry].lines.find { |l| l.account == account_411 }
+        expect(deductible_line.debit).to eq(BigDecimal('31.50')) # 105 * 100% - 73.50
+      end
+    end
+
     context "l entité avait un prorata de 70% pendant l année, prorata final de 80%" do
       before do
         entity.update!(vat_prorata_rate: '70.00')
