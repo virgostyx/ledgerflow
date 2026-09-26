@@ -1,0 +1,61 @@
+# Belgian annual accounts, abridged model for companies: the headings (BNB codes) and the accounts each one groups.
+# Written from knowledge of the BNB scheme and NOT validated by an accountant or against the official model: check it
+# before any real filing. A row either groups accounts (`prefixes`, read on the `side` where its balance is positive)
+# or adds up other rows (`sum`, a leading - subtracts). Rows are listed in the order they are shown.
+# 130000 (carry forward, see Accounting::AccountCodes) is shown with the profit carried forward (14), and the result of
+# the year is added to it by Accounting::AnnualAccounts. Class 0, 69 and 79 (appropriations) are left out on purpose.
+assets:
+  - { code: "20", label: "Formation expenses", level: 2, side: debit, prefixes: ["20"] }
+  - { code: "21", label: "Intangible fixed assets", level: 2, side: debit, prefixes: ["21"] }
+  - { code: "22/27", label: "Tangible fixed assets", level: 2, side: debit, prefixes: ["22", "23", "24", "25", "26", "27"] }
+  - { code: "28", label: "Financial fixed assets", level: 2, side: debit, prefixes: ["28"] }
+  - { code: "20/28", label: "FIXED ASSETS", level: 1, sum: ["20", "21", "22/27", "28"] }
+  - { code: "29", label: "Amounts receivable after more than one year", level: 2, side: debit, prefixes: ["29"] }
+  - { code: "3", label: "Stocks and contracts in progress", level: 2, side: debit, prefixes: ["3"] }
+  - { code: "40/41", label: "Amounts receivable within one year", level: 2, side: debit, prefixes: ["40", "41"] }
+  - { code: "50/53", label: "Current investments", level: 2, side: debit, prefixes: ["50", "51", "52", "53"] }
+  - { code: "54/58", label: "Cash at bank and in hand", level: 2, side: debit, prefixes: ["54", "55", "56", "57", "58"] }
+  - { code: "490/1", label: "Deferred charges and accrued income", level: 2, side: debit, prefixes: ["490", "491"] }
+  - { code: "29/58", label: "CURRENT ASSETS", level: 1, sum: ["29", "3", "40/41", "50/53", "54/58", "490/1"] }
+  - { code: "20/58", label: "TOTAL ASSETS", level: 0, sum: ["20/28", "29/58"] }
+liabilities:
+  - { code: "10/11", label: "Contribution", level: 2, side: credit, prefixes: ["10", "11"] }
+  - { code: "12", label: "Revaluation surpluses", level: 2, side: credit, prefixes: ["12"] }
+  - { code: "13", label: "Reserves", level: 2, side: credit, prefixes: ["13"], except: ["130000"] }
+  - { code: "14", label: "Profit (loss) carried forward", level: 2, side: credit, prefixes: ["14", "130000"], add: ["9904"] }
+  - { code: "15", label: "Capital subsidies", level: 2, side: credit, prefixes: ["15"] }
+  - { code: "10/15", label: "EQUITY", level: 1, sum: ["10/11", "12", "13", "14", "15"] }
+  - { code: "16", label: "Provisions and deferred taxes", level: 1, side: credit, prefixes: ["16"] }
+  - { code: "17", label: "Amounts payable after more than one year", level: 2, side: credit, prefixes: ["17"] }
+  - { code: "42/48", label: "Amounts payable within one year", level: 2, side: credit, prefixes: ["42", "43", "44", "45", "46", "47", "48"] }
+  - { code: "492/3", label: "Accrued charges and deferred income", level: 2, side: credit, prefixes: ["492", "493"] }
+  - { code: "17/49", label: "PAYABLES", level: 1, sum: ["17", "42/48", "492/3"] }
+  - { code: "10/49", label: "TOTAL LIABILITIES", level: 0, sum: ["10/15", "16", "17/49"] }
+income:
+  - { code: "70", label: "Turnover", level: 2, side: credit, prefixes: ["70"] }
+  - { code: "71", label: "Increase (decrease) in stocks of finished goods, work and contracts in progress", level: 2, side: credit, prefixes: ["71"] }
+  - { code: "72", label: "Own construction capitalised", level: 2, side: credit, prefixes: ["72"] }
+  - { code: "74", label: "Other operating income", level: 2, side: credit, prefixes: ["74"] }
+  - { code: "70/76A", label: "Operating income", level: 1, sum: ["70", "71", "72", "74"] }
+  - { code: "60", label: "Goods for resale, raw materials and consumables", level: 2, side: debit, prefixes: ["60"] }
+  - { code: "61", label: "Services and other goods", level: 2, side: debit, prefixes: ["61"] }
+  - { code: "62", label: "Remuneration, social security costs and pensions", level: 2, side: debit, prefixes: ["62"] }
+  - { code: "630", label: "Depreciation and amounts written off formation expenses and fixed assets", level: 2, side: debit, prefixes: ["630"] }
+  - { code: "631/4", label: "Amounts written down stocks, contracts in progress and trade debtors", level: 2, side: debit, prefixes: ["631", "632", "633", "634"] }
+  - { code: "635/8", label: "Provisions for liabilities and charges", level: 2, side: debit, prefixes: ["635", "636", "637", "638"] }
+  - { code: "640/8", label: "Other operating charges", level: 2, side: debit, prefixes: ["640", "641", "642", "643", "644", "645", "646", "647", "648"] }
+  - { code: "649", label: "Operating charges carried to assets as restructuring costs", level: 2, side: debit, prefixes: ["649"] }
+  - { code: "60/66A", label: "Operating charges", level: 1, sum: ["60", "61", "62", "630", "631/4", "635/8", "640/8", "649"] }
+  - { code: "9901", label: "Operating profit (loss)", level: 0, sum: ["70/76A", "-60/66A"] }
+  - { code: "75/76B", label: "Financial income", level: 2, side: credit, prefixes: ["75"] }
+  - { code: "65/66B", label: "Financial charges", level: 2, side: debit, prefixes: ["65"] }
+  - { code: "9902", label: "Profit (loss) on ordinary activities before taxes", level: 0, sum: ["9901", "75/76B", "-65/66B"] }
+  - { code: "76", label: "Exceptional income", level: 2, side: credit, prefixes: ["76"] }
+  - { code: "66", label: "Exceptional charges", level: 2, side: debit, prefixes: ["66"] }
+  - { code: "9903", label: "Profit (loss) for the period before taxes", level: 0, sum: ["9902", "76", "-66"] }
+  - { code: "780", label: "Transfer from deferred taxes", level: 2, side: credit, prefixes: ["780"] }
+  - { code: "680", label: "Transfer to deferred taxes", level: 2, side: debit, prefixes: ["680"] }
+  - { code: "67", label: "Income taxes", level: 2, side: debit, prefixes: ["67"] }
+  - { code: "77", label: "Adjustment of income taxes and write-back of tax provisions", level: 2, side: credit, prefixes: ["77"] }
+  - { code: "67/77", label: "Income taxes", level: 1, sum: ["67", "-77"] }
+  - { code: "9904", label: "Profit (loss) for the period", level: 0, sum: ["9903", "780", "-680", "-67/77"] }

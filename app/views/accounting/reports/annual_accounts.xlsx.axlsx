@@ -1,0 +1,17 @@
+wb = xlsx_package.workbook
+money = wb.styles.add_style(num_fmt: 4) # #,##0.00
+bold  = wb.styles.add_style(b: true)
+
+{ "Assets" => :assets, "Liabilities" => :liabilities, "Income statement" => :income }.each do |name, statement|
+  wb.add_worksheet(name: name) do |sheet|
+    header = [ "Code", "Heading", @report.fiscal_year.year.to_s ]
+    header << @report.previous_year.year.to_s if @report.previous_year
+    sheet.add_row header, style: bold
+
+    @report.rows(statement).each do |row|
+      values = [ row.code, row.label, row.amount.to_f ]
+      values << row.previous.to_f if @report.previous_year
+      sheet.add_row values, style: [ nil, nil, money, money ].first(values.size), b: row.level < 2, types: [ :string, :string, :float, :float ].first(values.size)
+    end
+  end
+end

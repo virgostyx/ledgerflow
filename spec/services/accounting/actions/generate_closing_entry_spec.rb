@@ -48,6 +48,27 @@ RSpec.describe Accounting::Actions::GenerateClosingEntry do
       }.to change(Accounting::JournalEntry, :count).by(1)
     end
 
+    it "poste l'écriture de clôture, sans quoi les comptes de charges et de produits ne seraient pas soldés" do
+      described_class.execute(ctx)
+      entry = ctx[:closing_entry]
+
+      expect(entry).to be_posted
+      expect(entry.reload).to be_posted
+    end
+
+    it "solde effectivement les comptes de charges dans la balance et porte le résultat au compte 699000" do
+      described_class.execute(ctx)
+      rows = Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year).call.index_by(&:code)
+
+      expect(rows["604000"].balance).to eq(0)
+      expect(rows["699000"].balance).not_to eq(0)
+    end
+
+    it "marque l'écriture comme écriture de clôture, pour pouvoir l'écarter du compte de résultat" do
+      described_class.execute(ctx)
+      expect(ctx[:closing_entry].source_type).to eq(Accounting::JournalEntry::CLOSING_SOURCE)
+    end
+
     it "promet closing_entry dans le contexte" do
       described_class.execute(ctx)
       expect(ctx[:closing_entry]).to be_a(Accounting::JournalEntry)

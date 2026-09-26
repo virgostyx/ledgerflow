@@ -103,4 +103,35 @@ RSpec.describe Accounting::TrialBalanceQuery, type: :query do
       end
     end
   end
+
+  describe "excluding the closing entry" do
+    let!(:revenue_account) do
+      create(:account, code: "700000", label_fr: "Ventes", account_type: :revenue, normal_balance: :credit, account_class: 7)
+    end
+    let!(:result_account) do
+      create(:account, code: "699000", label_fr: "Résultat", account_type: :expense, normal_balance: :debit, account_class: 6)
+    end
+
+    before do
+      create_posted_entry(entry_date: fiscal_year.start_date + 20, debit_account: liability_account,
+                          credit_account: revenue_account, amount: BigDecimal("500"))
+      closing = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.end_date,
+                       source_type: Accounting::JournalEntry::CLOSING_SOURCE)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: closing, account: revenue_account, debit: 500, credit: 0)
+      create(:journal_entry_line, journal_entry: closing, account: result_account, debit: 0, credit: 500)
+      closing.post!
+    end
+
+    it "shows the closing entry by default: the revenue accounts are settled" do
+      row = described_class.new(fiscal_year: fiscal_year).call.find { |r| r.code == "700000" }
+      expect(row.balance).to eq(0)
+    end
+
+    it "leaves it out on request, so that the income of a closed year can still be read" do
+      rows = described_class.new(fiscal_year: fiscal_year, exclude_closing: true).call
+      expect(rows.find { |r| r.code == "700000" }.balance).to eq(500)
+      expect(rows.map(&:code)).not_to include("699000")
+    end
+  end
 end

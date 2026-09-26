@@ -1,6 +1,9 @@
 class Accounting::JournalEntry < ApplicationRecord
   self.table_name = "accounting_journal_entries"
 
+  # source_type of the entry that settles the income accounts when a fiscal year is closed (Accounting::CloseFiscalYear).
+  CLOSING_SOURCE = "Accounting::ClosingEntry".freeze
+
   acts_as_tenant :entity
   broadcasts_refreshes_to ->(r) { [ r.entity, :journal_entries ] }
 

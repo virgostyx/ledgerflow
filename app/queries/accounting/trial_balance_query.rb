@@ -2,9 +2,11 @@ class Accounting::TrialBalanceQuery
   Result = Struct.new(:id, :code, :label_fr, :account_type, :normal_balance,
                       :total_debit, :total_credit, :balance, keyword_init: true)
 
-  def initialize(fiscal_year:, as_of: nil)
+  # exclude_closing: leave out the closing entry (and so the result account it fills), to read the income of a closed year.
+  def initialize(fiscal_year:, as_of: nil, exclude_closing: false)
     @fiscal_year = fiscal_year
     @as_of = as_of || fiscal_year.end_date
+    @exclude_closing = exclude_closing
   end
 
   def call
@@ -17,6 +19,7 @@ class Accounting::TrialBalanceQuery
         }
       )
       .where("accounting_journal_entries.entry_date <= ?", @as_of)
+      .merge(@exclude_closing ? Accounting::JournalEntry.where("accounting_journal_entries.source_type IS DISTINCT FROM ?", Accounting::JournalEntry::CLOSING_SOURCE) : Accounting::JournalEntry.all)
       .group(:account_id)
       .select(
         "account_id",

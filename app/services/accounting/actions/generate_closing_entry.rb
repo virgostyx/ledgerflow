@@ -23,7 +23,8 @@ class Accounting::Actions::GenerateClosingEntry
       entry_date:  ctx.fiscal_year.end_date,
       description: I18n.t("accounting.fiscal_years.closing_entry_description",
                            year: ctx.fiscal_year.year),
-      status:      :draft
+      status:      :draft,
+      source_type: Accounting::JournalEntry::CLOSING_SOURCE
     )
 
     ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
@@ -66,8 +67,12 @@ class Accounting::Actions::GenerateClosingEntry
       )
     end
 
-    entry.post!
-    ctx.closing_entry = entry
+    # Not entry.post!: a bare transition fails on the missing reference and leaves a draft (AASM does not raise), so the
+    # income accounts would never be settled. PostJournalEntry gives it its reference.
+    posted = Accounting::PostJournalEntry.call(entry: entry)
+    next ctx.fail_with_rollback!("Closing entry error: #{posted.message}") if posted.failure?
+
+    ctx.closing_entry = entry.reload
   rescue ActiveRecord::RecordInvalid => e
     ctx.fail_with_rollback!("Closing entry error: #{e.message}")
   end

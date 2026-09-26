@@ -1,0 +1,27 @@
+<%# One statement of the annual accounts: rows are Accounting::AnnualAccounts::Row, `report` gives the years compared. %>
+<div class="bg-white rounded-lg border border-gray-200 overflow-x-clip">
+  <h2 class="px-4 py-3 text-sm font-semibold text-primary-700 border-b border-gray-200"><%= title %></h2>
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 border-b border-gray-200">
+      <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <th class="px-3 py-2 text-left">Code</th>
+        <th class="px-3 py-2 text-left">Heading</th>
+        <th class="px-3 py-2 text-right"><%= report.fiscal_year.year %></th>
+        <% if report.previous_year %><th class="px-3 py-2 text-right"><%= report.previous_year.year %></th><% end %>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      <% rows.each do |row| %>
+        <% weight = { 0 => "font-bold bg-gray-50", 1 => "font-semibold", 2 => "" }.fetch(row.level) %>
+        <tr class="<%= weight %>">
+          <td class="px-3 py-2 font-mono text-gray-600 whitespace-nowrap"><%= row.code %></td>
+          <td class="px-3 py-2 text-gray-800 <%= 'pl-6' if row.level == 2 %>"><%= row.label %></td>
+          <td class="px-3 py-2 text-right font-mono"><%= Accounting::MoneyPresenter.new(row.amount).format %></td>
+          <% if report.previous_year %>
+            <td class="px-3 py-2 text-right font-mono text-gray-600"><%= Accounting::MoneyPresenter.new(row.previous).format %></td>
+          <% end %>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

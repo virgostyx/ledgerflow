@@ -108,6 +108,7 @@ Rails.application.routes.draw do
         get :trial_balance
         get :balance_sheet
         get :income_statement
+        get :annual_accounts
         get :aged_balance
         get :general_ledger
         get :analytic_by_project

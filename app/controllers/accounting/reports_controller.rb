@@ -35,6 +35,17 @@ class Accounting::ReportsController < ApplicationController
     @rows   = all_rows.select { |r| r.account_type.in?(%w[expense revenue]) }
   end
 
+  def annual_accounts
+    authorize :report, :annual_accounts?, policy_class: Accounting::ReportPolicy
+
+    @report = Accounting::AnnualAccounts.new(fiscal_year: @fiscal_year).call
+
+    respond_to do |format|
+      format.html
+      format.xlsx { render xlsx: "annual_accounts", filename: "annual_accounts_#{@fiscal_year.year}.xlsx" }
+    end
+  end
+
   def general_ledger
     authorize :report, :general_ledger?, policy_class: Accounting::ReportPolicy
 
