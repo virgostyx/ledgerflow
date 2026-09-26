@@ -15,11 +15,11 @@
       <% if policy(@fiscal_year).vat_regularization? && ActsAsTenant.current_tenant.vat_scheme_mixed? && !ActsAsTenant.current_tenant.franchise? %>
         <%= link_to t("accounting.fiscal_years.vat_regularization.title"),
                     vat_regularization_accounting_fiscal_year_path(@fiscal_year),
-                    class: "btn-secondary" %>
+                    class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors" %>
       <% end %>
       <% if policy(@fiscal_year).update? && @fiscal_year.open? %>
         <%= link_to t("accounting.fiscal_years.edit"), edit_accounting_fiscal_year_path(@fiscal_year),
-                    class: "btn-secondary" %>
+                    class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors" %>
       <% end %>
       <% if policy(@fiscal_year).close? && @fiscal_year.open? && !@checklist.blocking? %>
         <%= button_to t("accounting.fiscal_years.close_action"),
