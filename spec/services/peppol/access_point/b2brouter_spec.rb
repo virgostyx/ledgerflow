@@ -148,7 +148,7 @@ RSpec.describe Peppol::AccessPoint::B2brouter do
   describe '#parse_webhook' do
     def parse(state, **opts) = access_point.parse_webhook(**webhook(state, **opts))
 
-    %w[closed accepted read paid].each do |state|
+    %w[registered closed accepted read paid].each do |state|
       it "reads state #{state} as delivered" do
         expect(parse(state).sole).to have_attributes(kind: :delivered, message_id: '555')
       end

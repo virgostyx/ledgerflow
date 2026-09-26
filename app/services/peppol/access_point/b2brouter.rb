@@ -3,7 +3,9 @@
 # the documentation only. Received invoices are not handled yet (their webhook is not documented in what was read).
 class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
   API_VERSION = "2026-03-02".freeze
-  DELIVERED_STATES = %w[closed accepted read paid].freeze
+  # Sandbox scenarios (docs.b2brouter.net/en/developers/testing/sandbox): success = sent, registered; refused by the buyer =
+  # sent, registered, refused; no receiver = sent, error. "registered" is the Peppol network accepting the message.
+  DELIVERED_STATES = %w[registered closed accepted read paid].freeze
   FAILED_STATES    = %w[error refused invalid].freeze
 
   def self.requires_buyer_email? = true
