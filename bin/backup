@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Dump the primary production database (the accounting data) and the uploaded files.
+# Run on the server (e.g. from cron) as the deploy user; see docs/dev/backup_restore.md.
+set -euo pipefail
+
+DEST="${BACKUP_DIR:-$HOME/backups}"
+KEEP_DAYS="${KEEP_DAYS:-30}"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+
+mkdir -p "$DEST"
+docker exec ledgerflow-db pg_dump -U ledgerflow -Fc ledgerflow_production > "$DEST/db-$STAMP.dump.tmp"
+mv "$DEST/db-$STAMP.dump.tmp" "$DEST/db-$STAMP.dump"
+docker run --rm -v ledgerflow_storage:/data:ro -v "$DEST":/out alpine tar czf "/out/storage-$STAMP.tgz" -C /data .
+
+find "$DEST" -name 'db-*.dump' -mtime +"$KEEP_DAYS" -delete
+find "$DEST" -name 'storage-*.tgz' -mtime +"$KEEP_DAYS" -delete
+echo "Backup written to $DEST ($STAMP)"
