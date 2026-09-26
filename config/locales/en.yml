@@ -117,6 +117,12 @@ en:
         credit_note_invoice_has_receipts: "Receipts are already booked on this invoice, so the credit note stays open: settle it by lettering or refund it."
         credit_note_needs_invoice: "This credit note is not linked to an invoice."
 
+    payment_reminders:
+      created: "Reminders queued for %{count} customer(s)."
+      errors:
+        none_selected: "Select at least one customer to remind."
+        nothing_overdue: "Nothing overdue."
+        already_reminded: "Already reminded on %{date}: wait %{days} days between two reminders."
     recurring_invoices:
       created: "Recurring invoice created. A draft will be generated at each due date, for you to review and post."
       updated: "Recurring invoice updated."

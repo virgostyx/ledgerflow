@@ -1007,6 +1007,79 @@ ALTER SEQUENCE public.accounting_payment_batches_id_seq OWNED BY public.accounti
 
 
 --
+-- Name: accounting_payment_reminder_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_payment_reminder_items (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    payment_reminder_id bigint NOT NULL,
+    invoice_id bigint NOT NULL,
+    amount_due numeric(15,2) NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_payment_reminder_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_payment_reminder_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_payment_reminder_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_payment_reminder_items_id_seq OWNED BY public.accounting_payment_reminder_items.id;
+
+
+--
+-- Name: accounting_payment_reminders; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_payment_reminders (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    partner_id bigint NOT NULL,
+    sent_by_id bigint NOT NULL,
+    level integer NOT NULL,
+    recipient character varying NOT NULL,
+    subject character varying NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    error text,
+    sent_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_payment_reminders_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_payment_reminders_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_payment_reminders_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_payment_reminders_id_seq OWNED BY public.accounting_payment_reminders.id;
+
+
+--
 -- Name: accounting_peppol_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1472,6 +1545,20 @@ ALTER TABLE ONLY public.accounting_payment_batches ALTER COLUMN id SET DEFAULT n
 
 
 --
+-- Name: accounting_payment_reminder_items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminder_items ALTER COLUMN id SET DEFAULT nextval('public.accounting_payment_reminder_items_id_seq'::regclass);
+
+
+--
+-- Name: accounting_payment_reminders id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminders ALTER COLUMN id SET DEFAULT nextval('public.accounting_payment_reminders_id_seq'::regclass);
+
+
+--
 -- Name: accounting_peppol_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1710,6 +1797,22 @@ ALTER TABLE ONLY public.accounting_payment_batch_lines
 
 ALTER TABLE ONLY public.accounting_payment_batches
     ADD CONSTRAINT accounting_payment_batches_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_payment_reminder_items accounting_payment_reminder_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminder_items
+    ADD CONSTRAINT accounting_payment_reminder_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_payment_reminders accounting_payment_reminders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminders
+    ADD CONSTRAINT accounting_payment_reminders_pkey PRIMARY KEY (id);
 
 
 --
@@ -2499,6 +2602,48 @@ CREATE UNIQUE INDEX index_accounting_payment_batches_on_message_id ON public.acc
 
 
 --
+-- Name: index_accounting_payment_reminder_items_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_reminder_items_on_entity_id ON public.accounting_payment_reminder_items USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_payment_reminder_items_on_invoice_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_reminder_items_on_invoice_id ON public.accounting_payment_reminder_items USING btree (invoice_id);
+
+
+--
+-- Name: index_accounting_payment_reminder_items_on_payment_reminder_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_reminder_items_on_payment_reminder_id ON public.accounting_payment_reminder_items USING btree (payment_reminder_id);
+
+
+--
+-- Name: index_accounting_payment_reminders_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_reminders_on_entity_id ON public.accounting_payment_reminders USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_payment_reminders_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_reminders_on_partner_id ON public.accounting_payment_reminders USING btree (partner_id);
+
+
+--
+-- Name: index_accounting_payment_reminders_on_sent_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_payment_reminders_on_sent_by_id ON public.accounting_payment_reminders USING btree (sent_by_id);
+
+
+--
 -- Name: index_accounting_peppol_events_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2795,6 +2940,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 
 --
+-- Name: accounting_payment_reminder_items fk_rails_40a5661100; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminder_items
+    ADD CONSTRAINT fk_rails_40a5661100 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_42f8a23db1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2843,6 +2996,14 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 
 
 --
+-- Name: accounting_payment_reminders fk_rails_4d0dea3e8f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminders
+    ADD CONSTRAINT fk_rails_4d0dea3e8f FOREIGN KEY (sent_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_analytical_accounts fk_rails_59baa8ed4d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2888,6 +3049,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 ALTER TABLE ONLY public.accounting_journal_entry_lines
     ADD CONSTRAINT fk_rails_6f6e1949f4 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
+-- Name: accounting_payment_reminder_items fk_rails_708d3ff286; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminder_items
+    ADD CONSTRAINT fk_rails_708d3ff286 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -3067,6 +3236,14 @@ ALTER TABLE ONLY public.accounting_line_allocations
 
 
 --
+-- Name: accounting_payment_reminders fk_rails_b7ad850a2e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminders
+    ADD CONSTRAINT fk_rails_b7ad850a2e FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_bank_accounts fk_rails_bd15e59b6a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3120,6 +3297,14 @@ ALTER TABLE ONLY public.accounting_letterings
 
 ALTER TABLE ONLY public.accounting_fixed_assets
     ADD CONSTRAINT fk_rails_c7d3e0d904 FOREIGN KEY (asset_account_id) REFERENCES public.accounting_accounts(id);
+
+
+--
+-- Name: accounting_payment_reminders fk_rails_c7d51f3532; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminders
+    ADD CONSTRAINT fk_rails_c7d51f3532 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
 
 
 --
@@ -3227,6 +3412,14 @@ ALTER TABLE ONLY public.accounting_intracom_listing_lines
 
 
 --
+-- Name: accounting_payment_reminder_items fk_rails_ebe2fc3d8a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_payment_reminder_items
+    ADD CONSTRAINT fk_rails_ebe2fc3d8a FOREIGN KEY (payment_reminder_id) REFERENCES public.accounting_payment_reminders(id);
+
+
+--
 -- Name: accounting_letterings fk_rails_ed96a62b21; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3289,6 +3482,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260926140000'),
 ('20260925160000'),
 ('20260925150000'),
 ('20260925140000'),

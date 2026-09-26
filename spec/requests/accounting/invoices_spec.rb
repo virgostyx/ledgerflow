@@ -892,7 +892,7 @@ RSpec.describe 'Accounting::Invoices', type: :request do
         inv
       end
 
-      before { entity.update!(peppol_access_point: :simulator, peppol_participant_id: '0208:0999999999') }
+      before { entity.update!(peppol_access_point: :simulator, peppol_participant_id: '0208:0999999999', vat_number: 'BE0999999999') }
 
       it 'envoie la facture et redirige' do
         post send_peppol_accounting_invoice_path(invoice)

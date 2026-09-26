@@ -134,6 +134,20 @@
   </div>
 <% end %>
 
+<% if @invoice.payment_reminders.any? %>
+  <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6" data-section="payment-reminders">
+    <h2 class="text-sm font-semibold text-gray-900">Payment reminders</h2>
+    <ul class="mt-3 space-y-1 text-sm text-gray-700">
+      <% @invoice.payment_reminders.each do |reminder| %>
+        <li>
+          <span class="text-gray-400"><%= Accounting::DatePresenter.new(reminder.created_at.to_date).format %></span>
+          &mdash; Level <%= reminder.level %> to <%= reminder.recipient %> (<%= reminder.status %>)<%= " — #{reminder.error}" if reminder.failed? && reminder.error.present? %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+
 <%# ── Lines table ────────────────────────────────────────────────────── %>
 <% if @invoice.lines.any? %>
   <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">

@@ -1,0 +1,21 @@
+Hello,
+
+<% case @reminder.level %>
+<% when 1 %>
+Our records show that the invoices below are overdue. This may be an oversight: if you have already paid them, please disregard this message.
+<% when 2 %>
+This is a second reminder. We have not received payment of the invoices below, despite our earlier reminder. Please settle them as soon as possible.
+<% else %>
+This is a formal notice. The invoices below remain unpaid despite our previous reminders. If we do not receive payment promptly, we will take further steps to recover the amounts due.
+<% end %>
+
+<% @items.each do |item| %>
+- <%= item.invoice.invoice_number %>, due <%= Accounting::DatePresenter.new(item.invoice.due_date).format %> (<%= pluralize((@sent_on - item.invoice.due_date).to_i, "day") %> overdue): <%= Accounting::MoneyPresenter.new(item.amount_due).format %>
+<% end %>
+
+Total due: <%= Accounting::MoneyPresenter.new(@items.sum(&:amount_due)).format %>
+
+The invoices are attached.
+
+Kind regards,
+<%= @entity.legal_name %>
