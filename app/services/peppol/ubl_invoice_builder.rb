@@ -67,13 +67,16 @@ class Peppol::UblInvoiceBuilder
         build_endpoint(xml, @entity.peppol_participant_id)
         xml["cac"].PartyName { xml["cbc"].Name @entity.name }
         build_address(xml, @entity.address_line1, @entity.city, @entity.zip_code, @entity.country)
-        xml["cac"].PartyTaxScheme do
-          xml["cbc"].CompanyID @entity.vat_number
-          xml["cac"].TaxScheme { xml["cbc"].ID "VAT" }
+        if @entity.vat_number.present?
+          xml["cac"].PartyTaxScheme do
+            xml["cbc"].CompanyID @entity.vat_number
+            xml["cac"].TaxScheme { xml["cbc"].ID "VAT" }
+          end
         end
         xml["cac"].PartyLegalEntity do
           xml["cbc"].RegistrationName @entity.legal_name
-          xml["cbc"].CompanyID @entity.vat_number
+          scheme, number = @entity.peppol_participant_id.to_s.split(":", 2)
+          xml["cbc"].CompanyID(number, "schemeID" => scheme) if scheme == Peppol::ParticipantId::BELGIAN_SCHEME
         end
       end
     end

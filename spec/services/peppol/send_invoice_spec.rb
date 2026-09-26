@@ -22,7 +22,7 @@ RSpec.describe Peppol::SendInvoice do
     ActiveJob::Base.queue_adapter = previous
   end
 
-  before { entity.update!(peppol_access_point: :simulator, peppol_participant_id: "0208:0999999999") }
+  before { entity.update!(peppol_access_point: :simulator, peppol_participant_id: "0208:0999999999", vat_number: "BE0999999999") }
 
   context "with the simulator" do
     it "succeeds, keeps the message id of the Access Point and queues the invoice" do
@@ -125,6 +125,38 @@ RSpec.describe Peppol::SendInvoice do
     it "refuses when the partner has no Peppol identifier and none can be derived" do
       partner.update!(vat_number: nil)
       refused(described_class.call(invoice: invoice), /Client SA/)
+    end
+
+    context "with an Access Point that needs the buyer's e-mail (B2Brouter)" do
+      before do
+        entity.update!(peppol_access_point: :b2brouter,
+                       peppol_credentials: { "api_key" => "k", "account_id" => "1", "webhook_secret" => "s" })
+        stub_request(:get, %r{/directory/}).to_return(status: 200, body: "{}", headers: { "Content-Type" => "application/json" })
+      end
+
+      it "refuses, naming the partner, before calling the Access Point" do
+        partner.update!(email: nil)
+        refused(described_class.call(invoice: invoice), /Client SA.*e-mail/i)
+        expect(a_request(:post, /b2brouter/)).not_to have_been_made
+      end
+
+      it "goes on when the partner has an e-mail" do
+        partner.update!(email: "client@example.com")
+        stub_request(:post, %r{/accounts/1/invoices/import}).to_return(status: 201, body: { invoice: { id: 9 } }.to_json, headers: { "Content-Type" => "application/json" })
+        stub_request(:post, %r{/invoices/send_invoice/9}).to_return(status: 204)
+        expect(described_class.call(invoice: invoice)).to be_success
+      end
+    end
+
+    it "refuses taxable lines when the entity has no VAT number (Peppol requires the seller's)" do
+      entity.update!(vat_number: nil)
+      refused(described_class.call(invoice: invoice), /VAT number/)
+    end
+
+    it "does not need a VAT number when nothing is taxable" do
+      entity.update!(vat_number: nil)
+      invoice.lines.each { |l| l.update_columns(vat_rate: 0) }
+      expect(described_class.call(invoice: invoice)).to be_success
     end
 
     it "refuses a receiver that is not registered on the network" do

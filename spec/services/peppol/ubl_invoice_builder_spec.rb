@@ -140,6 +140,23 @@ RSpec.describe Peppol::UblInvoiceBuilder do
       expect(Nokogiri::XML(described_class.new(invoice).build).tap(&:remove_namespaces!).at_xpath("/Invoice/BuyerReference").text).to eq("PO-77")
     end
 
+    it "ne contient aucun élément vide (règle Peppol R008), même sans TVA ni adresse sur l'entité" do
+      entity.update!(vat_number: nil, address_line1: nil, city: nil, zip_code: nil)
+      d = Nokogiri::XML(described_class.new(invoice).build)
+      expect(d.xpath("//*[not(*) and normalize-space(.)='']").map(&:path)).to be_empty
+    end
+
+    it "sans numéro de TVA, n'écrit pas de PartyTaxScheme pour l'émetteur" do
+      entity.update!(vat_number: nil)
+      expect(Nokogiri::XML(described_class.new(invoice).build).tap(&:remove_namespaces!).at_xpath("#{supplier}/PartyTaxScheme")).to be_nil
+    end
+
+    it "identifie l'entité légale de l'émetteur par son numéro d'entreprise (schéma 0208)" do
+      company = doc.at_xpath("#{supplier}/PartyLegalEntity/CompanyID")
+      expect(company.text).to eq("0999999999")
+      expect(company["schemeID"]).to eq("0208")
+    end
+
     it "donne l'e-mail du partenaire comme contact de l'acheteur (exigé par certains Access Points)" do
       expect(doc.at_xpath("#{customer}/Contact/ElectronicMail")).to be_nil
       partner.update!(email: "client@example.com")

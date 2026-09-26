@@ -6,6 +6,8 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
   DELIVERED_STATES = %w[closed accepted read paid].freeze
   FAILED_STATES    = %w[error refused invalid].freeze
 
+  def self.requires_buyer_email? = true
+
   def self.credential_fields
     [
       { key: "api_key",        label: "API key",        required: true, secret: true },
@@ -23,15 +25,21 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
                                                                         body: "data:text/xml;name=invoice.xml;base64,#{Base64.strict_encode64(xml)}",
                                                                         content_type: "application/octet-stream")
     id = imported.dig("invoice", "id").presence or raise Peppol::AccessPoint::Error, "B2Brouter returned no invoice id"
-    request(:post, "/invoices/send_invoice/#{id}")
+    begin
+      request(:post, "/invoices/send_invoice/#{id}")
+    rescue Peppol::AccessPoint::Error
+      discard(id) # an invoice left imported would make its number "already taken" on the next try
+      raise
+    end
     id.to_s
   end
 
-  # The directory needs the country: only known for the Belgian enterprise-number scheme.
+  # The directory needs the country (only known for the Belgian enterprise-number scheme) and the bare value, without
+  # the scheme: /directory/be/0214596464 (checked against the real API; "0208:0214596464" is answered 404).
   def registered?(participant_id)
     return unless participant_id.to_s.start_with?("#{Peppol::ParticipantId::BELGIAN_SCHEME}:")
 
-    connection.get("/directory/be/#{participant_id}") { |r| headers(r) }
+    connection.get("/directory/be/#{participant_id.split(":", 2).last}") { |r| headers(r) }
     true
   rescue Faraday::ResourceNotFound
     false
@@ -76,6 +84,12 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
     raise Peppol::AccessPoint::Error, "B2Brouter: #{api_message(e.response) || e.message}"
   rescue Faraday::Error, JSON::ParserError => e
     raise Peppol::AccessPoint::Error, "B2Brouter API error: #{e.message}"
+  end
+
+  def discard(id)
+    request(:delete, "/invoices/#{id}")
+  rescue Peppol::AccessPoint::Error
+    nil
   end
 
   def api_message(response)

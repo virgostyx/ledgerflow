@@ -8,6 +8,9 @@ class Peppol::AccessPoint::Base
 
   def self.credential_fields = []
 
+  # Some Access Points refuse a document whose buyer has no e-mail address.
+  def self.requires_buyer_email? = false
+
   def initialize(entity)
     @entity = entity
   end

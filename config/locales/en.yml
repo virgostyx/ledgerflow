@@ -326,6 +326,8 @@ en:
       already_sent:       "This document has already been sent via Peppol (status: %{status})."
       no_sender_id:       "Set your Peppol identifier in Settings, Peppol, before sending."
       no_receiver_id:     "%{partner} has no Peppol identifier: add it to the partner, or its Belgian VAT number, before sending."
+      no_vat_number:      "Your entity has no VAT number, which Peppol requires on an invoice with VAT. Set it in Settings, Entity."
+      no_buyer_email:     "%{partner} has no e-mail address: your Access Point needs it to send the document. Add it to the partner."
       not_registered:     "%{receiver} is not registered on the Peppol network."
       hmac_invalid:       "Invalid HMAC signature."
 

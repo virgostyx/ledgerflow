@@ -14,6 +14,9 @@ RSpec.describe Peppol::AccessPoint::B2brouter do
   let(:send_url)   { %r{#{base}/invoices/send_invoice/555} }
   let(:json) { { 'Content-Type' => 'application/json' } }
 
+  # A refused send removes the imported invoice again.
+  before { stub_request(:delete, %r{#{base}/invoices/}).to_return(status: 200, body: '{}', headers: json) }
+
   def sign(body, t = Time.now.to_i, secret = 'whsec') = "t=#{t},s=#{OpenSSL::HMAC.hexdigest('SHA256', secret, "#{t}.#{body}")}"
 
   def webhook(state, notes: nil)
@@ -80,6 +83,23 @@ RSpec.describe Peppol::AccessPoint::B2brouter do
       expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error, /Contact Email/)
     end
 
+    it 'removes the imported invoice when the send is refused, so that the number can be used again' do
+      stub_request(:post, import_url).to_return(status: 201, body: { invoice: { id: 555 } }.to_json, headers: json)
+      stub_request(:post, send_url).to_return(status: 422, body: { errors: [ 'Rule BR-S-02' ] }.to_json, headers: json)
+      cleanup = stub_request(:delete, %r{#{base}/invoices/555}).to_return(status: 200, body: '{}', headers: json)
+
+      expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error, /BR-S-02/)
+      expect(cleanup).to have_been_requested
+    end
+
+    it 'still reports the refusal when the cleanup itself fails' do
+      stub_request(:post, import_url).to_return(status: 201, body: { invoice: { id: 555 } }.to_json, headers: json)
+      stub_request(:post, send_url).to_return(status: 422, body: { errors: [ 'Rule BR-S-02' ] }.to_json, headers: json)
+      stub_request(:delete, %r{#{base}/invoices/555}).to_return(status: 500)
+
+      expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error, /BR-S-02/)
+    end
+
     it 'accepts the empty 204 answer of a successful send' do
       stub_request(:post, import_url).to_return(status: 201, body: { invoice: { id: 555 } }.to_json, headers: json)
       stub_request(:post, send_url).to_return(status: 204, body: '')
@@ -103,7 +123,7 @@ RSpec.describe Peppol::AccessPoint::B2brouter do
   end
 
   describe '#registered?' do
-    def directory(status, body = {}) = stub_request(:get, %r{#{base}/directory/be/0208:0987654321}).to_return(status: status, body: body.to_json, headers: json)
+    def directory(status, body = {}) = stub_request(:get, %r{#{base}/directory/be/0987654321}).to_return(status: status, body: body.to_json, headers: json)
 
     it 'is true for a participant found in the directory' do
       directory(200, { name: 'X' })
