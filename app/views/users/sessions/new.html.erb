@@ -1,9 +1,21 @@
 <h2 class="text-xl font-semibold text-gray-900 mb-6">Sign in</h2>
 
+<div data-controller="passkey-login"
+     data-passkey-login-options-url-value="<%= passkey_session_options_path %>"
+     data-passkey-login-verify-url-value="<%= passkey_session_path %>" class="mb-6">
+  <div data-passkey-login-target="status" class="hidden mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700"></div>
+  <button type="button" data-passkey-login-target="button" data-action="passkey-login#authenticate" class="hidden w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition-colors cursor-pointer">
+    Sign in with a passkey
+  </button>
+  <div class="mt-2 text-center">
+    <%= link_to 'Lost your passkey? Use a recovery code', new_recovery_code_session_path, class: 'text-xs text-primary-600 hover:text-primary-700' %>
+  </div>
+</div>
+
 <%= form_with url: user_session_path, scope: :user, html: { class: 'space-y-6' } do |f| %>
   <div class="relative" data-controller="floating-label">
     <%= f.email_field :email,
-          autofocus: true, autocomplete: 'email',
+          autofocus: true, autocomplete: 'username webauthn',
           class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
           placeholder: ' ',
           data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue' } %>

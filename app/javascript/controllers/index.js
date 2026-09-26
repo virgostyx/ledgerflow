@@ -59,3 +59,9 @@ application.register("toggle", ToggleController)
 
 import NavSectionController from "controllers/nav_section_controller"
 application.register("nav-section", NavSectionController)
+
+import PasskeyLoginController from "controllers/passkey_login_controller"
+application.register("passkey-login", PasskeyLoginController)
+
+import PasskeyRegistrationController from "controllers/passkey_registration_controller"
+application.register("passkey-registration", PasskeyRegistrationController)

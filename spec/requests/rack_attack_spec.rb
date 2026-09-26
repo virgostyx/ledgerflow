@@ -39,3 +39,17 @@ RSpec.describe "Rack::Attack", type: :request do
     end
   end
 end
+
+RSpec.describe "Rack::Attack passkey endpoints", type: :request do
+  before do
+    Rack::Attack.enabled = true
+    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+  end
+
+  after { Rack::Attack.enabled = false }
+
+  it "throttles passkey and recovery code sign-in per IP" do
+    6.times { post recovery_code_session_path, params: { email: "a@b.c", recovery_code: "x" }, headers: { "REMOTE_ADDR" => "1.2.3.9" } }
+    expect(response).to have_http_status(:too_many_requests)
+  end
+end

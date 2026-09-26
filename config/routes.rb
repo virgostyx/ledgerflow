@@ -10,6 +10,17 @@ Rails.application.routes.draw do
     registrations: "users/registrations"
   }
 
+  devise_scope :user do
+    get  "passkey_session/options",   to: "users/passkey_sessions#options", as: :passkey_session_options
+    post "passkey_session",           to: "users/passkey_sessions#create"
+    get  "recovery_code_session/new", to: "users/recovery_code_sessions#new", as: :new_recovery_code_session
+    post "recovery_code_session",     to: "users/recovery_code_sessions#create", as: :recovery_code_session
+  end
+
+  resources :passkeys, only: %i[index create destroy], controller: "users/passkeys" do
+    get :options, on: :collection
+  end
+
   # Onboarding (pas de tenant requis — le user vient de s'inscrire)
   namespace :onboarding do
     resource :entity, only: %i[new create]

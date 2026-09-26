@@ -1,0 +1,57 @@
+<div class="max-w-2xl mx-auto px-4 py-8">
+  <h1 class="text-lg font-semibold text-indigo-700">Passkeys</h1>
+  <p class="text-sm text-gray-500 mt-1 mb-6">
+    <%= current_user.passwordless? ? "Password sign-in is disabled for your account. You sign in with a passkey." : "Sign in without a password. Registering a passkey disables password sign-in for your account." %>
+  </p>
+
+  <% if @webauthn_credentials.any? %>
+    <ul class="mb-6 divide-y divide-gray-200 border-t border-b border-gray-200">
+      <% @webauthn_credentials.each do |credential| %>
+        <li class="py-3 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-900"><%= credential.nickname %></p>
+            <p class="text-xs text-gray-500">
+              Added <%= credential.created_at.to_fs(:long) %> &middot;
+              Last used <%= credential.last_used_at ? credential.last_used_at.to_fs(:long) : "never" %>
+            </p>
+          </div>
+          <%= button_to "Remove", passkey_path(credential), method: :delete,
+                class: "text-sm text-gray-500 hover:text-red-600 cursor-pointer",
+                form: { data: { turbo_confirm: @webauthn_credentials.size == 1 ?
+                  "Remove your only passkey? Password sign-in will become available again." : "Remove this passkey?" } } %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="text-sm text-gray-500 mb-6">No passkeys registered yet.</p>
+  <% end %>
+
+  <div data-controller="passkey-registration"
+       data-passkey-registration-options-url-value="<%= options_passkeys_path %>"
+       data-passkey-registration-create-url-value="<%= passkeys_path %>">
+    <div data-passkey-registration-target="error" class="hidden mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700"></div>
+
+    <div data-passkey-registration-target="form" class="pt-6 border-t border-gray-200">
+      <h2 class="text-sm font-semibold text-gray-900 mb-2">Add a passkey</h2>
+      <label for="passkey_nickname" class="block text-sm font-medium text-gray-700 mb-1">Name this passkey</label>
+      <input type="text" id="passkey_nickname" placeholder="e.g. YubiKey, iPhone" data-passkey-registration-target="nickname"
+             class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <button type="button" data-action="passkey-registration#register"
+              class="w-full py-3 px-4 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer">
+        Add a passkey
+      </button>
+    </div>
+
+    <div data-passkey-registration-target="backupCodes" class="hidden pt-6 border-t border-gray-200">
+      <h2 class="text-sm font-semibold text-gray-900 mb-2">Your recovery codes</h2>
+      <p class="text-xs text-gray-500 mb-4">Save these codes somewhere safe. Each can be used once to sign in if you lose your passkey. They won't be shown again.</p>
+      <ul data-passkey-registration-target="backupCodesList" class="mb-6 space-y-2"></ul>
+      <a data-passkey-registration-target="downloadLink" download
+         class="w-full mb-3 flex justify-center py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+        Download codes (.txt)
+      </a>
+      <button type="button" data-action="passkey-registration#done"
+              class="w-full py-3 px-4 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer">Done</button>
+    </div>
+  </div>
+</div>

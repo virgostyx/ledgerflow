@@ -27,6 +27,7 @@ gem "view_component"
 
 # Auth & Autorisations
 gem "devise"
+gem "webauthn", "~> 3.4"
 gem "pundit"
 gem "jwt"
 gem "bcrypt", "~> 3.1.7"

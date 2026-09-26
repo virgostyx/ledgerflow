@@ -1252,6 +1252,39 @@ ALTER SEQUENCE public.entities_id_seq OWNED BY public.entities.id;
 
 
 --
+-- Name: recovery_codes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recovery_codes (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    code_digest character varying NOT NULL,
+    used_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: recovery_codes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.recovery_codes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: recovery_codes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.recovery_codes_id_seq OWNED BY public.recovery_codes.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1318,7 +1351,8 @@ CREATE TABLE public.users (
     locale character varying DEFAULT 'en'::character varying NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    webauthn_id character varying
 );
 
 
@@ -1374,6 +1408,42 @@ CREATE SEQUENCE public.versions_id_seq
 --
 
 ALTER SEQUENCE public.versions_id_seq OWNED BY public.versions.id;
+
+
+--
+-- Name: webauthn_credentials; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.webauthn_credentials (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    external_id character varying NOT NULL,
+    public_key character varying NOT NULL,
+    nickname character varying NOT NULL,
+    sign_count bigint DEFAULT 0 NOT NULL,
+    last_used_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: webauthn_credentials_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.webauthn_credentials_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: webauthn_credentials_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.webauthn_credentials_id_seq OWNED BY public.webauthn_credentials.id;
 
 
 --
@@ -1587,6 +1657,13 @@ ALTER TABLE ONLY public.entities ALTER COLUMN id SET DEFAULT nextval('public.ent
 
 
 --
+-- Name: recovery_codes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recovery_codes ALTER COLUMN id SET DEFAULT nextval('public.recovery_codes_id_seq'::regclass);
+
+
+--
 -- Name: user_entities id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1605,6 +1682,13 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 --
 
 ALTER TABLE ONLY public.versions ALTER COLUMN id SET DEFAULT nextval('public.versions_id_seq'::regclass);
+
+
+--
+-- Name: webauthn_credentials id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webauthn_credentials ALTER COLUMN id SET DEFAULT nextval('public.webauthn_credentials_id_seq'::regclass);
 
 
 --
@@ -1856,6 +1940,14 @@ ALTER TABLE ONLY public.entities
 
 
 --
+-- Name: recovery_codes recovery_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recovery_codes
+    ADD CONSTRAINT recovery_codes_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1885,6 +1977,14 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.versions
     ADD CONSTRAINT versions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: webauthn_credentials webauthn_credentials_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webauthn_credentials
+    ADD CONSTRAINT webauthn_credentials_pkey PRIMARY KEY (id);
 
 
 --
@@ -2742,6 +2842,13 @@ CREATE UNIQUE INDEX index_entities_on_vat_number_unique ON public.entities USING
 
 
 --
+-- Name: index_recovery_codes_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_recovery_codes_on_user_id ON public.recovery_codes USING btree (user_id);
+
+
+--
 -- Name: index_user_entities_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2784,6 +2891,13 @@ CREATE UNIQUE INDEX index_users_on_unlock_token ON public.users USING btree (unl
 
 
 --
+-- Name: index_users_on_webauthn_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_users_on_webauthn_id ON public.users USING btree (webauthn_id);
+
+
+--
 -- Name: index_versions_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2795,6 +2909,27 @@ CREATE INDEX index_versions_on_entity_id ON public.versions USING btree (entity_
 --
 
 CREATE INDEX index_versions_on_item_type_and_item_id ON public.versions USING btree (item_type, item_id);
+
+
+--
+-- Name: index_webauthn_credentials_on_external_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_webauthn_credentials_on_external_id ON public.webauthn_credentials USING btree (external_id);
+
+
+--
+-- Name: index_webauthn_credentials_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webauthn_credentials_on_user_id ON public.webauthn_credentials USING btree (user_id);
+
+
+--
+-- Name: index_webauthn_credentials_on_user_id_and_nickname; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_webauthn_credentials_on_user_id_and_nickname ON public.webauthn_credentials USING btree (user_id, nickname);
 
 
 --
@@ -3196,6 +3331,14 @@ ALTER TABLE ONLY public.accounting_payment_batch_lines
 
 
 --
+-- Name: webauthn_credentials fk_rails_a4355aef77; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webauthn_credentials
+    ADD CONSTRAINT fk_rails_a4355aef77 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoice_emails fk_rails_ac5f94ed94; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3329,6 +3472,14 @@ ALTER TABLE ONLY public.accounting_fixed_assets
 
 ALTER TABLE ONLY public.accounting_peppol_events
     ADD CONSTRAINT fk_rails_cdf528e0a8 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: recovery_codes fk_rails_cf7d76c04b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recovery_codes
+    ADD CONSTRAINT fk_rails_cf7d76c04b FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -3482,6 +3633,9 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260926180020'),
+('20260926180010'),
+('20260926180000'),
 ('20260926170000'),
 ('20260926160000'),
 ('20260926150000'),
