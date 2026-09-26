@@ -100,6 +100,42 @@ RSpec.describe Peppol::AccessPoint::B2brouter do
       expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error, /BR-S-02/)
     end
 
+    describe 'when the invoice number is already known to B2Brouter' do
+      let(:list_url) { %r{#{base}/accounts/343740/invoices} }
+      let(:taken) { { error: { message: 'Validation failed: Number has already been taken' } }.to_json }
+
+      before { stub_request(:post, import_url).to_return({ status: 422, body: taken, headers: json }, { status: 201, body: { invoice: { id: 777 } }.to_json, headers: json }) }
+
+      def existing(state) = stub_request(:get, list_url).with(query: hash_including('number' => 'VTE2026/0001')).to_return(status: 200, body: { invoices: [ { id: 555, number: 'VTE2026/0001', state: state } ] }.to_json, headers: json)
+
+      %w[sent registered closed].each do |state|
+        it "adopts the invoice already #{state} there, without importing or sending it again" do
+          existing(state)
+          sending = stub_request(:post, %r{/invoices/send_invoice/}).to_return(status: 204)
+
+          expect(access_point.send_document(**send_args)).to eq('555')
+          expect(sending).not_to have_been_requested
+          expect(a_request(:post, import_url)).to have_been_made.once
+        end
+      end
+
+      %w[error new].each do |state|
+        it "replaces an invoice left #{state} there: removes it, imports again and sends" do
+          existing(state)
+          removal = stub_request(:delete, %r{#{base}/invoices/555}).to_return(status: 200, body: '{}', headers: json)
+          stub_request(:post, %r{/invoices/send_invoice/777}).to_return(status: 204)
+
+          expect(access_point.send_document(**send_args)).to eq('777')
+          expect(removal).to have_been_requested
+        end
+      end
+
+      it 'gives the original refusal when the invoice cannot be found' do
+        stub_request(:get, list_url).with(query: hash_including('number' => 'VTE2026/0001')).to_return(status: 200, body: { invoices: [] }.to_json, headers: json)
+        expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error, /already been taken/)
+      end
+    end
+
     it 'accepts the empty 204 answer of a successful send' do
       stub_request(:post, import_url).to_return(status: 201, body: { invoice: { id: 555 } }.to_json, headers: json)
       stub_request(:post, send_url).to_return(status: 204, body: '')

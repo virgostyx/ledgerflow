@@ -7,6 +7,9 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
   # sent, registered, refused; no receiver = sent, error. "registered" is the Peppol network accepting the message.
   DELIVERED_STATES = %w[registered closed accepted read paid].freeze
   FAILED_STATES    = %w[error refused invalid].freeze
+  # An invoice in one of these states has already been handed over: importing the same number again means a previous try
+  # got through (for instance the answer was lost), not that a new document is being sent.
+  SETTLED_STATES = (%w[sent] + DELIVERED_STATES + %w[refused]).freeze
 
   def self.requires_buyer_email? = true
 
@@ -23,10 +26,17 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
     api_key, account_id = credential("api_key"), credential("account_id")
     raise Peppol::AccessPoint::NotConfigured, "The B2Brouter API key and account ID are not set" unless api_key && account_id
 
-    imported = request(:post, "/accounts/#{account_id}/invoices/import", params: { send_after_import: false },
-                                                                        body: "data:text/xml;name=invoice.xml;base64,#{Base64.strict_encode64(xml)}",
-                                                                        content_type: "application/octet-stream")
-    id = imported.dig("invoice", "id").presence or raise Peppol::AccessPoint::Error, "B2Brouter returned no invoice id"
+    begin
+      id = import(xml, account_id)
+    rescue Peppol::AccessPoint::Error => e
+      raise unless e.message.include?("already been taken")
+
+      existing = find_by_number(account_id, document_id) or raise
+      return existing["id"].to_s if SETTLED_STATES.include?(existing["state"]) # an earlier try got through: do not send it twice
+
+      discard(existing["id"]) # left as new or error by an earlier try, with an older content
+      id = import(xml, account_id)
+    end
     begin
       request(:post, "/invoices/send_invoice/#{id}")
     rescue Peppol::AccessPoint::Error
@@ -66,6 +76,17 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
   end
 
   private
+
+  def import(xml, account_id)
+    imported = request(:post, "/accounts/#{account_id}/invoices/import", params: { send_after_import: false },
+                                                                        body: "data:text/xml;name=invoice.xml;base64,#{Base64.strict_encode64(xml)}",
+                                                                        content_type: "application/octet-stream")
+    imported.dig("invoice", "id").presence or raise Peppol::AccessPoint::Error, "B2Brouter returned no invoice id"
+  end
+
+  def find_by_number(account_id, number)
+    request(:get, "/accounts/#{account_id}/invoices", params: { number: number, limit: 5 })["invoices"].to_a.find { |i| i["number"] == number }
+  end
 
   def verify_signature!(header, body)
     parts = header.to_s.split(",").filter_map { |p| p.split("=", 2) if p.include?("=") }.to_h
