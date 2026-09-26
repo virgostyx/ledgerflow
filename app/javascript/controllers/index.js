@@ -56,3 +56,6 @@ application.register("lettering-total", LetteringTotalController)
 
 import ToggleController from "controllers/toggle_controller"
 application.register("toggle", ToggleController)
+
+import NavSectionController from "controllers/nav_section_controller"
+application.register("nav-section", NavSectionController)
