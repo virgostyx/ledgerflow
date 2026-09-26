@@ -62,6 +62,19 @@
       </div>
     <% end %>
 
+    <%= link_to accounting_settings_opening_balance_path,
+          class: "group flex items-start gap-4 p-5 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all" do %>
+      <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+        <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-gray-900">Opening Balances</p>
+        <p class="text-sm text-gray-500 mt-0.5">Import balances and open invoices from your previous software</p>
+      </div>
+    <% end %>
+
     <%= link_to edit_accounting_settings_vat_settings_path,
           class: "group flex items-start gap-4 p-5 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all" do %>
       <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">

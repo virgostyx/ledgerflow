@@ -131,6 +131,9 @@ Rails.application.routes.draw do
           post :simulate_incoming
         end
         resource :entity, only: [ :edit, :update ]
+        resource :opening_balance, only: [ :show, :create ] do
+          get :template
+        end
       end
     end
   end

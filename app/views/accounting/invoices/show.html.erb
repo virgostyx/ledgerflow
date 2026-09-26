@@ -26,23 +26,23 @@
             form: { data: { turbo_confirm: 'Cancel this invoice? Its journal entry will be reversed.' } },
             class: 'px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50 transition-colors' %>
     <% end %>
-    <% if @invoice.customer? && @invoice.issued? && policy(@invoice).pdf? %>
+    <% if @invoice.customer? && @invoice.issued? && !@invoice.opening? && policy(@invoice).pdf? %>
       <%= link_to 'Download PDF', pdf_accounting_invoice_path(@invoice), target: '_blank', rel: 'noopener',
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
-    <% if @invoice.customer? && @invoice.issued? && !(@invoice.queued? || @invoice.delivered?) && @invoice.entity.peppol_access_point && policy(@invoice).send_peppol? %>
+    <% if @invoice.customer? && @invoice.issued? && !@invoice.opening? && !(@invoice.queued? || @invoice.delivered?) && @invoice.entity.peppol_access_point && policy(@invoice).send_peppol? %>
       <%= button_to 'Send via Peppol', send_peppol_accounting_invoice_path(@invoice), method: :post,
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
-    <% if @invoice.invoice? && @invoice.issued? && policy(Accounting::RecurringInvoice).create? %>
+    <% if @invoice.invoice? && @invoice.issued? && !@invoice.opening? && policy(Accounting::RecurringInvoice).create? %>
       <%= link_to 'Make recurring', new_accounting_recurring_invoice_path(invoice_id: @invoice.id),
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
-    <% if @invoice.invoice? && policy(@invoice).duplicate? %>
+    <% if @invoice.invoice? && !@invoice.opening? && policy(@invoice).duplicate? %>
       <%= button_to 'Duplicate', duplicate_accounting_invoice_path(@invoice), method: :post,
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
-    <% if @invoice.invoice? && @invoice.issued? && policy(@invoice).create_credit_note? %>
+    <% if @invoice.invoice? && @invoice.issued? && !@invoice.opening? && policy(@invoice).create_credit_note? %>
       <%= button_to 'Create credit note', create_credit_note_accounting_invoice_path(@invoice), method: :post,
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
@@ -325,6 +325,6 @@
   </div>
 <% end %>
 
-<% if @invoice.customer? && @invoice.issued? && policy(@invoice).send_email? %>
+<% if @invoice.customer? && @invoice.issued? && !@invoice.opening? && policy(@invoice).send_email? %>
   <%= render "emails", invoice: @invoice %>
 <% end %>

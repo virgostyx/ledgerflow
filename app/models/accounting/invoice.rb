@@ -135,6 +135,9 @@ class Accounting::Invoice < ApplicationRecord
     Accounting::JournalEntryLine.where(invoice_id: id).sum(:credit)
   end
 
+  # An invoice carried over from a previous accounting system: fixed total, no lines.
+  def opening? = journal_entry&.source_type == Accounting::JournalEntry::OPENING_SOURCE
+
   # Numbered and not cancelled: posted, partially paid or paid.
   def issued? = posted? || partially_paid? || paid?
 

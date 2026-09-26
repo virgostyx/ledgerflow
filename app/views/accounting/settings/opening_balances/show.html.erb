@@ -1,0 +1,77 @@
+<% content_for :breadcrumb do %>
+  <%= link_to "Settings", accounting_settings_root_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <span class="text-gray-700 font-medium">Opening Balances</span>
+<% end %>
+
+<div class="max-w-3xl">
+  <%= render Ui::PageHeaderComponent.new(
+        title: "Opening Balances",
+        description: "Carry over the balance sheet and the open invoices from your previous accounting system"
+      ) %>
+
+  <% if @fiscal_year.nil? %>
+    <p class="mt-6 text-sm text-gray-600">Create your first fiscal year before importing opening balances.</p>
+  <% elsif @already_imported %>
+    <div class="mt-6 rounded-md bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700">
+      The opening balances were already imported into fiscal year <%= @fiscal_year.year %>. To correct them, reverse the
+      opening entries (journal entries created with the source "Opening balance") and import again.
+    </div>
+  <% else %>
+    <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6 space-y-5">
+      <p class="text-sm text-gray-600">
+        Balances are taken at the start of fiscal year <strong><%= @fiscal_year.year %></strong>
+        (<%= Accounting::DatePresenter.new(@fiscal_year.start_date).format %>), in EUR, for the balance sheet accounts
+        (classes 1 to 5) only. The open customer and supplier invoices must add up to accounts 400000 and 440000.
+      </p>
+
+      <ul class="text-sm text-gray-600 list-disc list-inside space-y-1">
+        <li>Balances file: <code>account_code, debit, credit</code> —
+          <%= link_to "template", template_accounting_settings_opening_balance_path(kind: "balances"), class: "text-primary-600 hover:underline" %></li>
+        <li>Open invoices file: <code>type, partner_name, partner_vat, number, invoice_date, due_date, open_amount</code>
+          (type = customer or supplier, dates as YYYY-MM-DD) —
+          <%= link_to "template", template_accounting_settings_opening_balance_path(kind: "invoices"), class: "text-primary-600 hover:underline" %></li>
+        <li>Semicolons or commas as separators; decimal commas are accepted. Missing partners are created.</li>
+      </ul>
+
+      <%= form_with url: accounting_settings_opening_balance_path, multipart: true, class: "space-y-4",
+            data: { turbo_frame: "report" } do |f| %>
+        <div>
+          <%= label_tag :balances_file, "Balances file (CSV)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= file_field_tag :balances_file, accept: ".csv,text/csv", class: "block w-full text-sm text-gray-700" %>
+        </div>
+        <div>
+          <%= label_tag :invoices_file, "Open invoices file (CSV)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= file_field_tag :invoices_file, accept: ".csv,text/csv", class: "block w-full text-sm text-gray-700" %>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <%= button_tag "Check only", type: "submit", name: "mode", value: "check",
+                class: "px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50" %>
+          <%= button_tag "Import", type: "submit", name: "mode", value: "import",
+                data: { turbo_confirm: "Import the opening balances? The entries are posted and cannot be deleted." },
+                class: "px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700" %>
+        </div>
+      <% end %>
+
+      <%= turbo_frame_tag "report" do %>
+        <% if @errors.present? %>
+          <div class="rounded-md bg-danger-50 border border-danger-200 p-4">
+            <p class="text-sm font-medium text-danger-700 mb-2">Nothing was imported.</p>
+            <ul class="list-disc list-inside text-sm text-danger-700 space-y-1">
+              <% @errors.each do |message| %><li><%= message %></li><% end %>
+            </ul>
+          </div>
+        <% elsif @result&.success? %>
+          <% summary = @result[:summary] %>
+          <div class="rounded-md bg-success-50 border border-success-200 p-4 text-sm text-success-700">
+            <strong><%= @import == :import ? "Import complete" : "Check passed" %></strong> —
+            <%= pluralize(summary[:invoices], "open invoice") %>,
+            <%= pluralize(summary[:partners_created], "partner") %> <%= @import == :import ? "created" : "to create" %>,
+            <%= pluralize(summary[:balance_accounts], "balance sheet account") %>.
+            <% if @import == :check %>Nothing was written yet: choose Import to book it.<% end %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
