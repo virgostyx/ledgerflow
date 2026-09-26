@@ -480,6 +480,44 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
       end
     end
 
+    context 'entité en franchise de TVA (aucune TVA récupérable)' do
+      before { entity.update!(vat_regime: :franchise) }
+
+      subject(:invoice) do
+        post_invoice_with_lines(type: :supplier, journal: purchase_journal,
+                                lines_data: [ { account: account_604, unit_price: '1000.00', vat_rate: '21.00' } ])
+      end
+
+      it 'ne crée aucune ligne de TVA déductible' do
+        expect(invoice.journal_entry.lines.map(&:account)).not_to include(account_411)
+      end
+
+      it 'poste toute la TVA facturée (210,00) en charge non déductible (640400), sans grille TVA' do
+        line = invoice.journal_entry.lines.find { |l| l.account == account_640400 }
+        expect(line.debit).to eq(BigDecimal('210.00'))
+        expect(line.vat_code).to be_nil
+      end
+
+      it 'laisse la charge à son montant hors TVA et le fournisseur au TTC, écriture équilibrée' do
+        entry = invoice.journal_entry
+        expect(entry.lines.find { |l| l.account == account_604 }.debit).to eq(BigDecimal('1000.00'))
+        expect(entry.lines.find { |l| l.account == account_440 }.credit).to eq(BigDecimal('1210.00'))
+        expect(entry.lines.sum(:debit)).to eq(entry.lines.sum(:credit))
+      end
+
+      it 'ignore un prorata resté renseigné' do
+        entity.update!(vat_prorata_rate: '70.00')
+        line = invoice.journal_entry.lines.find { |l| l.account == account_640400 }
+        expect(line.debit).to eq(BigDecimal('210.00'))
+      end
+
+      it 'ne change pas une facture déjà comptabilisée quand on repasse en régime normal' do
+        posted = invoice
+        entity.update!(vat_regime: :normal)
+        expect(posted.reload.journal_entry.lines.map(&:account)).not_to include(account_411)
+      end
+    end
+
     context 'entité avec prorata, en régime cocontractant (intracom_services)' do
       let(:eu_partner) { create(:partner, vat_number: 'DE123456789', country: 'DE') }
 

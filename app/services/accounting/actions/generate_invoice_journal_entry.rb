@@ -91,16 +91,18 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   # outside any VAT grid.
   def self.build_deductible_vat_lines(invoice, entry)
     deductible_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_DEDUCTIBLE)
-    prorata = invoice.entity.vat_prorata_rate
+    prorata = invoice.entity.franchise? ? 0 : invoice.entity.vat_prorata_rate # a franchise recovers nothing
 
     invoice.lines.group_by { |l| l.vat_rate.to_i }.each do |rate, lines|
       next if rate.zero?
       grouped_vat = lines.sum(&:vat_amount)
       deductible  = prorata.present? ? (grouped_vat * prorata / 100).round(2) : grouped_vat
 
-      create_line(entry, :debit, deductible, invoice: invoice, account: deductible_account,
-                  label: "Recoverable VAT #{rate}%", vat_code: VAT_CODE_PURCHASE_VAT,
-                  vat_amount: (deductible * invoice.exchange_rate).round(2))
+      if deductible.positive?
+        create_line(entry, :debit, deductible, invoice: invoice, account: deductible_account,
+                    label: "Recoverable VAT #{rate}%", vat_code: VAT_CODE_PURCHASE_VAT,
+                    vat_amount: (deductible * invoice.exchange_rate).round(2))
+      end
 
       non_deductible = grouped_vat - deductible
       next unless non_deductible.positive?

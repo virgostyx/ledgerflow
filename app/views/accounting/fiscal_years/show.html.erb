@@ -12,7 +12,7 @@
       <%= t("accounting.fiscal_years.show.title", year: @fiscal_year.year) %>
     </h1>
     <div class="flex gap-2">
-      <% if policy(@fiscal_year).vat_regularization? && ActsAsTenant.current_tenant.vat_scheme_mixed? %>
+      <% if policy(@fiscal_year).vat_regularization? && ActsAsTenant.current_tenant.vat_scheme_mixed? && !ActsAsTenant.current_tenant.franchise? %>
         <%= link_to t("accounting.fiscal_years.vat_regularization.title"),
                     vat_regularization_accounting_fiscal_year_path(@fiscal_year),
                     class: "btn-secondary" %>

@@ -6,6 +6,7 @@ class Accounting::Actions::ComputeInvoiceTotals
 
   executed do |ctx|
     invoice = ctx.invoice
+    invoice.apply_franchise_rules
     invoice.compute_totals
     invoice.save!
     ctx.invoice = invoice

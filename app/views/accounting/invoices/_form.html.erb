@@ -15,6 +15,11 @@
                     }
     }
   }.to_json
+
+  # Under the VAT franchise a sale charges no VAT (only 0%), and every document is domestic.
+  franchise    = ActsAsTenant.current_tenant&.franchise?
+  rate_options = franchise && invoice.customer? ? [ [ '0%', '0.00' ] ] : [ [ '0%', '0.00' ], [ '6%', '6.00' ], [ '12%', '12.00' ], [ '21%', '21.00' ] ]
+  default_rate = rate_options.last.last
 %>
 <%= form_with model: invoice, scope: :accounting_invoice,
               url: invoice.persisted? ? accounting_invoice_path(invoice)
@@ -128,14 +133,18 @@
     </div>
 
     <div class="relative col-span-2" data-controller="floating-label">
+      <%# Under the VAT franchise every document is domestic (see Accounting::Invoice#apply_franchise_rules). %>
       <%= f.select :vat_treatment,
-            Accounting::Invoice.vat_treatments.keys.map { |t| [t.tr('_', ' ').capitalize, t] },
+            (franchise ? %w[domestic] : Accounting::Invoice.vat_treatments.keys).map { |t| [t.tr('_', ' ').capitalize, t] },
             { include_blank: false },
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
             data: { floating_label_target: 'input', invoice_form_target: 'vatTreatmentSelect',
                     action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#onVatTreatmentChanged' } %>
       <%= f.label :vat_treatment, 'VAT treatment', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
       <%# One explanation per treatment, in the wording of a sale or a purchase; the script shows the selected one. %>
+      <% if franchise %>
+        <p class="mt-1 text-xs text-gray-500"><%= t("accounting.invoices.franchise_help.#{invoice.customer? ? 'customer' : 'supplier'}") %></p>
+      <% end %>
       <div class="mt-1 text-xs text-gray-500" data-invoice-form-target="treatmentHelp">
         <% Accounting::Invoice.vat_treatments.each_key do |treatment| %>
           <p data-treatment="<%= treatment %>" class="<%= 'hidden' unless invoice.vat_treatment == treatment %>"><%= t("accounting.invoices.vat_treatment_help.#{treatment}.#{invoice.customer? ? 'customer' : 'supplier'}") %></p>
@@ -208,7 +217,7 @@
 
             <%# VAT rate select %>
             <%= lf.select :vat_rate,
-                  [['0%', '0.00'], ['6%', '6.00'], ['12%', '12.00'], ['21%', '21.00']],
+                  rate_options,
                   { selected: lf.object.vat_rate && format('%.2f', lf.object.vat_rate) }, # options are "21.00", a BigDecimal prints "21.0"
                   class: 'block w-full rounded border border-gray-300 text-sm',
                   data: { line_vat_rate: true, action: 'change->invoice-form#computeLineTotals' } %>
@@ -295,10 +304,9 @@
                   class="block w-full rounded border border-gray-300 text-sm"
                   data-line-vat-rate="true"
                   data-action="change->invoice-form#computeLineTotals">
-            <option value="0.00">0%</option>
-            <option value="6.00">6%</option>
-            <option value="12.00">12%</option>
-            <option value="21.00" selected>21%</option>
+            <% rate_options.each do |label, value| %>
+              <option value="<%= value %>"<%= ' selected' if value == default_rate %>><%= label %></option>
+            <% end %>
           </select>
 
           <div class="text-right text-sm font-mono text-gray-600"

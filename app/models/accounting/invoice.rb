@@ -53,6 +53,7 @@ class Accounting::Invoice < ApplicationRecord
   validates :exchange_rate, numericality: { greater_than: 0 }
 
   before_validation :default_due_date, on: :create
+  before_validation :apply_franchise_rules
 
   validate :journal_matches_invoice_type, if: -> { journal.present? }
   validate :cash_journal_is_cash, if: -> { cash_journal.present? }
@@ -103,6 +104,17 @@ class Accounting::Invoice < ApplicationRecord
                          unit_price: l.unit_price, vat_rate: l.vat_rate, position: l.position)
       end
     end
+  end
+
+  # Under the VAT franchise a draft is domestic and, when it is a sale, charges no VAT. A supplier invoice keeps the VAT
+  # rates the supplier charged (Accounting::Actions::GenerateInvoiceJournalEntry books it as a cost). Posted documents are
+  # never touched, so that changing the regime only concerns what is issued afterwards.
+  def apply_franchise_rules
+    return unless draft? && entity&.franchise?
+
+    self.vat_treatment = :domestic
+    lines.each { |line| line.vat_rate = 0 } if customer?
+    lines.each(&:compute_amounts)
   end
 
   def compute_totals

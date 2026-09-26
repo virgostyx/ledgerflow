@@ -69,6 +69,9 @@ en:
         invalid_transition: "This declaration cannot change status from here."
 
     invoices:
+      franchise_help:
+        customer: "VAT franchise: no VAT is charged on your sales. The exemption mention is added to the invoice."
+        supplier: "VAT franchise: enter the VAT the supplier charged; it cannot be recovered and is booked as a cost."
       created: "Invoice created."
       updated: "Invoice updated."
       deleted: "Invoice deleted."
@@ -161,7 +164,7 @@ en:
         updated: "VAT settings updated."
         help:
           summary: "What do these settings mean?"
-          franchise: "Franchise (small business exemption): no VAT is charged on your sales, none can be deducted on your purchases, and no periodic VAT return is filed. Your invoices carry the exemption mention. Choose it only if you are entitled to the scheme."
+          franchise: "Franchise (small business exemption): no VAT is charged on your sales, none can be deducted on your purchases, and no periodic VAT return is filed. Your invoices carry the exemption mention. The VAT your suppliers charge is not recoverable: it is booked as a cost. Only domestic operations are supported in this mode; an activity with foreign customers or suppliers needs the normal regime. Choose it only if you are entitled to the scheme."
           mixed: "Mixed taxpayer: you make both taxable and VAT-exempt supplies, so only part of the VAT on purchases is deductible. Choose Mixed to apply a prorata and to use the year-end regularization page."
           prorata: "Prorata: the percentage of purchase VAT you can deduct. The provisional rate is applied to every purchase invoice; at year-end the final rate is calculated on the year's figures and the difference is regularized (Fiscal Years, VAT regularization). The non-deductible share is booked as a cost (account 640400). Leave it empty for full deduction."
       entity:
