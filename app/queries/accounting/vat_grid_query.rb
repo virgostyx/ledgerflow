@@ -31,7 +31,9 @@ class Accounting::VatGridQuery
   # 85 for grid 87 and for domestic purchases (81-83). Computed before the 81-83 derivation of
   # reverse-charge lines, which are already counted through their own grid.
   def self.add_purchase_credit_note_bases(lines, rows)
-    negatives = lines.where("accounting_journal_entry_lines.vat_amount < 0").group(:vat_code).sum(:vat_amount)
+    non_deductible = Accounting::AccountCodes::VAT_NON_DEDUCTIBLE # its VAT share is not part of the credit note amount
+    negatives = lines.joins(:account).where.not(accounting_accounts: { code: non_deductible })
+                     .where("accounting_journal_entry_lines.vat_amount < 0").group(:vat_code).sum(:vat_amount)
     { 84 => [ 86, 88 ], 85 => [ 81, 82, 83, 87 ] }.each do |grid, codes|
       total = -negatives.values_at(*codes).compact.sum
       rows[grid] = total if total.positive?

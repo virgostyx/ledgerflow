@@ -122,6 +122,22 @@ RSpec.describe 'Posting credit notes', type: :service do
     end
   end
 
+  describe 'supplier credit note with a prorata' do
+    before { entity.update!(vat_prorata_rate: '50.00') }
+    let(:original) { build_and_post(type: :supplier, account: account_604, unit_price: '1000.00') }
+    subject(:note) do
+      build_and_post(type: :supplier, account: account_604, unit_price: '400.00',
+                     document_type: :credit_note, credited: original)
+    end
+
+    it 'nets the non-deductible VAT in 81 but keeps it out of grid 85' do
+      original; note
+      grids = Accounting::VatGridQuery.call(fiscal_year_id: fiscal_year.id,
+                                            period_start: Date.current.beginning_of_year, period_end: Date.current.end_of_year)
+      expect(grids.slice('81', '85', '63')).to eq('81' => 1000 + 105 - 400 - 42, '85' => 400, '63' => 42)
+    end
+  end
+
   describe 'supplier credit note under reverse charge with a prorata' do
     let(:eu_partner) { create(:partner, vat_number: 'FR32123456789', country: 'FR') }
     before { entity.update!(vat_prorata_rate: '50.00') }

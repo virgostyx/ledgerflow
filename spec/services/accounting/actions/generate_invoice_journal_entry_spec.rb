@@ -476,10 +476,20 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
         expect(vat_line.vat_code).to eq(59)
       end
 
-      it 'la part non déductible (63,00) est postée en charge (640400), sans grille TVA' do
+      it 'la part non déductible (63,00) est postée en charge (640400) et s ajoute à la base de la grille 81' do
         non_deductible_line = invoice.journal_entry.lines.find { |l| l.account == account_640400 }
         expect(non_deductible_line.debit).to eq(BigDecimal('63.00'))
-        expect(non_deductible_line.vat_code).to be_nil
+        expect([ non_deductible_line.vat_code, non_deductible_line.vat_amount ]).to eq([ 81, BigDecimal('63.00') ])
+      end
+
+      it 'sous autoliquidation, la part non déductible s ajoute à 81-83 et pas à 86-88' do
+        eu = create(:partner, vat_number: 'DE123456789', country: 'DE')
+        inv = post_invoice_with_lines(type: :supplier, journal: purchase_journal, invoice_partner: eu,
+                                      vat_treatment: :intracom_services,
+                                      lines_data: [ { account: account_604, unit_price: '1000.00', vat_rate: '21.00' } ])
+        grids = Accounting::VatGridQuery.call(fiscal_year_id: fiscal_year.id, period_start: inv.invoice_date.beginning_of_year,
+                                              period_end: inv.invoice_date.end_of_year)
+        expect(grids.slice('88', '81')).to eq('88' => 1000, '81' => 1063)
       end
 
       it "l écriture reste équilibrée" do
@@ -505,10 +515,10 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
         expect(invoice.journal_entry.lines.map(&:account)).not_to include(account_411)
       end
 
-      it 'poste toute la TVA facturée (210,00) en charge non déductible (640400), sans grille TVA' do
+      it 'poste toute la TVA facturée (210,00) en charge non déductible (640400), dans la base de la grille 81' do
         line = invoice.journal_entry.lines.find { |l| l.account == account_640400 }
         expect(line.debit).to eq(BigDecimal('210.00'))
-        expect(line.vat_code).to be_nil
+        expect([ line.vat_code, line.vat_amount ]).to eq([ 81, BigDecimal('210.00') ])
       end
 
       it 'laisse la charge à son montant hors TVA et le fournisseur au TTC, écriture équilibrée' do

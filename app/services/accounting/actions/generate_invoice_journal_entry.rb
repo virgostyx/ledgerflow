@@ -88,14 +88,15 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   end
 
   # Recoverable VAT, split by the entity's deduction prorata (nil = fully deductible,
-  # the pre-Phase-5 default). The non-recoverable share is posted as a plain cost,
-  # outside any VAT grid.
+  # the pre-Phase-5 default). The non-recoverable share is posted as a cost and, as the notice
+  # requires (n° 161), is added to the base grid 81-83 of its expense account.
   def self.build_deductible_vat_lines(invoice, entry)
     deductible_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_DEDUCTIBLE)
     prorata = invoice.entity.franchise? ? 0 : invoice.entity.vat_prorata_rate # a franchise recovers nothing
-
     deductible_grid = deductible_vat_grid(invoice)
-    invoice.lines.group_by { |l| l.vat_rate.to_i }.each do |rate, lines|
+
+    invoice.lines.group_by { |l| [ l.vat_rate.to_i, Accounting::VatGrid.purchase_base_grid(l.account.code) ] }
+           .each do |(rate, base_grid), lines|
       next if rate.zero?
       grouped_vat = lines.sum(&:vat_amount)
       deductible  = prorata.present? ? (grouped_vat * prorata / 100).round(2) : grouped_vat
@@ -111,7 +112,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
       non_deductible_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_NON_DEDUCTIBLE)
       create_line(entry, :debit, non_deductible, invoice: invoice, account: non_deductible_account,
-                  label: "Non-deductible VAT #{rate}%")
+                  label: "Non-deductible VAT #{rate}%", vat_code: base_grid,
+                  vat_amount: base_grid && (non_deductible * invoice.exchange_rate).round(2))
     end
   end
 
