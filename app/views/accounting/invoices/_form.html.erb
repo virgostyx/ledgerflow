@@ -146,7 +146,7 @@
         <p class="mt-1 text-xs text-gray-500"><%= t("accounting.invoices.franchise_help.#{invoice.customer? ? 'customer' : 'supplier'}") %></p>
       <% end %>
       <div class="mt-1 text-xs text-gray-500" data-invoice-form-target="treatmentHelp">
-        <% Accounting::Invoice.vat_treatments.each_key do |treatment| %>
+        <% (franchise ? [] : Accounting::Invoice.vat_treatments.keys).each do |treatment| %>
           <p data-treatment="<%= treatment %>" class="<%= 'hidden' unless invoice.vat_treatment == treatment %>"><%= t("accounting.invoices.vat_treatment_help.#{treatment}.#{invoice.customer? ? 'customer' : 'supplier'}") %></p>
         <% end %>
       </div>

@@ -33,9 +33,14 @@ RSpec.describe 'The VAT franchise in the interface', type: :request do
       end
     end
 
-    it 'says that no VAT is charged' do
+    it 'says that no VAT is charged, without the explanation of the normal regime that would contradict it' do
       get accounting_new_sales_path
-      expect(response.body).to include('VAT franchise')
+      expect(response.body).to include('VAT franchise: no VAT is charged')
+      expect(response.body).not_to include('Belgian VAT applies')
+
+      get accounting_new_purchases_path
+      expect(response.body).to include('cannot be recovered')
+      expect(response.body).not_to include('Belgian VAT applies')
     end
 
     it 'hides the VAT declarations, the intracom listing and the year-end VAT regularization' do
