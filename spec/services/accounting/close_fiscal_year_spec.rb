@@ -67,6 +67,22 @@ RSpec.describe Accounting::CloseFiscalYear do
     end
   end
 
+  context "échec — bilan déséquilibré sans compte fautif" do
+    before do
+      create_posted_entry(amount: BigDecimal("1000.00"))
+      stub = Accounting::AnnualAccounts::Report.new(fiscal_year: fiscal_year, rows_by_statement: {}, difference: BigDecimal("50"), unmapped: [])
+      allow_any_instance_of(Accounting::AnnualAccounts).to receive(:call).and_return(stub)
+    end
+
+    it "refuse de clôturer, en donnant l'écart" do
+      result = described_class.call(fiscal_year: fiscal_year, closed_by: user)
+
+      expect(result).to be_failure
+      expect(result.message).to match(/does not balance/i).and include("50")
+      expect(fiscal_year.reload.status).to eq("open")
+    end
+  end
+
   context "échec — journal de clôture absent" do
     before { misc_journal.update!(active: false) }
 

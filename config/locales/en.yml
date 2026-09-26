@@ -120,6 +120,51 @@ en:
         credit_note_invoice_has_receipts: "Receipts are already booked on this invoice, so the credit note stays open: settle it by lettering or refund it."
         credit_note_needs_invoice: "This credit note is not linked to an invoice."
 
+    closing_checklist:
+      title: "Closing checklist"
+      intro: "What is left to do before this fiscal year is closed. Blocking items must be fixed; warnings can be left, after a look."
+      blocked: "This fiscal year cannot be closed yet: fix the blocking items first."
+      confirm: "Confirm closing this fiscal year? This action is irreversible. %{warnings} left."
+      warnings:
+        one: "1 warning"
+        other: "%{count} warnings"
+      statuses:
+        ok: "OK"
+        warning: "Warning"
+        blocking: "Blocking"
+        info: "To do"
+      items:
+        draft_entries:
+          label: "Entries posted"
+          problem: "%{count} entries are still in draft: post or delete them."
+        depreciation:
+          label: "Depreciation booked"
+          problem: "Depreciation is still to book for %{count} fixed asset(s)."
+        balance:
+          label: "Balance sheet balances"
+          warning: "The balance sheet differs by %{amount}; %{count} account(s) fit no heading of the annual accounts model."
+          blocking: "The balance sheet does not balance (difference %{amount}) and no account explains it."
+        draft_invoices:
+          label: "Draft invoices"
+          problem: "%{count} invoice(s) of the year are still in draft: post or delete them."
+        bank:
+          label: "Bank reconciliation"
+          problem: "%{count} bank transaction(s) of the year are not reconciled."
+        overdue_receivables:
+          label: "Overdue receivables"
+          problem: "%{count} customer(s) owe %{amount} for more than 90 days at the year end: consider a write-down."
+        stale_credits:
+          label: "Unallocated payments and credit notes"
+          problem: "%{count} unallocated payment(s) or credit note(s) unused for more than 90 days."
+        vat_declarations:
+          label: "VAT declarations"
+          problem: "%{count} VAT period(s) already over have no submitted declaration."
+        vat_review:
+          label: "Fixed assets VAT review"
+          problem: "%{count} fixed asset(s) still under VAT review."
+        next_fiscal_year:
+          label: "Next fiscal year"
+          problem: "The next fiscal year does not exist yet: create it to carry the balances forward."
     payment_reminders:
       created: "Reminders queued for %{count} customer(s)."
       errors:
@@ -224,6 +269,7 @@ en:
       errors:
         open_entries:        "%{count} draft entry/entries must be posted before closing."
         depreciation_pending: "Post the depreciation before closing: %{assets}."
+        unbalanced:          "The balance sheet does not balance (difference %{amount}) and no account explains it: fix the books before closing."
         already_closed:      "This fiscal year is already closed."
         missing_setup:       "Closing journal (active misc) or account 699000 not found."
         missing_carry_account: "Account %{code} (carry-forward) not found. Please create account %{code} before opening a new fiscal year."

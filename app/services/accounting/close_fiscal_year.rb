@@ -27,6 +27,7 @@ class Accounting::CloseFiscalYear
       ).reduce(
         Accounting::Actions::ValidateNoOpenEntries,
         Accounting::Actions::ValidateDepreciationPosted,
+        Accounting::Actions::ValidateBalancedBooks,
         Accounting::Actions::GenerateClosingEntry,
         Accounting::Actions::MarkFiscalYearClosed
       )

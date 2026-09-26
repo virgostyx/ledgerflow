@@ -1,0 +1,38 @@
+<%# The closing checklist of an open fiscal year: what is left to do, with a link to where it is done. %>
+<%
+  badge = { ok: "bg-emerald-100 text-emerald-800", warning: "bg-amber-100 text-amber-800", blocking: "bg-red-100 text-red-800", info: "bg-blue-100 text-blue-800" }
+  links = {
+    draft_entries:       accounting_journal_entries_path,
+    depreciation:        accounting_fixed_assets_path,
+    balance:             accounting_reports_annual_accounts_path(fiscal_year_id: fiscal_year.id),
+    draft_invoices:      accounting_sales_path,
+    bank:                accounting_bank_reconciliation_path,
+    overdue_receivables: accounting_reports_aged_balance_path,
+    stale_credits:       accounting_reports_aged_balance_path,
+    vat_declarations:    accounting_vat_declarations_path,
+    vat_review:          vat_regularization_accounting_fiscal_year_path(fiscal_year),
+    next_fiscal_year:    new_accounting_fiscal_year_path
+  }
+%>
+<section class="mt-8 bg-white rounded-lg border border-gray-200" data-section="closing-checklist">
+  <div class="px-5 py-4 border-b border-gray-200">
+    <h2 class="text-base font-semibold text-gray-900"><%= t("accounting.closing_checklist.title") %></h2>
+    <p class="mt-1 text-sm text-gray-500"><%= t("accounting.closing_checklist.intro") %></p>
+  </div>
+  <ul class="divide-y divide-gray-100">
+    <% checklist.checks.each do |check| %>
+      <% item = "accounting.closing_checklist.items.#{check.key}" %>
+      <% text = check.status == :ok ? nil : t(check.key == :balance ? "#{item}.#{check.status}" : "#{item}.problem",
+                                               count: check.count, amount: Accounting::MoneyPresenter.new((check.amount || 0).abs).format) %>
+      <li class="flex items-start justify-between gap-4 px-5 py-3" data-check="<%= check.key %>">
+        <div>
+          <p class="text-sm font-medium text-gray-900"><%= t("#{item}.label") %></p>
+          <% if text %>
+            <p class="mt-0.5 text-sm text-gray-600"><%= text %> <%= link_to "Open", links.fetch(check.key), class: "text-primary-600 hover:underline" %></p>
+          <% end %>
+        </div>
+        <span class="shrink-0 inline-flex rounded-full px-3 py-1 text-xs font-medium <%= badge.fetch(check.status) %>"><%= t("accounting.closing_checklist.statuses.#{check.status}") %></span>
+      </li>
+    <% end %>
+  </ul>
+</section>

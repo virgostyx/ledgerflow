@@ -21,12 +21,13 @@
         <%= link_to t("accounting.fiscal_years.edit"), edit_accounting_fiscal_year_path(@fiscal_year),
                     class: "btn-secondary" %>
       <% end %>
-      <% if policy(@fiscal_year).close? && @fiscal_year.open? %>
+      <% if policy(@fiscal_year).close? && @fiscal_year.open? && !@checklist.blocking? %>
         <%= button_to t("accounting.fiscal_years.close_action"),
                       close_accounting_fiscal_year_path(@fiscal_year),
                       method: :post,
-                      data: { turbo_confirm: t("accounting.fiscal_years.close_confirm") },
-                      class: "btn-danger" %>
+                      data: { turbo_confirm: t("accounting.closing_checklist.confirm",
+                                               warnings: t("accounting.closing_checklist.warnings", count: @checklist.warnings_count)) },
+                      class: "px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50 transition-colors" %>
       <% end %>
     </div>
   </div>
@@ -60,6 +61,13 @@
       </div>
     <% end %>
   </dl>
+
+  <% if @checklist %>
+    <% if @checklist.blocking? %>
+      <p class="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><%= t("accounting.closing_checklist.blocked") %></p>
+    <% end %>
+    <%= render "closing_checklist", checklist: @checklist, fiscal_year: @fiscal_year %>
+  <% end %>
 
   <div class="mt-6">
     <%= link_to t("accounting.fiscal_years.back"), accounting_fiscal_years_path,

@@ -10,6 +10,7 @@ class Accounting::FiscalYearsController < ApplicationController
 
   def show
     authorize @fiscal_year
+    @checklist = Accounting::ClosingChecklist.new(fiscal_year: @fiscal_year).call if @fiscal_year.open?
   end
 
   def new
