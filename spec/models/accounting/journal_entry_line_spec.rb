@@ -65,4 +65,31 @@ RSpec.describe Accounting::JournalEntryLine, type: :model do
       }.to raise_error(ActiveRecord::StatementInvalid, /Unbalanced entry/)
     end
   end
+
+  describe 'entry_date (dénormalisé depuis journal_entry, docs/dev/reports/spec.md §3)' do
+    let!(:fiscal_year) { create(:fiscal_year, status: :open, entity: entity) }
+
+    before { ApplicationRecord.connection.execute('SET CONSTRAINTS enforce_double_entry DEFERRED') }
+
+    it "reprend la date de l'écriture à la création" do
+      entry = create(:journal_entry, fiscal_year: fiscal_year, entry_date: Date.new(2026, 3, 15))
+      line  = build(:journal_entry_line, :debit, journal_entry: entry)
+
+      line.save!(validate: false)
+
+      expect(line.entry_date).to eq(Date.new(2026, 3, 15))
+    end
+
+    it "se resynchronise si la ligne est ré-attachée à une autre écriture" do
+      entry = create(:journal_entry, fiscal_year: fiscal_year, entry_date: Date.new(2026, 3, 15))
+      line  = build(:journal_entry_line, :debit, journal_entry: entry)
+      line.save!(validate: false)
+      other_entry = create(:journal_entry, fiscal_year: fiscal_year, entry_date: Date.new(2026, 4, 1))
+
+      line.journal_entry = other_entry
+      line.save!(validate: false)
+
+      expect(line.entry_date).to eq(Date.new(2026, 4, 1))
+    end
+  end
 end

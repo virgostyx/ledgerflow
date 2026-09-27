@@ -750,6 +750,7 @@ CREATE TABLE public.accounting_journal_entry_lines (
     entity_id bigint NOT NULL,
     invoice_id bigint,
     lettering_id bigint,
+    entry_date date,
     CONSTRAINT chk_at_least_one_side CHECK (((debit > (0)::numeric) OR (credit > (0)::numeric))),
     CONSTRAINT chk_credit_non_negative CHECK ((credit >= (0)::numeric)),
     CONSTRAINT chk_debit_non_negative CHECK ((debit >= (0)::numeric)),
@@ -2021,6 +2022,13 @@ CREATE UNIQUE INDEX idx_accounting_fiscal_years_one_open_per_entity ON public.ac
 
 
 --
+-- Name: idx_audit_object; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_audit_object ON public.accounting_audit_logs USING btree (auditable_type, auditable_id, created_at);
+
+
+--
 -- Name: idx_bank_transactions_on_account_and_ref; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2028,10 +2036,45 @@ CREATE UNIQUE INDEX idx_bank_transactions_on_account_and_ref ON public.accountin
 
 
 --
+-- Name: idx_entries_entity_period; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_entries_entity_period ON public.accounting_journal_entries USING btree (entity_id, fiscal_year_id, entry_date) WHERE (status = 1);
+
+
+--
+-- Name: idx_entries_journal_reference; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_entries_journal_reference ON public.accounting_journal_entries USING btree (journal_id, fiscal_year_id, reference);
+
+
+--
 -- Name: idx_invoice_line_annotations_uniqueness; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX idx_invoice_line_annotations_uniqueness ON public.accounting_invoice_line_annotations USING btree (invoice_line_id, analytical_axis_id);
+
+
+--
+-- Name: idx_lines_account_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lines_account_date ON public.accounting_journal_entry_lines USING btree (account_id, entry_date, id);
+
+
+--
+-- Name: idx_lines_lettering; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lines_lettering ON public.accounting_journal_entry_lines USING btree (lettering_id) WHERE (lettering_id IS NOT NULL);
+
+
+--
+-- Name: idx_lines_partner_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lines_partner_open ON public.accounting_journal_entry_lines USING btree (partner_id, account_id) WHERE (lettering_id IS NULL);
 
 
 --
@@ -2158,13 +2201,6 @@ CREATE INDEX index_accounting_analytical_axes_on_entity_id ON public.accounting_
 --
 
 CREATE INDEX index_accounting_audit_logs_on_action ON public.accounting_audit_logs USING btree (action);
-
-
---
--- Name: index_accounting_audit_logs_on_auditable_type_and_auditable_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_accounting_audit_logs_on_auditable_type_and_auditable_id ON public.accounting_audit_logs USING btree (auditable_type, auditable_id);
 
 
 --
@@ -2578,13 +2614,6 @@ CREATE INDEX index_accounting_journal_entry_lines_on_invoice_id ON public.accoun
 --
 
 CREATE INDEX index_accounting_journal_entry_lines_on_journal_entry_id ON public.accounting_journal_entry_lines USING btree (journal_entry_id);
-
-
---
--- Name: index_accounting_journal_entry_lines_on_lettering_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_accounting_journal_entry_lines_on_lettering_id ON public.accounting_journal_entry_lines USING btree (lettering_id);
 
 
 --
@@ -3659,6 +3688,8 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260927000200'),
+('20260927000100'),
 ('20260927000000'),
 ('20260926180020'),
 ('20260926180010'),

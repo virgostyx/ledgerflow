@@ -22,6 +22,12 @@ class Accounting::JournalEntryLine < ApplicationRecord
 
   MONETARY_COLUMNS = %w[debit credit vat_amount amount_currency].freeze
 
+  # Denormalized from journal_entry.entry_date (docs/dev/reports/spec.md §3), so
+  # reports can filter/index lines by date without joining accounting_journal_entries.
+  # before_save (not before_validation): must run even when a save skips validation
+  # (e.g. the balanced-lines factories, which defer the double-entry DB check).
+  before_save :sync_entry_date
+
   validate :partner_belongs_to_entity
   validate :only_one_side_positive
   validate :at_least_one_side_positive
@@ -32,6 +38,10 @@ class Accounting::JournalEntryLine < ApplicationRecord
   def open_amount = debit + credit - allocations.sum(:amount)
 
   private
+
+  def sync_entry_date
+    self.entry_date = journal_entry&.entry_date
+  end
 
   # The association is tenant-scoped, so a partner id from another entity resolves to nil.
   def partner_belongs_to_entity
