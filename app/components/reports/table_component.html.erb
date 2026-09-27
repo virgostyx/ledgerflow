@@ -1,0 +1,36 @@
+<table id="<%= id %>" class="w-full text-sm" data-controller="report-table">
+  <thead class="sticky top-0 bg-gray-50 border-b border-gray-200 z-10">
+    <tr>
+      <% columns.each_with_index do |column, index| %>
+        <th scope="col" data-action="click->report-table#sort" data-report-table-index-param="<%= index %>"
+            class="px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer select-none <%= align_class(column) %>">
+          <%= column[:label] %>
+        </th>
+      <% end %>
+    </tr>
+  </thead>
+  <tbody class="divide-y divide-gray-100">
+    <% result.rows.each do |row| %>
+      <tr>
+        <% columns.each do |column| %>
+          <% value = extract(row, column) %>
+          <td class="px-4 py-2 <%= align_class(column) %> <%= 'font-mono tabular-nums' if numeric?(value) %>">
+            <%= formatted(value, column) %>
+          </td>
+        <% end %>
+      </tr>
+    <% end %>
+  </tbody>
+  <% if result.totals.present? %>
+    <tfoot class="border-t-2 border-gray-300 bg-gray-50 font-semibold">
+      <tr>
+        <% columns.each do |column| %>
+          <% total = total_for(column) %>
+          <td class="px-4 py-3 <%= align_class(column) %> <%= 'font-mono tabular-nums' if numeric?(total) %>">
+            <%= total.nil? ? "" : formatted(total, column) %>
+          </td>
+        <% end %>
+      </tr>
+    </tfoot>
+  <% end %>
+</table>

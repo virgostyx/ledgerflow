@@ -65,3 +65,6 @@ application.register("passkey-login", PasskeyLoginController)
 
 import PasskeyRegistrationController from "controllers/passkey_registration_controller"
 application.register("passkey-registration", PasskeyRegistrationController)
+
+import ReportTableController from "controllers/report_table_controller"
+application.register("report-table", ReportTableController)
