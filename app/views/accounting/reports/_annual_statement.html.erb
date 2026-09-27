@@ -7,7 +7,11 @@
         <th class="px-3 py-2 text-left">Code</th>
         <th class="px-3 py-2 text-left">Heading</th>
         <th class="px-3 py-2 text-right"><%= report.fiscal_year.year %></th>
-        <% if report.previous_year %><th class="px-3 py-2 text-right"><%= report.previous_year.year %></th><% end %>
+        <% if report.previous_year %>
+          <th class="px-3 py-2 text-right"><%= report.previous_year.year %></th>
+          <th class="px-3 py-2 text-right">Variation</th>
+          <th class="px-3 py-2 text-right">Variation %</th>
+        <% end %>
       </tr>
     </thead>
     <tbody class="divide-y divide-gray-100">
@@ -19,6 +23,8 @@
           <td class="px-3 py-2 text-right font-mono"><%= Accounting::MoneyPresenter.new(row.amount).format %></td>
           <% if report.previous_year %>
             <td class="px-3 py-2 text-right font-mono text-gray-600"><%= Accounting::MoneyPresenter.new(row.previous).format %></td>
+            <td class="px-3 py-2 text-right font-mono text-gray-600"><%= Accounting::MoneyPresenter.new(row.variation_amount).format %></td>
+            <td class="px-3 py-2 text-right font-mono text-gray-600"><%= row.variation_pct.nil? ? "" : number_to_percentage(row.variation_pct, precision: 1) %></td>
           <% end %>
         </tr>
       <% end %>

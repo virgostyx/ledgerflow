@@ -49,6 +49,7 @@ class Accounting::ReportsController < ApplicationController
     authorize :report, :annual_accounts?, policy_class: Accounting::ReportPolicy
 
     @report = Accounting::AnnualAccounts.new(fiscal_year: @fiscal_year).call
+    @monthly = params[:view] == "monthly"
 
     respond_to do |format|
       format.html

@@ -66,7 +66,7 @@ RSpec.describe "Accounting::Reports annual accounts", type: :request do
     entry.post!
 
     get accounting_reports_annual_accounts_path(fiscal_year_id: fiscal_year.id)
-    expect(response.body).to include(previous.year.to_s, Accounting::MoneyPresenter.new(900).format)
+    expect(response.body).to include(previous.year.to_s, Accounting::MoneyPresenter.new(900).format, "Variation")
   end
 
   it "exports the same figures as a spreadsheet" do
@@ -76,6 +76,12 @@ RSpec.describe "Accounting::Reports annual accounts", type: :request do
 
     expect(response.body.bytesize).to be > 1_000
     expect(response.headers["Content-Disposition"]).to include("annual_accounts_#{fiscal_year.year}.xlsx")
+  end
+
+  it "shows the monthly income statement when view=monthly" do
+    get accounting_reports_annual_accounts_path(fiscal_year_id: fiscal_year.id, view: "monthly")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("M1", "M12", "Cumulative")
   end
 
   it "is refused to an auditor, like the other financial reports" do

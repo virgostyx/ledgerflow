@@ -15,7 +15,7 @@ assets:
   - { code: "40/41", label: "Amounts receivable within one year", level: 2, side: debit, prefixes: ["40", "41"] }
   - { code: "50/53", label: "Current investments", level: 2, side: debit, prefixes: ["50", "51", "52", "53"] }
   - { code: "54/58", label: "Cash at bank and in hand", level: 2, side: debit, prefixes: ["54", "55", "56", "57", "58"] }
-  - { code: "490/1", label: "Deferred charges and accrued income", level: 2, side: debit, prefixes: ["490", "491"] }
+  - { code: "490/1", label: "Deferred charges, accrued income and suspense accounts", level: 2, side: debit, prefixes: ["490", "491", "499"] }
   - { code: "29/58", label: "CURRENT ASSETS", level: 1, sum: ["29", "3", "40/41", "50/53", "54/58", "490/1"] }
   - { code: "20/58", label: "TOTAL ASSETS", level: 0, sum: ["20/28", "29/58"] }
 liabilities:

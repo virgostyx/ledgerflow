@@ -30,7 +30,15 @@ Reporté : tranches configurables par société, propositions de lettrage automa
 
 Voir `docs/dev/reports/R06.md`. Confirme un écart déjà signalé au socle : sans notion de "relevé bancaire" groupé, B est reconstruit comme la somme cumulée des transactions (pas de solde d'ouverture/clôture par relevé réel), et le chaînage entre relevés (critère #5) n'est pas implémentable en l'état. `Accounting::BankReconciliationQuery` reconstruit BN/SN à `as_of` en supposant que le lien transaction↔écriture actuel existait déjà à cette date s'il existe aujourd'hui — approximation raisonnable en l'absence d'un timestamp "lié le" sur `accounting_bank_transactions`.
 
-**Prochaine étape** : vague P1 (R07/R08 bilan et compte de résultat, R09/R10 TVA, R11 budget BudgetFlow) — commencer par le moteur de rubriques (§9) avant R07/R08 eux-mêmes, et rappel : R09/R10 risquent de dupliquer le système TVA déjà existant (`VatDeclaration`/`VatGridQuery`) — décision à valider avec l'utilisateur avant de coder (voir l'entrée plus haut sur ce sujet).
+## R07/R08 livrés en v1 (2026-09-27)
+
+Le "moteur de rubriques" du §9 existait déjà — `Accounting::AnnualAccounts` + `config/annual_accounts/company_abridged.yml` — sous forme YAML plutôt que tables `report_templates`/`report_lines`/`report_line_accounts`. Décision : ne pas migrer vers des tables DB (aucun besoin d'édition à chaud du modèle constaté), étendre l'existant. Ajouté : Variation €/%, vue mensualisée (R08, réutilise `movement_debit`/`movement_credit` de `TrialBalanceQuery` construits pour R01 et `Reports::Period.month`).
+
+**Vraie régression trouvée en testant I6** : le compte `499000` (comptes d'attente) du jeu de référence n'était rattaché à aucune rubrique du modèle BNB, cassant l'équilibre actif=passif. Corrigé en l'ajoutant à la rubrique `490/1` — voir `docs/dev/reports/R07.md`.
+
+Reporté : deuxième modèle ("Présentation de gestion" + EBITDA), `reclassify_contra_balances`, drill-down rubrique→comptes→R02, vue trimestrielle, exports PDF/JSON.
+
+**Prochaine étape** : R09/R10 (TVA) — **décision à prendre avant de coder** : garder/étendre `VatDeclaration`/`VatGridQuery` existant, ou migrer vers le modèle normalisé `vat_codes`/`vat_periods`/`vat_transactions` de la spec. Puis R11 (budget BudgetFlow, bloqué tant que le contrat API réel n'est pas confirmé).
 
 ## `Reports::Exporters::Pdf` via Prawn, pas Ferrum (socle, 2026-09-27)
 

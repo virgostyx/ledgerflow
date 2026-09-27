@@ -132,11 +132,63 @@ RSpec.describe Accounting::AnnualAccounts, type: :query, bullet_strict: true do
       expect(report.rows(:liabilities).find { |r| r.code == "10/11" }.previous).to eq(700)
       expect(report.previous_year).to eq(previous_year)
     end
+
+    # docs/dev/reports/spec.md §9: colonnes "Variation en montant" et "Variation en %".
+    it "computes the variation in amount and percent against the previous year" do
+      row = report.rows(:income).find { |r| r.code == "70" }
+      expect(row.variation_amount).to eq(2_200) # 3000 - 800
+      expect(row.variation_pct).to eq(275.0)    # 2200 / 800 * 100
+    end
+
+    it "leaves the variation % blank (nil), not infinite, when the previous figure was zero" do
+      row = report.rows(:assets).find { |r| r.code == "22/27" } # no building account posted last year
+      expect(row.previous).to eq(0)
+      expect(row.variation_pct).to be_nil
+    end
   end
 
   it "has no previous figures without a previous fiscal year" do
     expect(report.previous_year).to be_nil
     expect(report.rows(:income).first.previous).to be_nil
+  end
+
+  # docs/dev/reports/spec.md §9: R08 vue mensualisée — 12 colonnes rangées par mois de
+  # l'exercice (pas calendaires), + Cumul, + Cumul N-1.
+  describe "the monthly income statement" do
+    subject(:rows) { report.monthly_income }
+
+    it "puts each month's movements in the rank of its month in the fiscal year" do
+      post(customers, sales, 500, on: fiscal_year.start_date + 40) # month 2 (the base `before` block's sale is month 1)
+      row = rows.find { |r| r.code == "70" }
+      expect(row.months[0]).to eq(3_000) # the base setup's sale, month rank 1 => index 0
+      expect(row.months[1]).to eq(500)   # this test's sale, month rank 2 => index 1
+      expect(row.months[2]).to eq(0)
+    end
+
+    it "sums the 12 months into the cumulative figure, matching the annual view" do
+      row = rows.find { |r| r.code == "70" }
+      expect(row.cumulative).to eq(amount(:income, "70"))
+    end
+
+    it "carries a zero for a month with no activity, never a blank" do
+      row = rows.find { |r| r.code == "70" }
+      expect(row.months.size).to eq(12)
+      expect(row.months).to all(be_a(BigDecimal))
+    end
+
+    context "with a previous fiscal year" do
+      let!(:previous_year) do
+        create(:fiscal_year, year: fiscal_year.year - 1, start_date: fiscal_year.start_date - 1.year,
+               end_date: fiscal_year.start_date - 1.day, status: :closed)
+      end
+
+      before { post(customers, sales, 800, on: previous_year.start_date + 5, year: previous_year) }
+
+      it "gives the previous year's cumulative figure for the same heading" do
+        row = rows.find { |r| r.code == "70" }
+        expect(row.previous_cumulative).to eq(800)
+      end
+    end
   end
 
   describe "the accounts that fit no heading" do
