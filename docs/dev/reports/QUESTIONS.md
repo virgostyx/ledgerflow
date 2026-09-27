@@ -19,3 +19,11 @@ Le §7 de la spec demande une table `reconciliation_items(line_id, reconciliatio
 **Décision appliquée** : ne pas créer de table dupliquée. `amount_residual` (ajoutée sur `accounting_journal_entry_lines`) est maintenue par les services de lettrage/allocation eux-mêmes (`Accounting::JournalEntryLine.resync_amount_residual!`, appelée dans `CreateAllocations`, `CreateLettering`, `UnletterLines`, `RemoveAllocation` — ces écritures passent par `update_all`/`nullify`/`destroy_all`, qui contournent les callbacks ActiveRecord, d'où l'appel explicite à chaque endpoint plutôt qu'un callback modèle unique).
 
 **À faire valider en implémentant R04** : la reconstruction rétroactive (`as_of` dans le passé, critère d'acceptation R04 #2) devra filtrer `accounting_line_allocations.allocated_on <= as_of` et `accounting_letterings.lettered_on <= as_of` — `AgedBalanceQuery` actuelle ne le fait pas encore (elle utilise l'état courant, pas un état reconstruit à une date passée). C'est un vrai écart à corriger dans le chantier R04, pas dans le socle.
+
+## `Reports::Exporters::Pdf` via Prawn, pas Ferrum (socle, 2026-09-27)
+
+Le §14 de la spec décrit le PDF comme "rendu HTML → PDF via Ferrum, qui réutilise le CSS d'impression des vues", HexaPDF en alternative. Ni l'un ni l'autre n'est câblé dans ce dépôt (Ferrum est au Gemfile mais utilisé seulement pour les tests système ; HexaPDF est absent). `Accounting::InvoicePdf` existe déjà et génère des PDF via Prawn + prawn-table.
+
+**Décision appliquée** : `Reports::Exporters::Pdf` réutilise Prawn/prawn-table, comme `InvoicePdf`, pour un tableau générique (titre, en-tête en gras, pagination "x / y"). Pas de vue HTML à réutiliser pour un exporteur générique de toute façon — la question du rendu HTML→PDF via Ferrum ne se posera vraiment que si un rapport a besoin d'une mise en page plus riche qu'un tableau (graphiques du §17, par exemple).
+
+**À faire valider** : si un futur rapport a besoin d'un rendu plus riche que Prawn ne permet pas facilement (mise en page complexe, graphiques intégrés au PDF), reconsidérer Ferrum à ce moment-là plutôt que maintenant.
