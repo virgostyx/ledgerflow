@@ -61,9 +61,13 @@ RSpec.describe Accounting::AgedBalanceQuery, type: :query, bullet_strict: true d
     end
   end
 
-  it "falls back to the entry date when the line has no invoice" do
+  it "falls back to the entry date plus the partner's payment terms when the line has no invoice" do
+    # alice's payment_terms_days defaults to 30 (docs/dev/reports/spec.md §7: "date de
+    # pièce + conditions de paiement du tiers"), so 45 days after entry_date is only
+    # 15 days past the (reconstructed) due date, not 45. See also
+    # aged_balance_query_due_date_spec.rb for the no-payment-terms case.
     post_line(account: customer_account, side: :debit, amount: 50, partner: alice, days_ago: 45)
-    expect(customer_rows.first.days_31_60).to eq(BigDecimal("50"))
+    expect(customer_rows.first.days_1_30).to eq(BigDecimal("50"))
   end
 
   it "excludes lettered lines" do
@@ -151,6 +155,37 @@ RSpec.describe Accounting::AgedBalanceQuery, type: :query, bullet_strict: true d
     post_line(account: customer_account, side: :debit, amount: 20, partner: alice)
 
     expect(described_class.totals(customer_rows).total).to eq(BigDecimal("30"))
+  end
+
+  # docs/dev/reports/spec.md §7, critère d'acceptation #2: "R04 à J-30 montre une
+  # facture ouverte que R04 à J montre payée." — reconstruction rétroactive de
+  # l'état à `as_of`, pas l'état courant (voir docs/dev/reports/QUESTIONS.md).
+  describe "retroactive as_of" do
+    it "shows an invoice open at a date before it was lettered, closed at/after that date" do
+      bill  = post_line(account: customer_account, side: :debit, amount: 100, partner: alice, days_ago: 40)
+      other_account_line = post_line(account: customer_account, side: :credit, amount: 100, partner: alice, days_ago: 5)
+      lettering = create(:lettering, account: customer_account, partner: alice, lettered_on: as_of - 5)
+      Accounting::JournalEntryLine.where(id: [ bill.id, other_account_line.id ]).update_all(lettering_id: lettering.id)
+
+      past_rows = described_class.new(kind: :customer, as_of: as_of - 20).call
+      today_rows = described_class.new(kind: :customer, as_of: as_of).call
+
+      expect(past_rows.first.total).to eq(BigDecimal("100"))
+      expect(today_rows).to be_empty
+    end
+
+    it "counts only allocations made on or before as_of, ignoring a later partial allocation" do
+      invoice = invoice_due(40)
+      bill    = post_line(account: customer_account, side: :debit,  amount: 100, partner: alice, invoice: invoice, days_ago: 40)
+      receipt = post_line(account: customer_account, side: :credit, amount: 30,  partner: alice, days_ago: 2)
+      Accounting::LineAllocation.create!(debit_line: bill, credit_line: receipt, amount: 30, allocated_on: as_of - 2)
+
+      before_payment = described_class.new(kind: :customer, as_of: as_of - 10).call
+      after_payment  = described_class.new(kind: :customer, as_of: as_of).call
+
+      expect(before_payment.first.total).to eq(BigDecimal("100")) # allocation not yet made
+      expect(after_payment.first.total).to eq(BigDecimal("70"))
+    end
   end
 
   describe "isolation" do

@@ -154,6 +154,8 @@ fr:
         over_90:     "90+ jours"
         unallocated: "Non affecté"
         total:       "Total"
+        overdue:     "Dont échu"
+        overdue_pct: "% échu"
       trial_balance:
         title:  "Balance des comptes"
         as_of:  "Au"

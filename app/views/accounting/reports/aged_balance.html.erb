@@ -38,6 +38,8 @@
           <% end %>
           <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t_ab.(:unallocated) %></th>
           <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t_ab.(:total) %></th>
+          <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t_ab.(:overdue) %></th>
+          <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t_ab.(:overdue_pct) %></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100 bg-white">
@@ -48,18 +50,26 @@
               <td class="px-4 py-2 text-right"><%= number_to_currency(row[col], unit: "€") %></td>
             <% end %>
             <td class="px-4 py-2 text-right font-semibold"><%= number_to_currency(row.total, unit: "€") %></td>
+            <td class="px-4 py-2 text-right"><%= number_to_currency(row.overdue, unit: "€") %></td>
+            <td class="px-4 py-2 text-right"><%= row.overdue_pct.nil? ? "" : number_to_percentage(row.overdue_pct, precision: 1) %></td>
           </tr>
         <% end %>
         <% if @rows.empty? %>
-          <tr><td colspan="8" class="px-4 py-6 text-center text-gray-400"><%= t("accounting.reports.no_data") %></td></tr>
+          <tr><td colspan="10" class="px-4 py-6 text-center text-gray-400"><%= t("accounting.reports.no_data") %></td></tr>
         <% end %>
       </tbody>
       <tfoot class="bg-gray-50 font-bold">
         <tr>
-          <td class="px-4 py-2"><%= t("accounting.reports.totals") %></td>
+          <td class="px-4 py-2">
+            <%= link_to t("accounting.reports.totals"),
+                  accounting_reports_unlettered_lines_path(kind: @kind, as_of: @as_of),
+                  class: "text-primary-700 hover:underline" %>
+          </td>
           <% (Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated total]).each do |col| %>
             <td class="px-4 py-2 text-right"><%= number_to_currency(@totals[col], unit: "€") %></td>
           <% end %>
+          <td class="px-4 py-2 text-right"><%= number_to_currency(@totals.overdue, unit: "€") %></td>
+          <td class="px-4 py-2 text-right"><%= @totals.overdue_pct.nil? ? "" : number_to_percentage(@totals.overdue_pct, precision: 1) %></td>
         </tr>
       </tfoot>
     </table>

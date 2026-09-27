@@ -125,6 +125,24 @@ class Accounting::ReportsController < ApplicationController
     end
   end
 
+  # R05 (docs/dev/reports/spec.md §7): lignes ouvertes non lettrées, ligne par ligne,
+  # + groupes équilibrés laissés sans lettrage.
+  def unlettered_lines
+    authorize :report, :unlettered_lines?, policy_class: Accounting::ReportPolicy
+
+    @kind = %w[customer supplier both].include?(params[:kind]) ? params[:kind].to_sym : :both
+    @as_of = begin
+      parse_date(params[:as_of], Date.current)
+    rescue ArgumentError
+      Date.current
+    end
+    @min_age_days = params[:min_age_days].presence&.to_i
+
+    query  = Accounting::UnletteredLinesQuery.new(kind: @kind, as_of: @as_of, min_age_days: @min_age_days)
+    @rows  = query.call
+    @balanced_groups = query.balanced_unlettered_groups
+  end
+
   def analytic_by_project
     authorize :report, :analytic_by_project?, policy_class: Accounting::ReportPolicy
 
@@ -221,17 +239,21 @@ class Accounting::ReportsController < ApplicationController
     ]
   end
 
+  AGED_BALANCE_CSV_COLUMNS = (Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated total overdue]).freeze
+
   def aged_balance_csv
     require "csv"
     t = ->(key) { I18n.t("accounting.reports.aged_balance.#{key}") }
     "\uFEFF" + CSV.generate(headers: true) do |csv|
-      csv << [ t.(:partner), *Accounting::AgedBalanceQuery::BUCKETS.map { |b| t.(b) }, t.(:unallocated), t.(:total) ]
+      csv << [ t.(:partner), *AGED_BALANCE_CSV_COLUMNS.map { |b| t.(b) }, t.(:overdue_pct) ]
       @rows.each do |row|
         csv << [ row.partner_name || t.(:no_partner),
-                *(Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated total]).map { |col| format("%.2f", row[col]) } ]
+                *AGED_BALANCE_CSV_COLUMNS.map { |col| format("%.2f", row.public_send(col)) },
+                row.overdue_pct.nil? ? "" : format("%.1f", row.overdue_pct) ]
       end
       csv << [ I18n.t("accounting.reports.totals"),
-              *(Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated total]).map { |col| format("%.2f", @totals[col]) } ]
+              *AGED_BALANCE_CSV_COLUMNS.map { |col| format("%.2f", @totals.public_send(col)) },
+              @totals.overdue_pct.nil? ? "" : format("%.1f", @totals.overdue_pct) ]
     end
   end
 

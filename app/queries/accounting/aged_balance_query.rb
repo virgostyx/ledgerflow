@@ -1,12 +1,21 @@
-# Open (unlettered) receivables or payables per partner, aged by due date at `as_of`.
-# Due date is the invoice's, or the entry date for lines without an invoice.
-# Partial allocations reduce a line to its open part. Negative open amounts (unallocated payments, credit notes)
-# go in `unallocated` and reduce the total.
+# Open (unlettered, at `as_of`) receivables or payables per partner, aged by due date.
+# Due date, residual and "still open" reconstruction come from Accounting::OpenLineSql
+# (docs/dev/reports/spec.md §7), shared with StaleCreditsQuery and UnletteredLinesQuery
+# so their totals can never disagree (critère d'acceptation #4). Negative open amounts
+# (unallocated payments, credit notes) go in `unallocated` and reduce the total.
 class Accounting::AgedBalanceQuery
   BUCKETS = %i[not_due days_1_30 days_31_60 days_61_90 over_90].freeze
-  Row = Struct.new(:partner_name, *BUCKETS, :unallocated, :total, keyword_init: true)
+  PREFIX  = Accounting::OpenLineSql::PREFIX
+  Row = Struct.new(:partner_name, *BUCKETS, :unallocated, :total, keyword_init: true) do
+    # "Dont échu" / "% échu" (docs/dev/reports/spec.md §7): every bucket but not_due.
+    def overdue = (BUCKETS - [ :not_due ]).sum { |b| public_send(b) }
 
-  PREFIX = { customer: "40%", supplier: "44%" }.freeze
+    def overdue_pct
+      return nil if total.zero?
+
+      (overdue / total * 100).round(1)
+    end
+  end
 
   def self.totals(rows)
     Row.new(**Row.members.index_with { |m| m == :partner_name ? nil : rows.sum(BigDecimal("0")) { |r| r[m] } })
@@ -33,21 +42,19 @@ class Accounting::AgedBalanceQuery
 
   # => [[partner_name, amount, due_date], ...]
   def open_lines
-    l = "accounting_journal_entry_lines"
-    net    = @kind == :customer ? "#{l}.debit - #{l}.credit" : "#{l}.credit - #{l}.debit"
-    used   = "COALESCE((SELECT SUM(al.amount) FROM accounting_line_allocations al " \
-             "WHERE al.debit_line_id = #{l}.id OR al.credit_line_id = #{l}.id), 0)"
-    amount = "(#{net}) - SIGN(#{net}) * #{used}" # open part of the line, signed like the line
-
     Accounting::JournalEntryLine
-      .joins("JOIN accounting_journal_entries e ON e.id = #{l}.journal_entry_id")
-      .joins("JOIN accounting_accounts a ON a.id = #{l}.account_id")
-      .joins("LEFT JOIN accounting_partners p ON p.id = #{l}.partner_id")
-      .joins("LEFT JOIN accounting_invoices i ON i.id = #{l}.invoice_id")
-      .where(lettering_id: nil)
+      .joins("JOIN accounting_journal_entries e ON e.id = accounting_journal_entry_lines.journal_entry_id")
+      .joins("JOIN accounting_accounts a ON a.id = accounting_journal_entry_lines.account_id")
+      .joins("LEFT JOIN accounting_partners p ON p.id = accounting_journal_entry_lines.partner_id")
+      .joins("LEFT JOIN accounting_invoices i ON i.id = accounting_journal_entry_lines.invoice_id")
+      .joins("LEFT JOIN accounting_letterings lt ON lt.id = accounting_journal_entry_lines.lettering_id")
       .where("e.status = ? AND e.entry_date <= ?", Accounting::JournalEntry.statuses[:posted], @as_of)
       .where("a.code LIKE ? AND a.reconcilable", PREFIX.fetch(@kind))
-      .pluck(Arel.sql("p.name"), Arel.sql("(#{amount})"), Arel.sql("COALESCE(i.due_date, e.entry_date)"))
+      .pluck(
+        Arel.sql("p.name"),
+        Arel.sql("(#{Accounting::OpenLineSql.residual(kind: @kind, as_of: @as_of)})"),
+        Arel.sql(Accounting::OpenLineSql.due_date)
+      )
   end
 
   def bucket(days_overdue)

@@ -1,5 +1,6 @@
 # Open lines on a partner account whose sign is reversed (an unallocated payment, a credit note) and that have
 # stayed unused for at least `min_age_days`. One row per line, oldest first.
+# Reconstruction shared with AgedBalanceQuery via Accounting::OpenLineSql (docs/dev/reports/spec.md §7).
 class Accounting::StaleCreditsQuery
   Row = Struct.new(:partner_name, :reference, :entry_date, :amount, :age_days, keyword_init: true)
 
@@ -23,19 +24,17 @@ class Accounting::StaleCreditsQuery
   private
 
   def open_lines
-    l = "accounting_journal_entry_lines"
-    net  = @kind == :customer ? "#{l}.debit - #{l}.credit" : "#{l}.credit - #{l}.debit"
-    used = "COALESCE((SELECT SUM(al.amount) FROM accounting_line_allocations al " \
-           "WHERE al.debit_line_id = #{l}.id OR al.credit_line_id = #{l}.id), 0)"
-    amount = "(#{net}) - SIGN(#{net}) * #{used}"
-
     Accounting::JournalEntryLine
-      .joins("JOIN accounting_journal_entries e ON e.id = #{l}.journal_entry_id")
-      .joins("JOIN accounting_accounts a ON a.id = #{l}.account_id")
-      .joins("LEFT JOIN accounting_partners p ON p.id = #{l}.partner_id")
-      .where(lettering_id: nil)
+      .joins("JOIN accounting_journal_entries e ON e.id = accounting_journal_entry_lines.journal_entry_id")
+      .joins("JOIN accounting_accounts a ON a.id = accounting_journal_entry_lines.account_id")
+      .joins("LEFT JOIN accounting_partners p ON p.id = accounting_journal_entry_lines.partner_id")
+      .joins("LEFT JOIN accounting_invoices i ON i.id = accounting_journal_entry_lines.invoice_id")
+      .joins("LEFT JOIN accounting_letterings lt ON lt.id = accounting_journal_entry_lines.lettering_id")
       .where("e.status = ? AND e.entry_date <= ?", Accounting::JournalEntry.statuses[:posted], @as_of)
-      .where("a.code LIKE ? AND a.reconcilable", Accounting::AgedBalanceQuery::PREFIX.fetch(@kind))
-      .pluck(Arel.sql("p.name"), Arel.sql("e.reference"), Arel.sql("e.entry_date"), Arel.sql("(#{amount})"))
+      .where("a.code LIKE ? AND a.reconcilable", Accounting::OpenLineSql::PREFIX.fetch(@kind))
+      .pluck(
+        Arel.sql("p.name"), Arel.sql("e.reference"), Arel.sql("e.entry_date"),
+        Arel.sql("(#{Accounting::OpenLineSql.residual(kind: @kind, as_of: @as_of)})")
+      )
   end
 end

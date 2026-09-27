@@ -121,6 +121,7 @@ Rails.application.routes.draw do
         get :income_statement
         get :annual_accounts
         get :aged_balance
+        get :unlettered_lines
         get :general_ledger
         get :journal_summary
         get :analytic_by_project

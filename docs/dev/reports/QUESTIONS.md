@@ -18,7 +18,13 @@ Le §7 de la spec demande une table `reconciliation_items(line_id, reconciliatio
 
 **Décision appliquée** : ne pas créer de table dupliquée. `amount_residual` (ajoutée sur `accounting_journal_entry_lines`) est maintenue par les services de lettrage/allocation eux-mêmes (`Accounting::JournalEntryLine.resync_amount_residual!`, appelée dans `CreateAllocations`, `CreateLettering`, `UnletterLines`, `RemoveAllocation` — ces écritures passent par `update_all`/`nullify`/`destroy_all`, qui contournent les callbacks ActiveRecord, d'où l'appel explicite à chaque endpoint plutôt qu'un callback modèle unique).
 
-**À faire valider en implémentant R04** : la reconstruction rétroactive (`as_of` dans le passé, critère d'acceptation R04 #2) devra filtrer `accounting_line_allocations.allocated_on <= as_of` et `accounting_letterings.lettered_on <= as_of` — `AgedBalanceQuery` actuelle ne le fait pas encore (elle utilise l'état courant, pas un état reconstruit à une date passée). C'est un vrai écart à corriger dans le chantier R04, pas dans le socle.
+**Fait en implémentant R04 (2026-09-27)** : la reconstruction rétroactive décrite ci-dessus est faite. `AgedBalanceQuery` (et `StaleCreditsQuery`, `UnletteredLinesQuery`) filtrent maintenant `accounting_line_allocations.allocated_on <= as_of` et `accounting_letterings.lettered_on <= as_of`, via le module partagé `Accounting::OpenLineSql`. Voir `docs/dev/reports/R04.md`.
+
+## R04/R05 livrés en v1 (2026-09-27) — voir docs/dev/reports/R04.md et R05.md
+
+Point clé : le bug de rétroactivité de `AgedBalanceQuery` déjà repéré au socle est corrigé, et la logique de reconstruction est extraite dans `Accounting::OpenLineSql` (règle des trois occurrences : `AgedBalanceQuery` + `StaleCreditsQuery` + `UnletteredLinesQuery` partagent désormais le même code, garantissant que R04 et R05 ne peuvent pas diverger). Colonnes "Dont échu"/"% échu" ajoutées. Échéance de repli enrichie avec `partner.payment_terms_days` — **changement de comportement** sur un test préexistant (`aged_balance_query_spec.rb`, corrigé pour refléter le calcul conforme au §7, pas affaibli).
+
+Reporté : tranches configurables par société, propositions de lettrage automatiques (R05), drill-down cellule-tranche et tiers→grand livre auxiliaire, exports pour R05, filtre "état de lettrage" sur R05.
 
 ## `Reports::Exporters::Pdf` via Prawn, pas Ferrum (socle, 2026-09-27)
 

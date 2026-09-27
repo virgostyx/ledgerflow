@@ -318,6 +318,8 @@ en:
         over_90:     "90+ days"
         unallocated: "Unallocated"
         total:       "Total"
+        overdue:     "Overdue"
+        overdue_pct: "Overdue %"
       trial_balance:
         title: "Trial Balance"
         as_of: "As of"
