@@ -49,6 +49,19 @@ END;
 $$;
 
 
+--
+-- Name: prevent_bank_reconciliation_report_modification(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.prevent_bank_reconciliation_report_modification() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RAISE EXCEPTION 'accounting_bank_reconciliation_reports are immutable';
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -281,6 +294,42 @@ CREATE SEQUENCE public.accounting_bank_accounts_id_seq
 --
 
 ALTER SEQUENCE public.accounting_bank_accounts_id_seq OWNED BY public.accounting_bank_accounts.id;
+
+
+--
+-- Name: accounting_bank_reconciliation_reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_bank_reconciliation_reports (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    bank_account_id bigint NOT NULL,
+    as_of date NOT NULL,
+    result jsonb DEFAULT '{}'::jsonb NOT NULL,
+    content_hash character varying NOT NULL,
+    user_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_bank_reconciliation_reports_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_bank_reconciliation_reports_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_bank_reconciliation_reports_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_bank_reconciliation_reports_id_seq OWNED BY public.accounting_bank_reconciliation_reports.id;
 
 
 --
@@ -1517,6 +1566,13 @@ ALTER TABLE ONLY public.accounting_bank_accounts ALTER COLUMN id SET DEFAULT nex
 
 
 --
+-- Name: accounting_bank_reconciliation_reports id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_reconciliation_reports ALTER COLUMN id SET DEFAULT nextval('public.accounting_bank_reconciliation_reports_id_seq'::regclass);
+
+
+--
 -- Name: accounting_bank_transactions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1765,6 +1821,14 @@ ALTER TABLE ONLY public.accounting_audit_logs
 
 ALTER TABLE ONLY public.accounting_bank_accounts
     ADD CONSTRAINT accounting_bank_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_bank_reconciliation_reports accounting_bank_reconciliation_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_reconciliation_reports
+    ADD CONSTRAINT accounting_bank_reconciliation_reports_pkey PRIMARY KEY (id);
 
 
 --
@@ -2100,6 +2164,20 @@ CREATE INDEX idx_on_analytical_axis_id_ff3e21bbcb ON public.accounting_invoice_l
 
 
 --
+-- Name: idx_on_bank_account_id_as_of_1bbd9c6237; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_bank_account_id_as_of_1bbd9c6237 ON public.accounting_bank_reconciliation_reports USING btree (bank_account_id, as_of);
+
+
+--
+-- Name: idx_on_bank_account_id_ef8d5b8375; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_bank_account_id_ef8d5b8375 ON public.accounting_bank_reconciliation_reports USING btree (bank_account_id);
+
+
+--
 -- Name: idx_on_debit_line_id_credit_line_id_f925f5c66a; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2244,6 +2322,13 @@ CREATE INDEX index_accounting_bank_accounts_on_entity_id ON public.accounting_ba
 --
 
 CREATE UNIQUE INDEX index_accounting_bank_accounts_on_journal_id ON public.accounting_bank_accounts USING btree (journal_id);
+
+
+--
+-- Name: index_accounting_bank_reconciliation_reports_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_reconciliation_reports_on_entity_id ON public.accounting_bank_reconciliation_reports USING btree (entity_id);
 
 
 --
@@ -2996,6 +3081,13 @@ CREATE TRIGGER enforce_audit_log_immutability BEFORE DELETE OR UPDATE ON public.
 
 
 --
+-- Name: accounting_bank_reconciliation_reports enforce_bank_reconciliation_report_immutability; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER enforce_bank_reconciliation_report_immutability BEFORE DELETE OR UPDATE ON public.accounting_bank_reconciliation_reports FOR EACH ROW EXECUTE FUNCTION public.prevent_bank_reconciliation_report_modification();
+
+
+--
 -- Name: accounting_journal_entry_lines enforce_double_entry; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3689,6 +3781,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260927000400'),
 ('20260927000300'),
 ('20260927000200'),
 ('20260927000100'),
