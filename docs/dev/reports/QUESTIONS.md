@@ -54,4 +54,10 @@ En écrivant l'invariant I2 (« Σ soldes de la balance générale = 0 »), `Acc
 
 Mode général, comparatif N-1, drill-down vers le grand livre, 3 exports via le socle `Reports::*`. Explicitement reporté : niveaux de détail ROLLUP (classe/2/3 chiffres), mode vérification (écran), filtres compte/classe/journal/brouillons, avertissements « compte inconnu »/« opening_computed », pagination >5000 comptes, tests de performance §2.4, traductions fr/nl des nouvelles colonnes.
 
+## R02/R03 livrés en v1 réduite (2026-09-27) — voir docs/dev/reports/R02.md et R03.md
+
+R02 : ouverture/mouvements/clôture par compte, filtres tiers/journal/lettrage, drill-down tiers + écriture. R03 : vue centralisatrice (journal × mois) + détection des trous de numérotation ; la vue détaillée n'a pas été reconstruite, `Accounting::JournalEntriesController#index` la couvre déjà.
+
+Reporté, à traiter si un vrai besoin se présente (pas de fixture pour du code qui n'existe pas) : pagination par curseur `(entry_date, entry_id, line_id)` (v1 = pas de pagination du tout sur R02, à corriger avant une vraie mise en prod avec des comptes à des milliers de lignes), recherche texte/montant/code TVA, export en tâche de fond >10 000 lignes, icône Pièce (bloqué par l'absence totale de pièces jointes dans ce dépôt), page `show` pour `Accounting::Lettering` (nécessaire pour le drill-down code de lettrage → groupe complet).
+
 **Incohérence de format à surveiller** : `Reports::TableComponent` attend des colonnes `{key:, label:, align:, format:, link:}` (hashs) alors que `Reports::Exporters::Csv/Xlsx/Pdf` attendent des tuples `[label, key_ou_proc]`. Réconcilié pour l'instant par un adaptateur local (`ReportsController#trial_balance_export_columns`). Si un deuxième rapport a le même besoin, unifier les deux contrats plutôt que dupliquer l'adaptateur (règle des trois occurrences avant d'abstraire).

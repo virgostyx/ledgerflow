@@ -19,6 +19,21 @@
       <%= f.label :date_to, t("accounting.reports.date_to"), class: "block text-sm font-medium text-gray-700" %>
       <%= f.date_field :date_to, value: @date_to, class: "mt-1 form-input" %>
     </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Partner</label>
+      <%= f.select :partner_id, Accounting::Partner.order(:name).pluck(:name, :id),
+            { include_blank: "All partners", selected: @partner&.id }, class: "mt-1 form-select" %>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Journal</label>
+      <%= f.select :journal_id, Accounting::Journal.active.order(:code).pluck(:code, :id),
+            { include_blank: "All journals", selected: @journal_filter&.id }, class: "mt-1 form-select" %>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Lettering</label>
+      <%= f.select :lettering, [ ["All", ""], ["Lettered", "lettered"], ["Unlettered", "unlettered"] ],
+            { selected: params[:lettering] }, class: "mt-1 form-select" %>
+    </div>
     <%= f.submit t("accounting.reports.filter"), class: "btn-primary" %>
     <% if @account %>
       <%= link_to t("accounting.reports.export_csv"),
@@ -40,29 +55,54 @@
           <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("accounting.reports.csv.date") %></th>
           <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("accounting.reports.csv.reference") %></th>
           <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("accounting.reports.csv.label") %></th>
+          <th class="px-4 py-2 text-left font-medium text-gray-600">Partner</th>
           <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.csv.debit") %></th>
           <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.csv.credit") %></th>
           <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("accounting.reports.csv.running_balance") %></th>
+          <th class="px-4 py-2 text-left font-medium text-gray-600">Lettering</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100 bg-white">
+        <tr class="bg-gray-50 font-semibold">
+          <td class="px-4 py-2" colspan="6">Report (opening balance)</td>
+          <td class="px-4 py-2 text-right"><%= number_to_currency((@query&.opening_balance || 0), unit: "€") %></td>
+          <td></td>
+        </tr>
         <% @rows.each do |row| %>
           <tr>
             <td class="px-4 py-2"><%= l(row.entry_date, format: :short) %></td>
-            <td class="px-4 py-2 font-mono text-xs"><%= row.reference %></td>
+            <td class="px-4 py-2 font-mono text-xs">
+              <%= link_to row.reference, accounting_journal_entry_path(row.journal_entry_id), class: "text-primary-700 hover:underline" %>
+            </td>
             <td class="px-4 py-2"><%= row.label %></td>
+            <td class="px-4 py-2">
+              <% if row.partner_id %>
+                <%= link_to row.partner_name,
+                      accounting_reports_general_ledger_path(fiscal_year_id: @fiscal_year.id, account_id: @account.id, partner_id: row.partner_id),
+                      class: "text-primary-700 hover:underline" %>
+              <% end %>
+            </td>
             <td class="px-4 py-2 text-right"><%= row.debit.positive? ? number_to_currency(row.debit, unit: "€") : "" %></td>
             <td class="px-4 py-2 text-right"><%= row.credit.positive? ? number_to_currency(row.credit, unit: "€") : "" %></td>
             <td class="px-4 py-2 text-right font-semibold"><%= number_to_currency(row.running_balance, unit: "€") %></td>
+            <td class="px-4 py-2 font-mono text-xs"><%= row.lettering_code %></td>
           </tr>
         <% end %>
         <% if @rows.empty? %>
           <tr>
-            <td colspan="6" class="px-4 py-6 text-center text-gray-400">
+            <td colspan="8" class="px-4 py-6 text-center text-gray-400">
               <%= t("accounting.reports.no_data") %>
             </td>
           </tr>
         <% end %>
+        <tr class="bg-gray-50 font-semibold border-t-2 border-gray-300">
+          <td class="px-4 py-2" colspan="3">Total movements</td>
+          <td></td>
+          <td class="px-4 py-2 text-right"><%= number_to_currency(@rows.sum(&:debit), unit: "€") %></td>
+          <td class="px-4 py-2 text-right"><%= number_to_currency(@rows.sum(&:credit), unit: "€") %></td>
+          <td class="px-4 py-2 text-right">Closing balance: <%= number_to_currency(@rows.last&.running_balance || (@query&.opening_balance || 0), unit: "€") %></td>
+          <td></td>
+        </tr>
       </tbody>
     </table>
   <% else %>

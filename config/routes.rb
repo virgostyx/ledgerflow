@@ -122,6 +122,7 @@ Rails.application.routes.draw do
         get :annual_accounts
         get :aged_balance
         get :general_ledger
+        get :journal_summary
         get :analytic_by_project
         get :analytic_by_axis
         get :analytic_cross

@@ -133,6 +133,13 @@ RSpec.describe "Accounting::Reports", type: :request, bullet_strict: true do
       expect(response).to have_http_status(:ok)
     end
 
+    it "retourne 200 avec un compte ET une date invalide (le rescue ne doit pas planter sur @query)" do
+      get accounting_reports_general_ledger_path(
+        fiscal_year_id: fiscal_year.id, account_id: expense_account.id, date_from: "invalid"
+      )
+      expect(response).to have_http_status(:ok)
+    end
+
     it "retourne CSV avec ?format=csv" do
       create_posted_entry
       get accounting_reports_general_ledger_path(
@@ -142,6 +149,29 @@ RSpec.describe "Accounting::Reports", type: :request, bullet_strict: true do
       )
       expect(response).to have_http_status(:ok)
       expect(response.content_type).to include("text/csv")
+    end
+
+    it "shows the opening balance (Report) and closing balance section rows" do
+      create_posted_entry
+      get accounting_reports_general_ledger_path(fiscal_year_id: fiscal_year.id, account_id: expense_account.id,
+                                                    date_from: fiscal_year.start_date + 15)
+      expect(response.body).to include("Report", "Closing balance")
+    end
+
+    it "narrows to one partner and links a partner's lines to their auxiliary ledger" do
+      alice = create(:partner, name: "Alice")
+      create_posted_entry # no partner
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year,
+                     entry_date: fiscal_year.start_date + 11)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: expense_account, partner: alice, debit: 50, credit: 0)
+      create(:journal_entry_line, journal_entry: entry, account: liability_account, debit: 0, credit: 50)
+      entry.post!
+
+      get accounting_reports_general_ledger_path(fiscal_year_id: fiscal_year.id, account_id: expense_account.id,
+                                                    partner_id: alice.id)
+      expect(response.body).to include("Alice")
+      expect(response.body).to match(%r{href="[^"]*general_ledger\?[^"]*partner_id=#{alice.id}[^"]*"})
     end
   end
 

@@ -56,19 +56,26 @@ class Accounting::ReportsController < ApplicationController
     end
   end
 
+  # R02 (docs/dev/reports/spec.md §6): solde d'ouverture ("Report"), tiers/journal/
+  # lettrage en filtres, drill-down par tiers vers le grand livre auxiliaire.
   def general_ledger
     authorize :report, :general_ledger?, policy_class: Accounting::ReportPolicy
 
     @accounts = Accounting::Account.active.order(:code)
     @account  = Accounting::Account.find_by(id: params[:account_id])
+    @partner  = Accounting::Partner.find_by(id: params[:partner_id])
+    @journal_filter = Accounting::Journal.find_by(id: params[:journal_id])
     @date_from = parse_date(params[:date_from], @fiscal_year.start_date)
     @date_to   = parse_date(params[:date_to],   @fiscal_year.end_date)
 
     if @account
-      @rows = Accounting::GeneralLedgerQuery.new(
+      @query = Accounting::GeneralLedgerQuery.new(
         account: @account, fiscal_year: @fiscal_year,
-        date_from: @date_from, date_to: @date_to
-      ).call
+        date_from: @date_from, date_to: @date_to,
+        partner: @partner, journal: @journal_filter,
+        lettering: params[:lettering]&.to_sym
+      )
+      @rows = @query.call
     else
       @rows = []
     end
@@ -76,7 +83,7 @@ class Accounting::ReportsController < ApplicationController
     respond_to do |format|
       format.html
       format.csv do
-        send_data general_ledger_csv,
+        send_data Reports::Exporters::Csv.call(general_ledger_result, columns: general_ledger_export_columns),
                   filename: "grand_livre_#{@account&.code}_#{@fiscal_year.year}.csv",
                   type: "text/csv; charset=utf-8"
       end
@@ -84,6 +91,16 @@ class Accounting::ReportsController < ApplicationController
   rescue ArgumentError
     @rows = []
     render :general_ledger
+  end
+
+  def journal_summary
+    authorize :report, :general_ledger?, policy_class: Accounting::ReportPolicy
+
+    @rows = Accounting::JournalSummaryQuery.new(fiscal_year: @fiscal_year).call
+    @gaps = Accounting::Journal.active.each_with_object({}) do |journal, memo|
+      gaps = Accounting::JournalNumberingGaps.new(journal: journal, fiscal_year: @fiscal_year).call
+      memo[journal.id] = gaps if gaps.any?
+    end
   end
 
   def aged_balance
@@ -237,23 +254,15 @@ class Accounting::ReportsController < ApplicationController
     end
   end
 
-  def general_ledger_csv
-    require "csv"
-    CSV.generate(headers: true) do |csv|
-      csv << [
-        I18n.t("accounting.reports.csv.date"),
-        I18n.t("accounting.reports.csv.reference"),
-        I18n.t("accounting.reports.csv.label"),
-        I18n.t("accounting.reports.csv.debit"),
-        I18n.t("accounting.reports.csv.credit"),
-        I18n.t("accounting.reports.csv.running_balance")
-      ]
-      @rows.each do |row|
-        csv << [ row.entry_date, row.reference, row.label,
-                format("%.2f", row.debit),
-                format("%.2f", row.credit),
-                format("%.2f", row.running_balance) ]
-      end
-    end
+  def general_ledger_result
+    Reports::Result.new(rows: @rows, currency: "EUR")
+  end
+
+  def general_ledger_export_columns
+    [
+      [ "Date", :entry_date ], [ "Reference", :reference ], [ "Label", :label ],
+      [ "Partner", :partner_name ], [ "Debit", :debit ], [ "Credit", :credit ],
+      [ "Running balance", :running_balance ], [ "Lettering", :lettering_code ]
+    ]
   end
 end
