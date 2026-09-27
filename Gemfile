@@ -81,11 +81,11 @@ group :development, :test do
   gem "database_cleaner-active_record"
   gem "shoulda-matchers"
   gem "simplecov", require: false
+  gem "bullet"
 end
 
 group :development do
   gem "web-console"
-  gem "bullet"
   gem "rack-mini-profiler"
 end
 

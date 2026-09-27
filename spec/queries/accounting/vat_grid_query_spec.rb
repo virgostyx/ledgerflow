@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-RSpec.describe Accounting::VatGridQuery, type: :query do
+RSpec.describe Accounting::VatGridQuery, type: :query, bullet_strict: true do
   include_context 'with_open_fiscal_year'
 
   let!(:journal)  { create(:journal, :purchase) }

@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe Accounting::AgedBalanceQuery, type: :query do
+RSpec.describe Accounting::AgedBalanceQuery, type: :query, bullet_strict: true do
   include_context "with_open_fiscal_year"
 
   let(:as_of)   { Date.current }

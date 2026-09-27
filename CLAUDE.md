@@ -55,3 +55,16 @@ Credentials Docker (development/test) :
 ## Spec reference
 
 Full technical and functional specification: `docs/dev/LedgerFlow_ConceptNote_v2.md`
+
+## Rapports comptables — règles de travail
+
+- La source de vérité est `docs/dev/reports/spec.md`. En cas de doute, la relire ; ne pas deviner.
+- TDD strict : test rouge, code minimal, test vert, refactoring. Un commit par étape cohérente.
+- Un rapport à la fois. Ne pas commencer le suivant tant que la définition de « terminé » (§15) n'est pas remplie.
+- Montants : `numeric(15,2)` en base, `BigDecimal` en Ruby, jamais `Float`.
+- Toute agrégation en SQL. Aucun total calculé par une boucle Ruby sur des lignes d'écriture.
+- Toutes les migrations sont réversibles. Aucune donnée existante n'est modifiée ou supprimée sans accord.
+- Ne jamais modifier BudgetFlow sans accord explicite.
+- Si une règle comptable ou fiscale manque ou paraît douteuse, appliquer le comportement le plus prudent, l'inscrire dans `docs/dev/reports/QUESTIONS.md` avec sa justification, et continuer.
+- Chaque rapport respecte les règles transverses du §2 et le gabarit du §1 de la spec.
+- Ne jamais supprimer ou affaiblir un test pour le faire passer.

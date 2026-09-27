@@ -13,6 +13,7 @@ class Accounting::GeneralLedgerQuery
   def call
     lines = Accounting::JournalEntryLine
       .joins(:journal_entry)
+      .includes(:journal_entry)
       .where(account: @account)
       .where(
         accounting_journal_entries: {
@@ -28,7 +29,6 @@ class Accounting::GeneralLedgerQuery
         "accounting_journal_entries.entry_date ASC",
         "accounting_journal_entry_lines.id ASC"
       )
-      .includes(:journal_entry)
 
     running = BigDecimal("0")
     lines.map do |line|
