@@ -64,6 +64,39 @@ RSpec.describe "Accounting::Reports", type: :request, bullet_strict: true do
       expect(response).to have_http_status(:ok)
       expect(response.content_type).to include("spreadsheetml")
     end
+
+    it "shows the opening/movement/closing breakdown (§5) and a drill-down link to the general ledger" do
+      create_posted_entry
+      get accounting_reports_trial_balance_path(fiscal_year_id: fiscal_year.id)
+
+      expect(response.body).to include("Opening", "Movement", "Closing")
+      expect(response.body).to match(%r{href="[^"]*general_ledger\?[^"]*account_id=#{expense_account.id}[^"]*"})
+    end
+
+    it "adds the prior year's closing balance and variation when comparative=previous_year" do
+      previous_fy = create(:fiscal_year, entity: entity, year: fiscal_year.year - 1, status: :closed,
+                            start_date: fiscal_year.start_date.prev_year, end_date: fiscal_year.end_date.prev_year)
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: previous_fy,
+                     entry_date: previous_fy.start_date + 1)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: expense_account, debit: 400, credit: 0)
+      create(:journal_entry_line, journal_entry: entry, account: liability_account, debit: 0, credit: 400)
+      entry.post!
+      create_posted_entry
+
+      get accounting_reports_trial_balance_path(fiscal_year_id: fiscal_year.id, comparative: "previous_year")
+
+      expect(response.body).to include("Variation")
+      expect(response.body).to include("400")
+    end
+
+    it "returns CSV via the new Reports::Exporters::Csv (BOM + comma decimal in the default en locale)" do
+      create_posted_entry
+      get accounting_reports_trial_balance_path(fiscal_year_id: fiscal_year.id, format: :csv)
+
+      expect(response.body.b).to start_with("\xEF\xBB\xBF".b)
+      expect(response.body).to include("1000.00")
+    end
   end
 
   describe "GET /accounting/reports/balance_sheet" do

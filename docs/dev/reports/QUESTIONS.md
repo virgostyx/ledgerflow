@@ -49,3 +49,9 @@ En écrivant l'invariant I2 (« Σ soldes de la balance générale = 0 »), `Acc
 **I3** compare en revanche deux valeurs déjà `balance` (grand livre vs balance) *pour le même compte* — valide, puisque les deux utilisent la même convention de signe pour ce compte précis.
 
 À garder en tête pour R01 : toute future implémentation du mode « vérification » (§5 : Solde Débiteur / Solde Créditeur en colonnes séparées) devra dériver ces deux colonnes du **net brut**, pas de `balance`.
+
+## R01 livré en v1 réduite (2026-09-27) — voir docs/dev/reports/R01.md
+
+Mode général, comparatif N-1, drill-down vers le grand livre, 3 exports via le socle `Reports::*`. Explicitement reporté : niveaux de détail ROLLUP (classe/2/3 chiffres), mode vérification (écran), filtres compte/classe/journal/brouillons, avertissements « compte inconnu »/« opening_computed », pagination >5000 comptes, tests de performance §2.4, traductions fr/nl des nouvelles colonnes.
+
+**Incohérence de format à surveiller** : `Reports::TableComponent` attend des colonnes `{key:, label:, align:, format:, link:}` (hashs) alors que `Reports::Exporters::Csv/Xlsx/Pdf` attendent des tuples `[label, key_ou_proc]`. Réconcilié pour l'instant par un adaptateur local (`ReportsController#trial_balance_export_columns`). Si un deuxième rapport a le même besoin, unifier les deux contrats plutôt que dupliquer l'adaptateur (règle des trois occurrences avant d'abstraire).

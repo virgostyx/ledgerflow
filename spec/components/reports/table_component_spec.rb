@@ -44,4 +44,15 @@ RSpec.describe Reports::TableComponent, type: :component do
       expect(page).to have_no_css("tfoot")
     end
   end
+
+  context "with a :link on a column (drill-down)" do
+    let(:columns) do
+      [ { key: :code, label: "Code", link: ->(row) { "/accounting/reports/general_ledger?account_id=#{row.code}" } },
+        { key: :label, label: "Libellé" } ]
+    end
+
+    it "wraps that column's cell content in a link built from the row" do
+      expect(page).to have_link("600000", href: "/accounting/reports/general_ledger?account_id=600000")
+    end
+  end
 end

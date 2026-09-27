@@ -1,21 +1,31 @@
 class Accounting::ReportsController < ApplicationController
   before_action :set_fiscal_year
 
+  # R01 (docs/dev/reports/spec.md §5): ouverture/mouvements/clôture, comparatif N-1,
+  # drill-down vers le grand livre, exports via le socle Reports::* (§2.1/§14).
   def trial_balance
     authorize :report, :trial_balance?, policy_class: Accounting::ReportPolicy
 
-    @as_of  = parse_date(params[:as_of], @fiscal_year.end_date)
-    @rows   = Accounting::TrialBalanceQuery.new(fiscal_year: @fiscal_year, as_of: @as_of).call
+    @as_of = parse_date(params[:as_of], @fiscal_year.end_date)
+    filters = Reports::Filters.new(fiscal_year_id: @fiscal_year.id, date_to: @as_of,
+                                    comparative: params[:comparative])
+    @result = Accounting::TrialBalanceReport.new(filters: filters).call
+    @rows   = @result.rows # kept for any other view still reading it directly
 
     respond_to do |format|
       format.html
-      format.csv  { send_data trial_balance_csv, filename: "balance_#{@fiscal_year.year}.csv",
-                               type: "text/csv; charset=utf-8" }
-      format.xlsx { render xlsx: "trial_balance", filename: "balance_#{@fiscal_year.year}.xlsx" }
+      format.csv  { send_data Reports::Exporters::Csv.call(@result, columns: trial_balance_export_columns),
+                              filename: "balance_#{@fiscal_year.year}.csv", type: "text/csv; charset=utf-8" }
+      format.xlsx { send_data Reports::Exporters::Xlsx.call(@result, columns: trial_balance_export_columns, title: "Trial balance"),
+                              filename: "balance_#{@fiscal_year.year}.xlsx",
+                              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+      format.pdf  { send_data Reports::Exporters::Pdf.call(@result, columns: trial_balance_export_columns, title: "Trial balance"),
+                              filename: "balance_#{@fiscal_year.year}.pdf", type: "application/pdf" }
     end
   rescue ArgumentError
-    @rows  = []
-    @as_of = @fiscal_year.end_date
+    @as_of  = @fiscal_year.end_date
+    @result = Reports::Result.new(rows: [])
+    @rows   = []
     render :trial_balance
   end
 
@@ -149,6 +159,49 @@ class Accounting::ReportsController < ApplicationController
   # Raises ArgumentError on an invalid date (rescued by trial_balance).
   def parse_date(value, default)
     value.present? ? Date.parse(value) : default
+  end
+
+  helper_method :trial_balance_view_columns
+
+  # Same columns as the exports, plus the account-code drill-down link
+  # (docs/dev/reports/spec.md §5: "Clic sur un compte: R02... même période et mêmes filtres").
+  def trial_balance_view_columns
+    trial_balance_columns.map do |column|
+      next column unless column[:key] == :code
+
+      column.merge(link: ->(row) {
+        accounting_reports_general_ledger_path(fiscal_year_id: @fiscal_year.id, account_id: account_id_for(row))
+      })
+    end
+  end
+
+  def account_id_for(row)
+    row.respond_to?(:row) ? row.row.id : row.id
+  end
+
+  # Reports::Exporters::* expect [label, key_or_proc] tuples, not the {key:, label:}
+  # hashes Reports::TableComponent takes — same columns, adapted to each contract.
+  def trial_balance_export_columns
+    trial_balance_columns.map { |column| [ column[:label], column[:key] ] }
+  end
+
+  def trial_balance_columns
+    columns = [
+      { key: :code, label: "Code" },
+      { key: :label_fr, label: "Label" },
+      { key: :opening_display_debit, label: "Opening Debit" },
+      { key: :opening_display_credit, label: "Opening Credit" },
+      { key: :movement_debit, label: "Movement Debit" },
+      { key: :movement_credit, label: "Movement Credit" },
+      { key: :closing_display_debit, label: "Closing Debit" },
+      { key: :closing_display_credit, label: "Closing Credit" }
+    ]
+    return columns unless params[:comparative].present?
+
+    columns + [
+      { key: :comparative_closing, label: "Closing N-1" },
+      { key: :variation_amount, label: "Variation" }
+    ]
   end
 
   def aged_balance_csv

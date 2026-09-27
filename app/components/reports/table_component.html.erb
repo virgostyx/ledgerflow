@@ -15,7 +15,11 @@
         <% columns.each do |column| %>
           <% value = extract(row, column) %>
           <td class="px-4 py-2 <%= align_class(column) %> <%= 'font-mono tabular-nums' if numeric?(value) %>">
-            <%= formatted(value, column) %>
+            <% if column[:link] %>
+              <%= link_to formatted(value, column), column[:link].call(row), class: "text-primary-700 hover:underline" %>
+            <% else %>
+              <%= formatted(value, column) %>
+            <% end %>
           </td>
         <% end %>
       </tr>

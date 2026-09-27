@@ -104,6 +104,36 @@ RSpec.describe Accounting::TrialBalanceQuery, type: :query, bullet_strict: true 
     end
   end
 
+  # docs/dev/reports/spec.md §5: ouverture (avant date_from), mouvements (bruts,
+  # entre date_from et as_of), clôture = ouverture + mouvements.
+  describe "opening/movement breakdown (date_from)" do
+    subject(:row) do
+      described_class.new(fiscal_year: fiscal_year, date_from: fiscal_year.start_date + 15, as_of: fiscal_year.start_date + 25)
+        .call.find { |r| r.code == "604000" }
+    end
+
+    it "sums lines before date_from into the opening balance" do
+      expect(row.opening_debit).to eq(BigDecimal("1000.00"))
+      expect(row.opening_credit).to eq(0)
+    end
+
+    it "sums lines from date_from to as_of into gross movements" do
+      expect(row.movement_debit).to eq(BigDecimal("500.00"))
+      expect(row.movement_credit).to eq(0)
+    end
+
+    it "keeps total_debit/total_credit as the full cumulative closing figures (opening + movement)" do
+      expect(row.total_debit).to eq(BigDecimal("1500.00"))
+    end
+
+    it "defaults date_from to the fiscal year's start, so opening is zero without it" do
+      full_row = described_class.new(fiscal_year: fiscal_year, as_of: fiscal_year.start_date + 25)
+        .call.find { |r| r.code == "604000" }
+      expect(full_row.opening_debit).to eq(0)
+      expect(full_row.movement_debit).to eq(BigDecimal("1500.00"))
+    end
+  end
+
   describe "excluding the closing entry" do
     let!(:revenue_account) do
       create(:account, code: "700000", label_fr: "Ventes", account_type: :revenue, normal_balance: :credit, account_class: 7)
