@@ -94,4 +94,13 @@ RSpec.describe Accounting::GeneralLedgerQuery, type: :query, bullet_strict: true
       end
     end
   end
+
+  describe "isolation" do
+    let(:rows_from_other_entity) do
+      other_account = ActsAsTenant.with_tenant(create(:entity)) { create(:account) }
+      described_class.new(account: other_account, fiscal_year: fiscal_year).call
+    end
+
+    it_behaves_like "entity scoped report"
+  end
 end

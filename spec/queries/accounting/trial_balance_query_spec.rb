@@ -134,4 +134,13 @@ RSpec.describe Accounting::TrialBalanceQuery, type: :query, bullet_strict: true 
       expect(rows.map(&:code)).not_to include("699000")
     end
   end
+
+  describe "isolation" do
+    let(:rows_from_other_entity) do
+      other_fiscal_year = ActsAsTenant.with_tenant(create(:entity)) { create(:fiscal_year) }
+      described_class.new(fiscal_year: other_fiscal_year).call
+    end
+
+    it_behaves_like "entity scoped report"
+  end
 end

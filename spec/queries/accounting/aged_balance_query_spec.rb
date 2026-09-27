@@ -152,4 +152,22 @@ RSpec.describe Accounting::AgedBalanceQuery, type: :query, bullet_strict: true d
 
     expect(described_class.totals(customer_rows).total).to eq(BigDecimal("30"))
   end
+
+  describe "isolation" do
+    let(:rows_from_other_entity) do
+      ActsAsTenant.with_tenant(create(:entity)) do
+        other_journal  = create(:journal, :purchase)
+        other_customer = create(:account, :customer, reconcilable: true)
+        other_revenue  = create(:account, code: "700000", account_type: :revenue, normal_balance: :credit)
+        entry = create(:journal_entry, :draft, journal: other_journal, entry_date: Date.current)
+        ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+        create(:journal_entry_line, journal_entry: entry, account: other_customer, debit: 999, credit: 0)
+        create(:journal_entry_line, journal_entry: entry, account: other_revenue, debit: 0, credit: 999)
+        entry.post!
+      end
+      described_class.new(kind: :customer, as_of: as_of).call
+    end
+
+    it_behaves_like "entity scoped report"
+  end
 end

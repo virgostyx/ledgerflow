@@ -39,3 +39,13 @@ Portée limitée aux scénarios P0 (décision utilisateur) : ventes/achats TVA, 
 - Comptes de contrepartie réels : `Accounting::GenerateInvoiceJournalEntry` utilise toujours `Accounting::AccountCodes::CUSTOMERS` (400000) et `SUPPLIERS` (440000), **pas** le `default_account` du journal configuré par `Seeders::JournalsSeeder` (qui pointe vers 400100/440100, jamais utilisés en pratique pour les factures). Le seed réutilise `Accounting::AccountCodes` directement pour rester cohérent avec le code réel.
 
 Générateur de volume : `rake ledger:generate[N]` — insertion SQL brute (deux `INSERT ... SELECT` sur `generate_series`) plutôt que N créations ActiveRecord, pour rester exploitable à 200 000 lignes ; les écritures générées sont volontairement synthétiques (comptes 600000/440000, montant fixe), seul le volume compte pour les tests de performance du §2.4.
+
+## Invariants I1-I3 (socle, 2026-09-27) — piège de signe sur `TrialBalanceQuery#balance`
+
+En écrivant l'invariant I2 (« Σ soldes de la balance générale = 0 »), `Accounting::TrialBalanceQuery::Result#balance` s'est révélé **volontairement orienté sens normal du compte** (positif quand un compte débiteur est débiteur, positif *aussi* quand un compte créditeur est créditeur — pratique pour l'affichage, chaque compte montre un nombre positif dans sa colonne naturelle). Sa somme sur tous les comptes n'est **pas** nulle en général (elle vaut 2× le solde net des comptes à sens débiteur) : ce n'est pas un bug, mais un piège si on l'utilise pour vérifier I2 littéralement.
+
+**I2 vérifié à la place sur** `Σ(total_debit − total_credit)` (sens unique, brut), qui vaut 0 par construction double-entrée (I1). C'est la vraie expression comptable de « Σ soldes débiteurs = Σ soldes créditeurs » de la balance de vérification.
+
+**I3** compare en revanche deux valeurs déjà `balance` (grand livre vs balance) *pour le même compte* — valide, puisque les deux utilisent la même convention de signe pour ce compte précis.
+
+À garder en tête pour R01 : toute future implémentation du mode « vérification » (§5 : Solde Débiteur / Solde Créditeur en colonnes séparées) devra dériver ces deux colonnes du **net brut**, pas de `balance`.
