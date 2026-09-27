@@ -1252,6 +1252,32 @@ ALTER SEQUENCE public.entities_id_seq OWNED BY public.entities.id;
 
 
 --
+-- Name: posted_lines; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.posted_lines AS
+ SELECT l.id,
+    l.entity_id,
+    e.id AS journal_entry_id,
+    e.fiscal_year_id,
+    e.journal_id,
+    e.entry_date,
+    e.reference,
+    l.account_id,
+    l.partner_id,
+    l.debit,
+    l.credit,
+    l.label,
+    l.vat_code,
+    l.lettering_id,
+    l.currency,
+    l.amount_currency
+   FROM (public.accounting_journal_entry_lines l
+     JOIN public.accounting_journal_entries e ON ((e.id = l.journal_entry_id)))
+  WHERE (e.status = 1);
+
+
+--
 -- Name: recovery_codes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3633,6 +3659,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260927000000'),
 ('20260926180020'),
 ('20260926180010'),
 ('20260926180000'),
