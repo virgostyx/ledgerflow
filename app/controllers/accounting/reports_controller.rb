@@ -143,6 +143,46 @@ class Accounting::ReportsController < ApplicationController
     @balanced_groups = query.balanced_unlettered_groups
   end
 
+  # R06 (docs/dev/reports/spec.md §8): B + BN − SN = A. "Figer" enregistre le résultat
+  # dans accounting_bank_reconciliation_reports (Accounting::BankReconciliationReport,
+  # construit au socle), immuable.
+  def bank_reconciliation_report
+    authorize :report, :bank_reconciliation_report?, policy_class: Accounting::ReportPolicy
+
+    @bank_accounts = Accounting::BankAccount.where(active: true).order(:label_fr)
+    @bank_account  = Accounting::BankAccount.find_by(id: params[:bank_account_id]) || @bank_accounts.first
+    @as_of = begin
+      parse_date(params[:as_of], Date.current)
+    rescue ArgumentError
+      Date.current
+    end
+
+    @result = Accounting::BankReconciliationQuery.new(bank_account: @bank_account, as_of: @as_of).call if @bank_account
+    @frozen_reports = @bank_account ? @bank_account.bank_reconciliation_reports.order(as_of: :desc) : []
+  end
+
+  def freeze_bank_reconciliation_report
+    authorize :report, :bank_reconciliation_report?, policy_class: Accounting::ReportPolicy
+
+    bank_account = Accounting::BankAccount.find(params[:bank_account_id])
+    as_of  = parse_date(params[:as_of], Date.current)
+    result = Accounting::BankReconciliationQuery.new(bank_account: bank_account, as_of: as_of).call
+
+    Accounting::BankReconciliationReport.record!(
+      bank_account: bank_account, as_of: as_of, user: current_user,
+      result: {
+        statement_balance: result.statement_balance.to_s, accounting_balance: result.accounting_balance.to_s,
+        bn_total: result.bn_total.to_s, sn_total: result.sn_total.to_s,
+        expected_balance: result.expected_balance.to_s, gap: result.gap.to_s,
+        bn: result.bn.map { |i| { date: i.date.to_s, label: i.label, amount: i.amount.to_s } },
+        sn: result.sn.map { |i| { date: i.date.to_s, label: i.label, amount: i.amount.to_s } }
+      }
+    )
+
+    redirect_to accounting_reports_bank_reconciliation_report_path(bank_account_id: bank_account.id, as_of: as_of),
+                notice: "Reconciliation frozen for #{as_of}."
+  end
+
   def analytic_by_project
     authorize :report, :analytic_by_project?, policy_class: Accounting::ReportPolicy
 

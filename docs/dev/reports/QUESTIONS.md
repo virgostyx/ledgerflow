@@ -26,6 +26,12 @@ Point clé : le bug de rétroactivité de `AgedBalanceQuery` déjà repéré au 
 
 Reporté : tranches configurables par société, propositions de lettrage automatiques (R05), drill-down cellule-tranche et tiers→grand livre auxiliaire, exports pour R05, filtre "état de lettrage" sur R05.
 
+## R06 livré en v1 (2026-09-27) — **fin de la vague P0** (R01-R06 tous livrés)
+
+Voir `docs/dev/reports/R06.md`. Confirme un écart déjà signalé au socle : sans notion de "relevé bancaire" groupé, B est reconstruit comme la somme cumulée des transactions (pas de solde d'ouverture/clôture par relevé réel), et le chaînage entre relevés (critère #5) n'est pas implémentable en l'état. `Accounting::BankReconciliationQuery` reconstruit BN/SN à `as_of` en supposant que le lien transaction↔écriture actuel existait déjà à cette date s'il existe aujourd'hui — approximation raisonnable en l'absence d'un timestamp "lié le" sur `accounting_bank_transactions`.
+
+**Prochaine étape** : vague P1 (R07/R08 bilan et compte de résultat, R09/R10 TVA, R11 budget BudgetFlow) — commencer par le moteur de rubriques (§9) avant R07/R08 eux-mêmes, et rappel : R09/R10 risquent de dupliquer le système TVA déjà existant (`VatDeclaration`/`VatGridQuery`) — décision à valider avec l'utilisateur avant de coder (voir l'entrée plus haut sur ce sujet).
+
 ## `Reports::Exporters::Pdf` via Prawn, pas Ferrum (socle, 2026-09-27)
 
 Le §14 de la spec décrit le PDF comme "rendu HTML → PDF via Ferrum, qui réutilise le CSS d'impression des vues", HexaPDF en alternative. Ni l'un ni l'autre n'est câblé dans ce dépôt (Ferrum est au Gemfile mais utilisé seulement pour les tests système ; HexaPDF est absent). `Accounting::InvoicePdf` existe déjà et génère des PDF via Prawn + prawn-table.

@@ -7,6 +7,8 @@ class Accounting::BankAccount < ApplicationRecord
   belongs_to :journal, class_name: "Accounting::Journal"
   has_many :transactions, class_name: "Accounting::BankTransaction",
            foreign_key: :bank_account_id, dependent: :destroy
+  has_many :bank_reconciliation_reports, class_name: "Accounting::BankReconciliationReport",
+           foreign_key: :bank_account_id
 
   autofilter_column :journal,  sql: "accounting_journals.code", type: :string, joins: :journal
   autofilter_column :label_fr, sql: "accounting_bank_accounts.label_fr", type: :string, filter: false

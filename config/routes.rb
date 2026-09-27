@@ -123,6 +123,8 @@ Rails.application.routes.draw do
         get :aged_balance
         get :unlettered_lines
         get :general_ledger
+        get  :bank_reconciliation_report
+        post :freeze_bank_reconciliation_report
         get :journal_summary
         get :analytic_by_project
         get :analytic_by_axis

@@ -1,0 +1,103 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900">Bank reconciliation</h1>
+
+  <%= form_with url: accounting_reports_bank_reconciliation_report_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Bank account</label>
+      <%= f.select :bank_account_id, @bank_accounts.map { |a| [ a.label_fr, a.id ] },
+            { selected: @bank_account&.id }, class: "mt-1 form-select" %>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700">As of</label>
+      <%= f.date_field :as_of, value: @as_of, class: "mt-1 form-input" %>
+    </div>
+    <%= f.submit "Filter", class: "btn-primary" %>
+  <% end %>
+
+  <% if @result %>
+    <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
+      <div class="rounded border border-gray-200 p-4">
+        <p class="text-gray-500">B — Statement balance</p>
+        <p class="text-xl font-semibold"><%= number_to_currency(@result.statement_balance, unit: "€") %></p>
+      </div>
+      <div class="rounded border border-gray-200 p-4">
+        <p class="text-gray-500">A — Accounting balance</p>
+        <p class="text-xl font-semibold"><%= number_to_currency(@result.accounting_balance, unit: "€") %></p>
+      </div>
+      <div class="rounded border border-gray-200 p-4">
+        <p class="text-gray-500">Expected balance (B + BN − SN)</p>
+        <p class="text-xl font-semibold"><%= number_to_currency(@result.expected_balance, unit: "€") %></p>
+      </div>
+      <div class="rounded border p-4 <%= @result.gap.zero? ? 'border-green-200 bg-green-50' : 'border-red-300 bg-red-50' %>">
+        <p class="text-gray-500">Gap</p>
+        <p class="text-xl font-semibold"><%= number_to_currency(@result.gap, unit: "€") %></p>
+      </div>
+    </div>
+
+    <% if @result.gap.zero? %>
+      <%= button_to "Freeze this reconciliation", accounting_reports_freeze_bank_reconciliation_report_path,
+            params: { bank_account_id: @bank_account.id, as_of: @as_of }, class: "btn-primary mb-6" %>
+    <% else %>
+      <p class="mb-6 text-sm text-red-700">The gap must be zero before freezing.</p>
+    <% end %>
+
+    <h2 class="mb-2 text-sm font-semibold text-gray-700">BN — booked, not yet on the statement</h2>
+    <table class="min-w-full divide-y divide-gray-200 text-sm mb-6">
+      <thead class="bg-gray-50"><tr>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">Date</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">Reference</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">Label</th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600">Amount</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @result.bn.each do |item| %>
+          <tr>
+            <td class="px-4 py-2"><%= l(item.date, format: :short) %></td>
+            <td class="px-4 py-2 font-mono text-xs">
+              <%= link_to item.reference, accounting_journal_entry_path(item.journal_entry_id), class: "text-primary-700 hover:underline" %>
+            </td>
+            <td class="px-4 py-2"><%= item.label %></td>
+            <td class="px-4 py-2 text-right"><%= number_to_currency(item.amount, unit: "€") %></td>
+          </tr>
+        <% end %>
+        <% if @result.bn.empty? %>
+          <tr><td colspan="4" class="px-4 py-4 text-center text-gray-400">None</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <h2 class="mb-2 text-sm font-semibold text-gray-700">SN — on the statement, not yet booked</h2>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">Date</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">Reference</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">Label</th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600">Amount</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @result.sn.each do |item| %>
+          <tr>
+            <td class="px-4 py-2"><%= l(item.date, format: :short) %></td>
+            <td class="px-4 py-2 font-mono text-xs"><%= item.reference %></td>
+            <td class="px-4 py-2"><%= item.label %></td>
+            <td class="px-4 py-2 text-right"><%= number_to_currency(item.amount, unit: "€") %></td>
+          </tr>
+        <% end %>
+        <% if @result.sn.empty? %>
+          <tr><td colspan="4" class="px-4 py-4 text-center text-gray-400">None</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <% if @frozen_reports.any? %>
+      <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">Frozen reconciliations</h2>
+      <ul class="text-sm list-disc pl-5">
+        <% @frozen_reports.each do |report| %>
+          <li><%= l(report.as_of, format: :short) %> — hash <%= report.content_hash[0, 12] %>… (<%= report.created_at.strftime("%Y-%m-%d %H:%M") %>)</li>
+        <% end %>
+      </ul>
+    <% end %>
+  <% else %>
+    <p class="text-gray-500">No active bank account.</p>
+  <% end %>
+</div>
