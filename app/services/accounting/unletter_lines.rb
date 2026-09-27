@@ -5,11 +5,13 @@ class Accounting::UnletterLines
 
   def self.call(lettering:)
     ctx = LightService::Context.make(lettering: lettering)
+    line_ids = lettering.lines.pluck(:id)
     ApplicationRecord.transaction do
       reopen_invoices(lettering)
-      Accounting::LineAllocation.touching(lettering.lines.select(:id)).destroy_all
+      Accounting::LineAllocation.touching(line_ids).destroy_all
       lettering.destroy!
     end
+    Accounting::JournalEntryLine.resync_amount_residual!(line_ids)
     ctx
   rescue StandardError => e
     ctx.fail!("Error: #{e.message}")

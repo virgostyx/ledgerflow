@@ -27,6 +27,7 @@ class Accounting::JournalEntryLine < ApplicationRecord
   # before_save (not before_validation): must run even when a save skips validation
   # (e.g. the balanced-lines factories, which defer the double-entry DB check).
   before_save :sync_entry_date
+  before_create :init_amount_residual
 
   validate :partner_belongs_to_entity
   validate :only_one_side_positive
@@ -37,10 +38,35 @@ class Accounting::JournalEntryLine < ApplicationRecord
   # Unsigned amount still to settle: the line's amount minus what partial lettering already allocated to it.
   def open_amount = debit + credit - allocations.sum(:amount)
 
+  # Recomputes and persists amount_residual for the given line ids in one UPDATE.
+  # Called explicitly by the lettering/allocation services (docs/dev/reports/spec.md §7):
+  # they change lettering_id / accounting_line_allocations via update_all/nullify/destroy_all,
+  # which bypass AR callbacks, so no model callback here could catch these changes.
+  def self.resync_amount_residual!(ids)
+    ids = Array(ids).map(&:to_i)
+    return if ids.empty?
+
+    connection.execute(<<~SQL)
+      UPDATE accounting_journal_entry_lines l
+      SET amount_residual = CASE
+        WHEN l.lettering_id IS NOT NULL THEN 0
+        ELSE l.debit + l.credit - COALESCE((
+          SELECT SUM(al.amount) FROM accounting_line_allocations al
+          WHERE al.debit_line_id = l.id OR al.credit_line_id = l.id
+        ), 0)
+      END
+      WHERE l.id IN (#{ids.join(',')})
+    SQL
+  end
+
   private
 
   def sync_entry_date
     self.entry_date = journal_entry&.entry_date
+  end
+
+  def init_amount_residual
+    self.amount_residual = debit + credit
   end
 
   # The association is tenant-scoped, so a partner id from another entity resolves to nil.

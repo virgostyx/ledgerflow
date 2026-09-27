@@ -11,3 +11,11 @@ Activer `Bullet.raise = true` globalement en test fait échouer 41 specs préexi
 **À faire valider** : traiter les 41 N+1 existants dans un chantier dédié, puis retirer le tag `bullet_strict` au profit d'un `Bullet.raise = true` global.
 
 Liste des specs actuellement en échec sous Bullet strict global (pour référence du futur chantier) : `bank_reconciliation_spec.rb`, `fixed_assets_spec.rb`, `invoices_spec.rb`, `journal_entries_spec.rb`, `opening_invoice_spec.rb`, `payment_batches_spec.rb`, `payment_reminders_spec.rb`, `recurring_invoices_spec.rb`, `settings/journals_spec.rb`, `journal_entry_workflow_spec.rb` (system), `lettering_workflow_spec.rb` (system).
+
+## `reconciliation_items` non créée : réutilisation de `accounting_line_allocations` (socle, 2026-09-27)
+
+Le §7 de la spec demande une table `reconciliation_items(line_id, reconciliation_id, amount)` pour recalculer `amount_residual` à une date passée. Le dépôt a déjà exactement cette information, sous une forme différente et plus riche : `accounting_line_allocations` (`debit_line_id`, `credit_line_id`, `amount`, `allocated_on`) pour les lettrages partiels, et `accounting_letterings.lettered_on` pour la date d'un lettrage total.
+
+**Décision appliquée** : ne pas créer de table dupliquée. `amount_residual` (ajoutée sur `accounting_journal_entry_lines`) est maintenue par les services de lettrage/allocation eux-mêmes (`Accounting::JournalEntryLine.resync_amount_residual!`, appelée dans `CreateAllocations`, `CreateLettering`, `UnletterLines`, `RemoveAllocation` — ces écritures passent par `update_all`/`nullify`/`destroy_all`, qui contournent les callbacks ActiveRecord, d'où l'appel explicite à chaque endpoint plutôt qu'un callback modèle unique).
+
+**À faire valider en implémentant R04** : la reconstruction rétroactive (`as_of` dans le passé, critère d'acceptation R04 #2) devra filtrer `accounting_line_allocations.allocated_on <= as_of` et `accounting_letterings.lettered_on <= as_of` — `AgedBalanceQuery` actuelle ne le fait pas encore (elle utilise l'état courant, pas un état reconstruit à une date passée). C'est un vrai écart à corriger dans le chantier R04, pas dans le socle.

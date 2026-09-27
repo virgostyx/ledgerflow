@@ -18,5 +18,7 @@ class Accounting::Actions::CreateAllocations
       debits.shift  if debits.first&.last&.zero?
       credits.shift if credits.first&.last&.zero?
     end
+
+    Accounting::JournalEntryLine.resync_amount_residual!(ctx.lines.map(&:id))
   end
 end

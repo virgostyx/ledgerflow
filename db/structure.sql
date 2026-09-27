@@ -751,6 +751,7 @@ CREATE TABLE public.accounting_journal_entry_lines (
     invoice_id bigint,
     lettering_id bigint,
     entry_date date,
+    amount_residual numeric(15,2) NOT NULL,
     CONSTRAINT chk_at_least_one_side CHECK (((debit > (0)::numeric) OR (credit > (0)::numeric))),
     CONSTRAINT chk_credit_non_negative CHECK ((credit >= (0)::numeric)),
     CONSTRAINT chk_debit_non_negative CHECK ((debit >= (0)::numeric)),
@@ -3688,6 +3689,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260927000300'),
 ('20260927000200'),
 ('20260927000100'),
 ('20260927000000'),

@@ -11,6 +11,7 @@ class Accounting::RemoveAllocation
       allocation.destroy!
       Accounting::SyncInvoiceStatus.call(lines)
     end
+    Accounting::JournalEntryLine.resync_amount_residual!(lines.map(&:id))
     ctx
   rescue StandardError => e
     ctx.tap { |c| c.fail!("Error: #{e.message}") }

@@ -12,6 +12,8 @@ class Accounting::Actions::CreateLettering
       code:        Accounting::Lettering.next_code_for(first.account),
       lettered_on: Date.current
     )
-    Accounting::JournalEntryLine.where(id: ctx.lines.map(&:id)).update_all(lettering_id: ctx.lettering.id)
+    ids = ctx.lines.map(&:id)
+    Accounting::JournalEntryLine.where(id: ids).update_all(lettering_id: ctx.lettering.id)
+    Accounting::JournalEntryLine.resync_amount_residual!(ids)
   end
 end
