@@ -26,5 +26,17 @@ module Accounting::OpenLineSql
     "COALESCE(i.due_date, (e.entry_date + COALESCE(p.payment_terms_days, 0) * INTERVAL '1 day')::date)"
   end
 
+  # Open-item scope (partner, invoice, lettering joined as documented above) for `kind` as of `as_of`.
+  def self.open_scope(kind:, as_of:)
+    Accounting::JournalEntryLine
+      .joins("JOIN accounting_journal_entries e ON e.id = #{LINES}.journal_entry_id")
+      .joins("JOIN accounting_accounts a ON a.id = #{LINES}.account_id")
+      .joins("LEFT JOIN accounting_partners p ON p.id = #{LINES}.partner_id")
+      .joins("LEFT JOIN accounting_invoices i ON i.id = #{LINES}.invoice_id")
+      .joins("LEFT JOIN accounting_letterings lt ON lt.id = #{LINES}.lettering_id")
+      .where("e.status = ? AND e.entry_date <= ?", Accounting::JournalEntry.statuses[:posted], as_of)
+      .where("a.code LIKE ? AND a.reconcilable", PREFIX.fetch(kind.to_sym))
+  end
+
   def self.quote(value) = ApplicationRecord.connection.quote(value)
 end

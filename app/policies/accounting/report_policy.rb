@@ -7,6 +7,7 @@ class Accounting::ReportPolicy < ApplicationPolicy
   def aged_balance?     = trial_balance?
   def unlettered_lines? = trial_balance?
   def annual_customer_listing? = trial_balance?
+  def cash_forecast? = trial_balance?
   def bank_reconciliation_report? = trial_balance?
   def analytic_by_project? = trial_balance?
   def analytic_by_axis?    = trial_balance?

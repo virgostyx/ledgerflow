@@ -359,4 +359,29 @@ RSpec.describe "Accounting::Reports", type: :request, bullet_strict: true do
       end
     end
   end
+
+  describe "R14 cash forecast" do
+    it "renders the forecast with its chart and the items form" do
+      get accounting_reports_cash_forecast_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('data-controller="chart"', "Manual and recurring items")
+    end
+
+    it "accepts the 6-month horizon and a scenario" do
+      get accounting_reports_cash_forecast_path(horizon: "months_6", scenario: "prudent", threshold: "500")
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "adds and removes a manual item" do
+      expect do
+        post accounting_cash_forecast_items_path, params: { accounting_cash_forecast_item: { label: "Rent", direction: "outflow", amount: "800", recurrence: "monthly", first_date: Date.current.to_s } }
+      end.to change(Accounting::CashForecastItem, :count).by(1)
+      expect { delete accounting_cash_forecast_item_path(Accounting::CashForecastItem.last) }.to change(Accounting::CashForecastItem, :count).by(-1)
+    end
+
+    it "rejects an invalid item with a message" do
+      post accounting_cash_forecast_items_path, params: { accounting_cash_forecast_item: { label: "", amount: "0", first_date: Date.current.to_s } }
+      expect(flash[:alert]).to be_present
+    end
+  end
 end

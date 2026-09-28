@@ -144,6 +144,19 @@ class Accounting::ReportsController < ApplicationController
     @balanced_groups = query.balanced_unlettered_groups
   end
 
+  # R14 (docs/dev/reports/spec.md §12): weekly cash forecast, three scenarios for the chart.
+  def cash_forecast
+    authorize :report, :cash_forecast?, policy_class: Accounting::ReportPolicy
+
+    @horizon   = params[:horizon] == "months_6" ? :months_6 : :weeks_13
+    @scenario  = Accounting::CashForecastQuery::SCENARIOS.find { |s| s.to_s == params[:scenario] } || :base
+    @threshold = params[:threshold].presence || 0
+    options = { horizon: @horizon, threshold: @threshold, prudent_days: params[:prudent_days].presence || 10 }
+    @forecasts = Accounting::CashForecastQuery::SCENARIOS.index_with { |s| Accounting::CashForecastQuery.new(scenario: s, **options).call }
+    @forecast  = @forecasts.fetch(@scenario)
+    @items     = Accounting::CashForecastItem.order(:first_date)
+  end
+
   # R10 (docs/dev/reports/spec.md §10): annual listing of Belgian VAT-registered customers.
   def annual_customer_listing
     authorize :report, :annual_customer_listing?, policy_class: Accounting::ReportPolicy

@@ -115,8 +115,11 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :cash_forecast_items, only: [ :create, :destroy ]
+
       namespace :reports do
         get :trial_balance
+        get :cash_forecast
         get :balance_sheet
         get :income_statement
         get :annual_accounts

@@ -1,0 +1,61 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900">Cash forecast</h1>
+
+  <%= form_with url: accounting_reports_cash_forecast_path, method: :get, class: "mb-6 flex flex-wrap gap-4 items-end" do |f| %>
+    <div><label class="block text-sm font-medium text-gray-700">Horizon</label>
+      <%= f.select :horizon, [ [ "13 weeks", "weeks_13" ], [ "6 months", "months_6" ] ], { selected: @horizon.to_s }, class: "mt-1 form-select" %></div>
+    <div><label class="block text-sm font-medium text-gray-700">Scenario (table)</label>
+      <%= f.select :scenario, Accounting::CashForecastQuery::SCENARIOS.map { |s| [ s.to_s.capitalize, s ] }, { selected: @scenario }, class: "mt-1 form-select" %></div>
+    <div><label class="block text-sm font-medium text-gray-700">Prudent: extra days</label>
+      <%= f.number_field :prudent_days, value: params[:prudent_days] || 10, class: "mt-1 form-input w-24" %></div>
+    <div><label class="block text-sm font-medium text-gray-700">Alert threshold (€)</label>
+      <%= f.number_field :threshold, value: @threshold, step: "0.01", class: "mt-1 form-input w-32" %></div>
+    <%= f.submit "Update", class: "btn-primary" %>
+  <% end %>
+
+  <div class="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+    <%= render Reports::ChartComponent.new(option: Charts::CashForecast.call(@forecasts, threshold: @threshold), title: "Closing cash balance per week, by scenario", height: 280) %>
+  </div>
+
+  <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50"><tr>
+      <% %w[Week Opening Inflows Outflows Closing].each_with_index do |h, i| %>
+        <th class="px-4 py-2 <%= i.zero? ? 'text-left' : 'text-right' %> font-medium text-gray-600"><%= h %></th>
+      <% end %>
+    </tr></thead>
+    <tbody class="divide-y divide-gray-100 bg-white">
+      <% @forecast.weeks.each do |w| %>
+        <tr class="<%= 'bg-red-50' if w.alert %>">
+          <td class="px-4 py-2"><%= w.index %> <span class="text-gray-500">(<%= l(w.from, format: :short) %> – <%= l(w.to, format: :short) %>)</span></td>
+          <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(w.opening, unit: "€") %></td>
+          <td class="px-4 py-2 text-right font-mono text-emerald-700" title="<%= w.sources.reject { |k, _| k == :payables || k == :vat }.map { |k, v| "#{k}: #{v}" }.join(', ') %>"><%= number_to_currency(w.inflows, unit: "€") %></td>
+          <td class="px-4 py-2 text-right font-mono text-red-700"><%= number_to_currency(w.outflows, unit: "€") %></td>
+          <td class="px-4 py-2 text-right font-mono font-semibold <%= 'text-red-700' if w.alert %>"><%= number_to_currency(w.closing, unit: "€") %><%= " ⚠" if w.alert %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <h2 class="mt-10 mb-3 text-sm font-semibold text-gray-700">Manual and recurring items</h2>
+  <table class="mb-4 min-w-full divide-y divide-gray-200 text-sm">
+    <tbody class="divide-y divide-gray-100 bg-white">
+      <% @items.each do |item| %>
+        <tr>
+          <td class="px-4 py-2"><%= item.label %></td>
+          <td class="px-4 py-2"><%= item.direction.humanize %> · <%= item.recurrence.humanize %> from <%= l(item.first_date, format: :short) %><%= " to #{l(item.end_date, format: :short)}" if item.end_date %></td>
+          <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(item.amount, unit: "€") %></td>
+          <td class="px-4 py-2 text-right"><%= button_to "Remove", accounting_cash_forecast_item_path(item), method: :delete, class: "text-xs text-red-700 underline" %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <%= form_with model: Accounting::CashForecastItem.new, url: accounting_cash_forecast_items_path, scope: :accounting_cash_forecast_item, class: "flex flex-wrap gap-3 items-end" do |f| %>
+    <%= f.text_field :label, placeholder: "Label", required: true, class: "form-input" %>
+    <%= f.select :direction, [ [ "Outflow", "outflow" ], [ "Inflow", "inflow" ] ], {}, class: "form-select" %>
+    <%= f.number_field :amount, step: "0.01", min: "0.01", placeholder: "Amount", required: true, class: "form-input w-32" %>
+    <%= f.select :recurrence, [ [ "Once", "once" ], [ "Monthly", "monthly" ], [ "Quarterly", "quarterly" ], [ "Yearly", "yearly" ] ], {}, class: "form-select" %>
+    <%= f.date_field :first_date, value: Date.current, required: true, class: "form-input" %>
+    <%= f.date_field :end_date, class: "form-input" %>
+    <%= f.submit "Add", class: "btn-primary" %>
+  <% end %>
+</div>

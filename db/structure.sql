@@ -377,6 +377,45 @@ ALTER SEQUENCE public.accounting_bank_transactions_id_seq OWNED BY public.accoun
 
 
 --
+-- Name: accounting_cash_forecast_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_cash_forecast_items (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    label character varying NOT NULL,
+    direction integer DEFAULT 1 NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    recurrence integer DEFAULT 0 NOT NULL,
+    first_date date NOT NULL,
+    end_date date,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT cash_forecast_items_amount_positive CHECK ((amount > (0)::numeric))
+);
+
+
+--
+-- Name: accounting_cash_forecast_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_cash_forecast_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_cash_forecast_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_cash_forecast_items_id_seq OWNED BY public.accounting_cash_forecast_items.id;
+
+
+--
 -- Name: accounting_depreciation_entries; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1688,6 +1727,13 @@ ALTER TABLE ONLY public.accounting_bank_transactions ALTER COLUMN id SET DEFAULT
 
 
 --
+-- Name: accounting_cash_forecast_items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_cash_forecast_items ALTER COLUMN id SET DEFAULT nextval('public.accounting_cash_forecast_items_id_seq'::regclass);
+
+
+--
 -- Name: accounting_depreciation_entries id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1966,6 +2012,14 @@ ALTER TABLE ONLY public.accounting_bank_reconciliation_reports
 
 ALTER TABLE ONLY public.accounting_bank_transactions
     ADD CONSTRAINT accounting_bank_transactions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_cash_forecast_items accounting_cash_forecast_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_cash_forecast_items
+    ADD CONSTRAINT accounting_cash_forecast_items_pkey PRIMARY KEY (id);
 
 
 --
@@ -2517,6 +2571,13 @@ CREATE INDEX index_accounting_bank_transactions_on_entity_id ON public.accountin
 --
 
 CREATE INDEX index_accounting_bank_transactions_on_journal_entry_id ON public.accounting_bank_transactions USING btree (journal_entry_id);
+
+
+--
+-- Name: index_accounting_cash_forecast_items_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_cash_forecast_items_on_entity_id ON public.accounting_cash_forecast_items USING btree (entity_id);
 
 
 --
@@ -3970,6 +4031,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000200'),
 ('20260929000100'),
 ('20260929000000'),
 ('20260928000100'),
