@@ -30,8 +30,8 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     context 'taux 21%' do
       subject(:invoice) do
         post_invoice_with_lines(type: :supplier, journal: purchase_journal,
-                                lines_data: [{ account: account_604,
-                                               unit_price: '1000.00', vat_rate: '21.00' }])
+                                lines_data: [ { account: account_604,
+                                               unit_price: '1000.00', vat_rate: '21.00' } ])
       end
 
       it 'la ligne dépense (604) a vat_code 81' do
@@ -68,8 +68,8 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     context 'taux 6%' do
       subject(:invoice) do
         post_invoice_with_lines(type: :supplier, journal: purchase_journal,
-                                lines_data: [{ account: account_604,
-                                               unit_price: '500.00', vat_rate: '6.00' }])
+                                lines_data: [ { account: account_604,
+                                               unit_price: '500.00', vat_rate: '6.00' } ])
       end
 
       it 'la ligne dépense (604) reste en grille 81, quel que soit le taux' do
@@ -86,8 +86,8 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     context 'taux 12%' do
       subject(:invoice) do
         post_invoice_with_lines(type: :supplier, journal: purchase_journal,
-                                lines_data: [{ account: account_604,
-                                               unit_price: '200.00', vat_rate: '12.00' }])
+                                lines_data: [ { account: account_604,
+                                               unit_price: '200.00', vat_rate: '12.00' } ])
       end
 
       it 'la ligne dépense (604) reste en grille 81, quel que soit le taux' do
@@ -102,8 +102,8 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
 
         it "la ligne dépense porte la grille #{grid}" do
           invoice = post_invoice_with_lines(type: :supplier, journal: purchase_journal,
-                                            lines_data: [{ account: expense_account,
-                                                           unit_price: '100.00', vat_rate: '21.00' }])
+                                            lines_data: [ { account: expense_account,
+                                                           unit_price: '100.00', vat_rate: '21.00' } ])
           expect(invoice.journal_entry.lines.find { |l| l.account == expense_account }.vat_code).to eq(grid)
         end
       end
@@ -112,8 +112,8 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     context 'taux 0% (exempté)' do
       subject(:invoice) do
         post_invoice_with_lines(type: :supplier, journal: purchase_journal,
-                                lines_data: [{ account: account_604,
-                                               unit_price: '300.00', vat_rate: '0.00' }])
+                                lines_data: [ { account: account_604,
+                                               unit_price: '300.00', vat_rate: '0.00' } ])
       end
 
       it 'la ligne dépense est quand même en grille 81 (avec ou sans TVA)' do
@@ -152,14 +152,14 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
 
       it 'toutes les lignes TVA ont vat_code 59' do
         vat_lines = invoice.journal_entry.lines.select { |l| l.account == account_411 }
-        expect(vat_lines.map(&:vat_code).uniq).to eq([59])
+        expect(vat_lines.map(&:vat_code).uniq).to eq([ 59 ])
       end
 
       it 'les montants TVA correspondent à chaque taux' do
         vat_lines = invoice.journal_entry.lines.select { |l| l.account == account_411 }
         amounts = vat_lines.map(&:debit).sort
         # 1000 * 21% = 210, 500 * 6% = 30
-        expect(amounts).to eq([BigDecimal('30.00'), BigDecimal('210.00')])
+        expect(amounts).to eq([ BigDecimal('30.00'), BigDecimal('210.00') ])
       end
 
       it "l écriture est équilibrée" do
@@ -177,8 +177,8 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     context 'taux 21%' do
       subject(:invoice) do
         post_invoice_with_lines(type: :customer, journal: sale_journal,
-                                lines_data: [{ account: account_700,
-                                               unit_price: '2000.00', vat_rate: '21.00' }])
+                                lines_data: [ { account: account_700,
+                                               unit_price: '2000.00', vat_rate: '21.00' } ])
       end
 
       it 'la ligne produit (700) a vat_code 3' do
@@ -210,8 +210,8 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     context 'taux 6%' do
       subject(:invoice) do
         post_invoice_with_lines(type: :customer, journal: sale_journal,
-                                lines_data: [{ account: account_700,
-                                               unit_price: '1000.00', vat_rate: '6.00' }])
+                                lines_data: [ { account: account_700,
+                                               unit_price: '1000.00', vat_rate: '6.00' } ])
       end
 
       it 'la ligne produit a vat_code 1' do
@@ -223,8 +223,8 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     context 'taux 12%' do
       subject(:invoice) do
         post_invoice_with_lines(type: :customer, journal: sale_journal,
-                                lines_data: [{ account: account_700,
-                                               unit_price: '800.00', vat_rate: '12.00' }])
+                                lines_data: [ { account: account_700,
+                                               unit_price: '800.00', vat_rate: '12.00' } ])
       end
 
       it 'la ligne produit a vat_code 2' do
@@ -236,8 +236,8 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     context 'taux 0% (exonéré/exporté)' do
       subject(:invoice) do
         post_invoice_with_lines(type: :customer, journal: sale_journal,
-                                lines_data: [{ account: account_700,
-                                               unit_price: '500.00', vat_rate: '0.00' }])
+                                lines_data: [ { account: account_700,
+                                               unit_price: '500.00', vat_rate: '0.00' } ])
       end
 
       it 'la ligne produit a vat_code 0 (grille 00)' do
@@ -362,7 +362,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     subject(:invoice) do
       post_invoice_with_lines(type: :customer, journal: sale_journal, invoice_partner: eu_partner,
                               vat_treatment: :intracom_services,
-                              lines_data: [{ account: account_700, unit_price: '1000.00', vat_rate: '21.00' }])
+                              lines_data: [ { account: account_700, unit_price: '1000.00', vat_rate: '21.00' } ])
     end
 
     it 'la ligne produit porte la grille 44 (services intracommunautaires)' do
@@ -392,7 +392,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     subject(:invoice) do
       post_invoice_with_lines(type: :supplier, journal: purchase_journal, invoice_partner: eu_partner,
                               vat_treatment: :intracom_services,
-                              lines_data: [{ account: account_604, unit_price: '1000.00', vat_rate: '21.00' }])
+                              lines_data: [ { account: account_604, unit_price: '1000.00', vat_rate: '21.00' } ])
     end
 
     it 'la ligne dépense porte la grille 88 (services intracommunautaires reçus)' do
@@ -426,7 +426,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
       subject(:invoice) do
         post_invoice_with_lines(type: :supplier, journal: purchase_journal, invoice_partner: eu_partner,
                                 vat_treatment: :construction_reverse_charge,
-                                lines_data: [{ account: account_604, unit_price: '500.00', vat_rate: '21.00' }])
+                                lines_data: [ { account: account_604, unit_price: '500.00', vat_rate: '21.00' } ])
       end
 
       it 'la ligne dépense porte la grille 87' do
@@ -449,7 +449,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     context 'entité sans prorata (déduction totale, comportement inchangé)' do
       subject(:invoice) do
         post_invoice_with_lines(type: :supplier, journal: purchase_journal,
-                                lines_data: [{ account: account_604, unit_price: '1000.00', vat_rate: '21.00' }])
+                                lines_data: [ { account: account_604, unit_price: '1000.00', vat_rate: '21.00' } ])
       end
 
       it 'aucune ligne de TVA non déductible n est créée' do
@@ -467,7 +467,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
 
       subject(:invoice) do
         post_invoice_with_lines(type: :supplier, journal: purchase_journal,
-                                lines_data: [{ account: account_604, unit_price: '1000.00', vat_rate: '21.00' }])
+                                lines_data: [ { account: account_604, unit_price: '1000.00', vat_rate: '21.00' } ])
       end
 
       it 'la ligne TVA déductible ne porte que 70% du montant (147,00)' do
@@ -549,7 +549,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
       subject(:invoice) do
         post_invoice_with_lines(type: :supplier, journal: purchase_journal, invoice_partner: eu_partner,
                                 vat_treatment: :intracom_services,
-                                lines_data: [{ account: account_604, unit_price: '1000.00', vat_rate: '21.00' }])
+                                lines_data: [ { account: account_604, unit_price: '1000.00', vat_rate: '21.00' } ])
       end
 
       it 'la ligne de TVA due (auto-liquidée) porte le montant complet, non affecté par le prorata' do

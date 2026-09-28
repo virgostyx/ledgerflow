@@ -122,6 +122,7 @@ Rails.application.routes.draw do
         get :annual_accounts
         get :aged_balance
         get :unlettered_lines
+        get :annual_customer_listing
         get :general_ledger
         get  :bank_reconciliation_report
         post :freeze_bank_reconciliation_report

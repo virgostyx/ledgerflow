@@ -1,0 +1,50 @@
+<div class="mx-auto max-w-5xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900">Annual customer listing</h1>
+
+  <%= form_with url: accounting_reports_annual_customer_listing_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Fiscal year</label>
+      <%= f.select :fiscal_year_id, @fiscal_years.map { |fy| [ fy.year, fy.id ] }, { selected: @fiscal_year&.id }, class: "mt-1 form-select" %>
+    </div>
+    <%= f.submit "Filter", class: "btn-primary" %>
+    <% if @result %>
+      <%= link_to "CSV", accounting_reports_annual_customer_listing_path(fiscal_year_id: @fiscal_year.id, format: :csv), class: "text-sm text-gray-600 underline" %>
+    <% end %>
+  <% end %>
+
+  <% if @result %>
+    <% if @result.exceeds_grids? %>
+      <p class="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        Listed total (<%= number_to_currency(@result.listed_total, unit: "€") %>) exceeds the domestic sale grids 00–03
+        (<%= number_to_currency(@result.grids_total, unit: "€") %>): check the VAT returns.
+      </p>
+    <% end %>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">VAT number</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">Customer</th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600">Amount excl. VAT</th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600">VAT</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">Anomalies</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @result.rows.each do |r| %>
+          <tr>
+            <td class="px-4 py-2 font-mono"><%= r.vat_number %></td>
+            <td class="px-4 py-2"><%= r.partner_name %></td>
+            <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(r.amount_excl_vat, unit: "€") %></td>
+            <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(r.vat_amount, unit: "€") %></td>
+            <td class="px-4 py-2 text-red-700"><%= r.anomalies.map { |a| a.to_s.humanize }.join(", ") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot><tr class="font-semibold">
+        <td class="px-4 py-2" colspan="2">Total listed (threshold 250 €)</td>
+        <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(@result.listed_total, unit: "€") %></td>
+        <td colspan="2"></td>
+      </tr></tfoot>
+    </table>
+  <% else %>
+    <p class="text-sm text-gray-500">No fiscal year.</p>
+  <% end %>
+</div>

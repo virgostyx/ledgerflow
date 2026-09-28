@@ -93,6 +93,24 @@ RSpec.describe Accounting::PostInvoice, type: :service do
     end
   end
 
+  describe '.call — période de TVA déjà déclarée' do
+    let(:invoice) { create(:invoice, :with_lines, invoice_type: :customer, fiscal_year: fiscal_year, journal: sale_journal) }
+
+    it 'refuse de comptabiliser dans une période soumise' do
+      create(:vat_declaration, fiscal_year: fiscal_year, status: :submitted,
+             period_start: invoice.invoice_date.beginning_of_month, period_end: invoice.invoice_date.end_of_month)
+      result = described_class.call(invoice: invoice)
+      expect(result).to be_failure
+      expect(result.message).to eq(I18n.t('accounting.invoices.errors.vat_period_filed'))
+    end
+
+    it 'accepte une période encore en brouillon' do
+      create(:vat_declaration, fiscal_year: fiscal_year, status: :draft,
+             period_start: invoice.invoice_date.beginning_of_month, period_end: invoice.invoice_date.end_of_month)
+      expect(described_class.call(invoice: invoice)).to be_success
+    end
+  end
+
   describe '.call — facture sans lignes' do
     let(:invoice) { create(:invoice, :draft, fiscal_year: fiscal_year, journal: sale_journal) }
     subject(:result) { described_class.call(invoice: invoice) }

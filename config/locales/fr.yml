@@ -63,6 +63,7 @@ fr:
       errors:
         already_posted: "Cette facture est déjà validée."
         no_lines:       "La facture doit comporter au moins une ligne."
+        vat_period_filed: "Cette facture tombe dans une période de TVA déjà déclarée. Comptabilisez-la dans une période ouverte ou régularisez la déclaration."
         no_journal:     "Aucun journal actif de type %{type} trouvé."
         cancel_not_posted: "Seule une facture comptabilisée peut être annulée."
         cancel_paid:       "Cette facture a des paiements ou figure dans un lot de paiement, annulez-les d'abord."

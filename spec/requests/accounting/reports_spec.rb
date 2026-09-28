@@ -323,4 +323,18 @@ RSpec.describe "Accounting::Reports", type: :request, bullet_strict: true do
       expect(response).to have_http_status(:redirect)
     end
   end
+
+  describe "GET /accounting/reports/annual_customer_listing" do
+    it "renders the listing" do
+      get accounting_reports_annual_customer_listing_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Annual customer listing")
+    end
+
+    it "exports CSV" do
+      get accounting_reports_annual_customer_listing_path(format: :csv)
+      expect(response.media_type).to eq("text/csv")
+      expect(response.body).to start_with("vat_number,name")
+    end
+  end
 end

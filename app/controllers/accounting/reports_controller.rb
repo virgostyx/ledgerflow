@@ -144,6 +144,26 @@ class Accounting::ReportsController < ApplicationController
     @balanced_groups = query.balanced_unlettered_groups
   end
 
+  # R10 (docs/dev/reports/spec.md §10): annual listing of Belgian VAT-registered customers.
+  def annual_customer_listing
+    authorize :report, :annual_customer_listing?, policy_class: Accounting::ReportPolicy
+
+    @fiscal_years = Accounting::FiscalYear.order(start_date: :desc)
+    @fiscal_year  = @fiscal_years.find_by(id: params[:fiscal_year_id]) || @fiscal_years.first
+    @result = Accounting::AnnualCustomerListingQuery.new(fiscal_year: @fiscal_year).call if @fiscal_year
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        csv = CSV.generate do |out|
+          out << %w[vat_number name amount_excl_vat vat_amount anomalies]
+          @result.rows.each { |r| out << [ r.vat_number, r.partner_name, r.amount_excl_vat, r.vat_amount, r.anomalies.join(" ") ] }
+        end
+        send_data csv, filename: "annual_customer_listing_#{@fiscal_year.year}.csv", type: "text/csv"
+      end
+    end
+  end
+
   # R06 (docs/dev/reports/spec.md §8): B + BN − SN = A. "Figer" enregistre le résultat
   # dans accounting_bank_reconciliation_reports (Accounting::BankReconciliationReport,
   # construit au socle), immuable.

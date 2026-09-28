@@ -368,7 +368,7 @@ RSpec.describe Accounting::Invoice, type: :model do
     it 'supprime une ligne via _destroy' do
       line = create(:invoice_line, invoice: invoice, account: account)
       expect {
-        invoice.update!(lines_attributes: [{ id: line.id, _destroy: '1' }])
+        invoice.update!(lines_attributes: [ { id: line.id, _destroy: '1' } ])
       }.to change { invoice.lines.reload.count }.by(-1)
     end
 

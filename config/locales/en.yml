@@ -104,6 +104,7 @@ en:
       errors:
         already_posted: "This invoice has already been posted."
         no_lines:       "The invoice must have at least one line."
+        vat_period_filed: "This invoice falls in a VAT period that is already filed. Post it in an open period or regularize the return."
         no_journal:     "No active journal of type %{type} found."
         cancel_not_posted: "Only a posted invoice can be cancelled."
         cancel_paid:       "This invoice has payments or is in a payment batch, undo them first."

@@ -7,6 +7,7 @@ class Accounting::VatDeclarationsController < ApplicationController
 
   def show
     authorize @declaration
+    @consistency = Accounting::VatConsistencyQuery.new(declaration: @declaration).call
   end
 
   def submit
