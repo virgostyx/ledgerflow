@@ -11,7 +11,7 @@ require "rails_helper"
 # sur `débit − crédit` brut, dans un sens unique, qui lui vaut 0 par construction
 # double-entrée (I1) — c'est ce qu'exprime concrètement « Σ soldes débiteurs =
 # Σ soldes créditeurs » de la balance de vérification.
-RSpec.describe "Invariant I2 — Σ soldes de la balance générale = 0", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I2 — Σ soldes de la balance générale = 0", type: :invariant do
   it "holds on the reference ledger, for every fiscal year that has entries" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

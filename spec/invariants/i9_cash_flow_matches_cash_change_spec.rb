@@ -2,7 +2,7 @@ require "rails_helper"
 
 # I9 (docs/dev/reports/spec.md §2.3): total cash flows = change in cash of accounts 55 and 57,
 # for both the indirect and the direct method.
-RSpec.describe "Invariant I9 — flux de trésorerie = variation de trésorerie", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I9 — flux de trésorerie = variation de trésorerie", type: :invariant do
   it "holds on the reference ledger for both methods" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

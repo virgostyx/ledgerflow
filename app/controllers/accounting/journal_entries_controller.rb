@@ -2,7 +2,7 @@ class Accounting::JournalEntriesController < ApplicationController
   before_action :set_entry, only: [ :show, :edit, :update, :post_entry, :reverse ]
 
   def index
-    @pagy, @entries = pagy(policy_scope(Accounting::JournalEntry).filter_by(filter_params).order(entry_date: :desc, created_at: :desc).autofilter(**autofilter_params))
+    @pagy, @entries = pagy(policy_scope(Accounting::JournalEntry).includes(:journal).filter_by(filter_params).order(entry_date: :desc, created_at: :desc).autofilter(**autofilter_params))
   end
 
   def show
@@ -90,7 +90,7 @@ class Accounting::JournalEntriesController < ApplicationController
   private
 
   def set_entry
-    @entry = Accounting::JournalEntry.find(params[:id])
+    @entry = Accounting::JournalEntry.includes(lines: [ :account, :partner ]).find(params[:id])
   end
 
   def entry_params

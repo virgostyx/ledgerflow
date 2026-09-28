@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe Accounting::AnnualAccounts, type: :query, bullet_strict: true do
+RSpec.describe Accounting::AnnualAccounts, type: :query do
   include_context "with_open_fiscal_year"
 
   let(:journal) { create(:journal, :purchase) }

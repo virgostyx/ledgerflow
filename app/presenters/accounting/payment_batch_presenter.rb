@@ -20,6 +20,6 @@ class Accounting::PaymentBatchPresenter
   end
 
   def line_count
-    @payment_batch.lines.count
+    @payment_batch.lines.size
   end
 end

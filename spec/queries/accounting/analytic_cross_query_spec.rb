@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe Accounting::AnalyticCrossQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::AnalyticCrossQuery, type: :query do
   include_context "with_open_fiscal_year"
 
   let!(:proj_axis)  { create(:analytical_axis, :proj) }

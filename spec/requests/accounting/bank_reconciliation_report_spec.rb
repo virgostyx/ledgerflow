@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe "Accounting::Reports bank_reconciliation_report", type: :request, bullet_strict: true do
+RSpec.describe "Accounting::Reports bank_reconciliation_report", type: :request do
   include_context "with_open_fiscal_year"
 
   let(:accountant) { create(:user, role: :accountant) }

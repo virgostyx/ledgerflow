@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe Accounting::OverdueReminders, type: :query, bullet_strict: true do
+RSpec.describe Accounting::OverdueReminders, type: :query do
   include_context "with_open_fiscal_year"
 
   let(:today) { Date.new(2026, 9, 26) }

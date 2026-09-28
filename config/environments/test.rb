@@ -60,15 +60,13 @@ Rails.application.configure do
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
 
-  # Bullet N+1 query detection. Enabled for every spec, but only raises (fails
-  # the test) for specs tagged :bullet_strict — see spec/support/bullet_strict.rb.
-  # The app has pre-existing N+1s outside the reports module; raising globally
-  # would fail specs unrelated to this work. "unused eager loading" is disabled:
-  # it false-positives on the tiny fixtures typical of unit specs (a single row
-  # doesn't need preloading, but still legitimately needs it in production).
+  # Bullet N+1 query detection: raises (fails the test) on every spec.
+  # "unused eager loading" is disabled: it false-positives on the tiny fixtures
+  # typical of unit specs (a single row doesn't need preloading, but still
+  # legitimately needs it in production).
   config.after_initialize do
     Bullet.enable                      = true
-    Bullet.raise                       = false
+    Bullet.raise                       = true
     Bullet.unused_eager_loading_enable = false
   end
 end

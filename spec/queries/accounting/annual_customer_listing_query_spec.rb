@@ -3,7 +3,7 @@ require "rails_helper"
 # R10 listing annuel des clients assujettis (docs/dev/reports/spec.md §10): Belgian customers
 # whose annual HTVA turnover exceeds the threshold — VAT number, name, HTVA, VAT — with
 # anomalies for a missing or invalid VAT number.
-RSpec.describe Accounting::AnnualCustomerListingQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::AnnualCustomerListingQuery, type: :query do
   include_context "with_open_fiscal_year"
   include_context "with_pcmn_accounts"
 

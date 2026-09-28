@@ -4,7 +4,7 @@ require "rails_helper"
 # return's balance (grid 71/72) must equal the movement of 451 (VAT payable) minus 411
 # (VAT recoverable) over the period, apart from entries that carry no VAT grid (payments,
 # manual regularizations), which are listed as the explained part.
-RSpec.describe Accounting::VatConsistencyQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::VatConsistencyQuery, type: :query do
   include_context "with_open_fiscal_year"
   include_context "with_pcmn_accounts"
 

@@ -7,7 +7,7 @@ class Accounting::PaymentRemindersController < ApplicationController
   def create
     authorize Accounting::PaymentReminder
 
-    partners = Accounting::Partner.where(id: Array(params[:partner_ids]))
+    partners = Accounting::Partner.includes(:entity).where(id: Array(params[:partner_ids]))
     return redirect_to(accounting_payment_reminders_path, alert: t("accounting.payment_reminders.errors.none_selected")) if partners.empty?
 
     failures = partners.filter_map do |partner|

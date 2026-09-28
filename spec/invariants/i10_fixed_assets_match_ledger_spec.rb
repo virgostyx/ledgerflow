@@ -2,7 +2,7 @@ require "rails_helper"
 
 # I10 (docs/dev/reports/spec.md §2.3): the fixed-asset register agrees with accounts 21–24,
 # their accumulated-depreciation accounts and the year's depreciation charge (630).
-RSpec.describe "Invariant I10 — registre des immobilisations = comptabilité", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I10 — registre des immobilisations = comptabilité", type: :invariant do
   it "holds on the reference ledger, which carries a depreciated asset" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

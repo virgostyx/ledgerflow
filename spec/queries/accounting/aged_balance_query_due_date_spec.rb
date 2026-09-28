@@ -2,7 +2,7 @@ require "rails_helper"
 
 # docs/dev/reports/spec.md §7: "Sans échéance: date de pièce + conditions de
 # paiement du tiers, à défaut la date de pièce."
-RSpec.describe Accounting::AgedBalanceQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::AgedBalanceQuery, type: :query do
   include_context "with_open_fiscal_year"
 
   let(:as_of)   { Date.current }

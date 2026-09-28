@@ -3,7 +3,7 @@ class Accounting::Settings::JournalsController < Accounting::Settings::BaseContr
   before_action :load_accounts, only: [ :new, :create, :edit, :update ]
 
   def index
-    @pagy, @journals = pagy(Accounting::Journal.includes(:default_account).order(:journal_type, :code).autofilter(**autofilter_params))
+    @pagy, @journals = pagy(Accounting::Journal.includes(:default_account, :journal_entries).order(:journal_type, :code).autofilter(**autofilter_params))
   end
 
   def new

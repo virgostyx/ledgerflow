@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-RSpec.describe Accounting::IntracomListingQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::IntracomListingQuery, type: :query do
   include_context 'with_open_fiscal_year'
   include_context 'with_pcmn_accounts'
 

@@ -6,7 +6,7 @@ require "rails_helper"
 # existante), qui restera vraie une fois R01/R02 reconstruits sur le socle
 # Reports::*. Both queries sign the balance the same way (the account's own
 # normal_balance direction), so comparing them for the same account is valid.
-RSpec.describe "Invariant I3 — grand livre = balance, par compte", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I3 — grand livre = balance, par compte", type: :invariant do
   it "holds on the reference ledger, for every account with activity in 2026" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

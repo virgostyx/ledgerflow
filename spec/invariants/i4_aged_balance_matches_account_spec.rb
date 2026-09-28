@@ -2,7 +2,7 @@ require "rails_helper"
 
 # I4 (docs/dev/reports/spec.md §2.3): solde du compte 400 = total de la balance
 # âgée clients ; compte 440 = balance âgée fournisseurs.
-RSpec.describe "Invariant I4 — balance âgée = solde du compte collectif", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I4 — balance âgée = solde du compte collectif", type: :invariant do
   it "holds on the reference ledger, for customers (400) and suppliers (440)" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

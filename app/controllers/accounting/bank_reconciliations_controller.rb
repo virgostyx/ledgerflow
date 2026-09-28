@@ -19,7 +19,7 @@ class Accounting::BankReconciliationsController < ApplicationController
       return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.not_allocatable")
     end
 
-    @invoices = Accounting::Invoice.customer.posted.includes(:partner).order(:partner_id, :due_date, :id)
+    @invoices = Accounting::Invoice.customer.posted.includes(:partner, :credit_notes).order(:partner_id, :due_date, :id)
   end
 
   def update
@@ -100,7 +100,9 @@ class Accounting::BankReconciliationsController < ApplicationController
     end
     return if raw.values.any? { |amount| amount.nil? || !amount.finite? }
 
-    invoices = Accounting::Invoice.customer.posted.where(id: raw.keys).index_by { |i| i.id.to_s }
+    invoices = Accounting::Invoice.customer.posted
+                                   .includes(:credit_notes, :journal, :cash_journal, :credited_invoice, :entity, partner: :entity)
+                                   .where(id: raw.keys).index_by { |i| i.id.to_s }
     raw.reject { |_, amount| amount.zero? }.map { |id, amount| [ invoices[id], amount ] }
   end
 

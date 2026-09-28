@@ -2,7 +2,7 @@ require "rails_helper"
 
 # docs/dev/reports/spec.md §6: chaque compte forme une section avec un solde
 # d'ouverture ("Report") avant les mouvements de la période.
-RSpec.describe Accounting::GeneralLedgerQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::GeneralLedgerQuery, type: :query do
   include_context "with_open_fiscal_year"
 
   let(:journal) { create(:journal, :purchase) }

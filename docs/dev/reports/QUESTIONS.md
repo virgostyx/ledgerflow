@@ -2,15 +2,15 @@
 
 Journal des règles douteuses ou manquantes rencontrées pendant l'implémentation (règle du §16.1 de `docs/dev/reports/spec.md`). Comportement le plus prudent appliqué à chaque fois ; à faire valider.
 
-## Bullet limité aux specs `bullet_strict` (socle, 2026-09-27)
+## Bullet limité aux specs `bullet_strict` — RÉSOLU (2026-09-28)
 
-Activer `Bullet.raise = true` globalement en test fait échouer 41 specs préexistants (hors périmètre rapports : factures, lettrage, immobilisations, rappels de paiement, journaux de paramétrage) qui contiennent de vrais N+1. Les corriger un par un est un chantier séparé, sans rapport avec les rapports comptables.
+Activer `Bullet.raise = true` globalement en test faisait échouer 41 specs préexistants (hors périmètre rapports : factures, lettrage, immobilisations, rappels de paiement, journaux de paramétrage) qui contenaient de vrais N+1. Corrigés un par un dans un chantier séparé, sans rapport avec les rapports comptables.
 
-**Décision appliquée** : Bullet reste actif en log seul pour toute la suite, et ne fait échouer que les specs explicitement taguées `bullet_strict: true` (voir `spec/support/bullet_strict.rb`) — appliqué pour l'instant aux specs de `app/queries/accounting/*_query.rb` et `spec/requests/accounting/reports_spec.rb`.
+**Décision historique (2026-09-27)** : en attendant, Bullet restait actif en log seul pour toute la suite, et ne faisait échouer que les specs explicitement taguées `bullet_strict: true` — appliqué aux specs de `app/queries/accounting/*_query.rb` et `spec/requests/accounting/reports_spec.rb`.
 
-**À faire valider** : traiter les 41 N+1 existants dans un chantier dédié, puis retirer le tag `bullet_strict` au profit d'un `Bullet.raise = true` global.
+**Fait (2026-09-28)** : les 41 N+1 corrigés à la source (`.includes`/`.preload` dans les contrôleurs, services et l'association `Accounting::Invoice#related_journal_entries` — voir historique git pour le détail fichier par fichier). Suite complète lancée deux fois de suite, 2861 exemples, 0 échec les deux fois (le premier passage vert seul n'aurait pas suffi : Bullet peut donner un faux négatif selon l'ordre aléatoire des specs et l'état de la connexion/transaction entre exemples — piège déjà identifié avant de commencer ce chantier, pas une découverte après coup). `Bullet.raise = true` est maintenant en dur dans `config/environments/test.rb`, le tag `bullet_strict: true` a été retiré des ~40 fichiers qui le portaient (il ne faisait plus rien de différent du réglage global), et `spec/support/bullet_strict.rb` a été supprimé.
 
-Liste des specs actuellement en échec sous Bullet strict global (pour référence du futur chantier) : `bank_reconciliation_spec.rb`, `fixed_assets_spec.rb`, `invoices_spec.rb`, `journal_entries_spec.rb`, `opening_invoice_spec.rb`, `payment_batches_spec.rb`, `payment_reminders_spec.rb`, `recurring_invoices_spec.rb`, `settings/journals_spec.rb`, `journal_entry_workflow_spec.rb` (system), `lettering_workflow_spec.rb` (system).
+Note : une tentative précédente avait conclu par erreur à une correction incidente de ce chantier, sur la base d'un seul passage vert flaky. Cette fois, la résolution est confirmée par deux passages verts consécutifs de la suite complète.
 
 ## `reconciliation_items` non créée : réutilisation de `accounting_line_allocations` (socle, 2026-09-27)
 

@@ -2,7 +2,7 @@ require "rails_helper"
 
 # R03 — vue centralisatrice (docs/dev/reports/spec.md §6): par journal et par
 # mois, nombre d'écritures, total débit/crédit.
-RSpec.describe Accounting::JournalSummaryQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::JournalSummaryQuery, type: :query do
   include_context "with_open_fiscal_year"
 
   let(:journal)       { create(:journal, :purchase) }

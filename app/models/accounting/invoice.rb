@@ -163,7 +163,7 @@ class Accounting::Invoice < ApplicationRecord
              id: journal_entry_id, invoice_id: id)
       .distinct
       .order(:entry_date)
-      .includes(:journal, lines: :account)
+      .includes(:journal, lines: [ :account, :partner ])
   end
 
   private

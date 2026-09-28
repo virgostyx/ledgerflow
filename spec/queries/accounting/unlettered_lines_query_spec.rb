@@ -3,7 +3,7 @@ require "rails_helper"
 # R05 (docs/dev/reports/spec.md §7): lignes ouvertes (non lettrées à `as_of`) sur les
 # comptes lettrables, une ligne par ligne d'écriture, plus les groupes équilibrés
 # laissés sans lettrage.
-RSpec.describe Accounting::UnletteredLinesQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::UnletteredLinesQuery, type: :query do
   include_context "with_open_fiscal_year"
 
   let(:as_of)   { Date.current }

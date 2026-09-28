@@ -1,7 +1,7 @@
 require "rails_helper"
 
 # I11 (docs/dev/reports/spec.md §2.3): Σ regularizations by type = balance of accounts 490–493 at the cut-off.
-RSpec.describe "Invariant I11 — régularisations = comptes 490 à 493", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I11 — régularisations = comptes 490 à 493", type: :invariant do
   it "holds on the reference ledger, which carries a deferred charge" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

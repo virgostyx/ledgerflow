@@ -3,7 +3,7 @@ require "rails_helper"
 # I1 (docs/dev/reports/spec.md §2.3): Σ débit = Σ crédit, globalement et pour
 # chaque écriture. Run on the reference ledger and on random balanced
 # registers, per §15.
-RSpec.describe "Invariant I1 — Σ débit = Σ crédit", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I1 — Σ débit = Σ crédit", type: :invariant do
   it "holds globally and per entry on the reference ledger" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

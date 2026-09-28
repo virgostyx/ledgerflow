@@ -2,7 +2,7 @@ require "rails_helper"
 
 # R06 (docs/dev/reports/spec.md §8): B (relevé) + BN (comptabilisé, pas sur le relevé)
 # − SN (sur le relevé, pas comptabilisé) doit égaler A (solde comptable réel).
-RSpec.describe Accounting::BankReconciliationQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::BankReconciliationQuery, type: :query do
   include_context "with_open_fiscal_year"
 
   let(:as_of)         { Date.current }

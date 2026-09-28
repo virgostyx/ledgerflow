@@ -9,7 +9,7 @@ class Accounting::MatchBankTransaction
       match_fees(transaction)
   end
 
-  def self.open_customer_invoices = Accounting::Invoice.customer.invoice.posted.where.not(invoice_number: nil).includes(:credit_notes)
+  def self.open_customer_invoices = Accounting::Invoice.customer.invoice.posted.where.not(invoice_number: nil).includes(:credit_notes, :journal, :cash_journal, :credited_invoice, :entity, partner: :entity)
 
   def self.match_batch(tx)
     return unless tx.debit? && tx.reference.present?

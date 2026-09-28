@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe Accounting::FixedAssetMovementsQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::FixedAssetMovementsQuery, type: :query do
   include_context "with entity"
 
   let!(:fy2026) { create(:fiscal_year, year: 2026, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 12, 31), status: :pre_closing) }

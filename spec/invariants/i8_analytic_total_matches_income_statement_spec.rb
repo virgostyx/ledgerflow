@@ -1,7 +1,7 @@
 require "rails_helper"
 
 # I8 (docs/dev/reports/spec.md §2.3): analytic total (allocated + Non ventilé) = income statement result.
-RSpec.describe "Invariant I8 — total analytique = compte de résultat", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I8 — total analytique = compte de résultat", type: :invariant do
   it "holds on the reference ledger, with allocated and unallocated lines" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

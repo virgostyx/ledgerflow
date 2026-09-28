@@ -4,7 +4,7 @@ require "rails_helper"
 # du bilan, avant affectation. Accounting::AnnualAccounts#balanced? already asserts
 # assets == liabilities (result included); this also checks R08's own result heading
 # is what closes that gap, on the reference ledger.
-RSpec.describe "Invariant I6 — bilan équilibré, résultat cohérent", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I6 — bilan équilibré, résultat cohérent", type: :invariant do
   it "holds on the reference ledger" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

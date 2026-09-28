@@ -3,7 +3,7 @@ require "rails_helper"
 # I5 (docs/dev/reports/spec.md §2.3): solde comptable du compte 55x = solde du relevé
 # ± opérations en suspens. Le jeu de référence couvre déjà rapproché/BN/SN/paiement
 # groupé/virement interne (§15) — vérifié ici via Accounting::BankReconciliationQuery.
-RSpec.describe "Invariant I5 — solde bancaire = relevé ± suspens", type: :invariant, bullet_strict: true do
+RSpec.describe "Invariant I5 — solde bancaire = relevé ± suspens", type: :invariant do
   it "holds a zero gap on every reference bank account" do
     entity = Seeders::ReferenceLedgerSeeder.call
 

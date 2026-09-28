@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe Accounting::DashboardKpis, type: :service, bullet_strict: true do
+RSpec.describe Accounting::DashboardKpis, type: :service do
   include_context "with_open_fiscal_year"
 
   let(:journal) { create(:journal, :purchase) }

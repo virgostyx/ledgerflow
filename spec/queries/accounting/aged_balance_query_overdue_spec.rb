@@ -1,7 +1,7 @@
 require "rails_helper"
 
 # docs/dev/reports/spec.md §7: colonnes "Dont échu" et "% échu" (§7 colonnes).
-RSpec.describe Accounting::AgedBalanceQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::AgedBalanceQuery, type: :query do
   include_context "with_open_fiscal_year"
 
   let(:as_of)   { Date.current }

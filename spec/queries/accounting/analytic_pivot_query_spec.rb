@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe Accounting::AnalyticPivotQuery, type: :query, bullet_strict: true do
+RSpec.describe Accounting::AnalyticPivotQuery, type: :query do
   include_context "with_open_fiscal_year"
 
   let!(:axis)  { create(:analytical_axis, :proj) }
