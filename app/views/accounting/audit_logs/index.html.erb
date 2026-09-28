@@ -1,0 +1,58 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-4 text-2xl font-bold text-gray-900">Audit trail</h1>
+
+  <% if @chain.nil? %>
+    <p class="mb-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+      Chain not verified (<%= @chain_size %> entries). <%= link_to "Verify now", accounting_audit_logs_path(request.query_parameters.merge(verify: "1")), class: "underline" %>
+    </p>
+  <% elsif @chain.intact? %>
+    <p id="chain-status" class="mb-4 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Chain intact on <%= @chain.count %> entries.</p>
+  <% else %>
+    <p id="chain-status" class="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">Chain broken at entry #<%= @chain.broken_id %>.</p>
+  <% end %>
+
+  <%= form_with url: accounting_audit_logs_path, method: :get, class: "mb-6 flex flex-wrap gap-3 items-end text-sm" do |f| %>
+    <div><label class="block font-medium text-gray-700">From</label><%= f.date_field :from, value: params[:from], class: "mt-1 form-input" %></div>
+    <div><label class="block font-medium text-gray-700">To</label><%= f.date_field :to, value: params[:to], class: "mt-1 form-input" %></div>
+    <div><label class="block font-medium text-gray-700">User</label>
+      <%= f.select :user_id, @options[:users], { include_blank: "Any", selected: params[:user_id] }, class: "mt-1 form-select" %></div>
+    <div><label class="block font-medium text-gray-700">Action</label>
+      <%= f.select :action_name, @options[:actions], { include_blank: "Any", selected: params[:action_name] }, class: "mt-1 form-select" %></div>
+    <div><label class="block font-medium text-gray-700">Object type</label>
+      <%= f.select :auditable_type, @options[:types], { include_blank: "Any", selected: params[:auditable_type] }, class: "mt-1 form-select" %></div>
+    <div><label class="block font-medium text-gray-700">Entry reference</label><%= f.text_field :reference, value: params[:reference], class: "mt-1 form-input w-36" %></div>
+    <div><label class="block font-medium text-gray-700">Search</label><%= f.text_field :q, value: params[:q], class: "mt-1 form-input w-40" %></div>
+    <label class="flex items-center gap-1"><%= f.check_box :with_reason, { checked: params[:with_reason] == "1" }, "1", "" %> With a reason</label>
+    <%= f.submit "Filter", class: "btn-primary" %>
+  <% end %>
+
+  <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50"><tr>
+      <% %w[When User Action Object Summary IP Request].each do |h| %><th class="px-3 py-2 text-left font-medium text-gray-600"><%= h %></th><% end %><th></th>
+    </tr></thead>
+    <tbody class="divide-y divide-gray-100 bg-white">
+      <% @logs.each do |log| %>
+        <tr>
+          <td class="px-3 py-2 whitespace-nowrap"><%= l(log.created_at, format: :short) %></td>
+          <td class="px-3 py-2"><%= log.user_email || "—" %></td>
+          <td class="px-3 py-2 font-mono"><%= log.action %></td>
+          <td class="px-3 py-2">
+            <% if log.auditable_type == "Accounting::JournalEntry" %>
+              <%= link_to "Entry ##{log.auditable_id}", accounting_journal_entry_path(log.auditable_id), class: "text-primary-600 underline" %>
+            <% else %><%= log.auditable_type.demodulize %> #<%= log.auditable_id %><% end %>
+          </td>
+          <td class="px-3 py-2 text-gray-600">
+            <% if (changes = log.payload.is_a?(Hash) && log.payload["changes"]) %><%= changes.keys.first(4).join(", ") %><%= "…" if changes.size > 4 %>
+            <% else %><%= log.payload.to_json.truncate(60) %><% end %>
+            <% if log.reason.present? %><span class="italic text-gray-500"> — <%= log.reason %></span><% end %>
+          </td>
+          <td class="px-3 py-2 font-mono text-xs"><%= log.ip_address %></td>
+          <td class="px-3 py-2 font-mono text-xs"><%= log.request_id&.first(8) %></td>
+          <td class="px-3 py-2"><%= link_to "Detail", accounting_audit_log_path(log), class: "text-primary-600 underline" %></td>
+        </tr>
+      <% end %>
+      <% if @logs.empty? %><tr><td colspan="8" class="px-3 py-4 text-center text-gray-500">No entry matches.</td></tr><% end %>
+    </tbody>
+  </table>
+  <%= render "shared/pagination", pagy: @pagy %>
+</div>

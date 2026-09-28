@@ -12,6 +12,7 @@ class Accounting::JournalEntry < ApplicationRecord
   include Accounting::Statusable
   include Accounting::Immutable
   include Accounting::Auditable
+  include Accounting::AuditTrailed
 
   belongs_to :journal,     class_name: "Accounting::Journal"
   belongs_to :fiscal_year, class_name: "Accounting::FiscalYear"
@@ -41,4 +42,7 @@ class Accounting::JournalEntry < ApplicationRecord
       .search(q[:q], "reference", "description")
       .between(:entry_date, q[:from], q[:to])
   end
+
+  # Posting and reversal are logged by their services (post_entry, reverse_entry): one audit row per action.
+  def skip_audit? = saved_change_to_status? && status.to_s.in?(%w[posted reversed])
 end

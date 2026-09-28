@@ -24,6 +24,7 @@ fr:
       zero_side:         "L'écriture doit comporter un montant au débit ou au crédit."
       unbalanced_entry:   "Écriture déséquilibrée : débit %{debit} ≠ crédit %{credit}."
       reverse_not_posted:  "Seule une écriture comptabilisée peut être contre-passée."
+      reverse_reason_required: "Un motif est obligatoire pour contre-passer une écriture validée."
       reverse_year_closed: "L'exercice est clôturé, l'écriture ne peut pas être contre-passée."
       reverse_has_source:  "Cette écriture provient d'une facture ou d'un paiement, annulez-la depuis celui-ci."
       reverse_lettered:    "Des lignes sont lettrées ou partiellement affectées, annulez-le avant de contre-passer."

@@ -281,7 +281,12 @@ CREATE TABLE public.accounting_audit_logs (
     ip_address character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    entity_id bigint
+    entity_id bigint,
+    previous_hash character varying,
+    content_hash character varying,
+    reason text,
+    user_agent character varying,
+    request_id character varying
 );
 
 
@@ -2588,10 +2593,24 @@ CREATE INDEX index_accounting_audit_logs_on_created_at ON public.accounting_audi
 
 
 --
+-- Name: index_accounting_audit_logs_on_entity_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_audit_logs_on_entity_and_id ON public.accounting_audit_logs USING btree (entity_id, id);
+
+
+--
 -- Name: index_accounting_audit_logs_on_entity_id_and_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_accounting_audit_logs_on_entity_id_and_created_at ON public.accounting_audit_logs USING btree (entity_id, created_at);
+
+
+--
+-- Name: index_accounting_audit_logs_on_request_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_audit_logs_on_request_id ON public.accounting_audit_logs USING btree (request_id);
 
 
 --
@@ -4108,6 +4127,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000600'),
 ('20260929000500'),
 ('20260929000400'),
 ('20260929000300'),

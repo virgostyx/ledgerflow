@@ -1,6 +1,7 @@
 # docs/dev/reports/spec.md §10: for a vat_code and document type, the grids it goes to —
 # base, VAT due (self-assessed on reverse charge), deductible VAT, credit-note recap.
 class Accounting::VatGridMapping < ApplicationRecord
+  include Accounting::AuditTrailed
   self.table_name = "accounting_vat_grid_mappings"
 
   enum :document_type, { invoice: 0, credit_note: 1 }

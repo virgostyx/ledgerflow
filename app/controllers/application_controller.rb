@@ -4,6 +4,7 @@ class ApplicationController < ActionController::Base
   set_current_tenant_through_filter
 
   before_action :authenticate_user!
+  before_action :set_audit_context
   before_action :set_locale
   before_action :set_current_entity
   before_action :require_entity!
@@ -16,6 +17,14 @@ class ApplicationController < ActionController::Base
   helper_method :filter_params, :filters_active?, :autofilter_params
 
   private
+
+  # Who / where / which request, read by the audit trail (Accounting::AuditLog.record!).
+  def set_audit_context
+    Current.user       = current_user
+    Current.ip_address = request.remote_ip
+    Current.user_agent = request.user_agent.to_s.first(255)
+    Current.request_id = request.request_id
+  end
 
   FILTER_KEYS = %i[q status journal_id fiscal_year_id partner_type country from to overdue unpaid
                    inactive period_type bank_account_id direction].freeze

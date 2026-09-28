@@ -1,6 +1,7 @@
 # A group of journal lines on one account that cancel each other out (total debit == total credit).
 # The balance rule is enforced by Accounting::LetterLines, not here, so partial lettering stays possible later.
 class Accounting::Lettering < ApplicationRecord
+  include Accounting::AuditTrailed
   self.table_name = "accounting_letterings"
 
   acts_as_tenant :entity

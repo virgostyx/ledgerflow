@@ -1,0 +1,36 @@
+<div class="mx-auto max-w-4xl px-4 py-8">
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900">Audit entry #<%= @log.id %></h1>
+    <%= link_to "Back to the audit trail", accounting_audit_logs_path, class: "btn-secondary text-sm" %>
+  </div>
+
+  <dl class="mb-6 grid grid-cols-2 gap-3 text-sm">
+    <% { "When" => l(@log.created_at, format: :long), "User" => @log.user_email || "—", "Action" => @log.action,
+         "Object" => "#{@log.auditable_type} ##{@log.auditable_id}", "IP address" => @log.ip_address, "User agent" => @log.user_agent,
+         "Request" => @log.request_id, "Reason" => @log.reason, "Hash" => @log.content_hash, "Previous hash" => @log.previous_hash }.each do |label, value| %>
+      <div><dt class="text-xs font-medium uppercase tracking-wider text-gray-500"><%= label %></dt><dd class="mt-1 break-all font-mono"><%= value.presence || "—" %></dd></div>
+    <% end %>
+  </dl>
+
+  <% if @changes.present? %>
+    <table id="audit-diff" class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <th class="px-3 py-2 text-left font-medium text-gray-600">Field</th>
+        <th class="px-3 py-2 text-left font-medium text-gray-600">Before</th>
+        <th class="px-3 py-2 text-left font-medium text-gray-600">After</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @changes.each do |field, (before, after)| %>
+          <tr>
+            <td class="px-3 py-2 font-mono"><%= field %></td>
+            <td class="px-3 py-2 font-mono text-red-700"><%= before.nil? ? "—" : before.to_json %></td>
+            <td class="px-3 py-2 font-mono text-emerald-700"><%= after.nil? ? "—" : after.to_json %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <h2 class="mb-2 text-sm font-semibold text-gray-700">Payload</h2>
+    <pre class="overflow-x-auto rounded border border-gray-200 bg-gray-50 p-3 text-xs"><%= JSON.pretty_generate(@log.payload) %></pre>
+  <% end %>
+</div>

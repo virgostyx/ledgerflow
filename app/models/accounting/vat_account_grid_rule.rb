@@ -1,6 +1,7 @@
 # Purchase base grid chosen by the expense account's prefix (notice n°149-156): 60 goods,
 # 61/64 various goods and services, 20-27 investments. Longest matching prefix wins.
 class Accounting::VatAccountGridRule < ApplicationRecord
+  include Accounting::AuditTrailed
   self.table_name = "accounting_vat_account_grid_rules"
 
   enum :sens, { purchase: 1 }

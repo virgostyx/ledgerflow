@@ -31,6 +31,7 @@ en:
       zero_side:          "The entry must have an amount in either debit or credit."
       unbalanced_entry:   "Unbalanced entry: debit %{debit} ≠ credit %{credit}."
       reverse_not_posted:  "Only a posted entry can be reversed."
+      reverse_reason_required: "A reason is required to reverse a validated entry."
       reverse_year_closed: "The fiscal year is closed, the entry cannot be reversed."
       reverse_has_source:  "This entry comes from an invoice or a payment, cancel it from there."
       reverse_lettered:    "Some lines are lettered or partly allocated, undo that before reversing."

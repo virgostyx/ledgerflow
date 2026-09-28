@@ -1,4 +1,5 @@
 class Accounting::JournalEntryLine < ApplicationRecord
+  include Accounting::AuditTrailed
   self.table_name = "accounting_journal_entry_lines"
 
   acts_as_tenant :entity

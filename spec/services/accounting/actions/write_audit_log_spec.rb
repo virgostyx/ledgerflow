@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Accounting::Actions::WriteAuditLog, type: :service do
   include_context 'with_open_fiscal_year'
 
-  let(:entry) { create(:journal_entry, :with_balanced_lines, fiscal_year: fiscal_year) }
+  let!(:entry) { create(:journal_entry, :with_balanced_lines, fiscal_year: fiscal_year) }
 
   describe '.execute' do
     it 'crée une entrée AuditLog avec l action post_entry' do

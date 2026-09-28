@@ -7,7 +7,7 @@ RSpec.describe Accounting::ReverseJournalEntry, type: :service do
 
   before { Accounting::PostJournalEntry.call(entry: entry) }
 
-  subject(:result) { described_class.call(entry: entry.reload) }
+  subject(:result) { described_class.call(entry: entry.reload, reason: "Wrong account") }
 
   describe 'success' do
     it 'succeeds' do
@@ -56,7 +56,7 @@ RSpec.describe Accounting::ReverseJournalEntry, type: :service do
     end
 
     it 'refuses an already reversed entry' do
-      described_class.call(entry: entry.reload)
+      described_class.call(entry: entry.reload, reason: "Wrong account")
       expect(described_class.call(entry: entry.reload)).to be_failure
     end
 
@@ -87,5 +87,12 @@ RSpec.describe Accounting::ReverseJournalEntry, type: :service do
       entry.update_columns(source_type: 'Accounting::Invoice', source_id: 1)
       expect { result }.not_to change { Accounting::JournalEntry.count }
     end
+  end
+
+  it "refuses a manual reversal without a reason, and stores the reason in the audit trail" do
+    expect(described_class.call(entry: entry.reload).message).to eq(I18n.t("accounting.errors.reverse_reason_required"))
+    expect(entry.reload).to be_posted
+    described_class.call(entry: entry.reload, reason: "Booked twice")
+    expect(Accounting::AuditLog.for_record(entry).for_action("reverse_entry").sole.reason).to eq("Booked twice")
   end
 end

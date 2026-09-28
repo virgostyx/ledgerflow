@@ -1,4 +1,5 @@
 class Accounting::VatDeclaration < ApplicationRecord
+  include Accounting::AuditTrailed
   self.table_name = "accounting_vat_declarations"
 
   acts_as_tenant :entity

@@ -1,6 +1,7 @@
 # docs/dev/reports/spec.md §10: a VAT nature. Not tenant-scoped: VAT law reference data.
 # Read through Accounting::VatGrid (cached); saving here resets that cache.
 class Accounting::VatCode < ApplicationRecord
+  include Accounting::AuditTrailed
   self.table_name = "accounting_vat_codes"
 
   enum :sens,   { sale: 0, purchase: 1 }

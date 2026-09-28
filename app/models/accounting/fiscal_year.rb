@@ -1,4 +1,5 @@
 class Accounting::FiscalYear < ApplicationRecord
+  include Accounting::AuditTrailed
   self.table_name = "accounting_fiscal_years"
 
   acts_as_tenant :entity

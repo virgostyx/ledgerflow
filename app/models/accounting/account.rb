@@ -6,6 +6,7 @@ class Accounting::Account < ApplicationRecord
 
   include Accounting::MonetaryPrecision
   include Accounting::Auditable
+  include Accounting::AuditTrailed
 
   enum :account_type,   { asset: 0, liability: 1, equity: 2, revenue: 3, expense: 4 }
   enum :normal_balance, { debit: 0, credit: 1 }

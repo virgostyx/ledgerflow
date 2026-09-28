@@ -2,9 +2,9 @@
 # The original is kept and flagged reversed. Entries born from an invoice or payment batch must be undone
 # from their source document (which then calls with from_source: true), and lettered lines must be unlettered first.
 class Accounting::ReverseJournalEntry
-  def self.call(entry:, from_source: false)
+  def self.call(entry:, from_source: false, reason: nil)
     ctx = LightService::Context.make(entry: entry, reversal: nil)
-    refusal = refusal_for(entry, from_source)
+    refusal = refusal_for(entry, from_source, reason)
     return ctx.tap { |c| c.fail!(refusal) } if refusal
 
     ApplicationRecord.transaction do
@@ -18,7 +18,7 @@ class Accounting::ReverseJournalEntry
       end
 
       entry.reverse!
-      Accounting::AuditLog.record!(auditable: entry, action: "reverse_entry", payload: { reversal_id: reversal.id })
+      Accounting::AuditLog.record!(auditable: entry, action: "reverse_entry", payload: { reversal_id: reversal.id }, reason: reason.presence)
       ctx[:reversal] = reversal
     end
     ctx
@@ -27,10 +27,12 @@ class Accounting::ReverseJournalEntry
     ctx
   end
 
-  def self.refusal_for(entry, from_source)
+  # A correction of a validated entry needs a reason (R18); reversals born from a source document carry theirs.
+  def self.refusal_for(entry, from_source, reason)
     return I18n.t("accounting.errors.reverse_not_posted")  unless entry.posted?
     return I18n.t("accounting.errors.reverse_year_closed") if entry.fiscal_year.closed?
     return I18n.t("accounting.errors.reverse_has_source")  if entry.source_type.present? && !from_source
+    return I18n.t("accounting.errors.reverse_reason_required") if reason.blank? && !from_source
     return unless entry.lines.where.not(lettering_id: nil).exists? || Accounting::LineAllocation.touching(entry.lines.select(:id)).exists?
 
     I18n.t("accounting.errors.reverse_lettered")
