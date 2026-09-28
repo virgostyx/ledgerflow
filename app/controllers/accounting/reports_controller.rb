@@ -144,6 +144,13 @@ class Accounting::ReportsController < ApplicationController
     @balanced_groups = query.balanced_unlettered_groups
   end
 
+  # R16 (docs/dev/reports/spec.md §13): fixed-asset movements table and I10 checks.
+  def fixed_asset_movements
+    authorize :report, :fixed_asset_movements?, policy_class: Accounting::ReportPolicy
+
+    @result = Accounting::FixedAssetMovementsQuery.new(fiscal_year: @fiscal_year).call
+  end
+
   # R15 (docs/dev/reports/spec.md §12): cash-flow statement, indirect and direct methods (I9).
   def cash_flow
     authorize :report, :cash_flow?, policy_class: Accounting::ReportPolicy

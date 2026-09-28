@@ -1,0 +1,74 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900">Fixed-asset movements — <%= @fiscal_year.year %></h1>
+    <%= link_to "Asset register and depreciation", accounting_fixed_assets_path(fiscal_year_id: @fiscal_year.id), class: "btn-secondary text-sm" %>
+  </div>
+
+  <% money = ->(v) { number_to_currency(v, unit: "€") } %>
+  <% if @result.categories.empty? %>
+    <p class="text-sm text-gray-500">No fixed assets recorded.</p>
+  <% else %>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <th class="px-3 py-2 text-left font-medium text-gray-600">Category</th>
+        <% [ "Start", "Acquisitions", "Disposals", "End" ].each do |h| %><th class="px-3 py-2 text-right font-medium text-gray-600">A. Cost — <%= h %></th><% end %>
+        <% [ "Start", "Booked", "Reversed", "End" ].each do |h| %><th class="px-3 py-2 text-right font-medium text-gray-600">B. Depreciation — <%= h %></th><% end %>
+        <th class="px-3 py-2 text-right font-medium text-gray-600">C. Net value (A − B)</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% (@result.categories + [ @result.totals ]).each do |c| %>
+          <tr class="<%= 'font-bold bg-gray-50' if c.code.nil? %>">
+            <td class="px-3 py-2"><%= c.code %> <%= c.label %></td>
+            <% %i[cost_begin acquisitions disposals cost_end dep_begin dep_booked dep_reversed dep_end net_value].each do |col| %>
+              <td class="px-3 py-2 text-right font-mono"><%= money.(c[col]) %></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <% if @result.disposals.any? %>
+    <h2 class="mt-8 mb-3 text-sm font-semibold text-gray-700">Disposals of the year (gain or loss is shown, never booked here)</h2>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <% %w[Asset Date Cost Accumulated Net\ book\ value Price Gain/loss].each_with_index do |h, i| %>
+          <th class="px-3 py-2 <%= i < 2 ? 'text-left' : 'text-right' %> font-medium text-gray-600"><%= h %></th>
+        <% end %>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @result.disposals.each do |d| %>
+          <tr>
+            <td class="px-3 py-2"><%= d.asset.description %></td>
+            <td class="px-3 py-2"><%= l(d.disposed_on, format: :short) %></td>
+            <td class="px-3 py-2 text-right font-mono"><%= money.(d.cost) %></td>
+            <td class="px-3 py-2 text-right font-mono"><%= money.(d.accumulated) %></td>
+            <td class="px-3 py-2 text-right font-mono"><%= money.(d.net_book_value) %></td>
+            <td class="px-3 py-2 text-right font-mono"><%= d.price ? money.(d.price) : "—" %></td>
+            <td class="px-3 py-2 text-right font-mono <%= d.gain_loss&.negative? ? 'text-red-700' : 'text-emerald-700' %>"><%= d.gain_loss ? money.(d.gain_loss) : "—" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <h2 class="mt-8 mb-3 text-sm font-semibold text-gray-700">Register vs ledger (I10)</h2>
+  <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50"><tr>
+      <th class="px-3 py-2 text-left font-medium text-gray-600">Check</th>
+      <th class="px-3 py-2 text-right font-medium text-gray-600">Register</th>
+      <th class="px-3 py-2 text-right font-medium text-gray-600">Ledger</th>
+      <th class="px-3 py-2 text-right font-medium text-gray-600">Difference</th>
+    </tr></thead>
+    <tbody class="divide-y divide-gray-100 bg-white">
+      <% @result.checks.each do |c| %>
+        <tr>
+          <td class="px-3 py-2"><%= c.label %></td>
+          <td class="px-3 py-2 text-right font-mono"><%= money.(c.register) %></td>
+          <td class="px-3 py-2 text-right font-mono"><%= money.(c.ledger) %></td>
+          <td class="px-3 py-2 text-right font-mono font-semibold <%= c.difference.zero? ? 'text-emerald-700' : 'text-red-700' %>"><%= money.(c.difference) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

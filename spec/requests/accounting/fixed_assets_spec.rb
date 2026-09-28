@@ -239,6 +239,11 @@ RSpec.describe "Accounting::FixedAssets", type: :request do
       end
 
       describe "POST /accounting/fixed_assets/:id/dispose" do
+        it "records the optional sale price for the gain/loss report" do
+          post dispose_accounting_fixed_asset_path(asset), params: { disposed_on: "2026-12-05", disposal_price: "1500.50" }
+          expect(asset.reload.disposal_price).to eq(BigDecimal("1500.50"))
+        end
+
         it "disposes of the asset and reports the net book value written off" do
           post dispose_accounting_fixed_asset_path(asset), params: { disposed_on: "2026-12-05" }
 

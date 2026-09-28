@@ -55,6 +55,7 @@ module Seeders
           bank_scenarios
           deliberate_anomalies
           analytic_scenarios
+          fixed_asset_scenario
         end
       end
 
@@ -63,6 +64,19 @@ module Seeders
     end
 
     private
+
+    # R16 scenario (§15): a 6 000 € asset contributed in kind, 5 years, depreciated for 2026. Booked against
+    # the capital account so bank, aged-balance and VAT figures are untouched.
+    def fixed_asset_scenario
+      date = Date.new(2026, 3, 1)
+      post_od(@fiscal_year_2026, date, "Apport en nature: matériel informatique", [ [ "240200", :debit, 6000 ], [ CASH, :credit, 6000 ] ])
+      Accounting::FixedAsset.create!(
+        description: "Matériel informatique (apport)", acquisition_date: date, in_service_date: date, acquisition_value: 6000,
+        useful_life_years: 5, asset_account: Accounting::Account.find_by!(code: "240200"), vat_amount_initial: 0
+      )
+      result = Accounting::PostDepreciation.call(fiscal_year: @fiscal_year_2026)
+      raise result.message if result.failure?
+    end
 
     # R12 scenario (§15): 3 projects, one line split 50/50, one fully allocated, the rest unallocated.
     def analytic_scenarios

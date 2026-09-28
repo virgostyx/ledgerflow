@@ -41,6 +41,11 @@
       <%= date_field_tag :disposed_on, Date.current, required: true,
             class: 'block w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500' %>
     </div>
+    <div>
+      <%= label_tag :disposal_price, 'Sale price excl. VAT (optional, for the gain/loss report only)', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= number_field_tag :disposal_price, nil, step: '0.01', min: '0',
+            class: 'block w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500' %>
+    </div>
     <div class="flex gap-3">
       <%= f.submit 'Dispose', class: 'btn-primary',
             data: { turbo_confirm: 'Dispose of this asset? Its depreciation and exit entries are posted and cannot be edited here.' } %>

@@ -403,4 +403,16 @@ RSpec.describe "Accounting::Reports", type: :request, bullet_strict: true do
       expect(sheets).to include('name="Indirect"', 'name="Direct"')
     end
   end
+
+  describe "R16 fixed-asset movements" do
+    it "renders the empty state and, with an asset, the movements and checks" do
+      get accounting_reports_fixed_asset_movements_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("No fixed assets recorded.", "Register vs ledger")
+
+      create(:fixed_asset, :depreciable, acquisition_date: fiscal_year.start_date + 1, in_service_date: fiscal_year.start_date + 1)
+      get accounting_reports_fixed_asset_movements_path
+      expect(response.body).to include("Furniture and vehicles")
+    end
+  end
 end

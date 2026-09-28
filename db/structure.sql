@@ -512,7 +512,8 @@ CREATE TABLE public.accounting_fixed_assets (
     useful_life_years integer,
     residual_value numeric(15,2) DEFAULT 0.0 NOT NULL,
     depreciation_method integer DEFAULT 0 NOT NULL,
-    disposal_journal_entry_id bigint
+    disposal_journal_entry_id bigint,
+    disposal_price numeric(15,2)
 );
 
 
@@ -4032,6 +4033,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000400'),
 ('20260929000300'),
 ('20260929000200'),
 ('20260929000100'),

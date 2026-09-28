@@ -51,6 +51,7 @@ class Accounting::FixedAssetsController < ApplicationController
     disposed_on = parsed_date(params[:disposed_on])
     return redirect_to disposal_accounting_fixed_asset_path(@fixed_asset), alert: t("accounting.fixed_assets.errors.invalid_date") unless disposed_on
 
+    @fixed_asset.disposal_price = params[:disposal_price].presence
     result = Accounting::DisposeFixedAsset.call(fixed_asset: @fixed_asset, disposed_on: disposed_on)
     if result.success?
       redirect_to accounting_fixed_assets_path,

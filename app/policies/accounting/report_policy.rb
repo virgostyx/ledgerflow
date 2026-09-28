@@ -9,6 +9,7 @@ class Accounting::ReportPolicy < ApplicationPolicy
   def annual_customer_listing? = trial_balance?
   def cash_forecast? = trial_balance?
   def cash_flow? = trial_balance?
+  def fixed_asset_movements? = trial_balance?
   def bank_reconciliation_report? = trial_balance?
   def analytic_by_project? = trial_balance?
   def analytic_by_axis?    = trial_balance?

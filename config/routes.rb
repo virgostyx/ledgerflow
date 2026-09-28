@@ -121,6 +121,7 @@ Rails.application.routes.draw do
         get :trial_balance
         get :cash_forecast
         get :cash_flow
+        get :fixed_asset_movements
         get :balance_sheet
         get :income_statement
         get :annual_accounts
