@@ -90,6 +90,7 @@ CREATE TABLE public.accounting_accounts (
     custom boolean DEFAULT false NOT NULL,
     entity_id bigint NOT NULL,
     fixed_cost boolean DEFAULT false NOT NULL,
+    cash_flow_category character varying,
     CONSTRAINT chk_account_class CHECK (((account_class >= 1) AND (account_class <= 7)))
 );
 
@@ -4031,6 +4032,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000300'),
 ('20260929000200'),
 ('20260929000100'),
 ('20260929000000'),

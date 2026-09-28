@@ -27,6 +27,7 @@ class Accounting::Account < ApplicationRecord
   validates :account_class,  presence: true,
                              inclusion: { in: 1..7 }
   validates :account_type,   presence: true
+  validates :cash_flow_category, inclusion: { in: Accounting::CashFlowCategories::CATEGORIES }, allow_blank: true
   validates :normal_balance, presence: true
 
   validate :code_immutable_on_update, on: :update

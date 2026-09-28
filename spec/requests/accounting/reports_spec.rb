@@ -384,4 +384,23 @@ RSpec.describe "Accounting::Reports", type: :request, bullet_strict: true do
       expect(flash[:alert]).to be_present
     end
   end
+
+  describe "R15 cash flow" do
+    it "renders both methods and the waterfall" do
+      create_posted_entry
+      %w[indirect direct].each do |m|
+        get accounting_reports_cash_flow_path(method_view: m)
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('data-controller="chart"', "Check (I9)")
+      end
+    end
+
+    it "exports an XLSX workbook with an Indirect and a Direct sheet" do
+      get accounting_reports_cash_flow_path(format: :xlsx)
+      expect(response.media_type).to eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      workbook = Zip::File.open_buffer(StringIO.new(response.body)).find_entry("xl/workbook.xml").get_input_stream.read
+      sheets = workbook
+      expect(sheets).to include('name="Indirect"', 'name="Direct"')
+    end
+  end
 end

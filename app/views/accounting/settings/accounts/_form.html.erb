@@ -75,6 +75,11 @@
       <%= f.check_box :fixed_cost, class: "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" %>
       <%= f.label :fixed_cost, "Fixed cost (used by the dashboard's monthly fixed costs)", class: "text-sm font-medium text-gray-700" %>
     </div>
+    <div>
+      <%= f.label :cash_flow_category, "Cash-flow category (direct method)", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :cash_flow_category, Accounting::CashFlowCategories::CATEGORIES.map { |c| [ c.humanize, c ] },
+            { include_blank: "Default for this account family" }, class: "mt-1 form-select" %>
+    </div>
   <% end %>
 
   <div class="flex items-center gap-3 pt-2">

@@ -144,6 +144,22 @@ class Accounting::ReportsController < ApplicationController
     @balanced_groups = query.balanced_unlettered_groups
   end
 
+  # R15 (docs/dev/reports/spec.md §12): cash-flow statement, indirect and direct methods (I9).
+  def cash_flow
+    authorize :report, :cash_flow?, policy_class: Accounting::ReportPolicy
+
+    @from = parse_date(params[:from], @fiscal_year.start_date)
+    @to   = parse_date(params[:to], @fiscal_year.end_date)
+    @method = params[:method_view] == "direct" ? :direct : :indirect
+    @statement = Accounting::CashFlowStatement.new(fiscal_year: @fiscal_year, from: @from, to: @to).call
+
+    respond_to do |format|
+      format.html
+      format.xlsx { send_data cash_flow_xlsx(@statement), filename: "cash_flow_#{@fiscal_year.year}.xlsx",
+                              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+    end
+  end
+
   # R14 (docs/dev/reports/spec.md §12): weekly cash forecast, three scenarios for the chart.
   def cash_forecast
     authorize :report, :cash_forecast?, policy_class: Accounting::ReportPolicy
@@ -339,6 +355,18 @@ class Accounting::ReportsController < ApplicationController
   end
 
   AGED_BALANCE_CSV_COLUMNS = (Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated total overdue]).freeze
+
+  def cash_flow_xlsx(statement)
+    package = Axlsx::Package.new
+    { "Indirect" => statement.indirect, "Direct" => statement.direct }.each do |name, sheet_data|
+      package.workbook.add_worksheet(name: name) do |sheet|
+        sheet.add_row([ "Section", "Line", "Amount" ])
+        sheet_data.lines.each { |l| sheet.add_row([ l.section.to_s.humanize, l.label, l.amount.to_f ], types: [ :string, :string, :float ]) }
+        sheet.add_row([ "Net change in cash", "", sheet_data.total.to_f ], types: [ :string, :string, :float ])
+      end
+    end
+    package.to_stream.read
+  end
 
   def aged_balance_csv
     require "csv"

@@ -120,6 +120,7 @@ Rails.application.routes.draw do
       namespace :reports do
         get :trial_balance
         get :cash_forecast
+        get :cash_flow
         get :balance_sheet
         get :income_statement
         get :annual_accounts
