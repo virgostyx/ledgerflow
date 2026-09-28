@@ -38,7 +38,20 @@ Le "moteur de rubriques" du §9 existait déjà — `Accounting::AnnualAccounts`
 
 Reporté : deuxième modèle ("Présentation de gestion" + EBITDA), `reclassify_contra_balances`, drill-down rubrique→comptes→R02, vue trimestrielle, exports PDF/JSON.
 
-**Prochaine étape** : R09/R10 (TVA) — **décision à prendre avant de coder** : garder/étendre `VatDeclaration`/`VatGridQuery` existant, ou migrer vers le modèle normalisé `vat_codes`/`vat_periods`/`vat_transactions` de la spec. Puis R11 (budget BudgetFlow, bloqué tant que le contrat API réel n'est pas confirmé).
+## R09/R10 — migration TVA phase 1 : `vat_codes`/`vat_grid_mappings` (2026-09-28)
+
+Décision utilisateur : migrer vers le modèle normalisé de la spec. En creusant `Accounting::VatGrid` (le mapping actuel), deux découvertes ont changé la portée :
+
+1. **Le mapping actuel est déjà rigoureux** — il cite les numéros de notice officielle du SPF (ex. "notice n°149-156", "notice n°98, 252"), pas des approximations. Le PDF officiel `docs/dev/notice explicative TVA.pdf` (104 pages, SPF Finances, janvier 2014) confirme que tous les numéros de grille utilisés existent bien dans le formulaire réel. La mention "approximations internes" du handoff VAT précédent semble obsolète.
+2. **Le mapping se scinde en deux dimensions indépendantes** : côté vente, le taux/la nature pilote directement la grille (migrable proprement) ; côté achat, la grille de base (81/82/83) dépend du **préfixe du compte de charge**, pas du code TVA — une dimension que `vat_grid_mappings` (code × type document → grille) ne prévoit pas nativement.
+
+**Décision appliquée (portée resserrée par rapport à la question initiale)** : `accounting_vat_codes`/`accounting_vat_grid_mappings` créées et seedées pour le **côté vente uniquement**, miroir exact des constantes `Accounting::VatGrid` (`RATE_TO_GRID`, `TREATMENT_BASE_GRID[:sale]`, `VAT_LINE_GRID[:sale]`, `SALE_CREDIT_VAT_GRID`, `#sale_credit_grid`) — vérifié par un test de cohérence dédié (`spec/models/accounting/vat_code_consistency_spec.rb`) qui échoue si les deux divergent. Le côté achat (grilles 81-88, autoliquidation, notes de crédit) reste inchangé en Ruby.
+
+**Phase 2 volontairement non faite maintenant** : brancher `Accounting::Actions::GenerateInvoiceJournalEntry` (le chemin d'écriture des factures, déjà en production) sur ces tables au lieu des constantes Ruby figées. Raison : ces constantes sont référencées comme des **constantes Ruby au chargement de classe** (`VAT_GRID_SALE = Accounting::VatGrid::RATE_TO_GRID[:sale]` dans `GenerateInvoiceJournalEntry`), pas comme des appels de méthode — les rendre "pilotées par les données" au sens propre exigerait soit (a) de les charger depuis la base au premier chargement du module (fragile : un déploiement frais avant le seed casserait silencieusement le calcul TVA, aucune alerte), soit (b) de convertir tous les appels en lectures dynamiques à l'exécution (touche le chemin d'écriture des factures, risque de régression sur un système déjà correct et testé). Les deux options dépassent la portée raisonnable de cette session sur un système de facturation TVA en production.
+
+**Résultat concret pour l'instant** : les tables existent, sont seedées, servent de référence data-driven consultable pour R09/R10 (par exemple pour labelliser/lister les codes TVA dans un écran), garanties synchronisées avec la logique réelle par le test de cohérence — mais **ne pilotent pas encore** la génération des écritures. À rouvrir explicitement si le besoin de configuration à chaud (sans redéploiement) se présente.
+
+**Prochaine étape** : construire R09 (panneau de cohérence I7) et R10 (listing annuel avec validation modulo 97, listing intracommunautaire — déjà partiellement couvert par `IntracomListingQuery`) en s'appuyant sur `VatGridQuery`/`VatDeclaration` existants, pas sur les nouvelles tables (qui ne sont pas encore la source de vérité). Puis R11 (budget BudgetFlow, bloqué tant que le contrat API réel n'est pas confirmé).
 
 ## `Reports::Exporters::Pdf` via Prawn, pas Ferrum (socle, 2026-09-27)
 

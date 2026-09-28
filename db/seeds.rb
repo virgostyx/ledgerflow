@@ -1,6 +1,10 @@
 # Step 1: Seed users (entity needs a created_by user)
 Seeders::UsersSeeder.call
 
+# VAT codes/grid mappings (docs/dev/reports/spec.md §10) are not tenant-scoped — VAT law,
+# not per-entity data — so they're seeded once here, outside any entity's tenant block.
+Seeders::VatCodesSeeder.call
+
 # Step 2: Create default entity
 admin_user = User.find_by!(email: "admin@ledgerflow.test")
 
