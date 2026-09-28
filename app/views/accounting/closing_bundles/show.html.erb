@@ -1,0 +1,29 @@
+<div class="mx-auto max-w-3xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900">Closing and audit files</h1>
+
+  <%= form_with url: accounting_closing_bundle_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
+    <div><label class="block text-sm font-medium text-gray-700">Fiscal year</label>
+      <%= f.select :fiscal_year_id, @fiscal_years.map { |fy| [ fy.year, fy.id ] }, { selected: @fiscal_year.id }, class: "mt-1 form-select" %></div>
+    <%= f.submit "Select", class: "btn-primary" %>
+  <% end %>
+
+  <div class="space-y-4">
+    <div class="rounded-lg border border-gray-200 bg-white p-5">
+      <h2 class="font-semibold text-gray-900">Closing bundle (ZIP)</h2>
+      <p class="mt-1 text-sm text-gray-600">PDFs of the trial balance, general ledger, aged balances, balance sheet, income statement, VAT declarations,
+        fixed-asset movements and regularizations, the frozen bank reconciliations, the filing data and a manifest with the SHA-256 of each file.</p>
+      <%= link_to "Download closing bundle", bundle_accounting_closing_bundle_path(fiscal_year_id: @fiscal_year.id), class: "btn-primary mt-3 inline-block text-sm" %>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-5">
+      <h2 class="font-semibold text-gray-900">Full audit export (ZIP of CSV and JSON)</h2>
+      <p class="mt-1 text-sm text-gray-600">Entries with all their lines, chart of accounts, partners, journals and VAT codes. SAF-T is available on request only.</p>
+      <%= link_to "Download audit export", audit_export_accounting_closing_bundle_path(fiscal_year_id: @fiscal_year.id), class: "btn-primary mt-3 inline-block text-sm" %>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-5">
+      <h2 class="font-semibold text-gray-900">Filing data (JSON)</h2>
+      <p class="mt-1 text-sm text-gray-600">Balance sheet and income statement figures by rubric code, and the year's VAT declaration grids. The official XML filings are a separate phase.</p>
+      <%= link_to "Download filing data", filing_data_accounting_closing_bundle_path(fiscal_year_id: @fiscal_year.id), class: "btn-primary mt-3 inline-block text-sm" %>
+    </div>
+  </div>
+  <p class="mt-6 text-xs text-gray-500">Each download is recorded in the audit trail. Verify a bundle with <code>rake closing_bundle:verify FILE=path/to/bundle.zip</code>.</p>
+</div>

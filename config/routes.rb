@@ -87,6 +87,12 @@ Rails.application.routes.draw do
         post :acknowledge, on: :collection
       end
 
+      resource :closing_bundle, only: [ :show ] do
+        get :bundle
+        get :audit_export
+        get :filing_data
+      end
+
       resources :audit_logs, only: [ :index, :show ]
 
       resources :accruals, only: [ :index, :new, :create, :destroy ] do
