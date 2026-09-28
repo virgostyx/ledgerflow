@@ -1,0 +1,42 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900">Analytic pivot</h1>
+
+  <%= form_with url: accounting_reports_analytic_pivot_path, method: :get, class: "mb-6 flex flex-wrap gap-4 items-end" do |f| %>
+    <%= hidden_field_tag :fiscal_year_id, @fiscal_year.id %>
+    <div><label class="block text-sm font-medium text-gray-700">Axis</label>
+      <%= f.select :axis_id, @axes.map { |a| [ "#{a.code} — #{a.label_fr}", a.id ] }, { selected: @axis&.id }, class: "mt-1 form-select" %></div>
+    <div><label class="block text-sm font-medium text-gray-700">Columns</label>
+      <%= f.select :columns, [ [ "Analytical accounts", "analytic" ], [ "Months", "month" ] ], { selected: @columns.to_s }, class: "mt-1 form-select" %></div>
+    <div><label class="block text-sm font-medium text-gray-700">From</label><%= f.date_field :from, value: @from, class: "mt-1 form-input" %></div>
+    <div><label class="block text-sm font-medium text-gray-700">To</label><%= f.date_field :to, value: @to, class: "mt-1 form-input" %></div>
+    <%= f.submit "Filter", class: "btn-primary" %>
+  <% end %>
+
+  <% if @pivot.nil? || @pivot.rows.empty? %>
+    <p class="text-sm text-gray-500">No data for this selection.</p>
+  <% else %>
+    <% col_label = ->(c) { c == :unassigned ? "Non ventilé" : (@columns == :month ? c : @labels[c]&.code) } %>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <th class="px-4 py-2 text-left font-medium text-gray-600">Account</th>
+        <% @pivot.columns.each do |c| %><th class="px-4 py-2 text-right font-medium text-gray-600"><%= col_label.(c) %></th><% end %>
+        <th class="px-4 py-2 text-right font-medium text-gray-600">Total</th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @pivot.rows.each do |row| %>
+          <tr>
+            <td class="px-4 py-2"><span class="font-mono"><%= row.account.code %></span> <%= row.account.label_fr %></td>
+            <% @pivot.columns.each do |c| %>
+              <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(row.cells.fetch(c, 0), unit: "€") %></td>
+            <% end %>
+            <td class="px-4 py-2 text-right font-mono font-semibold"><%= number_to_currency(row.total, unit: "€") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot class="bg-gray-50 font-bold"><tr>
+        <td class="px-4 py-2" colspan="<%= @pivot.columns.size + 1 %>">Net result (revenue − expenses)</td>
+        <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(@pivot.net_result, unit: "€") %></td>
+      </tr></tfoot>
+    </table>
+  <% end %>
+</div>

@@ -54,6 +54,7 @@ module Seeders
           lettering_scenarios
           bank_scenarios
           deliberate_anomalies
+          analytic_scenarios
         end
       end
 
@@ -62,6 +63,25 @@ module Seeders
     end
 
     private
+
+    # R12 scenario (§15): 3 projects, one line split 50/50, one fully allocated, the rest unallocated.
+    def analytic_scenarios
+      axis = Accounting::AnalyticalAxis.find_or_create_by!(code: "PROJ") { |a| a.label_fr = "Projets" }
+      projects = %w[A B C].map do |k|
+        Accounting::AnalyticalAccount.find_or_create_by!(analytical_axis: axis, code: "PRJ-#{k}") { |a| a.label_fr = "Projet #{k}" }
+      end
+      lines = Accounting::JournalEntryLine.joins(:account, :journal_entry)
+        .where(accounting_journal_entries: { fiscal_year_id: @fiscal_year_2026.id, status: Accounting::JournalEntry.statuses[:posted] })
+        .where(accounting_accounts: { account_class: [ 6, 7 ] }).order(:id).limit(3).to_a
+      return if lines.empty?
+
+      annotate(lines[0], axis, projects[0] => 100)
+      annotate(lines[1], axis, projects[1] => 50, projects[2] => 50) if lines[1]
+    end
+
+    def annotate(line, axis, split)
+      split.each { |acct, pct| Accounting::AnalyticalAnnotation.create!(journal_entry_line: line, analytical_axis: axis, analytical_account: acct, percentage: pct) }
+    end
 
     attr_reader :entity, :fiscal_year_2025, :fiscal_year_2026, :customer, :supplier, :bank_1, :bank_2
 

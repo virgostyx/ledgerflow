@@ -221,6 +221,31 @@ class Accounting::ReportsController < ApplicationController
     @rows = @axis ? Accounting::AnalyticByAxisQuery.new(fiscal_year: @fiscal_year, axis: @axis).call : []
   end
 
+  # R12 (docs/dev/reports/spec.md §12): pivot of class 6/7 accounts by analytical account or month.
+  def analytic_pivot
+    authorize :report, :analytic_pivot?, policy_class: Accounting::ReportPolicy
+
+    @axes    = Accounting::AnalyticalAxis.active.ordered
+    @axis    = Accounting::AnalyticalAxis.find_by(id: params[:axis_id]) || @axes.first
+    @columns = params[:columns] == "month" ? :month : :analytic
+    @from    = parse_date(params[:from], @fiscal_year.start_date)
+    @to      = parse_date(params[:to], @fiscal_year.end_date)
+    @pivot   = Accounting::AnalyticPivotQuery.new(fiscal_year: @fiscal_year, axis: @axis, period: @from..@to, columns: @columns).call if @axis || @columns == :month
+    @labels  = Accounting::AnalyticalAccount.where(id: Array(@pivot&.columns) - [ :unassigned ]).index_by(&:id) if @columns == :analytic
+  end
+
+  def analytic_margin
+    authorize :report, :analytic_margin?, policy_class: Accounting::ReportPolicy
+
+    @axes = Accounting::AnalyticalAxis.active.ordered
+    @axis = Accounting::AnalyticalAxis.find_by(id: params[:axis_id]) || @axes.first
+    @allocation_key = params[:allocation_key] == "direct_costs" ? :direct_costs : :revenue
+    @from = parse_date(params[:from], @fiscal_year.start_date)
+    @to   = parse_date(params[:to], @fiscal_year.end_date)
+    @margin = Accounting::AnalyticMarginQuery.new(fiscal_year: @fiscal_year, axis: @axis, period: @from..@to,
+                                                  allocation_key: @allocation_key).call if @axis
+  end
+
   def analytic_cross
     authorize :report, :analytic_cross?, policy_class: Accounting::ReportPolicy
 

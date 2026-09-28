@@ -159,7 +159,9 @@ CREATE TABLE public.accounting_analytical_annotations (
     analytical_account_id bigint CONSTRAINT accounting_analytical_annotation_analytical_account_id_not_null NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    entity_id bigint NOT NULL
+    entity_id bigint NOT NULL,
+    percentage numeric(5,2) DEFAULT 100.0 NOT NULL,
+    CONSTRAINT analytical_annotations_percentage_range CHECK (((percentage > (0)::numeric) AND (percentage <= (100)::numeric)))
 );
 
 
@@ -3119,10 +3121,10 @@ CREATE UNIQUE INDEX index_analytical_accounts_on_axis_and_code ON public.account
 
 
 --
--- Name: index_analytical_annotations_on_line_and_axis; Type: INDEX; Schema: public; Owner: -
+-- Name: index_analytical_annotations_on_line_axis_account; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_analytical_annotations_on_line_and_axis ON public.accounting_analytical_annotations USING btree (journal_entry_line_id, analytical_axis_id);
+CREATE UNIQUE INDEX index_analytical_annotations_on_line_axis_account ON public.accounting_analytical_annotations USING btree (journal_entry_line_id, analytical_axis_id, analytical_account_id);
 
 
 --
@@ -3967,6 +3969,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000000'),
 ('20260928000100'),
 ('20260928000000'),
 ('20260927000400'),

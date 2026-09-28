@@ -1,0 +1,44 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900">Margin by analytical account</h1>
+
+  <%= form_with url: accounting_reports_analytic_margin_path, method: :get, class: "mb-6 flex flex-wrap gap-4 items-end" do |f| %>
+    <%= hidden_field_tag :fiscal_year_id, @fiscal_year.id %>
+    <div><label class="block text-sm font-medium text-gray-700">Axis</label>
+      <%= f.select :axis_id, @axes.map { |a| [ "#{a.code} — #{a.label_fr}", a.id ] }, { selected: @axis&.id }, class: "mt-1 form-select" %></div>
+    <div><label class="block text-sm font-medium text-gray-700">Overhead allocation key</label>
+      <%= f.select :allocation_key, [ [ "Pro rata revenue", "revenue" ], [ "Pro rata direct costs", "direct_costs" ] ], { selected: @allocation_key.to_s }, class: "mt-1 form-select" %></div>
+    <div><label class="block text-sm font-medium text-gray-700">From</label><%= f.date_field :from, value: @from, class: "mt-1 form-input" %></div>
+    <div><label class="block text-sm font-medium text-gray-700">To</label><%= f.date_field :to, value: @to, class: "mt-1 form-input" %></div>
+    <%= f.submit "Filter", class: "btn-primary" %>
+  <% end %>
+
+  <% if @margin.nil? || @margin.rows.empty? %>
+    <p class="text-sm text-gray-500">No analytical data for this selection.</p>
+  <% else %>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <% %w[Account Revenue Direct\ costs Margin Margin\ % Overhead\ allocation Margin\ after\ overhead].each_with_index do |h, i| %>
+          <th class="px-4 py-2 <%= i.zero? ? 'text-left' : 'text-right' %> font-medium text-gray-600"><%= h %></th>
+        <% end %>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @margin.rows.each do |r| %>
+          <tr>
+            <td class="px-4 py-2"><span class="font-semibold"><%= r.analytical_account.code %></span> <%= r.analytical_account.label_fr %></td>
+            <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(r.revenue, unit: "€") %></td>
+            <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(r.direct_costs, unit: "€") %></td>
+            <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(r.margin, unit: "€") %></td>
+            <td class="px-4 py-2 text-right font-mono"><%= r.margin_pct ? "#{r.margin_pct} %" : "—" %></td>
+            <td class="px-4 py-2 text-right font-mono text-gray-500 italic"><%= number_to_currency(r.overhead_share, unit: "€") %></td>
+            <td class="px-4 py-2 text-right font-mono font-semibold"><%= number_to_currency(r.margin_after_overhead, unit: "€") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot class="bg-gray-50"><tr>
+        <td class="px-4 py-2" colspan="5">Unallocated expenses to spread ("répartition")</td>
+        <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(@margin.overhead, unit: "€") %></td>
+        <td class="px-4 py-2 text-right font-mono text-gray-500">undistributed: <%= number_to_currency(@margin.undistributed, unit: "€") %></td>
+      </tr></tfoot>
+    </table>
+  <% end %>
+</div>

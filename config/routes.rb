@@ -130,6 +130,8 @@ Rails.application.routes.draw do
         get :analytic_by_project
         get :analytic_by_axis
         get :analytic_cross
+        get :analytic_pivot
+        get :analytic_margin
       end
 
       namespace :settings do

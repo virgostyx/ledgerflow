@@ -414,6 +414,7 @@ en:
         immutable:      "cannot be changed after creation"
         must_follow_parent_hierarchy: "must start with the parent account code"
         must_belong_to_axis:          "must belong to the selected axis"
+        split_exceeds_100:            "split on this axis would exceed 100 %"
       models:
         accounting/partner:
           attributes:

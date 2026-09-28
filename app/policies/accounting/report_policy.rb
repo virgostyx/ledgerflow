@@ -11,4 +11,6 @@ class Accounting::ReportPolicy < ApplicationPolicy
   def analytic_by_project? = trial_balance?
   def analytic_by_axis?    = trial_balance?
   def analytic_cross?      = trial_balance?
+  def analytic_pivot?      = trial_balance?
+  def analytic_margin?     = trial_balance?
 end

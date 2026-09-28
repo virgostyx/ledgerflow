@@ -54,4 +54,34 @@ RSpec.describe Accounting::AnalyticalAnnotation, type: :model do
       expect(annotation).to be_valid
     end
   end
+
+  describe "percentage split (R12)" do
+    let(:second_account) { create(:analytical_account, analytical_axis: axis) }
+
+    it "defaults to 100" do
+      expect(create(:analytical_annotation, journal_entry_line: line, analytical_axis: axis,
+                    analytical_account: account).percentage).to eq(100)
+    end
+
+    it "allows several accounts of one axis on a line when the percentages fit in 100" do
+      create(:analytical_annotation, journal_entry_line: line, analytical_axis: axis, analytical_account: account, percentage: 50)
+      expect(build(:analytical_annotation, journal_entry_line: line, analytical_axis: axis,
+                   analytical_account: second_account, percentage: 50)).to be_valid
+    end
+
+    it "rejects a split above 100 % on one axis" do
+      create(:analytical_annotation, journal_entry_line: line, analytical_axis: axis, analytical_account: account, percentage: 60)
+      over = build(:analytical_annotation, journal_entry_line: line, analytical_axis: axis,
+                   analytical_account: second_account, percentage: 50)
+      expect(over).not_to be_valid
+      expect(over.errors[:percentage]).to be_present
+    end
+
+    it "rejects zero, negative and >100 percentages" do
+      [ 0, -5, 100.01 ].each do |pct|
+        expect(build(:analytical_annotation, journal_entry_line: line, analytical_axis: axis,
+                     analytical_account: account, percentage: pct)).not_to be_valid
+      end
+    end
+  end
 end

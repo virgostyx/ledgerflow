@@ -337,4 +337,24 @@ RSpec.describe "Accounting::Reports", type: :request, bullet_strict: true do
       expect(response.body).to start_with("vat_number,name")
     end
   end
+
+  describe "R12 analytic pivot and margin" do
+    let!(:axis) { create(:analytical_axis, :proj) }
+    let!(:alpha) { create(:analytical_account, analytical_axis: axis, code: "PRJ-A") }
+
+    it "renders the pivot by analytical account and by month" do
+      get accounting_reports_analytic_pivot_path(axis_id: axis.id)
+      expect(response).to have_http_status(:ok)
+      get accounting_reports_analytic_pivot_path(axis_id: axis.id, columns: "month")
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "renders the margin report with both allocation keys" do
+      create_posted_entry
+      %w[revenue direct_costs].each do |key|
+        get accounting_reports_analytic_margin_path(axis_id: axis.id, allocation_key: key)
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
 end
