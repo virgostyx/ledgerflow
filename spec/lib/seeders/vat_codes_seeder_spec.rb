@@ -1,25 +1,22 @@
 require "rails_helper"
 
 RSpec.describe Seeders::VatCodesSeeder do
-  def seed
-    expect { described_class.call }.to output(/\[VatCodes\]/).to_stdout
+  # The suite seeds these once (rails_helper); start from empty to see what the seeder creates.
+  before do
+    Accounting::VatGridMapping.delete_all
+    Accounting::VatAccountGridRule.delete_all
+    Accounting::VatCode.delete_all
   end
+  after { described_class.call } # restore the suite-wide reference data
 
-  it "creates every sale-side VAT code with its invoice and credit-note grid mapping" do
-    expect { seed }.to change(Accounting::VatCode, :count).by(described_class::CODES.size)
-    expect(Accounting::VatGridMapping.count).to eq(described_class::CODES.size * 2)
-  end
+  def seed = expect { described_class.call }.to output(/\[VatCodes\]/).to_stdout
 
-  it "matches the rates and grids already used by Accounting::VatGrid" do
+  it "creates every sale and purchase code with an invoice and a credit-note mapping, plus the account rules" do
     seed
-    code21 = Accounting::VatCode.find_by!(code: "SALE-21")
-    expect(code21.rate).to eq(21)
-    expect(code21.grid_mappings.find_by!(document_type: :invoice)).to have_attributes(base_grid: 3, due_vat_grid: 54)
-    expect(code21.grid_mappings.find_by!(document_type: :credit_note)).to have_attributes(base_grid: 49, due_vat_grid: 64)
-
-    intracom = Accounting::VatCode.find_by!(code: "SALE-INTRACOM-GOODS")
-    expect(intracom.grid_mappings.find_by!(document_type: :invoice)).to have_attributes(base_grid: 46, due_vat_grid: nil)
-    expect(intracom.grid_mappings.find_by!(document_type: :credit_note)).to have_attributes(base_grid: 48, due_vat_grid: nil)
+    codes = described_class::SALE.size + described_class::PURCHASE.size
+    expect(Accounting::VatCode.count).to eq(codes)
+    expect(Accounting::VatGridMapping.count).to eq(codes * 2)
+    expect(Accounting::VatAccountGridRule.count).to eq(described_class::ACCOUNT_RULES.size)
   end
 
   it "is idempotent" do

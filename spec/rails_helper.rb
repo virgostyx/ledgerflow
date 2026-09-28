@@ -37,8 +37,12 @@ RSpec.configure do |config|
   config.include Devise::Test::ControllerHelpers,  type: :controller
   config.include Devise::Test::IntegrationHelpers, type: :system
 
+  # VAT law reference data (Accounting::VatGrid reads it): seeded once, kept by every strategy below.
+  VAT_REFERENCE_TABLES = %w[accounting_vat_codes accounting_vat_grid_mappings accounting_vat_account_grid_rules].freeze
+
   config.before(:suite) do
     DatabaseCleaner.clean_with(:truncation)
+    Seeders::VatCodesSeeder.call
   end
 
   config.before(:each) do
@@ -46,7 +50,7 @@ RSpec.configure do |config|
   end
 
   config.before(:each, js: true) do
-    DatabaseCleaner.strategy = :truncation
+    DatabaseCleaner.strategy = :truncation, { except: VAT_REFERENCE_TABLES }
   end
 
   config.before(:each) do

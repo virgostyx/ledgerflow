@@ -133,13 +133,13 @@ class Accounting::FiscalYearsController < ApplicationController
   # Suggested final prorata: taxed sale base grids over total (taxed + exempt) sale base grids,
   # from the year's already-filed VAT declarations. Left editable — never applied silently.
   def suggested_prorata_rate
-    exempt_grid = Accounting::VatGrid::TREATMENT_BASE_GRID[:sale][:exempt].to_s
+    sale_base_grids = Accounting::VatGrid.sale_base_grids
+    exempt_grid = Accounting::VatGrid.exempt_sale_grid.to_s
     taxed, total = BigDecimal("0"), BigDecimal("0")
 
     Accounting::VatDeclaration.where(fiscal_year: @fiscal_year).find_each do |declaration|
       declaration.grids.each do |code, amount|
-        next unless Accounting::VatGrid::RATE_TO_GRID[:sale].value?(code.to_i) ||
-                   Accounting::VatGrid::TREATMENT_BASE_GRID[:sale].value?(code.to_i)
+        next unless sale_base_grids.include?(code.to_i)
         amount = BigDecimal(amount)
         total += amount
         taxed += amount unless code == exempt_grid

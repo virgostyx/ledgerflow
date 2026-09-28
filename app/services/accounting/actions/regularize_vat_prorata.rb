@@ -21,12 +21,12 @@ class Accounting::Actions::RegularizeVatProrata
   end
 
   def self.deductible_vat_lines(fiscal_year)
-    posted_lines(fiscal_year).where(vat_code: Accounting::VatGrid::VAT_LINE_GRID[:purchase])
+    posted_lines(fiscal_year).where(vat_code: Accounting::VatGrid.purchase_deductible_vat_grid)
   end
 
   # VAT reversed on credit notes received (grid 63) reduces what was deducted.
   def self.credit_note_vat_lines(fiscal_year)
-    posted_lines(fiscal_year).where(vat_code: Accounting::VatGrid::PURCHASE_CREDIT_VAT_GRID)
+    posted_lines(fiscal_year).where(vat_code: Accounting::VatGrid.purchase_deductible_vat_grid(:credit_note))
   end
 
   def self.non_deductible_lines(fiscal_year)

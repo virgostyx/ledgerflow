@@ -1205,6 +1205,40 @@ ALTER SEQUENCE public.accounting_recurring_invoices_id_seq OWNED BY public.accou
 
 
 --
+-- Name: accounting_vat_account_grid_rules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_vat_account_grid_rules (
+    id bigint NOT NULL,
+    sens integer NOT NULL,
+    account_prefix character varying NOT NULL,
+    base_grid integer NOT NULL,
+    credit_note_recap_grid integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_vat_account_grid_rules_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_vat_account_grid_rules_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_vat_account_grid_rules_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_vat_account_grid_rules_id_seq OWNED BY public.accounting_vat_account_grid_rules.id;
+
+
+--
 -- Name: accounting_vat_codes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1287,7 +1321,9 @@ CREATE TABLE public.accounting_vat_grid_mappings (
     base_grid integer,
     due_vat_grid integer,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deductible_vat_grid integer,
+    credit_note_recap_grid integer
 );
 
 
@@ -1796,6 +1832,13 @@ ALTER TABLE ONLY public.accounting_recurring_invoices ALTER COLUMN id SET DEFAUL
 
 
 --
+-- Name: accounting_vat_account_grid_rules id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_vat_account_grid_rules ALTER COLUMN id SET DEFAULT nextval('public.accounting_vat_account_grid_rules_id_seq'::regclass);
+
+
+--
 -- Name: accounting_vat_codes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2091,6 +2134,14 @@ ALTER TABLE ONLY public.accounting_recurring_invoices
 
 
 --
+-- Name: accounting_vat_account_grid_rules accounting_vat_account_grid_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_vat_account_grid_rules
+    ADD CONSTRAINT accounting_vat_account_grid_rules_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_vat_codes accounting_vat_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2295,6 +2346,13 @@ CREATE UNIQUE INDEX idx_on_entity_id_account_id_code_b0055f39aa ON public.accoun
 --
 
 CREATE INDEX idx_on_journal_entry_line_id_307850d4ba ON public.accounting_analytical_annotations USING btree (journal_entry_line_id);
+
+
+--
+-- Name: idx_vat_account_grid_rules_sens_prefix; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_vat_account_grid_rules_sens_prefix ON public.accounting_vat_account_grid_rules USING btree (sens, account_prefix);
 
 
 --
@@ -3909,6 +3967,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260928000100'),
 ('20260928000000'),
 ('20260927000400'),
 ('20260927000300'),

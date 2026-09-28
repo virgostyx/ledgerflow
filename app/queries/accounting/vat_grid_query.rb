@@ -19,7 +19,7 @@ class Accounting::VatGridQuery
 
   # Reverse-charge purchases (86-88) also count in the base grid of their expense account (81-83).
   def self.add_reverse_charge_bases(lines, rows)
-    lines.where(vat_code: Accounting::VatGrid::REVERSE_CHARGE_PURCHASE_GRIDS).joins(:account)
+    lines.where(vat_code: Accounting::VatGrid.reverse_charge_purchase_grids).joins(:account)
          .group("accounting_accounts.code").sum(:vat_amount).each do |account_code, total|
       grid = Accounting::VatGrid.purchase_base_grid(account_code)
       rows[grid] = rows.fetch(grid, 0) + total if grid
@@ -34,7 +34,7 @@ class Accounting::VatGridQuery
     non_deductible = Accounting::AccountCodes::VAT_NON_DEDUCTIBLE # its VAT share is not part of the credit note amount
     negatives = lines.joins(:account).where.not(accounting_accounts: { code: non_deductible })
                      .where("accounting_journal_entry_lines.vat_amount < 0").group(:vat_code).sum(:vat_amount)
-    { 84 => [ 86, 88 ], 85 => [ 81, 82, 83, 87 ] }.each do |grid, codes|
+    Accounting::VatGrid.credit_note_recap_grids.each do |grid, codes|
       total = -negatives.values_at(*codes).compact.sum
       rows[grid] = total if total.positive?
     end

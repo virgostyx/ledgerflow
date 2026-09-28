@@ -1,4 +1,5 @@
-# docs/dev/reports/spec.md §10: for a vat_code and document type, which grid(s) it goes to.
+# docs/dev/reports/spec.md §10: for a vat_code and document type, the grids it goes to —
+# base, VAT due (self-assessed on reverse charge), deductible VAT, credit-note recap.
 class Accounting::VatGridMapping < ApplicationRecord
   self.table_name = "accounting_vat_grid_mappings"
 
@@ -8,4 +9,6 @@ class Accounting::VatGridMapping < ApplicationRecord
 
   validates :document_type, presence: true
   validates :vat_code_id, uniqueness: { scope: :document_type }
+
+  after_commit { Accounting::VatGrid.reset! }
 end

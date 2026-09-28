@@ -33,6 +33,7 @@ module Seeders
       existing = Entity.find_by(name: ENTITY_NAME)
       return existing if existing
 
+      Seeders::VatCodesSeeder.call # VAT law data, not tenant-scoped; the postings below need it
       entity = nil
       ApplicationRecord.transaction do
         entity = create_entity

@@ -4,10 +4,6 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   expects  :invoice
   promises :invoice
 
-  VAT_GRID_SALE         = Accounting::VatGrid::RATE_TO_GRID[:sale]
-  VAT_CODE_PURCHASE_VAT = Accounting::VatGrid::VAT_LINE_GRID[:purchase]  # 410100
-  VAT_CODE_SALE_VAT     = Accounting::VatGrid::VAT_LINE_GRID[:sale]      # 450100
-
   executed do |ctx|
     invoice = ctx.invoice
     journal = find_journal(invoice)
@@ -60,7 +56,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
     vat_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
     build_vat_lines(invoice, entry, :credit, account: vat_account, label: "VAT",
-                    vat_code: invoice.credit_note? ? Accounting::VatGrid::SALE_CREDIT_VAT_GRID : VAT_CODE_SALE_VAT)
+                    vat_code: Accounting::VatGrid.sale_due_vat_grid(document_type(invoice)))
   end
 
   def self.build_supplier_lines(invoice, entry)
@@ -74,10 +70,9 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
   def self.build_supplier_vat_lines(invoice, entry)
     unless invoice.domestic?
-      due_grid = Accounting::VatGrid::SELF_ASSESSED_VAT_GRID[invoice.vat_treatment.to_sym]
+      due_grid = purchase_mapping(invoice)&.due_vat_grid
       if due_grid
         due_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_PAYABLE)
-        due_grid = Accounting::VatGrid::REVERSE_CHARGE_CREDIT_DUE_GRID if invoice.credit_note?
         build_vat_lines(invoice, entry, :credit, account: due_account, vat_code: due_grid,
                         label: "Self-assessed VAT due")
       end
@@ -119,21 +114,26 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
   # A credit note reports its VAT in 63 (domestic) or 61 (reverse charge), not in 59.
   def self.deductible_vat_grid(invoice)
-    return VAT_CODE_PURCHASE_VAT unless invoice.credit_note?
-    invoice.domestic? ? Accounting::VatGrid::PURCHASE_CREDIT_VAT_GRID : Accounting::VatGrid::REVERSE_CHARGE_CREDIT_DEDUCTIBLE_GRID
+    purchase_mapping(invoice).deductible_vat_grid
+  end
+
+  def self.document_type(invoice) = invoice.credit_note? ? :credit_note : :invoice
+
+  def self.purchase_mapping(invoice)
+    Accounting::VatGrid.mapping(:purchase, invoice.vat_treatment, document_type(invoice))
   end
 
   # Grid of an invoice line: by rate for a domestic sale, by expense account for a domestic
   # purchase; a single fixed grid (any rate) otherwise.
   def self.sale_grid(invoice)
     return fixed_grid(Accounting::VatGrid.sale_credit_grid(invoice.vat_treatment)) if invoice.credit_note?
-    return ->(line) { VAT_GRID_SALE[line.vat_rate.to_i] } if invoice.domestic?
-    fixed_grid(Accounting::VatGrid::TREATMENT_BASE_GRID[:sale][invoice.vat_treatment.to_sym])
+    return ->(line) { Accounting::VatGrid.mapping(:sale, :domestic, :invoice, rate: line.vat_rate)&.base_grid } if invoice.domestic?
+    fixed_grid(Accounting::VatGrid.mapping(:sale, invoice.vat_treatment, :invoice)&.base_grid)
   end
 
   def self.purchase_grid(invoice)
     return ->(line) { Accounting::VatGrid.purchase_base_grid(line.account.code) } if invoice.domestic?
-    fixed_grid(Accounting::VatGrid::TREATMENT_BASE_GRID[:purchase][invoice.vat_treatment.to_sym])
+    fixed_grid(purchase_mapping(invoice)&.base_grid)
   end
 
   def self.fixed_grid(grid) = ->(_line) { grid }
@@ -195,7 +195,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
   private_class_method :find_journal, :build_entry_lines,
                        :build_customer_lines, :build_supplier_lines, :build_supplier_vat_lines,
-                       :build_deductible_vat_lines, :deductible_vat_grid, :sale_grid, :purchase_grid, :fixed_grid, :nets_grid?,
+                       :build_deductible_vat_lines, :deductible_vat_grid, :document_type, :purchase_mapping, :sale_grid, :purchase_grid, :fixed_grid, :nets_grid?,
                        :build_item_lines, :build_vat_lines, :create_line,
                        :propagate_annotations
 end

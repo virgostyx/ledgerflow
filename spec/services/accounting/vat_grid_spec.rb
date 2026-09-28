@@ -19,9 +19,14 @@ RSpec.describe Accounting::VatGrid do
     end
   end
 
-  describe 'RATE_TO_GRID' do
+  describe '.mapping (domestic sale rates)' do
     it 'mappe les taux de vente vers les grilles de base' do
-      expect(described_class::RATE_TO_GRID[:sale]).to eq(21 => 3, 12 => 2, 6 => 1, 0 => 0)
+      grids = { 21 => 3, 12 => 2, 6 => 1, 0 => 0 }
+      expect(grids.keys.to_h { |rate| [ rate, described_class.mapping(:sale, :domestic, :invoice, rate: rate).base_grid ] }).to eq(grids)
+    end
+
+    it 'ne connaît pas un taux inconnu' do
+      expect(described_class.mapping(:sale, :domestic, :invoice, rate: 5)).to be_nil
     end
   end
 
@@ -43,41 +48,64 @@ RSpec.describe Accounting::VatGrid do
     end
   end
 
-  describe 'VAT_LINE_GRID' do
-    it 'donne la grille de la ligne de TVA due sur ventes' do
-      expect(described_class::VAT_LINE_GRID[:sale]).to eq(54)
+  describe 'grilles de TVA' do
+    it 'donne la grille de la TVA due sur ventes, et celle de sa note de crédit' do
+      expect(described_class.sale_due_vat_grid).to eq(54)
+      expect(described_class.sale_due_vat_grid(:credit_note)).to eq(64)
     end
 
-    it 'donne la grille de la ligne de TVA déductible sur achats' do
-      expect(described_class::VAT_LINE_GRID[:purchase]).to eq(59)
+    it 'donne la grille de la TVA déductible sur achats, et celle de sa note de crédit' do
+      expect(described_class.purchase_deductible_vat_grid).to eq(59)
+      expect(described_class.purchase_deductible_vat_grid(:credit_note)).to eq(63)
+    end
+
+    it 'donne la grille de base d une vente selon le régime' do
+      expect(described_class.mapping(:sale, :intracom_goods).base_grid).to eq(46)
+      expect(described_class.sale_credit_grid(:intracom_services)).to eq(48)
+      expect(described_class.sale_credit_grid(:export)).to eq(49)
+    end
+
+    it 'donne la grille de base d un achat en autoliquidation, identique pour la note de crédit' do
+      expect(described_class.mapping(:purchase, :intracom_services).base_grid).to eq(88)
+      expect(described_class.mapping(:purchase, :construction_reverse_charge, :credit_note).base_grid).to eq(87)
+    end
+
+    it 'n a pas de mapping d achat pour un traitement sans autoliquidation' do
+      expect(described_class.mapping(:purchase, :export)).to be_nil
+    end
+
+    it 'donne la TVA due auto-liquidée et sa régularisation en note de crédit' do
+      expect(described_class.mapping(:purchase, :intracom_goods).due_vat_grid).to eq(55)
+      expect(described_class.mapping(:purchase, :construction_reverse_charge).due_vat_grid).to eq(56)
+      expect(described_class.mapping(:purchase, :intracom_goods, :credit_note))
+        .to have_attributes(due_vat_grid: 62, deductible_vat_grid: 61)
+    end
+
+    it 'regroupe les grilles récapitulatives des notes de crédit reçues' do
+      expect(described_class.credit_note_recap_grids).to eq(84 => [ 86, 88 ], 85 => [ 81, 82, 83, 87 ])
+      expect(described_class.reverse_charge_purchase_grids).to contain_exactly(86, 87, 88)
     end
   end
 
-  describe 'TREATMENT_BASE_GRID' do
-    it 'donne la grille de base pour une vente en régime intracom_goods' do
-      expect(described_class::TREATMENT_BASE_GRID[:sale][:intracom_goods]).to eq(46)
-    end
-
-    it 'donne la grille de base pour un achat en régime intracom_services' do
-      expect(described_class::TREATMENT_BASE_GRID[:purchase][:intracom_services]).to eq(88)
-    end
-
-    it 'donne la grille de base pour un achat en régime construction_reverse_charge' do
-      expect(described_class::TREATMENT_BASE_GRID[:purchase][:construction_reverse_charge]).to eq(87)
-    end
-
-    it "n a pas de grille d achat pour un traitement qui n implique pas d autoliquidation" do
-      expect(described_class::TREATMENT_BASE_GRID[:purchase][:export]).to be_nil
+  describe 'pilotée par les données' do
+    it 'reflète une modification du mapping après reset du cache' do
+      mapping = described_class.mapping(:sale, :export)
+      mapping.update!(base_grid: 99)
+      described_class.reset! # after_commit does this in production; the transactional test never commits
+      expect(described_class.mapping(:sale, :export).base_grid).to eq(99)
+    ensure
+      mapping.update!(base_grid: 47)
+      described_class.reset!
     end
   end
 
-  describe 'SELF_ASSESSED_VAT_GRID' do
-    it 'donne la grille de TVA due auto-liquidée pour intracom_goods' do
-      expect(described_class::SELF_ASSESSED_VAT_GRID[:intracom_goods]).to eq(55)
-    end
-
-    it 'donne la grille de TVA due auto-liquidée pour construction_reverse_charge' do
-      expect(described_class::SELF_ASSESSED_VAT_GRID[:construction_reverse_charge]).to eq(56)
+  describe 'sans données' do
+    it 'échoue bruyamment plutôt que de ne poster aucune grille' do
+      described_class.reset!
+      Accounting::VatGridMapping.delete_all
+      expect { described_class.mapping(:sale, :export) }.to raise_error(described_class::NotSeeded)
+    ensure
+      Seeders::VatCodesSeeder.call
     end
   end
 

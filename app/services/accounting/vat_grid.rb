@@ -1,44 +1,11 @@
+# Every grid decision for invoice postings and the VAT return, read from the data seeded by
+# Seeders::VatCodesSeeder (accounting_vat_codes / _grid_mappings / _account_grid_rules,
+# docs/dev/reports/spec.md §10) — not hardcoded. Cached per process, reset when any of those
+# rows is saved (or via .reset!). Raises NotSeeded rather than silently posting no grids.
 module Accounting::VatGrid
-  RATE_TO_GRID = {
-    sale: { 21 => 3, 12 => 2, 6 => 1, 0 => 0 }
-  }.freeze
+  class NotSeeded < StandardError; end
 
-  VAT_LINE_GRID = { sale: 54, purchase: 59 }.freeze
-
-  # Base amount grids for treatments where no VAT is charged to the partner.
-  # Sale side: the partner self-assesses (reverse charge) or nothing is due (export/exempt).
-  # Purchase side: only reverse-charge treatments apply — the entity self-assesses.
-  TREATMENT_BASE_GRID = {
-    sale: {
-      intracom_goods:              46,
-      intracom_services:           44,
-      construction_reverse_charge: 45,
-      export:                      47,
-      exempt:                      0
-    },
-    purchase: {
-      intracom_goods:              86,
-      intracom_services:           88,
-      construction_reverse_charge: 87
-    }
-  }.freeze
-
-  # Grid for the self-assessed "VAT due" line posted on reverse-charge purchases
-  # (mirrored by a grid-59 deductible line for the same amount).
-  SELF_ASSESSED_VAT_GRID = {
-    intracom_goods:              55,
-    intracom_services:           55,
-    construction_reverse_charge: 56
-  }.freeze
-
-  # Credit notes are reported in their own grids, never netted from the grids of the original
-  # operation (notice n° 98, 252). Sale base: 48 for grids 44/46, 49 otherwise; sale VAT: 64.
-  # Purchase VAT mentioned on a credit note: 63. Reverse-charge purchase credit notes regularize
-  # the VAT in 62 (due VAT recovered) and 61 (deduction reversed).
-  SALE_CREDIT_VAT_GRID     = 64
-  PURCHASE_CREDIT_VAT_GRID = 63
-  REVERSE_CHARGE_CREDIT_DUE_GRID        = 62
-  REVERSE_CHARGE_CREDIT_DEDUCTIBLE_GRID = 61
+  Snapshot = Struct.new(:mappings, :account_rules, keyword_init: true)
 
   # Balance of the period (notice n° 256-259): XX = tax due (54+55+56+57+61+63), YY = deductible
   # tax (59+62+64). Grid 71 when XX >= YY (0,00 if equal or empty), grid 72 when YY > XX.
@@ -48,22 +15,72 @@ module Accounting::VatGrid
     deductible > due ? { "72" => deductible - due } : { "71" => due - deductible }
   end
 
-  def self.sale_credit_grid(treatment)
-    %w[intracom_goods intracom_services].include?(treatment.to_s) ? 48 : 49
+  def self.reset! = (@snapshot = nil)
+
+  # The mapping for a nature and document type, or nil when that combination has no code (e.g. a
+  # purchase with an export treatment). `rate` picks the code of a domestic sale (its base grid
+  # depends on it); without one, any domestic code answers — credit-note mappings and due grids
+  # don't depend on the rate.
+  def self.mapping(sens, nature, document_type = :invoice, rate: nil)
+    candidates = snapshot.mappings.select do |m|
+      c = m.vat_code
+      c.sens == sens.to_s && c.nature == nature.to_s && m.document_type == document_type.to_s
+    end
+    return candidates.first unless sens.to_s == "sale" && nature.to_s == "domestic"
+    return candidates.find { |m| m.vat_code.rate.to_i == rate.to_i } if rate
+
+    candidates.max_by { |m| m.vat_code.rate.to_i }
   end
 
-  # Reverse-charge purchases are also reported in a base grid 81-83 (they add up, they do not replace).
-  REVERSE_CHARGE_PURCHASE_GRIDS = [ 86, 87, 88 ].freeze
-
-  # Purchase base grid by the nature of the expense account (notice n° 149-156):
-  # 60x goods and materials, 61 and 64 various goods/services, 20-27 investments.
+  # Purchase base grid by the nature of the expense account (notice n° 149-156).
   def self.purchase_base_grid(account_code)
-    case account_code.to_s
-    when /\A60/ then 81
-    when /\A(61|64)/ then 82
-    when /\A2[0-7]/ then 83
+    rule = snapshot.account_rules.select { |r| account_code.to_s.start_with?(r.account_prefix) }
+                   .max_by { |r| r.account_prefix.length }
+    rule&.base_grid
+  end
+
+  # Grid of VAT deductible on domestic purchases (59), and of VAT mentioned on a purchase credit note (63).
+  def self.purchase_deductible_vat_grid(document_type = :invoice)
+    mapping(:purchase, :domestic, document_type).deductible_vat_grid
+  end
+
+  def self.sale_due_vat_grid(document_type = :invoice)
+    snapshot.mappings.select { |m| m.vat_code.sale? && m.vat_code.domestic? && m.document_type == document_type.to_s }
+            .filter_map(&:due_vat_grid).first
+  end
+
+  # Credit-note base grid of a sale: 48 for grids 44/46, 49 otherwise.
+  def self.sale_credit_grid(treatment) = mapping(:sale, treatment, :credit_note)&.base_grid
+
+  # Base grids a sale invoice can land in (rate-driven and treatment-driven), and the exempt one.
+  def self.sale_base_grids
+    snapshot.mappings.select { |m| m.vat_code.sale? && m.invoice? }.filter_map(&:base_grid).uniq
+  end
+
+  def self.exempt_sale_grid = mapping(:sale, :exempt)&.base_grid
+
+  # Reverse-charge purchases (86-88) are also reported in a base grid 81-83 (they add up, they do not replace).
+  def self.reverse_charge_purchase_grids
+    snapshot.mappings.select { |m| m.vat_code.purchase? && !m.vat_code.domestic? && m.invoice? }.filter_map(&:base_grid).uniq
+  end
+
+  # { recap grid => [base grids whose credit-note amounts it recaps] }, e.g. 84 => [86, 88].
+  def self.credit_note_recap_grids
+    pairs = snapshot.mappings.select { |m| m.vat_code.purchase? && m.credit_note? && m.credit_note_recap_grid }
+                    .map { |m| [ m.credit_note_recap_grid, m.base_grid ] }
+    pairs += snapshot.account_rules.select(&:credit_note_recap_grid).map { |r| [ r.credit_note_recap_grid, r.base_grid ] }
+    pairs.group_by(&:first).transform_values { |v| v.map(&:last).uniq.sort }
+  end
+
+  def self.snapshot
+    @snapshot ||= begin
+      mappings = Accounting::VatGridMapping.includes(:vat_code).to_a
+      raise NotSeeded, "VAT codes are not seeded — run Seeders::VatCodesSeeder (bin/rails db:seed)" if mappings.empty?
+
+      Snapshot.new(mappings: mappings, account_rules: Accounting::VatAccountGridRule.all.to_a).freeze
     end
   end
+  private_class_method :snapshot
 
   LABELS = {
     0  => "Exempt/exported sales",
