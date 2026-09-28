@@ -306,11 +306,13 @@ RSpec.describe "Accounting::Reports", type: :request, bullet_strict: true do
 
       get accounting_reports_aged_balance_path
       expect(response.body).to include(I18n.t("accounting.reports.aged_balance.stale_title", days: 90))
-      expect(response.body.scan("Old Credit Co").size).to eq(2) # main table + stale section
+      html = response.body.gsub(/data-chart-option-value="[^"]*"/, "") # the chart JSON also carries partner names
+      expect(html.scan("Old Credit Co").size).to eq(2) # main table + stale section
 
       get accounting_reports_aged_balance_path(stale_days: 100)
       expect(response.body).not_to include(I18n.t("accounting.reports.aged_balance.stale_title", days: 100))
-      expect(response.body.scan("Old Credit Co").size).to eq(1) # main table only
+      html = response.body.gsub(/data-chart-option-value="[^"]*"/, "")
+      expect(html.scan("Old Credit Co").size).to eq(1) # main table only
     end
 
     it "redirects a user without report access" do

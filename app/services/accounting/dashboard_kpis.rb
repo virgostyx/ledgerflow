@@ -9,22 +9,51 @@ class Accounting::DashboardKpis
     @as_of       = [ as_of, fiscal_year.end_date ].min
   end
 
-  def call
-    [
-      card(:cash, "Available cash", :money, "Σ balances of accounts 55 and 57", :trial_balance) { cash },
-      card(:revenue_ytd, "Revenue year to date", :money, "Σ class 70 (credit − debit)", :income_statement) { revenue },
-      card(:gross_margin_pct, "Gross margin", :percent, "(class 70 − class 60) ÷ class 70", :income_statement) { gross_margin_pct },
-      card(:fixed_costs_monthly, "Monthly fixed costs", :money, "Average per elapsed month of the accounts marked fixed", :income_statement) { fixed_costs_monthly },
-      card(:result_ytd, "Result year to date", :money, "Σ class 7 − Σ class 6", :income_statement) { result },
-      card(:dso, "DSO (days)", :days, "Customer receivables (40) ÷ amounts invoiced (debits of 40) × days elapsed", :aged_balance) { dso },
-      card(:dpo, "DPO (days)", :days, "Supplier payables (44) ÷ amounts purchased (credits of 44) × days elapsed", :aged_balance) { dpo },
-      card(:working_capital, "Working capital requirement", :money, "(Stocks 3 + trade receivables 40 + other receivables 41) − trade payables 44", :balance_sheet) { working_capital },
-      card(:overdue_receivables, "Overdue customer receivables", :money, "Total of the overdue buckets of the customer aged balance", :aged_balance) { overdue_receivables },
-      card(:cash_coverage_months, "Cash coverage (months)", :months, "Available cash ÷ monthly fixed costs", :trial_balance) { cash_coverage }
-    ]
+  DEFINITIONS = [
+    [ :cash, "Available cash", :money, "Σ balances of accounts 55 and 57", :trial_balance ],
+    [ :revenue_ytd, "Revenue year to date", :money, "Σ class 70 (credit − debit)", :income_statement ],
+    [ :gross_margin_pct, "Gross margin", :percent, "(class 70 − class 60) ÷ class 70", :income_statement ],
+    [ :fixed_costs_monthly, "Monthly fixed costs", :money, "Average per elapsed month of the accounts marked fixed", :income_statement ],
+    [ :result_ytd, "Result year to date", :money, "Σ class 7 − Σ class 6", :income_statement ],
+    [ :dso, "DSO (days)", :days, "Customer receivables (40) ÷ amounts invoiced (debits of 40) × days elapsed", :aged_balance ],
+    [ :dpo, "DPO (days)", :days, "Supplier payables (44) ÷ amounts purchased (credits of 44) × days elapsed", :aged_balance ],
+    [ :working_capital, "Working capital requirement", :money, "(Stocks 3 + trade receivables 40 + other receivables 41) − trade payables 44", :balance_sheet ],
+    [ :overdue_receivables, "Overdue customer receivables", :money, "Total of the overdue buckets of the customer aged balance", :aged_balance ],
+    [ :cash_coverage_months, "Cash coverage (months)", :months, "Available cash ÷ monthly fixed costs", :trial_balance ]
+  ].freeze
+
+  # Indicators drawn as a 12-month trend under their card (cheap ones only: the aged balance is not replayed).
+  TREND_KEYS = %i[cash revenue_ytd gross_margin_pct result_ytd].freeze
+
+  def call(only: nil)
+    DEFINITIONS.filter_map { |key, *rest| card(key, *rest) { send(METHODS.fetch(key, key)) } if only.nil? || only.include?(key) }
   end
 
+  # { key => [[month_label, value_or_nil], ...] } for the months of the fiscal year up to `as_of`.
+  # Cached per ledger state (posted-entry count + last change) — the spec's `ledger_version`.
+  def trends
+    Rails.cache.fetch([ "dashboard_kpi_trends", ActsAsTenant.current_tenant&.id, @fiscal_year.id, @as_of, ledger_version ]) do
+      month_ends.each_with_object(TREND_KEYS.index_with { [] }) do |month_end, acc|
+        cards = self.class.new(fiscal_year: @fiscal_year, as_of: month_end).call(only: TREND_KEYS)
+        cards.each { |c| acc[c.key] << [ month_end.strftime("%Y-%m"), c.value ] }
+      end
+    end
+  end
+
+  METHODS = { gross_margin_pct: :gross_margin_pct, cash_coverage_months: :cash_coverage, revenue_ytd: :revenue, result_ytd: :result }.freeze
+  private_constant :METHODS
+
   private
+
+  def month_ends
+    starts = (0..11).map { |i| @fiscal_year.start_date.advance(months: i) }.select { |d| d <= @as_of }
+    starts.map { |d| [ d.advance(months: 1) - 1, @as_of ].min }
+  end
+
+  def ledger_version
+    entries = Accounting::JournalEntry.where(fiscal_year_id: @fiscal_year.id, status: :posted)
+    [ entries.count, entries.maximum(:updated_at)&.to_f ]
+  end
 
   def card(key, label, unit, formula, source)
     value = yield

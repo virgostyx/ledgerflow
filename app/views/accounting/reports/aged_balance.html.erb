@@ -16,6 +16,13 @@
           class: "btn-secondary text-sm" %>
   </div>
 
+  <% if @rows.any? %>
+    <div class="mb-6 grid gap-4 md:grid-cols-2">
+      <%= render Reports::ChartComponent.new(option: Charts::AgedBuckets.buckets(@totals), title: "Balance by ageing bucket", height: 260) %>
+      <%= render Reports::ChartComponent.new(option: Charts::AgedBuckets.top_partners(@rows), title: "Ten largest balances", height: 260) %>
+    </div>
+  <% end %>
+
   <%= form_with url: accounting_reports_aged_balance_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
     <div>
       <%= f.label :kind, t_ab.(:kind), class: "block text-sm font-medium text-gray-700" %>

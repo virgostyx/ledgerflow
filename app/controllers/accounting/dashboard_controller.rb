@@ -5,7 +5,9 @@ class Accounting::DashboardController < ApplicationController
     treasury_balance = Accounting::BankTransaction.sum(:amount)
 
     fiscal_year = Accounting::FiscalYear.current
-    @indicators = fiscal_year ? Accounting::DashboardKpis.new(fiscal_year: fiscal_year).call : []
+    kpis = fiscal_year && Accounting::DashboardKpis.new(fiscal_year: fiscal_year)
+    @indicators = kpis ? kpis.call : []
+    @trends = kpis ? kpis.trends : {}
 
     @kpis = [
       {

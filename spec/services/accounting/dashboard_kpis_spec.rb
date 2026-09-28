@@ -69,4 +69,19 @@ RSpec.describe Accounting::DashboardKpis, type: :service, bullet_strict: true do
   it "gives every card a formula and a source report" do
     expect(cards).to all(have_attributes(formula: be_present, source: be_present))
   end
+
+  describe "#trends" do
+    let(:trends) { described_class.new(fiscal_year: fiscal_year, as_of: as_of).trends }
+
+    it "returns one point per elapsed month for the cheap indicators, ending on the current figure" do
+      expect(trends.keys).to match_array(described_class::TREND_KEYS)
+      expect(trends[:cash].size).to eq(3)
+      expect(trends[:cash].last.last).to eq(5100)
+      expect(trends[:cash].first.first).to eq(fiscal_year.start_date.strftime("%Y-%m"))
+    end
+  end
+
+  it "can compute a subset of cards" do
+    expect(described_class.new(fiscal_year: fiscal_year, as_of: as_of).call(only: [ :cash ]).map(&:key)).to eq([ :cash ])
+  end
 end

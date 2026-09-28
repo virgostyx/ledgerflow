@@ -25,6 +25,9 @@
                 else c.value.round(1) end %>
           </div>
         <% end %>
+        <% if (points = @trends[c.key]).present? && !c.error %>
+          <div class="mt-2"><%= render Reports::ChartComponent.new(option: Charts::Sparkline.call(points), title: "#{c.label}, monthly trend", height: 48) %></div>
+        <% end %>
         <%= link_to "Source report", sources.fetch(c.source), class: "mt-2 inline-block text-xs text-primary-600 hover:underline" %>
       </div>
     <% end %>
