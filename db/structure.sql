@@ -89,6 +89,7 @@ CREATE TABLE public.accounting_accounts (
     updated_at timestamp(6) without time zone NOT NULL,
     custom boolean DEFAULT false NOT NULL,
     entity_id bigint NOT NULL,
+    fixed_cost boolean DEFAULT false NOT NULL,
     CONSTRAINT chk_account_class CHECK (((account_class >= 1) AND (account_class <= 7)))
 );
 
@@ -3969,6 +3970,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000100'),
 ('20260929000000'),
 ('20260928000100'),
 ('20260928000000'),

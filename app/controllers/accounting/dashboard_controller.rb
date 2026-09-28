@@ -4,6 +4,9 @@ class Accounting::DashboardController < ApplicationController
     draft_entries    = Accounting::JournalEntry.draft.count
     treasury_balance = Accounting::BankTransaction.sum(:amount)
 
+    fiscal_year = Accounting::FiscalYear.current
+    @indicators = fiscal_year ? Accounting::DashboardKpis.new(fiscal_year: fiscal_year).call : []
+
     @kpis = [
       {
         title: "Invoices to validate",

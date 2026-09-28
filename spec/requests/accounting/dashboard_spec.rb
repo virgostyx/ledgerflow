@@ -14,6 +14,11 @@ RSpec.describe 'Accounting::Dashboard', type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it 'shows the key indicator cards with their source link' do
+      get accounting_root_path
+      expect(response.body).to include('id="key-indicators"', 'data-kpi="cash"', 'data-kpi="dso"')
+    end
+
     it 'shows draft invoices KPI' do
       partner = create(:partner)
       create_list(:invoice, 3, :draft, partner: partner, fiscal_year: fiscal_year)

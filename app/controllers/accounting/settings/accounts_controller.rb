@@ -53,6 +53,6 @@ class Accounting::Settings::AccountsController < Accounting::Settings::BaseContr
   end
 
   def update_params
-    params.require(:accounting_account).permit(:label_fr, :label_nl, :active)
+    params.require(:accounting_account).permit(:label_fr, :label_nl, :active, :fixed_cost)
   end
 end
