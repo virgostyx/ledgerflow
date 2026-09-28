@@ -1,0 +1,71 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900">Consistency checks</h1>
+    <% if policy(Accounting::ConsistencyRun).create? %>
+      <%= button_to "Run now", accounting_consistency_runs_path, method: :post, class: "btn-primary text-sm" %>
+    <% end %>
+  </div>
+
+  <% if @run.nil? %>
+    <p class="text-sm text-gray-500">No run yet. The check runs every night; you can also run it now.</p>
+  <% else %>
+    <p class="mb-4 text-sm text-gray-500">Last run: <%= l(@run.started_at, format: :short) %> (<%= @run.trigger %>, <%= @run.duration_ms %> ms)</p>
+    <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4" id="consistency-summary">
+      <% { "blocking" => "text-red-700", "warning" => "text-amber-600", "info" => "text-gray-700", "acknowledged" => "text-gray-500" }.each do |key, tone| %>
+        <div class="rounded-lg border border-gray-200 bg-white p-4"><div class="text-xs font-medium uppercase tracking-wider text-gray-500"><%= key.humanize %></div>
+          <div class="mt-1 text-2xl font-semibold <%= tone %>"><%= @run.counts[key].to_i %></div></div>
+      <% end %>
+    </div>
+    <% if @run.errors_by_check.any? %>
+      <p class="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <% @run.errors_by_check.each do |id, message| %><%= id %> failed to run: <%= message %><br><% end %>
+      </p>
+    <% end %>
+    <% if @trend.size > 1 %>
+      <div class="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+        <div class="mb-1 text-xs font-medium uppercase tracking-wider text-gray-500">Open anomalies, last 30 days</div>
+        <%= render Reports::ChartComponent.new(option: Charts::Sparkline.call(@trend), title: "Open anomalies over the last 30 days", height: 60) %>
+      </div>
+    <% end %>
+
+    <%= form_with url: accounting_consistency_runs_path, method: :get, class: "mb-4 flex flex-wrap gap-3 items-end text-sm" do |f| %>
+      <div><label class="block font-medium text-gray-700">Severity</label>
+        <%= f.select :severity, %w[blocking warning info], { include_blank: "Any", selected: params[:severity] }, class: "mt-1 form-select" %></div>
+      <div><label class="block font-medium text-gray-700">Check</label>
+        <%= f.select :check_id, @checks, { include_blank: "Any", selected: params[:check_id] }, class: "mt-1 form-select" %></div>
+      <label class="flex items-center gap-1"><%= f.check_box :acknowledged, { checked: @show_acknowledged }, "1", "" %> Show acknowledged</label>
+      <%= f.submit "Filter", class: "btn-primary" %>
+    <% end %>
+
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <% %w[Severity Check Anomaly Object].each do |h| %><th class="px-3 py-2 text-left font-medium text-gray-600"><%= h %></th><% end %><th></th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @findings.each do |f| %>
+          <% ack = @acks[f.fingerprint] %>
+          <tr class="<%= 'text-gray-400' if ack %>">
+            <td class="px-3 py-2"><%= f.severity.humanize %></td>
+            <td class="px-3 py-2 font-mono"><%= f.check_id %></td>
+            <td class="px-3 py-2"><%= f.message %><% if ack %><span class="italic"> — acknowledged: <%= ack.comment %></span><% end %></td>
+            <td class="px-3 py-2">
+              <% case f.subject_type when "Accounting::JournalEntry" %><%= link_to "Entry ##{f.subject_id}", accounting_journal_entry_path(f.subject_id), class: "text-primary-600 underline" %>
+              <% when "Accounting::Invoice" %><%= link_to "Invoice ##{f.subject_id}", accounting_invoice_path(f.subject_id), class: "text-primary-600 underline" %>
+              <% else %><%= f.subject_type&.demodulize %> #<%= f.subject_id %><% end %>
+            </td>
+            <td class="px-3 py-2">
+              <% if !ack && policy(Accounting::ConsistencyRun).acknowledge? %>
+                <%= form_with url: acknowledge_accounting_consistency_runs_path, method: :post, class: "flex gap-1" do |af| %>
+                  <%= hidden_field_tag :fingerprint, f.fingerprint %>
+                  <%= text_field_tag :comment, nil, placeholder: "Comment", required: true, class: "form-input text-xs w-32" %>
+                  <%= af.submit "Acknowledge", class: "text-xs text-primary-600 underline" %>
+                <% end %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @findings.empty? %><tr><td colspan="5" class="px-3 py-4 text-center text-emerald-700">No anomaly.</td></tr><% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>

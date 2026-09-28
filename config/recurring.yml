@@ -5,3 +5,7 @@ production:
     class: Accounting::GenerateRecurringInvoicesJob
     queue: default
     schedule: every day at 5am
+  consistency_checks:
+    class: Accounting::ConsistencyCheckJob
+    queue: default
+    schedule: every day at 2am

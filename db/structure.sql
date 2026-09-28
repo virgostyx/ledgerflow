@@ -466,6 +466,117 @@ ALTER SEQUENCE public.accounting_cash_forecast_items_id_seq OWNED BY public.acco
 
 
 --
+-- Name: accounting_consistency_acknowledgements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_consistency_acknowledgements (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    fingerprint character varying NOT NULL,
+    comment text NOT NULL,
+    user_id bigint,
+    acknowledged_at timestamp(6) without time zone CONSTRAINT accounting_consistency_acknowledgement_acknowledged_at_not_null NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_consistency_acknowledgements_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_consistency_acknowledgements_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_consistency_acknowledgements_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_consistency_acknowledgements_id_seq OWNED BY public.accounting_consistency_acknowledgements.id;
+
+
+--
+-- Name: accounting_consistency_findings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_consistency_findings (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    run_id bigint NOT NULL,
+    check_id character varying NOT NULL,
+    severity character varying NOT NULL,
+    fingerprint character varying NOT NULL,
+    subject_type character varying,
+    subject_id bigint,
+    message text NOT NULL,
+    data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_consistency_findings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_consistency_findings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_consistency_findings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_consistency_findings_id_seq OWNED BY public.accounting_consistency_findings.id;
+
+
+--
+-- Name: accounting_consistency_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_consistency_runs (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    trigger character varying DEFAULT 'manual'::character varying NOT NULL,
+    started_at timestamp(6) without time zone NOT NULL,
+    finished_at timestamp(6) without time zone,
+    duration_ms integer,
+    counts jsonb DEFAULT '{}'::jsonb NOT NULL,
+    errors_by_check jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_consistency_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_consistency_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_consistency_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_consistency_runs_id_seq OWNED BY public.accounting_consistency_runs.id;
+
+
+--
 -- Name: accounting_depreciation_entries; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1794,6 +1905,27 @@ ALTER TABLE ONLY public.accounting_cash_forecast_items ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: accounting_consistency_acknowledgements id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_consistency_acknowledgements ALTER COLUMN id SET DEFAULT nextval('public.accounting_consistency_acknowledgements_id_seq'::regclass);
+
+
+--
+-- Name: accounting_consistency_findings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_consistency_findings ALTER COLUMN id SET DEFAULT nextval('public.accounting_consistency_findings_id_seq'::regclass);
+
+
+--
+-- Name: accounting_consistency_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_consistency_runs ALTER COLUMN id SET DEFAULT nextval('public.accounting_consistency_runs_id_seq'::regclass);
+
+
+--
 -- Name: accounting_depreciation_entries id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2088,6 +2220,30 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 ALTER TABLE ONLY public.accounting_cash_forecast_items
     ADD CONSTRAINT accounting_cash_forecast_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_consistency_acknowledgements accounting_consistency_acknowledgements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_consistency_acknowledgements
+    ADD CONSTRAINT accounting_consistency_acknowledgements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_consistency_findings accounting_consistency_findings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_consistency_findings
+    ADD CONSTRAINT accounting_consistency_findings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_consistency_runs accounting_consistency_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_consistency_runs
+    ADD CONSTRAINT accounting_consistency_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -2467,6 +2623,13 @@ CREATE UNIQUE INDEX idx_on_entity_id_account_id_code_b0055f39aa ON public.accoun
 
 
 --
+-- Name: idx_on_entity_id_fingerprint_49aa41669e; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_entity_id_fingerprint_49aa41669e ON public.accounting_consistency_findings USING btree (entity_id, fingerprint);
+
+
+--
 -- Name: idx_on_journal_entry_line_id_307850d4ba; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2674,6 +2837,20 @@ CREATE INDEX index_accounting_bank_transactions_on_journal_entry_id ON public.ac
 --
 
 CREATE INDEX index_accounting_cash_forecast_items_on_entity_id ON public.accounting_cash_forecast_items USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_consistency_findings_on_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_consistency_findings_on_run_id ON public.accounting_consistency_findings USING btree (run_id);
+
+
+--
+-- Name: index_accounting_consistency_runs_on_entity_id_and_started_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_consistency_runs_on_entity_id_and_started_at ON public.accounting_consistency_runs USING btree (entity_id, started_at);
 
 
 --
@@ -3283,6 +3460,13 @@ CREATE UNIQUE INDEX index_analytical_accounts_on_axis_and_code ON public.account
 --
 
 CREATE UNIQUE INDEX index_analytical_annotations_on_line_axis_account ON public.accounting_analytical_annotations USING btree (journal_entry_line_id, analytical_axis_id, analytical_account_id);
+
+
+--
+-- Name: index_consistency_acks_on_entity_and_fingerprint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_consistency_acks_on_entity_and_fingerprint ON public.accounting_consistency_acknowledgements USING btree (entity_id, fingerprint);
 
 
 --
@@ -4127,6 +4311,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000700'),
 ('20260929000600'),
 ('20260929000500'),
 ('20260929000400'),

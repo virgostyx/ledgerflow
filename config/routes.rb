@@ -83,6 +83,10 @@ Rails.application.routes.draw do
 
       resources :recurring_invoices, except: [ :show ]
       resources :payment_reminders, only: [ :index, :create ]
+      resources :consistency_runs, path: "consistency", only: [ :index, :create ] do
+        post :acknowledge, on: :collection
+      end
+
       resources :audit_logs, only: [ :index, :show ]
 
       resources :accruals, only: [ :index, :new, :create, :destroy ] do
