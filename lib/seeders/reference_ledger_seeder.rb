@@ -56,6 +56,7 @@ module Seeders
           deliberate_anomalies
           analytic_scenarios
           fixed_asset_scenario
+          accrual_scenario
         end
       end
 
@@ -64,6 +65,21 @@ module Seeders
     end
 
     private
+
+    # R17 scenario (§15): an annual insurance premium of 1 200 € (Oct 2026 – Sep 2027) paid in October and
+    # deferred at the year end. The premium itself is booked against 100000 (like the other OD fixtures).
+    def accrual_scenario
+      post_od(@fiscal_year_2026, Date.new(2026, 10, 1), "Prime d'assurance annuelle", [ [ "613000", :debit, 1200 ], [ CASH, :credit, 1200 ] ])
+      accrual = Accounting::Accrual.create!(
+        fiscal_year: @fiscal_year_2026, accrual_type: :deferred_charge, description: "Prime d'assurance annuelle", total_amount: 1200,
+        period_start: Date.new(2026, 10, 1), period_end: Date.new(2027, 9, 30),
+        pl_account: Accounting::Account.find_by!(code: "613000"), accrual_account: Accounting::Account.find_by!(code: "490100")
+      )
+      result = Accounting::BookAccrual.call(accrual: accrual)
+      raise result.message if result.failure?
+
+      accrual.reload.journal_entry.post!
+    end
 
     # R16 scenario (§15): a 6 000 € asset contributed in kind, 5 years, depreciated for 2026. Booked against
     # the capital account so bank, aged-balance and VAT figures are untouched.

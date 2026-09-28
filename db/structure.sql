@@ -115,6 +115,50 @@ ALTER SEQUENCE public.accounting_accounts_id_seq OWNED BY public.accounting_acco
 
 
 --
+-- Name: accounting_accruals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_accruals (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    fiscal_year_id bigint NOT NULL,
+    accrual_type integer NOT NULL,
+    description character varying NOT NULL,
+    total_amount numeric(15,2) NOT NULL,
+    period_start date NOT NULL,
+    period_end date NOT NULL,
+    pl_account_id bigint NOT NULL,
+    accrual_account_id bigint NOT NULL,
+    source_journal_entry_id bigint,
+    journal_entry_id bigint,
+    reversal_entry_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT accruals_amount_positive CHECK ((total_amount > (0)::numeric)),
+    CONSTRAINT accruals_period_order CHECK ((period_end >= period_start))
+);
+
+
+--
+-- Name: accounting_accruals_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_accruals_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_accruals_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_accruals_id_seq OWNED BY public.accounting_accruals.id;
+
+
+--
 -- Name: accounting_analytical_accounts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -697,7 +741,9 @@ CREATE TABLE public.accounting_invoice_lines (
     "position" integer DEFAULT 1 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    entity_id bigint NOT NULL
+    entity_id bigint NOT NULL,
+    service_start date,
+    service_end date
 );
 
 
@@ -1680,6 +1726,13 @@ ALTER TABLE ONLY public.accounting_accounts ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: accounting_accruals id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_accruals ALTER COLUMN id SET DEFAULT nextval('public.accounting_accruals_id_seq'::regclass);
+
+
+--
 -- Name: accounting_analytical_accounts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1958,6 +2011,14 @@ ALTER TABLE ONLY public.webauthn_credentials ALTER COLUMN id SET DEFAULT nextval
 
 ALTER TABLE ONLY public.accounting_accounts
     ADD CONSTRAINT accounting_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_accruals accounting_accruals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_accruals
+    ADD CONSTRAINT accounting_accruals_pkey PRIMARY KEY (id);
 
 
 --
@@ -2454,6 +2515,20 @@ CREATE INDEX index_accounting_accounts_on_entity_id ON public.accounting_account
 --
 
 CREATE INDEX index_accounting_accounts_on_parent_id ON public.accounting_accounts USING btree (parent_id);
+
+
+--
+-- Name: index_accounting_accruals_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_accruals_on_entity_id ON public.accounting_accruals USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_accruals_on_fiscal_year_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_accruals_on_fiscal_year_id ON public.accounting_accruals USING btree (fiscal_year_id);
 
 
 --
@@ -4033,6 +4108,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000500'),
 ('20260929000400'),
 ('20260929000300'),
 ('20260929000200'),

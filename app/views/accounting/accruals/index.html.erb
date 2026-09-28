@@ -1,0 +1,81 @@
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900">Closing regularizations</h1>
+    <%= link_to "New regularization", new_accounting_accrual_path(fiscal_year_id: @fiscal_year&.id), class: "btn-primary text-sm" %>
+  </div>
+
+  <%= form_with url: accounting_accruals_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
+    <div><label class="block text-sm font-medium text-gray-700">Fiscal year (cut-off = year end)</label>
+      <%= f.select :fiscal_year_id, @fiscal_years.map { |fy| [ "#{fy.year} (#{fy.end_date})", fy.id ] }, { selected: @fiscal_year&.id }, class: "mt-1 form-select" %></div>
+    <%= f.submit "Filter", class: "btn-primary" %>
+  <% end %>
+
+  <% money = ->(v) { number_to_currency(v, unit: "€") } %>
+  <% if @result.nil? %>
+    <p class="text-sm text-gray-500">No fiscal year.</p>
+  <% else %>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <% %w[Type Description Period Total Amount\ at\ cut-off State Reversal].each_with_index do |h, i| %>
+          <th class="px-3 py-2 <%= [ 3, 4 ].include?(i) ? 'text-right' : 'text-left' %> font-medium text-gray-600"><%= h %></th>
+        <% end %><th></th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @result.rows.each do |row| %>
+          <% a = row.accrual %>
+          <tr>
+            <td class="px-3 py-2"><%= a.accrual_type.humanize %></td>
+            <td class="px-3 py-2"><%= a.description %></td>
+            <td class="px-3 py-2"><%= l(a.period_start, format: :short) %> – <%= l(a.period_end, format: :short) %></td>
+            <td class="px-3 py-2 text-right font-mono"><%= money.(a.total_amount) %></td>
+            <td class="px-3 py-2 text-right font-mono font-semibold"><%= money.(row.amount) %></td>
+            <td class="px-3 py-2"><%= { pending: "Not booked", draft: "Draft entry", posted: "Validated" }.fetch(row.status) %></td>
+            <td class="px-3 py-2 <%= 'text-red-700' if row.missing_reversal %>">
+              <%= a.reversal_entry_id ? "Draft/posted reversal" : (row.missing_reversal ? "Missing reversal" : "—") %>
+            </td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+              <% if !a.booked? %>
+                <%= button_to "Generate entry", book_accounting_accrual_path(a), class: "text-xs text-primary-600 underline", form: { class: "inline" } %>
+                <%= button_to "Delete", accounting_accrual_path(a), method: :delete, class: "text-xs text-red-700 underline", form: { class: "inline" } %>
+              <% elsif a.reversal_entry_id.nil? %>
+                <%= button_to "Generate reversal", reverse_accounting_accrual_path(a), class: "text-xs text-primary-600 underline", form: { class: "inline" } %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @result.rows.empty? %><tr><td colspan="8" class="px-3 py-4 text-center text-gray-500">No regularization for this year.</td></tr><% end %>
+      </tbody>
+    </table>
+
+    <h2 class="mt-8 mb-3 text-sm font-semibold text-gray-700">Regularizations vs ledger (I11) — validated entries only</h2>
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left font-medium text-gray-600">Check</th>
+        <% %w[Regularizations Ledger Difference].each do |h| %><th class="px-3 py-2 text-right font-medium text-gray-600"><%= h %></th><% end %></tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @result.checks.each do |c| %>
+          <tr><td class="px-3 py-2"><%= c.label %></td>
+            <td class="px-3 py-2 text-right font-mono"><%= money.(c.register) %></td>
+            <td class="px-3 py-2 text-right font-mono"><%= money.(c.ledger) %></td>
+            <td class="px-3 py-2 text-right font-mono font-semibold <%= c.difference.zero? ? 'text-emerald-700' : 'text-red-700' %>"><%= money.(c.difference) %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <% { "Cut-off help: recorded after the closing (accrued charges / invoices to receive?)" => @result.recorded_after_closing,
+         "Cut-off help: service running into the next fiscal year (deferral candidates?)" => @result.spanning_next_year }.each do |title, items| %>
+      <h2 class="mt-8 mb-3 text-sm font-semibold text-gray-700"><%= title %></h2>
+      <% if items.empty? %>
+        <p class="text-sm text-gray-500">None.</p>
+      <% else %>
+        <table class="min-w-full divide-y divide-gray-200 text-sm"><tbody class="divide-y divide-gray-100 bg-white">
+          <% items.each do |item| %>
+            <tr><td class="px-3 py-2"><%= link_to item.invoice.invoice_number.presence || "Invoice ##{item.invoice.id}", accounting_invoice_path(item.invoice), class: "text-primary-600 underline" %></td>
+              <td class="px-3 py-2"><%= item.invoice.partner&.name %></td>
+              <td class="px-3 py-2"><%= l(item.invoice.invoice_date, format: :short) %></td>
+              <td class="px-3 py-2 text-gray-600"><%= item.reason %></td></tr>
+          <% end %>
+        </tbody></table>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

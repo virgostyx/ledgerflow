@@ -83,6 +83,13 @@ Rails.application.routes.draw do
 
       resources :recurring_invoices, except: [ :show ]
       resources :payment_reminders, only: [ :index, :create ]
+      resources :accruals, only: [ :index, :new, :create, :destroy ] do
+        member do
+          post :book
+          post :reverse
+        end
+      end
+
       resources :fixed_assets, except: [ :show ] do
         post :post_depreciation, on: :collection
         member do

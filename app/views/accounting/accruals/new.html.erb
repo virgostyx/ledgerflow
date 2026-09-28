@@ -1,0 +1,20 @@
+<div class="mx-auto max-w-2xl px-4 py-8">
+  <h1 class="mb-6 text-2xl font-bold text-gray-900">New regularization — <%= @fiscal_year&.year %></h1>
+  <%= form_with model: @accrual, url: accounting_accruals_path(fiscal_year_id: @fiscal_year&.id), scope: :accounting_accrual, class: "space-y-4 rounded-lg border border-gray-200 bg-white p-6" do |f| %>
+    <% if @accrual.errors.any? %><p class="text-sm text-red-700"><%= @accrual.errors.full_messages.to_sentence %></p><% end %>
+    <div><%= f.label :accrual_type, "Type", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :accrual_type, Accounting::Accrual.accrual_types.keys.map { |t| [ t.humanize, t ] }, {}, class: "mt-1 form-select" %></div>
+    <div><%= f.label :description, class: "block text-sm font-medium text-gray-700" %><%= f.text_field :description, required: true, class: "mt-1 form-input w-full" %></div>
+    <div><%= f.label :total_amount, "Total amount of the covered service (€)", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.number_field :total_amount, step: "0.01", min: "0.01", required: true, class: "mt-1 form-input" %></div>
+    <div class="flex gap-4">
+      <div><%= f.label :period_start, "Period start", class: "block text-sm font-medium text-gray-700" %><%= f.date_field :period_start, required: true, class: "mt-1 form-input" %></div>
+      <div><%= f.label :period_end, "Period end", class: "block text-sm font-medium text-gray-700" %><%= f.date_field :period_end, required: true, class: "mt-1 form-input" %></div>
+    </div>
+    <div><%= f.label :pl_account_id, "Charge or income account", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :pl_account_id, @pl_accounts.map { |a| [ "#{a.code} #{a.label_fr}", a.id ] }, {}, class: "mt-1 form-select w-full" %></div>
+    <div><%= f.label :source_journal_entry_id, "Source entry ID (optional)", class: "block text-sm font-medium text-gray-700" %><%= f.number_field :source_journal_entry_id, class: "mt-1 form-input" %></div>
+    <p class="text-xs text-gray-500">The regularization account follows the type (490100, 490200, 492100 or 492200). Nothing is booked until you generate the entry.</p>
+    <div class="flex gap-3"><%= f.submit "Save", class: "btn-primary" %><%= link_to "Cancel", accounting_accruals_path(fiscal_year_id: @fiscal_year&.id), class: "btn-secondary" %></div>
+  <% end %>
+</div>
