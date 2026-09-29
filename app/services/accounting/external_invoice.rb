@@ -57,6 +57,9 @@ class Accounting::ExternalInvoice
     # Correcting a live document is an update for the caller (200); a first or post-cancellation document is a creation.
     result.status = :ok if revised && result.status == :created
     result
+  rescue ActiveRecord::RecordNotUnique
+    # Lost a race against a concurrent request for the same reference: nothing was written, the caller retries.
+    failure(:conflict, base: [ "Concurrent update, retry" ])
   end
 
   def cancel_current(invoice)

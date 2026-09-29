@@ -109,6 +109,8 @@ Les grilles TVA et les comptes de TVA ne sont **pas** envoyés : LedgerFlow les 
 | Contenu différent | Révision en cours annulée par extourne, révision n+1 comptabilisée | `200` |
 | Révision en cours déjà annulée (par `DELETE`) | Nouvelle révision comptabilisée | `201` |
 
+Envois simultanés pour une même référence : l'index unique garantit un seul gagnant, l'autre reçoit `409 {"errors":{"base":["Concurrent update, retry"]}}` sans rien avoir écrit ; il suffit de rejouer.
+
 Refus de révision (`409`, rien n'est modifié) : la révision en cours est payée ou partiellement payée, lettrée, dans un lot de paiement actif, déjà créditée, liée à une immobilisation, ou son exercice est clos. Corps : `{"errors":{"base":["<motif>"]}}`.
 
 Si c'est la **nouvelle** révision qui ne peut pas être comptabilisée (par exemple une déclaration TVA déjà déposée sur la période), la réponse est `422 {"errors":{"base":["<motif>"]}}` et l'extourne est annulée avec le reste : l'ancienne révision reste en vigueur.
@@ -178,7 +180,6 @@ curl -X PUT https://ledgerflow.example/api/v1/invoices/BF-I-1 \
 ## 8. Limites connues et reporté
 
 - **Pas de limitation de débit** : prévue au plan, non implémentée.
-- **Envois simultanés d'une même nouvelle référence** : l'index unique protège les données, mais la seconde requête peut recevoir une erreur `500` au lieu d'un `409`. À rejouer.
 - **Pas d'avoir (note de crédit)** ni de choix du journal via l'API : le journal suit le type de facture.
 - **Pas de suppression de tiers** par l'API (désactiver via `active: false`).
 - **LedgerFlow ne notifie pas l'appelant** : il doit interroger `GET`. Un client sortant / webhook reste à concevoir.

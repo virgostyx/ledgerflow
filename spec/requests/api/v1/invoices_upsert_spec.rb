@@ -128,6 +128,19 @@ RSpec.describe 'Api::V1::Invoices upsert/cancel/show', type: :request do
       expect(Accounting::Invoice.count).to eq(0)
     end
 
+    it 'answers 409, not 500, when a concurrent request already created the same reference' do
+      put_invoice
+      # The lost race: this request did not see the document the other one has just committed.
+      allow_any_instance_of(Accounting::ExternalInvoice).to receive(:latest).and_return(nil)
+      line[:unit_price] = '60.00'
+
+      expect { put_invoice }.not_to change(Accounting::Invoice, :count)
+
+      expect(response).to have_http_status(:conflict)
+      expect(json['errors']['base'].first).to match(/retry/i)
+      expect(invoices.first).to be_posted
+    end
+
     it 'requires the invoices:write scope' do
       issued.first.update!(scopes: %w[invoices:read])
 
