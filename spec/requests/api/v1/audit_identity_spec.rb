@@ -32,13 +32,13 @@ RSpec.describe 'API audit identity', type: :request do
     expect(Current.api_client).to be_nil
   end
 
-  it 'gives entries created through the legacy JWT path their request context' do
+  it 'gives writes made through the legacy JWT path their request context, without a client identity' do
     jwt = Api::JwtService.encode({ entity_id: entity.id })
-    post '/api/v1/journal_entries', headers: { 'Authorization' => "Bearer #{jwt}" },
-         params: { account_code: '604000', amount: '100', date: Date.current.to_s, description: 'x' }
+    put '/api/v1/partners/P1', params: { name: 'ACME', partner_type: 'supplier' },
+                               headers: { 'Authorization' => "Bearer #{jwt}" }, as: :json
 
     expect(response).to have_http_status(:created)
-    row = logs_for('Accounting::JournalEntry').find_by(action: 'post_entry')
+    row = logs_for('Accounting::Partner').first
     expect(row.request_id).to be_present
     expect(row.payload).not_to have_key('api_client')
   end

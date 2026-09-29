@@ -189,7 +189,7 @@ Rails.application.routes.draw do
   # API BudgetFlow (JWT)
   namespace :api do
     namespace :v1 do
-      resources :journal_entries, only: [ :index, :show, :create ]
+      resources :journal_entries, only: [ :index, :show ]
       resources :invoices,        only: [ :index, :show, :update, :destroy ], param: :external_ref, constraints: { external_ref: %r{[^/]+} }
       resources :partners,        only: [ :update ], param: :external_ref, constraints: { external_ref: %r{[^/]+} }
       resources :projects,        only: [] do

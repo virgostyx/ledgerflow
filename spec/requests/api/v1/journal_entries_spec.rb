@@ -11,43 +11,13 @@ RSpec.describe 'Api::V1::JournalEntries', type: :request do
                                    account_type: :expense, normal_balance: :debit) }
 
   describe 'POST /api/v1/journal_entries' do
-    it_behaves_like 'a JWT-protected endpoint' do
-      subject { post '/api/v1/journal_entries', headers: {} }
-    end
+    it 'no longer exists: third parties inject invoices, not ad-hoc entries' do
+      expect {
+        post '/api/v1/journal_entries', params: { account_code: '604000', amount: '100', date: Date.current.iso8601 },
+                                        headers: auth_headers
+      }.not_to change(Accounting::JournalEntry, :count)
 
-    context 'avec token valide' do
-      let(:params) do
-        { project_id: 42, amount: '1000.00', date: Date.current.iso8601,
-          description: 'Mission terrain', account_code: '604000' }
-      end
-
-      it 'crée une écriture comptable' do
-        expect {
-          post '/api/v1/journal_entries', params: params, headers: auth_headers
-        }.to change(Accounting::JournalEntry, :count).by(1)
-      end
-
-      it 'retourne 201 avec la référence' do
-        post '/api/v1/journal_entries', params: params, headers: auth_headers
-        expect(response).to have_http_status(:created)
-        body = JSON.parse(response.body)
-        expect(body['reference']).to match(/ACH\d{4}\/\d{4}/)
-        expect(body['status']).to eq('posted')
-      end
-
-      it 'stocke le project_id sur l écriture' do
-        post '/api/v1/journal_entries', params: params, headers: auth_headers
-        expect(Accounting::JournalEntry.last.project_id).to eq(42)
-      end
-    end
-
-    context 'avec compte inconnu' do
-      it 'retourne 422' do
-        post '/api/v1/journal_entries',
-             params: { account_code: 'XXXXX', amount: '100', date: Date.current.iso8601 },
-             headers: auth_headers
-        expect(response).to have_http_status(:unprocessable_content)
-      end
+      expect(response).to have_http_status(:not_found)
     end
   end
 

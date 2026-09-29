@@ -1,3 +1,4 @@
+# Read-only. Accounting data enters through /invoices (docs/dev/api/inbound-api.md), never as ad-hoc entries.
 class Api::V1::JournalEntriesController < Api::V1::BaseController
   def index
     entries = Accounting::JournalEntry.all
@@ -10,48 +11,6 @@ class Api::V1::JournalEntriesController < Api::V1::BaseController
   def show
     entry = Accounting::JournalEntry.find(params[:id])
     render json: serialize_entry(entry)
-  end
-
-  def create
-    account = Accounting::Account.find_by(code: params[:account_code])
-    return render json: { error: "Account not found" }, status: :unprocessable_content if account.nil?
-
-    journal     = Accounting::Journal.where(journal_type: :purchase, active: true).first
-    fiscal_year = Accounting::FiscalYear.current
-    amount      = BigDecimal(params[:amount].to_s)
-
-    entry = nil
-    ApplicationRecord.transaction do
-      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
-      entry = Accounting::JournalEntry.create!(
-        journal:     journal,
-        fiscal_year: fiscal_year,
-        entry_date:  Date.parse(params[:date].to_s),
-        description: params[:description],
-        project_id:  params[:project_id],
-        status:      :draft
-      )
-      Accounting::JournalEntryLine.create!(
-        journal_entry: entry, account: account,
-        debit: amount, credit: BigDecimal("0"), label: params[:description]
-      )
-      Accounting::JournalEntryLine.create!(
-        journal_entry: entry, account: journal.default_account,
-        debit: BigDecimal("0"), credit: amount, label: params[:description]
-      )
-    end
-
-    result = Accounting::PostJournalEntry.call(entry: entry)
-    if result.success?
-      render json: serialize_entry(entry.reload), status: :created
-    else
-      entry.destroy
-      render json: { error: result.message }, status: :unprocessable_content
-    end
-  rescue ArgumentError => e
-    render json: { error: e.message }, status: :unprocessable_content
-  rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.message }, status: :unprocessable_content
   end
 
   private
