@@ -1,6 +1,6 @@
 # Spécification : adaptateur `ledgerflow` pour BudgetFlow
 
-Statut : **spécification seule** (2026-09-29). Rien n'a été modifié dans BudgetFlow ; l'écrire demande l'accord explicite de l'utilisateur (règle du dépôt).
+Statut : **implémenté dans BudgetFlow** (2026-09-29, accord explicite de l'utilisateur) : `app/services/accounting/ledgerflow/{exporter,client}.rb` et ses specs, adaptateur `ledgerflow` déclaré dans `Accounting::Factory` et `EntitySetting`. Les corps JSON produits ont été vérifiés contre la vraie API de LedgerFlow (fournisseur, facture EUR et USD, avoir, annulation, rejeux). Ce document reste la référence du contrat.
 Sources lues (lecture seule) : `budgetflow/app/services/accounting/` (`base.rb`, `factory.rb`, `dolibarr/exporter.rb`), `db/schema.rb`, `app/models/{invoice,entity_setting}.rb`.
 Contrat côté LedgerFlow : `docs/dev/api/inbound-api.md`.
 
@@ -30,7 +30,7 @@ Une entité BudgetFlow correspond à **un client API** et donc à **une entité 
 | `export_invoice(invoice)` | `PUT /api/v1/invoices/{ref}` | Envoyer d'abord le fournisseur (idempotent, sans risque), puis la facture. |
 | `export_credit_note(credit_note)` | `PUT /api/v1/invoices/{ref}` avec `document_type: "credit_note"` | Sans lien vers une facture (cf. 6.3). |
 | `reverse_invoice(invoice)` | `DELETE /api/v1/invoices/{ref}` | `reason` obligatoire : `invoice.cancellation_reason`, à défaut un texte fixe. Contrairement à Dolibarr, l'annulation est automatique. |
-| `set_invoice_paid(invoice)` | **non supporté** | Laisser l'implémentation par défaut (échec explicite). Cf. 6.5. |
+| `set_invoice_paid(invoice)` | aucun appel, **succès sans effet** | Doit réussir : `Invoices::AccountingMarkAsPaidOrganizer` annule toute la transaction si l'adaptateur échoue, et marquer une facture payée dans BudgetFlow deviendrait impossible. Cf. 6.5. |
 | `adapter_name` | `"LedgerFlow"` | |
 
 Identifiants (`{ref}`), stables et déterministes : fournisseur `bf-supplier-{supplier.id}`, facture ou avoir `bf-invoice-{invoice.id}`. Une même référence ne peut pas passer de facture à avoir.
@@ -45,8 +45,8 @@ Identifiants (`{ref}`), stables et déterministes : fournisseur `bf-supplier-{su
 |---|---|---|
 | `name` | `name` | obligatoire |
 | — | `partner_type` | toujours `supplier` |
-| `tin_country_code` / `country_code` | `country` | ISO 2 lettres |
-| `tin_value` (+ `tin_type`), `vat_number` | `vat_number` | LedgerFlow exige **préfixe pays + format national** (`BE0123456789`). Si la valeur est sans préfixe, préfixer avec le pays. En cas de doute, **ne pas l'envoyer** plutôt que recevoir un `422`. |
+| `country_code`, à défaut `tin_country_code` | `country` | ISO 2 lettres |
+| `tin_value` si `tin_type == "VAT"` | `vat_number` | BudgetFlow stocke déjà le préfixe pays pour les numéros de TVA (`BE0123456789`), ce que LedgerFlow exige. Tout autre identifiant fiscal (TPIN…) n'est **pas** envoyé. |
 | `iban`, `bic`, `email` | `iban`, `bic`, `email` | IBAN contrôlé côté LedgerFlow |
 | `peppol_id` | `peppol_participant_id` | |
 
@@ -61,7 +61,7 @@ Le rapprochement par numéro de TVA reprend un tiers LedgerFlow déjà saisi à 
 | — | `invoice_type` | toujours `supplier` |
 | `invoice_date`, `due_date` | `invoice_date`, `due_date` | ISO 8601 ; la date doit tomber dans un exercice **ouvert** |
 | `currency` | `currency` | |
-| `exchange_rate_used` | `exchange_rate` | **Inverser** (cf. 6.1) |
+| `exchange_rate_used` (pas `effective_exchange_rate`, qui préfère le taux réel du paiement) | `exchange_rate` | **Inverser** (cf. 6.1). `"1.0"` pour l'EUR. |
 | `project.id` | `project_id` | |
 | `description` | `description` | |
 | `invoice_lines` (ordre `position`) | `lines[]` | ci-dessous |
@@ -88,7 +88,7 @@ Les montants sont envoyés en **chaînes décimales** (`"50.00"`) depuis des `Bi
 | `409` (autre) | `failure` avec le motif : facture payée ou lettrée dans LedgerFlow, exercice clos, avoir comptabilisé… Ne pas réessayer ; à traiter par un humain. |
 | `422` | `failure`, message = `errors` aplati (`lines[0].account_code: unknown account…`), stocké dans `accounting_export_error`. |
 | `401`, `403` | `failure` de configuration (clé, scope). |
-| `429` | Attendre `Retry-After` secondes puis réessayer. |
+| `429` | `failure` « rate limit reached, retry in Ns » ; pas d'attente dans l'adaptateur, la relance revient au job d'export. |
 | Réseau / timeout | `failure` ; le `PUT` peut être rejoué sans risque. |
 
 ## 6. Points d'attention (pièges relevés)
@@ -97,79 +97,24 @@ Les montants sont envoyés en **chaînes décimales** (`"50.00"`) depuis des `Bi
 2. **Numéro de facture du fournisseur.** BudgetFlow a `invoice_number` (obligatoire, celui du fournisseur). LedgerFlow numérote lui-même (`ACH2026/…`) et n'a pas de champ dédié pour le numéro fournisseur dans l'API : `external_ref` est la clé BudgetFlow, pas ce numéro. Proposition : ajouter `supplier_reference` (colonne et champ d'API) et l'utiliser pour le contrôle de doublon R19 C05. **À décider** : en attendant, l'adaptateur peut le mettre dans `description`.
 3. **Avoirs.** Un avoir BudgetFlow est une `Invoice` de type `credit_note` rattachée à un engagement, **sans lien vers la facture d'origine**. Il part donc sans `credited_invoice_external_ref`, ce que l'API accepte. Il réduit le solde du fournisseur mais n'est pas lettré contre une facture.
 4. **Reçus (`invoice_type: receipt`).** Hors périmètre : ce ne sont pas des factures comptables. À ne pas exporter tant qu'il n'y a pas de règle.
-5. **Statut de paiement.** BudgetFlow suit le paiement de son côté (`payment_status`, `paid_at`) ; LedgerFlow le tire du rapprochement bancaire. `set_invoice_paid` n'est donc pas supporté. Pour afficher le statut comptable dans BudgetFlow : `GET /api/v1/invoices/{ref}` (`status` : `posted`, `partially_paid`, `paid`, `cancelled`). **À décider** : qui fait foi si les deux divergent.
+5. **Statut de paiement.** BudgetFlow suit le paiement de son côté (`payment_status`, `paid_at`) ; LedgerFlow le tire du rapprochement bancaire. `set_invoice_paid` ne transmet donc rien, mais **réussit** (sinon le paiement serait annulé dans BudgetFlow). Pour afficher le statut comptable dans BudgetFlow : `GET /api/v1/invoices/{ref}` (`status` : `posted`, `partially_paid`, `paid`, `cancelled`). **À décider** : qui fait foi si les deux divergent.
 6. **Traitement de TVA.** L'adaptateur Dolibarr n'envoie aucun régime ; LedgerFlow applique alors `domestic`. Les achats intracommunautaires ou en autoliquidation demandent `vat_treatment` (`intracom_goods`, `intracom_services`, `construction_reverse_charge`, `export`, `exempt`) : BudgetFlow n'a pas cette information aujourd'hui.
 7. **Corrections dans BudgetFlow** (`invoice_amount_corrections`, `invoice_reimputations`…) : renvoyer le même `PUT`. LedgerFlow crée une révision par extourne ; `409` si la facture est déjà payée ou lettrée là-bas. Une facture qui porte un avoir comptabilisé ne se révise pas : annuler l'avoir d'abord.
 8. **Débit** : 300 requêtes par minute et par clé. Un export en masse doit espacer ses appels ou respecter `Retry-After`.
 
-## 7. Esquisse (non testée)
+## 7. Code
 
-```ruby
-module Accounting
-  module Ledgerflow
-    class Exporter < Accounting::Base
-      def adapter_name = "LedgerFlow"
+Dans BudgetFlow : `app/services/accounting/ledgerflow/exporter.rb` (contrat `Accounting::Base`) et `client.rb` (client `Net::HTTP`, en-tête `Authorization: Bearer <clé>`, erreurs `409`/`422` aplaties en message lisible, `429` avec `Retry-After`).
 
-      def health_check(setting)
-        body = client(setting).get("/api/v1/ping")
-        missing = %w[partners:write invoices:write invoices:read] - body["scopes"]
-        missing.empty? ? success(external_id: nil, message: "Connected to #{body['entity']}") : failure(message: "Missing scopes: #{missing.join(', ')}")
-      rescue StandardError => e
-        failure(message: "Connection failed: #{e.message}")
-      end
+## 8. Tests
 
-      def upsert_third_party(supplier)
-        body = client_for(supplier.entity).put("/api/v1/partners/bf-supplier-#{supplier.id}", partner_payload(supplier))
-        success(external_id: body["id"].to_s)
-      rescue Client::Error => e
-        failure(message: e.message)
-      end
+Côté BudgetFlow (`spec/services/accounting/ledgerflow/exporter_spec.rb`, `factory_spec`, `entity_setting_spec`), avec `Net::HTTP` simulé comme pour Dolibarr : contrat de chaque méthode de `Accounting::Base` (exemple partagé « an accounting exporter »), ordre fournisseur puis facture, corps et en-têtes envoyés, montants en chaînes décimales, taux de change inversé, avoir sans lien, tiers sans identifiant fiscal de type TVA, et chaque statut de réponse (409, 422 avec ligne nommée, 429, 401, réseau).
 
-      def export_invoice(invoice)   = push(invoice, "invoice")
-      def export_credit_note(note)  = push(note, "credit_note")
-
-      def reverse_invoice(invoice)
-        client_for(invoice.project.entity).delete("/api/v1/invoices/bf-invoice-#{invoice.id}", reason: invoice.cancellation_reason.presence || "Reversed from BudgetFlow")
-        success(external_id: invoice.accounting_external_id)
-      rescue Client::Error => e
-        failure(message: e.message)
-      end
-
-      private
-
-      def push(invoice, document_type)
-        c = client_for(invoice.project.entity)
-        upsert_third_party(invoice.effective_supplier)                          # idempotent
-        rate = invoice.currency == "EUR" ? BigDecimal("1") : BigDecimal("1").div(invoice.exchange_rate_used.to_d, 12).round(6)
-        body = c.put("/api/v1/invoices/bf-invoice-#{invoice.id}",
-                     document_type: document_type, invoice_type: "supplier",
-                     partner_external_ref: "bf-supplier-#{invoice.effective_supplier.id}",
-                     invoice_date: invoice.invoice_date, due_date: invoice.due_date, currency: invoice.currency,
-                     exchange_rate: rate.to_s("F"), project_id: invoice.project.id, description: invoice.description,
-                     lines: invoice.invoice_lines.order(:position).map { |l|
-                       { account_code: l.accounting_account.number, description: l.description, quantity: l.quantity.to_s("F"),
-                         unit_price: l.unit_price.to_s("F"), vat_rate: l.vat_code.rate.to_s("F") } })
-        success(external_id: body["id"].to_s, metadata: { invoice_number: body["invoice_number"] })
-      rescue Client::Error => e
-        failure(message: e.message)
-      end
-    end
-  end
-end
-```
-
-`Client` : petit client `Net::HTTP` sur le modèle de `DolibarrClient`, en-tête `Authorization: Bearer <clé>`, qui lève `Client::Error` avec le message aplati des `errors` pour `409` et `422`, et qui réessaie après `Retry-After` pour `429`.
-
-## 8. Tests à prévoir côté BudgetFlow
-
-- Contrat, avec un serveur HTTP simulé (comme pour Dolibarr) : chaque méthode de `Accounting::Base`, chaque statut du tableau du 5.
-- Le taux inversé (`1 / taux`, 6 décimales) et l'absence de `Float` dans le JSON envoyé.
-- Un rejeu identique ne crée pas de révision ; une correction crée la révision 2.
-- Un `409` « facture payée » remonte comme échec lisible, sans nouvelle tentative.
+Non testé côté BudgetFlow : l'idempotence, les révisions et les refus métier, qui sont le comportement de LedgerFlow (`spec/requests/api/v1/`). Une vérification croisée a été faite une fois, en envoyant les corps exacts de l'adaptateur à la vraie API. Elle n'est pas automatisée : si l'un des deux contrats change, la refaire.
 
 ## 9. Décisions ouvertes
 
-1. Accord pour écrire l'adaptateur dans BudgetFlow ?
+1. ~~Accord pour écrire l'adaptateur dans BudgetFlow~~ : donné et réalisé.
 2. Champ `supplier_reference` côté LedgerFlow (point 6.2).
 3. Précision du taux de change LedgerFlow : 6 ou 8 décimales (point 6.1).
 4. Qui fait foi pour le statut de paiement (point 6.5).
