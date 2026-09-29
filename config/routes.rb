@@ -191,6 +191,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       resources :journal_entries, only: [ :index, :show, :create ]
       resources :invoices,        only: [ :index, :show ]
+      resources :partners,        only: [ :update ], param: :external_ref, constraints: { external_ref: %r{[^/]+} }
       resources :projects,        only: [] do
         get :accounting_summary, on: :member
       end

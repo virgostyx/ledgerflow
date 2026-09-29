@@ -1165,7 +1165,8 @@ CREATE TABLE public.accounting_partners (
     updated_at timestamp(6) without time zone NOT NULL,
     entity_id bigint NOT NULL,
     payment_terms_days integer DEFAULT 30 NOT NULL,
-    peppol_participant_id character varying
+    peppol_participant_id character varying,
+    external_ref character varying
 );
 
 
@@ -3376,6 +3377,13 @@ CREATE INDEX index_accounting_partners_on_active ON public.accounting_partners U
 
 
 --
+-- Name: index_accounting_partners_on_entity_and_external_ref; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_partners_on_entity_and_external_ref ON public.accounting_partners USING btree (entity_id, external_ref) WHERE (external_ref IS NOT NULL);
+
+
+--
 -- Name: index_accounting_partners_on_entity_and_vat_number; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4450,6 +4458,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000900'),
 ('20260929000800'),
 ('20260929000700'),
 ('20260929000600'),
