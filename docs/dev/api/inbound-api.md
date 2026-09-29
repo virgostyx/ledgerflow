@@ -31,6 +31,18 @@ Content-Type: application/json
 | Clé absente, inconnue ou révoquée | `401 {"error":"Unauthorized"}` |
 | Scope manquant | `403 {"error":"Forbidden","required_scope":"invoices:write"}` |
 
+### Limitation de débit
+
+300 requêtes par minute **par clé** et 300 par minute **par IP** sur `/api/` (Rack::Attack, `config/initializers/rack_attack.rb`). Au-delà, la réponse est :
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 23
+{"error":"Too Many Requests","retry_after":23}
+```
+
+`Retry-After` donne les secondes restantes avant la fin de la fenêtre. Une requête refusée n'atteint pas l'application (ni authentification, ni journal `api_requests`). Une synchronisation en masse doit rester sous 5 requêtes par seconde ou respecter `Retry-After`.
+
 Le JWT historique (secret partagé) reste accepté, avec accès complet et sans journal `api_requests`. Il est **déprécié** : ne pas l'utiliser pour de nouvelles intégrations.
 
 ## 3. Tiers : `PUT /api/v1/partners/:external_ref` (scope `partners:write`)
@@ -179,7 +191,7 @@ curl -X PUT https://ledgerflow.example/api/v1/invoices/BF-I-1 \
 
 ## 8. Limites connues et reporté
 
-- **Pas de limitation de débit** : prévue au plan, non implémentée.
+- **Limitation de débit** : compteurs en mémoire du processus (Rack::Attack). Suffisant tant que le déploiement reste mono-processus (`WEB_CONCURRENCY: 1`) ; avec plusieurs processus, passer le magasin de `config/initializers/rack_attack.rb` sur un cache partagé (Solid Cache).
 - **Pas d'avoir (note de crédit)** ni de choix du journal via l'API : le journal suit le type de facture.
 - **Pas de suppression de tiers** par l'API (désactiver via `active: false`).
 - **LedgerFlow ne notifie pas l'appelant** : il doit interroger `GET`. Un client sortant / webhook reste à concevoir.

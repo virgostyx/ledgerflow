@@ -18,8 +18,23 @@ class Rack::Attack
     req.ip if req.path.start_with?("/api/")
   end
 
-  self.throttled_responder = lambda do |_env|
-    [ 429, { "Content-Type" => "text/plain" }, [ "Too Many Requests\n" ] ]
+  # ...and 300 per minute per API key, whatever the IPs it comes from (several applications may share one IP).
+  # Keyed on a digest of the bearer token, so no secret ends up in the cache; not checked here, the app does that.
+  throttle("api/key", limit: 300, period: 1.minute) do |req|
+    token = req.get_header("HTTP_AUTHORIZATION").to_s[/\ABearer (.+)\z/, 1]
+    Digest::SHA256.hexdigest(token)[0, 16] if req.path.start_with?("/api/") && token
+  end
+
+  # API clients get a JSON body and Retry-After (seconds until the window resets); the web keeps plain text.
+  self.throttled_responder = lambda do |request|
+    match = request.env["rack.attack.match_data"]
+    if request.path.start_with?("/api/")
+      retry_after = match[:period] - (match[:epoch_time] % match[:period])
+      [ 429, { "Content-Type" => "application/json", "Retry-After" => retry_after.to_s },
+        [ { error: "Too Many Requests", retry_after: retry_after }.to_json ] ]
+    else
+      [ 429, { "Content-Type" => "text/plain" }, [ "Too Many Requests\n" ] ]
+    end
   end
 end
 
