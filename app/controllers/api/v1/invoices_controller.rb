@@ -1,4 +1,6 @@
 class Api::V1::InvoicesController < Api::V1::BaseController
+  self.action_scopes = { index: "invoices:read", show: "invoices:read" }
+
   def index
     invoices = Accounting::Invoice.all
     invoices = invoices.where(status: params[:status]) if params[:status].present?
