@@ -1553,6 +1553,78 @@ ALTER SEQUENCE public.accounting_vat_grid_mappings_id_seq OWNED BY public.accoun
 
 
 --
+-- Name: api_clients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_clients (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    name character varying NOT NULL,
+    key_digest character varying NOT NULL,
+    scopes character varying[] DEFAULT '{}'::character varying[] NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    last_used_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: api_clients_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.api_clients_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: api_clients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.api_clients_id_seq OWNED BY public.api_clients.id;
+
+
+--
+-- Name: api_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_requests (
+    id bigint NOT NULL,
+    api_client_id bigint NOT NULL,
+    http_method character varying NOT NULL,
+    path character varying NOT NULL,
+    status integer NOT NULL,
+    duration_ms integer,
+    external_ref character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: api_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.api_requests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: api_requests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.api_requests_id_seq OWNED BY public.api_requests.id;
+
+
+--
 -- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2101,6 +2173,20 @@ ALTER TABLE ONLY public.accounting_vat_grid_mappings ALTER COLUMN id SET DEFAULT
 
 
 --
+-- Name: api_clients id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_clients ALTER COLUMN id SET DEFAULT nextval('public.api_clients_id_seq'::regclass);
+
+
+--
+-- Name: api_requests id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_requests ALTER COLUMN id SET DEFAULT nextval('public.api_requests_id_seq'::regclass);
+
+
+--
 -- Name: entities id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2444,6 +2530,22 @@ ALTER TABLE ONLY public.accounting_vat_declarations
 
 ALTER TABLE ONLY public.accounting_vat_grid_mappings
     ADD CONSTRAINT accounting_vat_grid_mappings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: api_clients api_clients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_clients
+    ADD CONSTRAINT api_clients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: api_requests api_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_requests
+    ADD CONSTRAINT api_requests_pkey PRIMARY KEY (id);
 
 
 --
@@ -3463,6 +3565,27 @@ CREATE UNIQUE INDEX index_analytical_annotations_on_line_axis_account ON public.
 
 
 --
+-- Name: index_api_clients_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_clients_on_entity_id ON public.api_clients USING btree (entity_id);
+
+
+--
+-- Name: index_api_clients_on_key_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_api_clients_on_key_digest ON public.api_clients USING btree (key_digest);
+
+
+--
+-- Name: index_api_requests_on_api_client_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_requests_on_api_client_id_and_created_at ON public.api_requests USING btree (api_client_id, created_at);
+
+
+--
 -- Name: index_consistency_acks_on_entity_and_fingerprint; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3889,6 +4012,14 @@ ALTER TABLE ONLY public.accounting_payment_batches
 
 
 --
+-- Name: api_requests fk_rails_7d5aab56e7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_requests
+    ADD CONSTRAINT fk_rails_7d5aab56e7 FOREIGN KEY (api_client_id) REFERENCES public.api_clients(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_804019e4cc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4006,6 +4137,14 @@ ALTER TABLE ONLY public.accounting_payment_batch_lines
 
 ALTER TABLE ONLY public.webauthn_credentials
     ADD CONSTRAINT fk_rails_a4355aef77 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: api_clients fk_rails_aadf4d1f14; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_clients
+    ADD CONSTRAINT fk_rails_aadf4d1f14 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -4311,6 +4450,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929000800'),
 ('20260929000700'),
 ('20260929000600'),
 ('20260929000500'),

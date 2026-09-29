@@ -21,7 +21,7 @@ Plan détaillé : `~/.claude/plans/je-voudrais-revenir-sur-hidden-stallman.md`.
 - Annulation : `Accounting::CancelInvoice.call(invoice:)` ; refus déjà codés (payée, note de crédit, lot de paiement, immobilisation).
 - Période : `FiscalYear.open_years` ; une date hors exercice ouvert doit être refusée en 422/409.
 
-## Questions ouvertes (à trancher avant l'étape 4)
-- Une facture révisée garde-t-elle le même `external_ref` (avec un n° de révision), ou l'ancienne est-elle renommée à l'extourne ? Contrainte : l'index unique doit rester valide.
-- Création automatique du partenaire si le n° de TVA est inconnu, ou refus 422 ?
-- Comptes de charge : l'appelant fournit un code de compte PCMN, ou une table de correspondance côté LedgerFlow ?
+## Décisions complémentaires (2026-09-29)
+- Révision : l'`external_ref` est conservé ; l'ancienne pièce est extournée et la nouvelle porte un numéro de révision.
+- Tiers : BudgetFlow envoie chaque nouveau tiers à sa création via `PUT /api/v1/partners/:external_ref` (upsert idempotent, rapprochement possible par n° de TVA). Une facture qui référence un tiers inconnu est refusée en 422 ; pas de création implicite.
+- Comptes : BudgetFlow envoie directement le code de compte PCMN ; un code inconnu → 422 avec la ligne concernée.
