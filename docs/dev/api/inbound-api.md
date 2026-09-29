@@ -101,7 +101,7 @@ Corps de réponse : `{id, external_ref, name, partner_type, vat_number, country,
 | Champ | Règle |
 |---|---|
 | `partner_external_ref` | Obligatoire. Doit avoir été envoyé via `PUT /partners` (sinon `422`, aucune création implicite). |
-| `document_type` | `invoice` (défaut) ou `credit_note` (cf. 4.5). |
+| `document_type` | `invoice` (défaut) ou `credit_note` (cf. 4.4). |
 | `credited_invoice_external_ref` | Avoir seulement : référence de la facture créditée (facultatif). |
 | `invoice_type` | Obligatoire : `supplier` ou `customer`. |
 | `invoice_date` | Obligatoire, ISO 8601. Doit tomber dans un **exercice ouvert**. |
