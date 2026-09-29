@@ -1,0 +1,18 @@
+<% content_for :breadcrumb do %>
+  <%= link_to "Settings", accounting_settings_root_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <%= link_to "API Clients", accounting_settings_api_clients_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <span class="text-gray-700 font-medium"><%= @client.name %></span>
+<% end %>
+
+<div class="max-w-xl">
+  <%= render Ui::PageHeaderComponent.new(title: "API key for #{@client.name}") %>
+
+  <div class="mt-6 rounded-md bg-amber-50 border border-amber-200 p-4 space-y-3">
+    <p class="text-sm text-amber-800">Copy this key now. It is stored as a hash and will not be shown again.</p>
+    <code class="block break-all rounded bg-white border border-amber-200 px-3 py-2 text-sm font-mono text-gray-900"><%= @key %></code>
+  </div>
+
+  <%= link_to "Back to API clients", accounting_settings_api_clients_path, class: "inline-block mt-6 text-sm text-primary-600 hover:text-primary-800" %>
+</div>

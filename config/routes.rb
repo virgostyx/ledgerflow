@@ -173,6 +173,12 @@ Rails.application.routes.draw do
           post :simulate_incoming
         end
         resource :entity, only: [ :edit, :update ]
+        resources :api_clients, only: [ :index, :new, :create ] do
+          member do
+            post  :rotate
+            patch :revoke
+          end
+        end
         resource :opening_balance, only: [ :show, :create ] do
           get :template
         end
