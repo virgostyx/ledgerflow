@@ -18,7 +18,7 @@ class Api::V1::InvoicesController < Api::V1::BaseController
     current   = revisions.last
     return render(json: { error: "Not found" }, status: :not_found) unless current
 
-    render json: serialize_invoice(current).merge(revisions: revisions.map { |r| serialize_invoice(r).slice(:revision, :status, :invoice_number) })
+    render json: serialize_detail(current).merge(revisions: revisions.map { |r| serialize_invoice(r).slice(:revision, :status, :invoice_number) })
   end
 
   def update
@@ -32,14 +32,19 @@ class Api::V1::InvoicesController < Api::V1::BaseController
   private
 
   def invoice_payload
-    params.permit(:partner_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,
+    params.permit(:partner_external_ref, :document_type, :credited_invoice_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,
                   :vat_treatment, :description, :notes, :project_id, lines: LINE_FIELDS)
           .to_h.merge(external_ref: params[:external_ref])
   end
 
   def respond(result)
-    body = result.invoice ? serialize_invoice(result.invoice) : { errors: result.errors }
+    body = result.invoice ? serialize_detail(result.invoice) : { errors: result.errors }
     render json: body, status: STATUS_CODES.fetch(result.status)
+  end
+
+  # Single-document responses also name the credited invoice (one lookup; not used in lists).
+  def serialize_detail(invoice)
+    serialize_invoice(invoice).merge(credited_invoice_external_ref: invoice.credited_invoice&.external_ref)
   end
 
   def serialize_invoice(invoice)
@@ -47,6 +52,7 @@ class Api::V1::InvoicesController < Api::V1::BaseController
       id:             invoice.id,
       external_ref:   invoice.external_ref,
       revision:       invoice.revision,
+      document_type:  invoice.document_type,
       invoice_number: invoice.invoice_number,
       status:         invoice.status,
       invoice_date:   invoice.invoice_date,

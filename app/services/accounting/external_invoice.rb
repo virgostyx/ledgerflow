@@ -1,4 +1,5 @@
 # Invoices injected by a third-party application (docs/dev/api/inbound-api.md), keyed by its own reference.
+# Credit notes are the same resource (document_type "credit_note", optionally linked to the credited invoice).
 # - upsert: unknown reference -> create + post; identical replay -> no-op; changed content -> the current document
 #   is cancelled (reversal) and a new revision is posted under the same reference, all or nothing.
 # - cancel: reverses the current document, with a mandatory reason (recorded in the audit trail).
@@ -7,7 +8,7 @@ class Accounting::ExternalInvoice
   Result = Struct.new(:status, :invoice, :errors, keyword_init: true)
 
   # ponytail: no journal or credit-note choice yet; the journal follows the invoice type, as in the UI.
-  ATTRIBUTES = %w[invoice_type invoice_date due_date currency exchange_rate vat_treatment description notes project_id].freeze
+  ATTRIBUTES = %w[document_type invoice_type invoice_date due_date currency exchange_rate vat_treatment description notes project_id].freeze
   LINE_DECIMALS = %w[quantity unit_price vat_rate].freeze
 
   def self.upsert(payload) = new.upsert(payload.to_h.with_indifferent_access)
@@ -21,6 +22,9 @@ class Accounting::ExternalInvoice
 
     digest  = fingerprint(normalized)
     current = latest
+    if current && current.document_type != normalized[:document_type]
+      return failure(:unprocessable, document_type: [ "cannot change for an existing external_ref" ])
+    end
     return Result.new(status: :ok, invoice: current) if current && !current.cancelled? && current.external_digest == digest
 
     write(current, normalized, digest)
@@ -69,7 +73,8 @@ class Accounting::ExternalInvoice
 
   def create_and_post(current, normalized, digest)
     invoice = Accounting::Invoice.new(normalized.slice(*ATTRIBUTES.map(&:to_sym)).merge(
-      partner: normalized[:partner], fiscal_year: normalized[:fiscal_year], external_ref: @external_ref,
+      partner: normalized[:partner], fiscal_year: normalized[:fiscal_year], credited_invoice: normalized[:credited_invoice],
+      external_ref: @external_ref,
       revision: (current&.revision || 0) + 1, external_digest: digest))
     normalized[:lines_attrs].each_with_index { |line, i| invoice.lines.build(line.merge(position: i + 1)) }
     return failure(:unprocessable, invoice.errors.to_hash) unless invoice.save
@@ -84,6 +89,7 @@ class Accounting::ExternalInvoice
   def normalize(payload)
     @errors = {}
     n = payload.slice(*ATTRIBUTES).symbolize_keys.compact
+    n[:document_type] = enum_value(n.reverse_merge(document_type: "invoice"), :document_type, Accounting::Invoice.document_types)
     n[:invoice_type]  = enum_value(n, :invoice_type, Accounting::Invoice.invoice_types)
     n[:vat_treatment] = enum_value(n, :vat_treatment, Accounting::Invoice.vat_treatments) if n.key?(:vat_treatment)
     n[:currency] = n[:currency].to_s.upcase if n.key?(:currency)
@@ -92,6 +98,7 @@ class Accounting::ExternalInvoice
     n[:partner]     = partner(payload[:partner_external_ref])
     n[:fiscal_year] = fiscal_year(n[:invoice_date])
     n[:lines_attrs] = lines(payload[:lines])
+    n[:credited_invoice] = credited_invoice(payload[:credited_invoice_external_ref], n[:document_type])
     n
   end
 
@@ -124,6 +131,20 @@ class Accounting::ExternalInvoice
     found
   end
 
+  # Only a live API-managed invoice can be credited; the model then checks partner, type and VAT treatment.
+  def credited_invoice(ref, document_type)
+    return if ref.blank?
+
+    unless document_type == "credit_note"
+      @errors[:credited_invoice_external_ref] = [ "is only allowed on a credit note" ]
+      return
+    end
+    found = Accounting::Invoice.external.where(external_ref: ref).order(:revision).last
+    found = nil if found&.cancelled?
+    @errors[:credited_invoice_external_ref] = [ "unknown or cancelled document #{ref.inspect}" ] unless found
+    found
+  end
+
   def fiscal_year(invoice_date)
     return unless invoice_date
 
@@ -153,7 +174,7 @@ class Accounting::ExternalInvoice
 
   # Same content, same fingerprint, whatever the number formatting of the caller (0.1 or "0.10").
   def fingerprint(n)
-    content = { partner_id: n[:partner].id, invoice: n.slice(*ATTRIBUTES.map(&:to_sym)),
+    content = { partner_id: n[:partner].id, credited_invoice_id: n[:credited_invoice]&.id, invoice: n.slice(*ATTRIBUTES.map(&:to_sym)),
                 lines: n[:lines_attrs].map { |l| l.merge(account: l[:account].code) } }
     Digest::SHA256.hexdigest(JSON.generate(canonical(content)))
   end

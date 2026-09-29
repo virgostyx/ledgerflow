@@ -101,6 +101,8 @@ Corps de réponse : `{id, external_ref, name, partner_type, vat_number, country,
 | Champ | Règle |
 |---|---|
 | `partner_external_ref` | Obligatoire. Doit avoir été envoyé via `PUT /partners` (sinon `422`, aucune création implicite). |
+| `document_type` | `invoice` (défaut) ou `credit_note` (cf. 4.5). |
+| `credited_invoice_external_ref` | Avoir seulement : référence de la facture créditée (facultatif). |
 | `invoice_type` | Obligatoire : `supplier` ou `customer`. |
 | `invoice_date` | Obligatoire, ISO 8601. Doit tomber dans un **exercice ouvert**. |
 | `due_date`, `description`, `notes`, `project_id` | Facultatifs. `project_id` est l'identifiant BudgetFlow, sans clé étrangère. |
@@ -160,7 +162,24 @@ Statuts : `draft`, `posted`, `partially_paid`, `paid`, `cancelled`. Référence 
 
 `GET /api/v1/invoices?status=posted` (scope `invoices:read`) liste toutes les factures de l'entité, y compris celles saisies à l'écran.
 
-### 4.4 Erreurs de validation
+### 4.4 Avoirs (notes de crédit)
+
+Un avoir est envoyé sur le **même endpoint**, avec `document_type: "credit_note"`. Il hérite de tout ce qui précède : idempotence, révisions par extourne, `DELETE` avec motif, `GET`. Les lignes portent des montants **positifs**, comme une facture.
+
+```json
+{ "document_type": "credit_note", "credited_invoice_external_ref": "BF-I-1",
+  "partner_external_ref": "BF-P-1", "invoice_type": "supplier", "invoice_date": "2026-09-30",
+  "lines": [ { "account_code": "604000", "description": "Remboursement", "quantity": "1", "unit_price": "50.00", "vat_rate": "21" } ] }
+```
+
+- **Lien facultatif** : sans `credited_invoice_external_ref`, l'avoir est comptabilisé seul. Avec lien, la facture créditée doit être une facture API **en vigueur** (ni annulée, ni un avoir) et l'avoir doit avoir les mêmes tiers, type de facture et traitement de TVA : sinon `422` (`credited_invoice_external_ref` ou `credited_invoice`).
+- **Plafond** : le cumul des avoirs comptabilisés ne peut pas dépasser le total de la facture (`422`, rien n'est écrit).
+- **Effet immédiat** : un avoir comptabilisé réduit aussitôt le solde restant de la facture créditée. Le **lettrage** de l'avoir contre la facture reste une action comptable manuelle dans LedgerFlow, l'API ne le fait pas.
+- **Une référence, un type** : une même `external_ref` ne peut pas passer de facture à avoir (ni l'inverse) : `422` sur `document_type`. Les références d'avoirs et de factures partagent le même espace de noms.
+- **Ordre des corrections** : une facture qui porte un avoir comptabilisé ne peut être ni révisée ni annulée (`409`). Annuler d'abord l'avoir (`DELETE`), corriger la facture, puis renvoyer l'avoir.
+- `GET` et les réponses d'écriture ajoutent `document_type` et, pour un avoir lié, `credited_invoice_external_ref`.
+
+### 4.5 Erreurs de validation
 
 `422` avec le détail par champ ; les lignes sont nommées par leur rang :
 
@@ -192,7 +211,7 @@ curl -X PUT https://ledgerflow.example/api/v1/invoices/BF-I-1 \
 ## 8. Limites connues et reporté
 
 - **Limitation de débit** : compteurs en mémoire du processus (Rack::Attack). Suffisant tant que le déploiement reste mono-processus (`WEB_CONCURRENCY: 1`) ; avec plusieurs processus, passer le magasin de `config/initializers/rack_attack.rb` sur un cache partagé (Solid Cache).
-- **Pas d'avoir (note de crédit)** ni de choix du journal via l'API : le journal suit le type de facture.
+- **Pas de choix du journal** via l'API : le journal suit le type de facture. Pas de lettrage automatique d'un avoir.
 - **Pas de suppression de tiers** par l'API (désactiver via `active: false`).
 - **LedgerFlow ne notifie pas l'appelant** : il doit interroger `GET`. Un client sortant / webhook reste à concevoir.
 - **Lots asynchrones** et écritures libres : volontairement absents.
