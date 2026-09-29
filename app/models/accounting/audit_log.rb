@@ -16,6 +16,8 @@ class Accounting::AuditLog < ApplicationRecord
   def self.record!(auditable:, action:, user: nil, payload: {}, ip_address: nil, reason: nil)
     user ||= Current.user
     entity_id = ActsAsTenant.current_tenant&.id
+    # Third-party writes have no user: the calling application goes into the (hashed) payload instead.
+    payload = payload.merge(api_client: { id: Current.api_client.id, name: Current.api_client.name }) if Current.api_client
     connection.transaction do
       connection.execute("SELECT pg_advisory_xact_lock(hashtext('accounting_audit_logs'), #{entity_id.to_i})")
       previous = unscoped.where(entity_id: entity_id).where.not(content_hash: nil).order(id: :desc).pick(:content_hash)

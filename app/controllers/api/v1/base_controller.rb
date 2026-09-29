@@ -11,10 +11,18 @@ class Api::V1::BaseController < ActionController::API
 
   def authenticate_and_log
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    set_audit_context
     token   = request.headers["Authorization"]&.split(" ")&.last
     token.to_s.start_with?("lf_") ? run_as_client(token) { yield } : run_as_jwt(token) { yield }
   ensure
     log_request(started) if @api_client
+  end
+
+  # Request context read by the audit trail (R18); the API client, when there is one, is added by run_as_client.
+  def set_audit_context
+    Current.ip_address = request.remote_ip
+    Current.user_agent = request.user_agent.to_s.first(255)
+    Current.request_id = request.request_id
   end
 
   def run_as_client(token)
@@ -22,6 +30,7 @@ class Api::V1::BaseController < ActionController::API
     return render(json: { error: "Unauthorized" }, status: :unauthorized) unless @api_client
 
     ActsAsTenant.current_tenant = @api_client.entity
+    Current.api_client = @api_client
     scope = action_scopes[action_name.to_sym]
     return render(json: { error: "Forbidden", required_scope: scope }, status: :forbidden) unless scope && @api_client.allows?(scope)
 

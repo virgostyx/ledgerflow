@@ -44,3 +44,16 @@ RSpec.describe Accounting::AuditLog, type: :model do
     end
   end
 end
+
+RSpec.describe Accounting::Partner, 'audit trail' do
+  include_context 'with entity'
+
+  it 'logs creation and field-level changes' do
+    partner = create(:partner, name: 'Old')
+    partner.update!(name: 'New')
+
+    logs = Accounting::AuditLog.for_record(partner).chronologic
+    expect(logs.map(&:action)).to eq(%w[create update])
+    expect(logs.last.payload['changes']['name']).to eq(%w[Old New])
+  end
+end
