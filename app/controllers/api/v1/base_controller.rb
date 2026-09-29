@@ -1,6 +1,6 @@
 # Two ways in:
 # - API key ("lf_..."): an ApiClient fixes the entity and limits what the caller may do (action_scopes).
-#   An action without a declared scope is refused (fail closed). Every call is logged in api_requests.
+#   An action without a declared scope is refused (fail closed); `:any` means any active client. Every call is logged in api_requests.
 # - Legacy JWT (deprecated): entity from the payload, full access, not logged.
 class Api::V1::BaseController < ActionController::API
   class_attribute :action_scopes, default: {}
@@ -32,7 +32,7 @@ class Api::V1::BaseController < ActionController::API
     ActsAsTenant.current_tenant = @api_client.entity
     Current.api_client = @api_client
     scope = action_scopes[action_name.to_sym]
-    return render(json: { error: "Forbidden", required_scope: scope }, status: :forbidden) unless scope && @api_client.allows?(scope)
+    return render(json: { error: "Forbidden", required_scope: scope }, status: :forbidden) unless scope == :any || (scope && @api_client.allows?(scope))
 
     yield
   end

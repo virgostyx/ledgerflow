@@ -45,6 +45,17 @@ Retry-After: 23
 
 Le JWT historique (secret partagé) reste accepté, avec accès complet et sans journal `api_requests`. Il est **déprécié** : ne pas l'utiliser pour de nouvelles intégrations.
 
+### Contrôle de connexion : `GET /api/v1/ping`
+
+Accessible à tout client actif, **sans scope** requis. Sert de `health_check` à une application tierce.
+
+```json
+{ "status": "ok", "entity": "Ma Fondation ASBL", "api_client": "BudgetFlow",
+  "scopes": ["invoices:read", "invoices:write", "partners:write"], "time": "2026-09-29T10:15:00Z" }
+```
+
+`401` si la clé est absente, inconnue ou révoquée. Un client peut ainsi vérifier qu'il dispose bien de tous les scopes dont il a besoin.
+
 ## 3. Tiers : `PUT /api/v1/partners/:external_ref` (scope `partners:write`)
 
 À appeler à la création (et à chaque modification) d'un tiers dans l'application tierce, **avant** d'envoyer une facture qui le référence.
