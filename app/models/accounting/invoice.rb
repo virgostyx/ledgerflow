@@ -39,6 +39,9 @@ class Accounting::Invoice < ApplicationRecord
 
   accepts_nested_attributes_for :lines, allow_destroy: true, reject_if: :all_blank
 
+  # Documents managed through the third-party API (keyed by external_ref + revision), as opposed to invoices typed in the UI.
+  scope :external, -> { where.not(external_digest: nil) }
+
   autofilter_column :invoice_number, sql: "accounting_invoices.invoice_number", type: :string, filter: false
   autofilter_column :journal,        sql: "accounting_journals.code", type: :string, left_joins: :journal
   autofilter_column :partner,        sql: "accounting_partners.name", type: :string, joins: :partner

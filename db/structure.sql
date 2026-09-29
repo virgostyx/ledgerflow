@@ -915,7 +915,9 @@ CREATE TABLE public.accounting_invoices (
     vat_treatment integer DEFAULT 0 NOT NULL,
     document_type integer DEFAULT 0 NOT NULL,
     credited_invoice_id bigint,
-    recurring_invoice_id bigint
+    recurring_invoice_id bigint,
+    revision integer DEFAULT 1 NOT NULL,
+    external_digest character varying
 );
 
 
@@ -3160,6 +3162,13 @@ CREATE INDEX index_accounting_invoices_on_entity_id ON public.accounting_invoice
 
 
 --
+-- Name: index_accounting_invoices_on_entity_ref_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_invoices_on_entity_ref_revision ON public.accounting_invoices USING btree (entity_id, external_ref, revision) WHERE (external_digest IS NOT NULL);
+
+
+--
 -- Name: index_accounting_invoices_on_fiscal_year_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4458,6 +4467,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929001000'),
 ('20260929000900'),
 ('20260929000800'),
 ('20260929000700'),

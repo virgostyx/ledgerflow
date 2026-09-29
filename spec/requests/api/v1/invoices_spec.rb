@@ -30,15 +30,15 @@ RSpec.describe 'Api::V1::Invoices', type: :request do
 
   describe 'GET /api/v1/invoices/:id' do
     it_behaves_like 'a JWT-protected endpoint' do
-      subject { get '/api/v1/invoices/1', headers: {} }
+      subject { get '/api/v1/invoices/BF-I-9', headers: {} }
     end
 
     context 'avec token valide' do
       let!(:partner) { create(:partner) }
-      let!(:invoice) { create(:invoice, :draft, partner: partner, fiscal_year: fiscal_year) }
+      let!(:invoice) { create(:invoice, :draft, partner: partner, fiscal_year: fiscal_year, external_ref: 'BF-I-9', external_digest: 'x') }
 
-      it 'retourne 200 avec la facture' do
-        get "/api/v1/invoices/#{invoice.id}", headers: auth_headers
+      it 'retourne 200 avec la facture, adressée par son external_ref' do
+        get "/api/v1/invoices/#{invoice.external_ref}", headers: auth_headers
         expect(response).to have_http_status(:ok)
         expect(JSON.parse(response.body)['id']).to eq(invoice.id)
       end

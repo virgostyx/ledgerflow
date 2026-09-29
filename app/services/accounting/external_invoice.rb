@@ -1,0 +1,179 @@
+# Invoices injected by a third-party application (docs/dev/api/inbound-api.md), keyed by its own reference.
+# - upsert: unknown reference -> create + post; identical replay -> no-op; changed content -> the current document
+#   is cancelled (reversal) and a new revision is posted under the same reference, all or nothing.
+# - cancel: reverses the current document, with a mandatory reason (recorded in the audit trail).
+# Returns a Result whose status is :created, :ok, :unprocessable, :conflict or :not_found.
+class Accounting::ExternalInvoice
+  Result = Struct.new(:status, :invoice, :errors, keyword_init: true)
+
+  # ponytail: no journal or credit-note choice yet; the journal follows the invoice type, as in the UI.
+  ATTRIBUTES = %w[invoice_type invoice_date due_date currency exchange_rate vat_treatment description notes project_id].freeze
+  LINE_DECIMALS = %w[quantity unit_price vat_rate].freeze
+
+  def self.upsert(payload) = new.upsert(payload.to_h.with_indifferent_access)
+  def self.cancel(external_ref:, reason:) = new.cancel(external_ref, reason)
+
+  def upsert(payload)
+    @external_ref = payload[:external_ref]
+    normalized = normalize(payload)
+    # A date outside every open fiscal year is a state conflict, not a validation error.
+    return failure(@period_closed && @errors.keys == [ :invoice_date ] ? :conflict : :unprocessable, @errors) if @errors.any?
+
+    digest  = fingerprint(normalized)
+    current = latest
+    return Result.new(status: :ok, invoice: current) if current && !current.cancelled? && current.external_digest == digest
+
+    write(current, normalized, digest)
+  end
+
+  def cancel(external_ref, reason)
+    @external_ref = external_ref
+    current = latest
+    return failure(:not_found, base: [ "Unknown external_ref" ]) unless current
+    return Result.new(status: :ok, invoice: current) if current.cancelled?
+    return failure(:unprocessable, reason: [ "is required" ]) if reason.blank?
+
+    with_reason(reason) { cancel_current(current) }
+  end
+
+  private
+
+  def latest = Accounting::Invoice.external.where(external_ref: @external_ref).order(:revision).last
+
+  def write(current, normalized, digest)
+    result  = nil
+    revised = current && !current.cancelled?
+    ApplicationRecord.transaction(requires_new: true) do
+      if revised
+        cancelled = with_reason("Revised by #{author} (revision #{current.revision + 1})") { cancel_current(current) }
+        unless cancelled.status == :ok
+          result = cancelled
+          raise ActiveRecord::Rollback
+        end
+      end
+      result = create_and_post(current, normalized, digest)
+      raise ActiveRecord::Rollback unless result.status == :created
+    end
+    # Correcting a live document is an update for the caller (200); a first or post-cancellation document is a creation.
+    result.status = :ok if revised && result.status == :created
+    result
+  end
+
+  def cancel_current(invoice)
+    done = Accounting::CancelInvoice.call(invoice: invoice)
+    done.success? ? Result.new(status: :ok, invoice: invoice.reload) : failure(:conflict, base: [ done.message ])
+  end
+
+  def create_and_post(current, normalized, digest)
+    invoice = Accounting::Invoice.new(normalized.slice(*ATTRIBUTES.map(&:to_sym)).merge(
+      partner: normalized[:partner], fiscal_year: normalized[:fiscal_year], external_ref: @external_ref,
+      revision: (current&.revision || 0) + 1, external_digest: digest))
+    normalized[:lines_attrs].each_with_index { |line, i| invoice.lines.build(line.merge(position: i + 1)) }
+    return failure(:unprocessable, invoice.errors.to_hash) unless invoice.save
+
+    posted = Accounting::PostInvoice.call(invoice: invoice)
+    return failure(:unprocessable, base: [ posted.message ]) if posted.failure?
+
+    Result.new(status: :created, invoice: invoice.reload)
+  end
+
+  # Validates and converts the payload; fills @errors. Amounts go through BigDecimal, never Float.
+  def normalize(payload)
+    @errors = {}
+    n = payload.slice(*ATTRIBUTES).symbolize_keys.compact
+    n[:invoice_type]  = enum_value(n, :invoice_type, Accounting::Invoice.invoice_types)
+    n[:vat_treatment] = enum_value(n, :vat_treatment, Accounting::Invoice.vat_treatments) if n.key?(:vat_treatment)
+    n[:currency] = n[:currency].to_s.upcase if n.key?(:currency)
+    %i[invoice_date due_date].each { |k| n[k] = date(n[k], k) if n.key?(k) }
+    n[:exchange_rate] = decimal(n[:exchange_rate], :exchange_rate) if n.key?(:exchange_rate)
+    n[:partner]     = partner(payload[:partner_external_ref])
+    n[:fiscal_year] = fiscal_year(n[:invoice_date])
+    n[:lines_attrs] = lines(payload[:lines])
+    n
+  end
+
+  def enum_value(n, key, allowed)
+    value = n[key].to_s
+    return value if allowed.key?(value)
+
+    @errors[key] = [ "must be one of #{allowed.keys.join(', ')}" ]
+    nil
+  end
+
+  def date(value, key)
+    Date.iso8601(value.to_s)
+  rescue ArgumentError
+    @errors[key] = [ "must be an ISO 8601 date" ]
+    nil
+  end
+
+  def decimal(value, key)
+    number = BigDecimal(value.to_s, exception: false)
+    return number if number&.finite?
+
+    @errors[key] = [ "must be a number" ]
+    nil
+  end
+
+  def partner(ref)
+    found = Accounting::Partner.find_by(external_ref: ref) if ref.present?
+    @errors[:partner_external_ref] = [ "unknown partner, send it first via PUT /api/v1/partners/:external_ref" ] unless found
+    found
+  end
+
+  def fiscal_year(invoice_date)
+    return unless invoice_date
+
+    found = Accounting::FiscalYear.open_years.find_by("start_date <= :d AND end_date >= :d", d: invoice_date)
+    @errors[:invoice_date] = [ "no open fiscal year covers this date" ] unless found
+    @period_closed = found.nil?
+    found
+  end
+
+  def lines(raw)
+    list = Array(raw)
+    if list.empty?
+      @errors[:lines] = [ "at least one line is required" ]
+      return []
+    end
+
+    accounts = Accounting::Account.where(code: list.map { |l| l[:account_code] }.compact.uniq).index_by(&:code)
+    list.each_with_index.map do |line, i|
+      line = line.to_h.with_indifferent_access
+      account = accounts[line[:account_code].to_s]
+      @errors["lines[#{i}].account_code"] = [ "unknown account #{line[:account_code].inspect}" ] unless account
+      attrs = { account: account, description: line[:description] }
+      LINE_DECIMALS.each { |k| attrs[k.to_sym] = decimal(line[k], "lines[#{i}].#{k}") if line.key?(k) }
+      attrs.compact
+    end
+  end
+
+  # Same content, same fingerprint, whatever the number formatting of the caller (0.1 or "0.10").
+  def fingerprint(n)
+    content = { partner_id: n[:partner].id, invoice: n.slice(*ATTRIBUTES.map(&:to_sym)),
+                lines: n[:lines_attrs].map { |l| l.merge(account: l[:account].code) } }
+    Digest::SHA256.hexdigest(JSON.generate(canonical(content)))
+  end
+
+  def canonical(value)
+    case value
+    when Hash then value.sort_by { |k, _| k.to_s }.to_h { |k, v| [ k.to_s, canonical(v) ] }
+    when Array then value.map { |v| canonical(v) }
+    when BigDecimal then value.to_s("F")
+    else value.as_json
+    end
+  end
+
+  def with_reason(reason)
+    Current.reason = reason
+    yield
+  ensure
+    Current.reason = nil
+  end
+
+  def author = Current.api_client&.name || "third-party application"
+
+  def failure(status, errors)
+    Result.new(status: status, errors: errors)
+  end
+end
