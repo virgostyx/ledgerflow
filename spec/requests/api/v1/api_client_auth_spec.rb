@@ -2,6 +2,7 @@ require 'rails_helper'
 
 RSpec.describe 'Api::V1 API-key authentication', type: :request do
   include_context 'with_open_fiscal_year'
+  let(:entity) { create(:entity, budgetflow_enabled: true) } # the API only exists for entities that declared BudgetFlow
 
   let(:scopes)  { %w[invoices:read] }
   let(:issued)  { ApiClient.issue!(entity: entity, name: 'BudgetFlow', scopes: scopes) }

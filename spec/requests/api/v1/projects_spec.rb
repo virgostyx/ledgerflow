@@ -3,6 +3,7 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::Projects', type: :request do
   include_context 'with_authenticated_api'
   include_context 'with_open_fiscal_year'
+  let(:entity) { create(:entity, budgetflow_enabled: true) } # the API only exists for entities that declared BudgetFlow
 
   describe 'GET /api/v1/projects/:id/accounting_summary' do
     it_behaves_like 'a JWT-protected endpoint' do

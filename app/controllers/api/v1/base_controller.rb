@@ -3,6 +3,8 @@
 #   An action without a declared scope is refused (fail closed); `:any` means any active client. Every call is logged in api_requests.
 # - Legacy JWT (deprecated): entity from the payload, full access, not logged.
 class Api::V1::BaseController < ActionController::API
+  NOT_ENABLED = { error: "The BudgetFlow integration is not enabled for this entity" }.freeze
+
   class_attribute :action_scopes, default: {}
 
   around_action :authenticate_and_log
@@ -31,6 +33,7 @@ class Api::V1::BaseController < ActionController::API
 
     ActsAsTenant.current_tenant = @api_client.entity
     Current.api_client = @api_client
+    return render(json: NOT_ENABLED, status: :forbidden) unless @api_client.entity.budgetflow?
     scope = action_scopes[action_name.to_sym]
     return render(json: { error: "Forbidden", required_scope: scope }, status: :forbidden) unless scope == :any || (scope && @api_client.allows?(scope))
 
@@ -40,6 +43,8 @@ class Api::V1::BaseController < ActionController::API
   def run_as_jwt(token)
     payload = Api::JwtService.decode(token)
     ActsAsTenant.current_tenant = Entity.find_by(id: payload["entity_id"])
+    return render(json: NOT_ENABLED, status: :forbidden) unless ActsAsTenant.current_tenant&.budgetflow?
+
     yield
   rescue Api::AuthenticationError
     render json: { error: "Unauthorized" }, status: :unauthorized

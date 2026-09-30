@@ -16,7 +16,8 @@ class Accounting::Settings::EntitiesController < Accounting::Settings::BaseContr
   private
 
   def entity_params
-    params.require(:entity).permit(:name, :legal_name, :legal_form, :vat_number, :country,
-                                   :address_line1, :address_line2, :zip_code, :city)
+    allowed = %i[name legal_name legal_form vat_number country address_line1 address_line2 zip_code city]
+    allowed << :budgetflow_enabled if current_user.admin? # declaring the BudgetFlow integration is the administrator's call
+    params.require(:entity).permit(*allowed)
   end
 end

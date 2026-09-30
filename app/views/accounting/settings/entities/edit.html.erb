@@ -73,6 +73,16 @@
         </div>
       </div>
 
+      <% if current_user.admin? %>
+        <div class="flex items-start gap-2 pt-2">
+          <%= f.check_box :budgetflow_enabled, class: "mt-1 rounded border-gray-300" %>
+          <%= f.label :budgetflow_enabled, class: "text-sm text-gray-700" do %>
+            This entity uses BudgetFlow
+            <span class="block text-xs text-gray-400">Turns on the BudgetFlow connection: API clients, the invoices received from BudgetFlow and the payment feed.</span>
+          <% end %>
+        </div>
+      <% end %>
+
       <div class="flex items-center gap-3 pt-2">
         <%= f.submit "Save entity",
               class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer" %>

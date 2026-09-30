@@ -3,6 +3,7 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::JournalEntries', type: :request do
   include_context 'with_authenticated_api'
   include_context 'with_open_fiscal_year'
+  let(:entity) { create(:entity, budgetflow_enabled: true) } # the API only exists for entities that declared BudgetFlow
 
   let!(:default_account) { create(:account, code: '440000', label_fr: 'Fournisseurs',
                                   account_type: :liability, normal_balance: :credit) }

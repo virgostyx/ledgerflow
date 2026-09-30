@@ -1700,7 +1700,8 @@ CREATE TABLE public.entities (
     peppol_access_point integer,
     peppol_participant_id character varying,
     peppol_credentials text,
-    peppol_webhook_token character varying
+    peppol_webhook_token character varying,
+    budgetflow_enabled boolean DEFAULT false NOT NULL
 );
 
 
@@ -4547,6 +4548,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260930000100'),
 ('20260929001100'),
 ('20260929001000'),
 ('20260929000900'),

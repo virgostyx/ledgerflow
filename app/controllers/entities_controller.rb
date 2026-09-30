@@ -41,6 +41,6 @@ class EntitiesController < ApplicationController
 
   def entity_params
     params.require(:entity).permit(:name, :legal_name, :vat_number, :country, :legal_form,
-                                   :address_line1, :address_line2, :city, :zip_code)
+                                   :address_line1, :address_line2, :city, :zip_code, :budgetflow_enabled)
   end
 end

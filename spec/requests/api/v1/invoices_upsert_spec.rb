@@ -5,6 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::Invoices upsert/cancel/show', type: :request do
   include_context 'with_pcmn_accounts'
   include_context 'with_open_fiscal_year'
+  let(:entity) { create(:entity, budgetflow_enabled: true) } # the API only exists for entities that declared BudgetFlow
 
   let!(:journal)  { create(:journal, :purchase, default_account: account_440) }
   let!(:supplier) { create(:partner, :supplier, external_ref: 'BF-P-1') }

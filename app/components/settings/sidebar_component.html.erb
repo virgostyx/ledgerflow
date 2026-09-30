@@ -38,7 +38,7 @@
       Analytical Accounts
     <% end %>
 
-    <% if helpers.current_user&.admin? %>
+    <% if helpers.current_user&.admin? && helpers.budgetflow_enabled? %>
       <%= link_to helpers.accounting_settings_api_clients_path,
             class: nav_class("/accounting/settings/api_clients") do %>
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">

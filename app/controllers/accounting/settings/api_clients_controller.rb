@@ -1,6 +1,7 @@
 # Third-party applications that push data through the API (docs/dev/api/inbound-api.md).
 # The plaintext key is rendered once, in the response to create/rotate, and never stored.
 class Accounting::Settings::ApiClientsController < Accounting::Settings::BaseController
+  before_action :require_budgetflow!
   before_action :set_client, only: [ :rotate, :revoke ]
 
   def index
@@ -39,6 +40,11 @@ class Accounting::Settings::ApiClientsController < Accounting::Settings::BaseCon
   end
 
   def current_entity = ActsAsTenant.current_tenant
+
+  # The screen does not exist for an entity that did not declare the BudgetFlow integration.
+  def require_budgetflow!
+    head :not_found unless budgetflow_enabled?
+  end
 
   def clients = ApiClient.where(entity: current_entity)
 

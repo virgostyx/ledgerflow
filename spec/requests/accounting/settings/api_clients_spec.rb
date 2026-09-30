@@ -2,6 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Accounting::Settings::ApiClients", type: :request do
   include_context "with_open_fiscal_year"
+  let(:entity) { create(:entity, budgetflow_enabled: true) } # the API only exists for entities that declared BudgetFlow
 
   let(:admin)      { create(:user, role: :admin) }
   let(:accountant) { create(:user, role: :accountant) }
@@ -15,7 +16,7 @@ RSpec.describe "Accounting::Settings::ApiClients", type: :request do
 
   describe "GET /accounting/settings/api_clients" do
     it "lists the clients of the entity without any key" do
-      other = ApiClient.issue!(entity: create(:entity), name: "Foreign app", scopes: []).first
+      other = ApiClient.issue!(entity: create(:entity, budgetflow_enabled: true), name: "Foreign app", scopes: []).first
 
       get accounting_settings_api_clients_path
 
@@ -74,7 +75,7 @@ RSpec.describe "Accounting::Settings::ApiClients", type: :request do
   end
 
   it "cannot touch a client of another entity" do
-    foreign = ApiClient.issue!(entity: create(:entity), name: "Foreign", scopes: []).first
+    foreign = ApiClient.issue!(entity: create(:entity, budgetflow_enabled: true), name: "Foreign", scopes: []).first
 
     patch revoke_accounting_settings_api_client_path(foreign)
 

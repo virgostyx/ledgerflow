@@ -3,6 +3,7 @@ require 'rails_helper'
 # Connection check for third-party health_check calls: any active client may call it, whatever its scopes.
 RSpec.describe 'Api::V1::Ping', type: :request do
   include_context 'with_open_fiscal_year'
+  let(:entity) { create(:entity, budgetflow_enabled: true) } # the API only exists for entities that declared BudgetFlow
 
   let(:client_and_key) { ApiClient.issue!(entity: entity, name: 'BudgetFlow', scopes: []) }
   let(:headers)        { { 'Authorization' => "Bearer #{client_and_key.last}" } }

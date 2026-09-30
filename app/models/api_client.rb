@@ -9,6 +9,7 @@ class ApiClient < ApplicationRecord
   validates :name, presence: true
   validates :key_digest, presence: true, uniqueness: true
   validate  :known_scopes
+  validate  :entity_uses_budgetflow, on: :create
 
   # Returns [client, plaintext_key]; the key can't be recovered afterwards.
   def self.issue!(**attrs)
@@ -37,6 +38,10 @@ class ApiClient < ApplicationRecord
   end
 
   private
+
+  def entity_uses_budgetflow
+    errors.add(:entity, "did not declare the BudgetFlow integration") unless entity&.budgetflow?
+  end
 
   def known_scopes
     unknown = scopes - SCOPES

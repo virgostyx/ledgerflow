@@ -27,6 +27,9 @@ class Entity < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
+  # Declared by the entity: turns on everything BudgetFlow-related (API clients, invoice queue, payment feed).
+  def budgetflow? = budgetflow_enabled?
+
   private
 
   def peppol_participant_id_format

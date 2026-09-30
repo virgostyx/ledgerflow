@@ -14,7 +14,7 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
-  helper_method :filter_params, :filters_active?, :autofilter_params
+  helper_method :filter_params, :filters_active?, :autofilter_params, :budgetflow_enabled?
 
   private
 
@@ -47,6 +47,9 @@ class ApplicationController < ActionController::Base
   def set_locale
     I18n.locale = I18n.default_locale
   end
+
+  # Whether the current entity declared the BudgetFlow integration; everything BudgetFlow-related hangs on it.
+  def budgetflow_enabled? = ActsAsTenant.current_tenant&.budgetflow? || false
 
   def set_current_entity
     return unless current_user

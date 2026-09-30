@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe ApiClient, type: :model do
-  let(:entity) { create(:entity) }
+  let(:entity) { create(:entity, budgetflow_enabled: true) }
 
   def build_client(**attrs)
     described_class.new({ entity: entity, name: 'BudgetFlow', scopes: %w[invoices:write] }.merge(attrs))

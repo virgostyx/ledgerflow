@@ -19,7 +19,7 @@ RSpec.shared_context 'with_pcmn_accounts' do
 end
 
 RSpec.shared_context 'with_authenticated_api' do
-  let(:entity)       { create(:entity) }
+  let(:entity)       { create(:entity, budgetflow_enabled: true) }
   let(:jwt_token)    { Api::JwtService.encode({ client: 'budgetflow', entity_id: entity.id }) }
   let(:auth_headers) { { 'Authorization' => "Bearer #{jwt_token}" } }
 end

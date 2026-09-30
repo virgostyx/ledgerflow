@@ -48,6 +48,14 @@
                       focus:outline-none focus:ring-2 focus:ring-indigo-500" %>
       </div>
 
+      <div class="flex items-start gap-2">
+        <%= f.check_box :budgetflow_enabled, class: "mt-1 rounded border-gray-300" %>
+        <%= f.label :budgetflow_enabled, class: "text-sm text-gray-700" do %>
+          This entity uses BudgetFlow
+          <span class="block text-xs text-gray-400">Receive project invoices from BudgetFlow and report payments back to it.</span>
+        <% end %>
+      </div>
+
       <div class="flex gap-3">
         <%= link_to "Cancel", entities_path,
               class: "flex-1 text-center rounded-lg border border-gray-300 px-4 py-2.5
