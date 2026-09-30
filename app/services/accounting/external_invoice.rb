@@ -175,15 +175,22 @@ class Accounting::ExternalInvoice
       return []
     end
 
-    accounts = Accounting::Account.where(code: list.map { |l| l[:account_code] }.compact.uniq).index_by(&:code)
+    codes    = list.map { |l| l[:account_code].to_s.strip.presence || Accounting::AccountCodes::TRANSIT }.uniq
+    accounts = Accounting::Account.where(code: codes).index_by(&:code)
     list.each_with_index.map do |line, i|
-      line = line.to_h.with_indifferent_access
-      account = accounts[line[:account_code].to_s]
-      @errors["lines[#{i}].account_code"] = [ "unknown account #{line[:account_code].inspect}" ] unless account
+      line    = line.to_h.with_indifferent_access
+      given   = line[:account_code].to_s.strip.presence
+      account = accounts[given || Accounting::AccountCodes::TRANSIT]
+      @errors["lines[#{i}].account_code"] = [ account_error(given) ] unless account
       attrs = { account: account, description: line[:description] }
       LINE_DECIMALS.each { |k| attrs[k.to_sym] = decimal(line[k], "lines[#{i}].#{k}") if line.key?(k) }
       attrs.compact
     end
+  end
+
+  # A line sent without an account goes on the suspense account; the accountant codes it before posting.
+  def account_error(given)
+    given ? "unknown account #{given.inspect}" : "no account code, and the suspense account #{Accounting::AccountCodes::TRANSIT} is missing from the chart"
   end
 
   # Same content, same fingerprint, whatever the number formatting of the caller (0.1 or "0.10").

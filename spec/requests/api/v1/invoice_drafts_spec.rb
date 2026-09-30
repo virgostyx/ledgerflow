@@ -55,4 +55,49 @@ RSpec.describe 'Api::V1 invoice drafts', type: :request do
       expect(invoice.journal_entry).to be_posted
     end
   end
+
+  describe 'lines without an account code (the accountant codes them in LedgerFlow)' do
+    let(:uncoded) { { description: 'Consulting', quantity: '2', unit_price: '50.00', vat_rate: '21' } }
+    let(:suspense) { create(:account, code: '499000', label_fr: "Comptes d'attente", account_class: 4, entity: entity) }
+
+    context 'when the chart has the suspense account' do
+      before { suspense }
+
+      it 'puts them on the suspense account 499000' do
+        put_invoice(payload.merge(lines: [ uncoded ]))
+
+        expect(response).to have_http_status(:created)
+        expect(invoice.lines.map { |l| l.account.code }).to eq(%w[499000])
+        expect(invoice.lines.first).to have_attributes(description: 'Consulting', subtotal_excl_vat: BigDecimal('100'))
+      end
+
+      it 'mixes coded and uncoded lines, and treats a blank code as absent' do
+        put_invoice(payload.merge(lines: [ line, uncoded.merge(account_code: ' ') ]))
+
+        expect(invoice.lines.map { |l| l.account.code }).to eq(%w[604000 499000])
+      end
+
+      it 'replays idempotently' do
+        put_invoice(payload.merge(lines: [ uncoded ]))
+        put_invoice(payload.merge(lines: [ uncoded ]))
+
+        expect(response).to have_http_status(:ok)
+        expect(Accounting::Invoice.external.where(external_ref: 'BF-I-1').count).to eq(1)
+      end
+
+      it 'still refuses an unknown code' do
+        put_invoice(payload.merge(lines: [ uncoded.merge(account_code: '999999') ]))
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
+
+    it 'answers 422 naming the line when the chart has no suspense account' do
+      put_invoice(payload.merge(lines: [ uncoded ]))
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json['errors']['lines[0].account_code'].first).to include('499000')
+      expect(Accounting::Invoice.external.count).to eq(0)
+    end
+  end
 end
