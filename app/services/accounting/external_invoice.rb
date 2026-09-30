@@ -1,4 +1,5 @@
 # Invoices injected by a third-party application (docs/dev/api/inbound-api.md), keyed by its own reference.
+# `post: false` leaves the document a draft: the accountant codes it and posts it in LedgerFlow (default: posted at once).
 # Credit notes are the same resource (document_type "credit_note", optionally linked to the credited invoice).
 # - upsert: unknown reference -> create + post; identical replay -> no-op; changed content -> the current document
 #   is cancelled (reversal) and a new revision is posted under the same reference, all or nothing.
@@ -16,6 +17,7 @@ class Accounting::ExternalInvoice
 
   def upsert(payload)
     @external_ref = payload[:external_ref]
+    @post         = payload[:post].nil? ? true : ActiveModel::Type::Boolean.new.cast(payload[:post])
     normalized = normalize(payload)
     # A date outside every open fiscal year is a state conflict, not a validation error.
     return failure(@period_closed && @errors.keys == [ :invoice_date ] ? :conflict : :unprocessable, @errors) if @errors.any?
@@ -80,9 +82,18 @@ class Accounting::ExternalInvoice
     normalized[:lines_attrs].each_with_index { |line, i| invoice.lines.build(line.merge(position: i + 1)) }
     return failure(:unprocessable, invoice.errors.to_hash) unless invoice.save
 
+    return draft_result(invoice) unless @post
+
     posted = Accounting::PostInvoice.call(invoice: invoice)
     return failure(:unprocessable, base: [ posted.message ]) if posted.failure?
 
+    Result.new(status: :created, invoice: invoice.reload)
+  end
+
+  # A draft still shows its totals (PostInvoice would compute them when posting).
+  def draft_result(invoice)
+    invoice.compute_totals
+    invoice.save!
     Result.new(status: :created, invoice: invoice.reload)
   end
 
@@ -177,7 +188,7 @@ class Accounting::ExternalInvoice
 
   # Same content, same fingerprint, whatever the number formatting of the caller (0.1 or "0.10").
   def fingerprint(n)
-    content = { partner_id: n[:partner].id, credited_invoice_id: n[:credited_invoice]&.id,
+    content = { post: @post, partner_id: n[:partner].id, credited_invoice_id: n[:credited_invoice]&.id,
                 context: n.slice(:external_project_name, :external_budget_line),
                 invoice: n.slice(*ATTRIBUTES.map(&:to_sym)),
                 lines: n[:lines_attrs].map { |l| l.merge(account: l[:account].code) } }

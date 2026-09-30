@@ -32,7 +32,7 @@ class Api::V1::InvoicesController < Api::V1::BaseController
   private
 
   def invoice_payload
-    params.permit(:partner_external_ref, :project_name, :budget_line, :document_type, :credited_invoice_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,
+    params.permit(:partner_external_ref, :post, :project_name, :budget_line, :document_type, :credited_invoice_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,
                   :vat_treatment, :description, :notes, :project_id, lines: LINE_FIELDS)
           .to_h.merge(external_ref: params[:external_ref])
   end
