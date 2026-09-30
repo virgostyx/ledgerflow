@@ -98,6 +98,7 @@ en:
           customer: "Exempt operation: no VAT is charged."
           supplier: "Exempt operation: no VAT is charged and none is recoverable."
       cancelled: "Invoice cancelled and its entry reversed."
+      returned: "Invoice returned to the project manager."
       duplicated:   "Invoice duplicated. Adjust the copy, then post it."
       email_queued: "E-mail to %{recipient} queued."
       credit_note_created: "Credit note created. Adjust its lines, then post it."
@@ -122,6 +123,8 @@ en:
         credit_note_invoice_has_receipts: "Receipts are already booked on this invoice, so the credit note stays open: settle it by lettering or refund it."
         credit_note_needs_invoice: "This credit note is not linked to an invoice."
         uncoded_lines: "Some lines are still on the suspense account %{code}: code them before posting."
+        return_not_external_draft: "Only a draft received from BudgetFlow can be returned to the project manager."
+        return_reason_required: "Give the project manager a reason for returning the invoice."
 
     closing_checklist:
       title: "Closing checklist"

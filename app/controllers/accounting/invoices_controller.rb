@@ -1,5 +1,5 @@
 class Accounting::InvoicesController < ApplicationController
-  before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :send_peppol,
+  before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :return_invoice, :send_peppol,
                                       :create_credit_note, :apply_credit_note, :pdf, :send_email, :duplicate ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
@@ -78,6 +78,19 @@ class Accounting::InvoicesController < ApplicationController
     result = Accounting::CancelInvoice.call(invoice: @invoice)
     if result.success?
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.cancelled")
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: result.message
+    end
+  end
+
+  def return_invoice
+    return head(:not_found) unless budgetflow_enabled? # the action does not exist for other entities
+
+    authorize @invoice, :return_to_sender?
+
+    result = Accounting::ReturnInvoice.call(invoice: @invoice, reason: params[:reason])
+    if result.success?
+      redirect_to accounting_purchases_path, notice: t("accounting.invoices.returned")
     else
       redirect_to accounting_invoice_path(@invoice), alert: result.message
     end

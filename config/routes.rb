@@ -62,6 +62,7 @@ Rails.application.routes.draw do
         member do
           post :validate_invoice
           post :cancel_invoice
+          post :return_invoice
           post :send_peppol
           post :create_credit_note
           post :apply_credit_note
