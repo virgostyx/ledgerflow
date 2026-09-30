@@ -190,6 +190,7 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       get :ping, to: "ping#show"
+      resources :invoice_events, only: [ :index ]
       resources :journal_entries, only: [ :index, :show ]
       resources :invoices,        only: [ :index, :show, :update, :destroy ], param: :external_ref, constraints: { external_ref: %r{[^/]+} }
       resources :partners,        only: [ :update ], param: :external_ref, constraints: { external_ref: %r{[^/]+} }

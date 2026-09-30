@@ -1,12 +1,12 @@
 # Spécification : adaptateur `ledgerflow` pour BudgetFlow
 
-Statut : **implémenté dans BudgetFlow** (2026-09-29, accord explicite de l'utilisateur) : `app/services/accounting/ledgerflow/{exporter,client}.rb` et ses specs, adaptateur `ledgerflow` déclaré dans `Accounting::Factory` et `EntitySetting`. Les corps JSON produits ont été vérifiés contre la vraie API de LedgerFlow (fournisseur, facture EUR et USD, avoir, annulation, rejeux). Ce document reste la référence du contrat.
+Statut : **implémenté dans BudgetFlow** (2026-09-29, accord explicite de l'utilisateur) : `app/services/accounting/ledgerflow/{exporter,client}.rb` et ses specs, adaptateur `ledgerflow` déclaré dans `Accounting::Factory` et `EntitySetting`. Les corps JSON produits ont été vérifiés contre la vraie API de LedgerFlow (fournisseur, facture EUR et USD, avoir, annulation, rejeux). La **synchronisation des paiements** (LedgerFlow → BudgetFlow, section 9) est implémentée aussi : `payment_sync.rb`, `system_user.rb`, tâche récurrente, e-mail d'alerte. Ce document reste la référence du contrat.
 Sources lues (lecture seule) : `budgetflow/app/services/accounting/` (`base.rb`, `factory.rb`, `dolibarr/exporter.rb`), `db/schema.rb`, `app/models/{invoice,entity_setting}.rb`.
 Contrat côté LedgerFlow : `docs/dev/api/inbound-api.md`.
 
 ## 1. Idée
 
-BudgetFlow exporte déjà ses factures vers un logiciel comptable par des **adaptateurs** qui implémentent `Accounting::Base`. LedgerFlow n'a pas besoin d'un client sortant : il suffit d'ajouter un adaptateur `ledgerflow` (à côté de `dolibarr`, `winbooks`, `null`) qui appelle l'API entrante de LedgerFlow. BudgetFlow reste maître de l'envoi ; LedgerFlow ne l'appelle jamais.
+BudgetFlow exporte déjà ses factures vers un logiciel comptable par des **adaptateurs** qui implémentent `Accounting::Base`. LedgerFlow n'a pas besoin d'un client sortant : il suffit d'ajouter un adaptateur `ledgerflow` (à côté de `dolibarr`, `winbooks`, `null`) qui appelle l'API entrante de LedgerFlow. BudgetFlow reste maître de l'envoi ; LedgerFlow ne l'appelle jamais. Les **paiements**, eux, se gèrent dans LedgerFlow : BudgetFlow les apprend en interrogeant un flux d'événements (section 9).
 
 ## 2. Configuration
 
@@ -30,7 +30,7 @@ Une entité BudgetFlow correspond à **un client API** et donc à **une entité 
 | `export_invoice(invoice)` | `PUT /api/v1/invoices/{ref}` | Envoyer d'abord le fournisseur (idempotent, sans risque), puis la facture. |
 | `export_credit_note(credit_note)` | `PUT /api/v1/invoices/{ref}` avec `document_type: "credit_note"` | Sans lien vers une facture (cf. 6.3). |
 | `reverse_invoice(invoice)` | `DELETE /api/v1/invoices/{ref}` | `reason` obligatoire : `invoice.cancellation_reason`, à défaut un texte fixe. Contrairement à Dolibarr, l'annulation est automatique. |
-| `set_invoice_paid(invoice)` | aucun appel, **succès sans effet** | Doit réussir : `Invoices::AccountingMarkAsPaidOrganizer` annule toute la transaction si l'adaptateur échoue, et marquer une facture payée dans BudgetFlow deviendrait impossible. Cf. 6.5. |
+| `set_invoice_paid(invoice)` | aucun appel, **succès sans effet** | Le paiement se gère dans LedgerFlow et revient par le flux (section 9), jamais dans ce sens. Doit réussir : `Invoices::AccountingMarkAsPaidOrganizer` annule toute la transaction si l'adaptateur échoue, et marquer une facture payée dans BudgetFlow deviendrait impossible. Cf. 6.5. |
 | `adapter_name` | `"LedgerFlow"` | |
 
 Identifiants (`{ref}`), stables et déterministes : fournisseur `bf-supplier-{supplier.id}`, facture ou avoir `bf-invoice-{invoice.id}`. Une même référence ne peut pas passer de facture à avoir.
@@ -97,26 +97,57 @@ Les montants sont envoyés en **chaînes décimales** (`"50.00"`) depuis des `Bi
 2. **Numéro de facture du fournisseur.** BudgetFlow a `invoice_number` (obligatoire, celui du fournisseur). LedgerFlow numérote lui-même (`ACH2026/…`) et n'a pas de champ dédié pour le numéro fournisseur dans l'API : `external_ref` est la clé BudgetFlow, pas ce numéro. Proposition : ajouter `supplier_reference` (colonne et champ d'API) et l'utiliser pour le contrôle de doublon R19 C05. **À décider** : en attendant, l'adaptateur peut le mettre dans `description`.
 3. **Avoirs.** Un avoir BudgetFlow est une `Invoice` de type `credit_note` rattachée à un engagement, **sans lien vers la facture d'origine**. Il part donc sans `credited_invoice_external_ref`, ce que l'API accepte. Il réduit le solde du fournisseur mais n'est pas lettré contre une facture.
 4. **Reçus (`invoice_type: receipt`).** Hors périmètre : ce ne sont pas des factures comptables. À ne pas exporter tant qu'il n'y a pas de règle.
-5. **Statut de paiement.** BudgetFlow suit le paiement de son côté (`payment_status`, `paid_at`) ; LedgerFlow le tire du rapprochement bancaire. `set_invoice_paid` ne transmet donc rien, mais **réussit** (sinon le paiement serait annulé dans BudgetFlow). Pour afficher le statut comptable dans BudgetFlow : `GET /api/v1/invoices/{ref}` (`status` : `posted`, `partially_paid`, `paid`, `cancelled`). **À décider** : qui fait foi si les deux divergent.
+5. **Statut de paiement.** Décision du 2026-09-29 : **LedgerFlow fait foi** (lettrage, rapprochement bancaire, lots SEPA) et BudgetFlow l'apprend par le flux d'événements (section 9). `set_invoice_paid` ne transmet rien mais **réussit** (sinon le paiement serait annulé dans BudgetFlow). Le statut à un instant donné reste lisible par `GET /api/v1/invoices/{ref}` (`status` : `posted`, `partially_paid`, `paid`, `cancelled`). Le bouton manuel « marquer payé » de BudgetFlow est **conservé** : voir les limites en section 9.
 6. **Traitement de TVA.** L'adaptateur Dolibarr n'envoie aucun régime ; LedgerFlow applique alors `domestic`. Les achats intracommunautaires ou en autoliquidation demandent `vat_treatment` (`intracom_goods`, `intracom_services`, `construction_reverse_charge`, `export`, `exempt`) : BudgetFlow n'a pas cette information aujourd'hui.
 7. **Corrections dans BudgetFlow** (`invoice_amount_corrections`, `invoice_reimputations`…) : renvoyer le même `PUT`. LedgerFlow crée une révision par extourne ; `409` si la facture est déjà payée ou lettrée là-bas. Une facture qui porte un avoir comptabilisé ne se révise pas : annuler l'avoir d'abord.
 8. **Débit** : 300 requêtes par minute et par clé. Un export en masse doit espacer ses appels ou respecter `Retry-After`.
 
 ## 7. Code
 
-Dans BudgetFlow : `app/services/accounting/ledgerflow/exporter.rb` (contrat `Accounting::Base`) et `client.rb` (client `Net::HTTP`, en-tête `Authorization: Bearer <clé>`, erreurs `409`/`422` aplaties en message lisible, `429` avec `Retry-After`).
+Dans BudgetFlow : `app/services/accounting/ledgerflow/exporter.rb` (contrat `Accounting::Base`, plus `fetch_payment_events`) et `client.rb` (client `Net::HTTP`, en-tête `Authorization: Bearer <clé>`, erreurs `409`/`422` aplaties en message lisible, `429` avec `Retry-After`). Paiements : `payment_sync.rb`, `system_user.rb`, `app/services/invoices/mark_paid_from_ledgerflow_organizer.rb`, `app/jobs/ledgerflow_payment_sync_job.rb`, `AccountingMailer#payment_attention`.
+
+Dans LedgerFlow : `Accounting::InvoiceEvent` (journal), point d'accroche `after_commit` du modèle `Accounting::Invoice`, `Api::V1::InvoiceEventsController`.
 
 ## 8. Tests
 
 Côté BudgetFlow (`spec/services/accounting/ledgerflow/exporter_spec.rb`, `factory_spec`, `entity_setting_spec`), avec `Net::HTTP` simulé comme pour Dolibarr : contrat de chaque méthode de `Accounting::Base` (exemple partagé « an accounting exporter »), ordre fournisseur puis facture, corps et en-têtes envoyés, montants en chaînes décimales, taux de change inversé, avoir sans lien, tiers sans identifiant fiscal de type TVA, et chaque statut de réponse (409, 422 avec ligne nommée, 429, 401, réseau).
 
+Synchronisation (`payment_sync_spec.rb`, `ledgerflow_payment_sync_job_spec.rb`, `accounting_mailer_spec.rb`) : paiement appliqué avec date, référence et acteur système ; reprise depuis le curseur sur plusieurs pages ; facture déjà payée à la main laissée telle quelle ; alerte pour une facture non payable ou un paiement annulé ; paiements partiels, références inconnues et autre entité ignorés ; panne de LedgerFlow sans avancer le curseur ; événement impossible à appliquer. Trois casses volontaires du code (paiement jamais appliqué, entité non vérifiée, curseur jamais stocké) font bien échouer la spec.
+
+Côté LedgerFlow (`invoice_event_spec.rb`, `invoice_events_spec.rb`) : événements enregistrés pour toute transition de paiement, factures saisies à l'écran ignorées, flux à curseur, délai de sécurité, isolation entre entités, scopes.
+
 Non testé côté BudgetFlow : l'idempotence, les révisions et les refus métier, qui sont le comportement de LedgerFlow (`spec/requests/api/v1/`). Une vérification croisée a été faite une fois, en envoyant les corps exacts de l'adaptateur à la vraie API. Elle n'est pas automatisée : si l'un des deux contrats change, la refaire.
 
-## 9. Décisions ouvertes
+## 9. Synchronisation des paiements (LedgerFlow → BudgetFlow)
+
+Décision du 2026-09-29 : les paiements se gèrent dans LedgerFlow. BudgetFlow les apprend par **interrogation régulière** d'un flux d'événements plutôt que par webhook : aucune porte d'entrée nouvelle dans BudgetFlow, aucun événement perdu si BudgetFlow est éteint (le curseur le retient), LedgerFlow n'appelle toujours jamais BudgetFlow. Le flux est décrit dans `inbound-api.md` (4.4).
+
+**Fonctionnement.** `LedgerflowPaymentSyncJob` (Solid Queue, toutes les 5 minutes, `config/recurring.yml`) parcourt les entités configurées sur `ledgerflow`. `Accounting::Ledgerflow::PaymentSync` lit `GET /api/v1/invoice_events?after=<curseur>` page par page ; le curseur est stocké par entité (`entity_settings.accounting_events_cursor`) et avancé événement par événement.
+
+| Événement LedgerFlow | Effet dans BudgetFlow |
+|---|---|
+| `paid`, facture validée | Marquée payée par `Invoices::MarkPaidFromLedgerflowOrganizer` : sans pièce justificative ni comptable, `payment_method: "ledgerflow"`, `payment_status: "payment_manual"`, `payment_reference: "LedgerFlow <n°>"`, `paid_at` = `paid_on` à midi. |
+| `paid`, facture déjà payée | Rien (pas d'alerte). |
+| `paid`, facture dans un autre état (annulée…) | Rien de modifié ; e-mail aux comptables. |
+| `payment_reopened`, facture encore payée | E-mail aux comptables : BudgetFlow n'a pas de transition « dépayer », ils corrigent par les corrections existantes. |
+| `payment_reopened`, facture non payée ; `partially_paid` ; référence inconnue ou d'une autre entité | Ignoré (journalisé pour une référence inconnue). |
+
+- **Acteur système** : `ledgerflow-sync@system.invalid`, utilisateur technique créé au premier besoin (le journal d'audit de BudgetFlow exige un utilisateur), mot de passe aléatoire que personne ne connaît, membre d'aucune entité ni d'aucun projet.
+- **Alertes** : `AccountingMailer#payment_attention` aux comptables du projet, à défaut aux propriétaires et administrateurs de l'entité.
+- **Robustesse** : si le flux ne peut pas être lu, le curseur reste en place et la tâche recommence 5 minutes plus tard ; un événement impossible à appliquer déclenche une alerte puis on passe, pour qu'un seul événement ne bloque pas le flux.
+- **Montant** : `payment_amount_eur` reste vide. LedgerFlow ne fournit pas le montant réellement décaissé (écart de change), et BudgetFlow retombe alors sur `amount_eur`.
+
+**Limites (à connaître).**
+1. Le bouton manuel « marquer payé » de BudgetFlow est **conservé** (choix de l'utilisateur). Un paiement saisi à la main ne remonte pas vers LedgerFlow, et un événement `paid` sur une facture déjà payée à la main est ignoré : les deux sources peuvent diverger dans ce sens.
+2. Les paiements partiels n'ont aucun effet dans BudgetFlow (pas d'état partiel).
+3. Un paiement défait dans LedgerFlow n'est qu'une alerte : la facture reste payée dans BudgetFlow jusqu'à correction humaine.
+4. BudgetFlow ne vérifie pas la révision d'un événement : la référence `bf-invoice-<id>` est stable d'une révision à l'autre.
+
+## 10. Décisions ouvertes
 
 1. ~~Accord pour écrire l'adaptateur dans BudgetFlow~~ : donné et réalisé.
 2. Champ `supplier_reference` côté LedgerFlow (point 6.2).
 3. Précision du taux de change LedgerFlow : 6 ou 8 décimales (point 6.1).
-4. Qui fait foi pour le statut de paiement (point 6.5).
+4. ~~Qui fait foi pour le statut de paiement~~ : LedgerFlow (2026-09-29). Reste ouvert : garder ou retirer le bouton manuel de BudgetFlow (limite 1 de la section 9).
 5. Source du régime de TVA pour les achats hors Belgique (point 6.6).
 6. R11 : BudgetFlow **pousse** ses budgets vers un endpoint entrant de LedgerFlow (`PUT /api/v1/budgets/{ref}`, même principe) plutôt que LedgerFlow ne les lise.

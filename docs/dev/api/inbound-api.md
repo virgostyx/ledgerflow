@@ -112,7 +112,7 @@ Corps de réponse : `{id, external_ref, name, partner_type, vat_number, country,
 | Champ | Règle |
 |---|---|
 | `partner_external_ref` | Obligatoire. Doit avoir été envoyé via `PUT /partners` (sinon `422`, aucune création implicite). |
-| `document_type` | `invoice` (défaut) ou `credit_note` (cf. 4.4). |
+| `document_type` | `invoice` (défaut) ou `credit_note` (cf. 4.5). |
 | `credited_invoice_external_ref` | Avoir seulement : référence de la facture créditée (facultatif). |
 | `invoice_type` | Obligatoire : `supplier` ou `customer`. |
 | `invoice_date` | Obligatoire, ISO 8601. Doit tomber dans un **exercice ouvert**. |
@@ -160,7 +160,7 @@ Corps ou paramètre `reason` **obligatoire** : le motif est enregistré dans la 
 
 ### 4.3 Consulter : `GET /api/v1/invoices/:external_ref` (scope `invoices:read`)
 
-Renvoie la **révision courante** et l'historique, pour connaître le statut comptable sans client sortant.
+Renvoie la **révision courante** et l'historique, pour connaître à tout moment le statut comptable d'une facture. Pour être informé des paiements sans interroger chaque facture, utiliser le flux d'événements (4.4).
 
 ```json
 { "id": 812, "external_ref": "BF-I-1", "revision": 2, "status": "posted", "invoice_number": "ACH2026/0007",
@@ -173,7 +173,32 @@ Statuts : `draft`, `posted`, `partially_paid`, `paid`, `cancelled`. Référence 
 
 `GET /api/v1/invoices?status=posted` (scope `invoices:read`) liste toutes les factures de l'entité, y compris celles saisies à l'écran.
 
-### 4.4 Avoirs (notes de crédit)
+### 4.4 Événements de paiement : `GET /api/v1/invoice_events` (scope `invoices:read`)
+
+Les paiements se gèrent dans LedgerFlow (lettrage, rapprochement bancaire, lots SEPA) ; l'application tierce **interroge ce flux** pour les apprendre, par exemple toutes les 5 minutes. Le flux est un journal en ajout seul, limité aux factures et avoirs **gérés par l'API**, et à l'entité du client.
+
+`GET /api/v1/invoice_events?after=<dernier id traité>&limit=100` (`limit` : 100 par défaut, 500 au plus) :
+
+```json
+{ "events": [
+    { "id": 42, "type": "paid", "occurred_at": "2026-09-29T10:15:00Z", "external_ref": "bf-invoice-10", "revision": 1,
+      "invoice_number": "ACH2026/0007", "currency": "EUR", "total_incl_vat": "121.0", "amount_eur": "121.0", "paid_on": "2026-09-25" } ],
+  "next_cursor": 42 }
+```
+
+| `type` | Quand | Champs propres |
+|---|---|---|
+| `paid` | La ligne fournisseur/client de la facture est entièrement réglée | `amount_eur` (EUR réglés sur cette ligne), `paid_on` (date du dernier mouvement de règlement) |
+| `partially_paid` | Règlement partiel | `amount_eur` réglé à ce jour, `paid_on` |
+| `payment_reopened` | Un règlement est défait (délettrage, allocation retirée) | aucun montant |
+
+- **Curseur** : renvoyer `next_cursor` en `after` à l'appel suivant. Une page vide renvoie l'`after` reçu. Les événements sont **immuables** : un règlement défait ajoute un événement `payment_reopened`, il n'efface rien.
+- **Délai de sécurité** : un événement n'apparaît qu'au bout de 5 secondes, pour qu'une transaction encore ouverte ne publie pas un id inférieur à un curseur déjà avancé.
+- **Idempotence** : traiter deux fois le même `id` doit rester sans effet côté appelant.
+- **Limites de `amount_eur` et `paid_on`** : sans lettrage (lot SEPA exécuté, pas encore rapproché), `paid_on` est la date de l'événement et `amount_eur` le total de la ligne. Pour une facture en devise, `amount_eur` est le montant réglé **au taux de comptabilisation** : le montant réellement décaissé (écart de change) n'est pas fourni.
+- **Le sens inverse n'existe pas** : un paiement saisi dans l'application tierce ne remonte pas vers LedgerFlow.
+
+### 4.5 Avoirs (notes de crédit)
 
 Un avoir est envoyé sur le **même endpoint**, avec `document_type: "credit_note"`. Il hérite de tout ce qui précède : idempotence, révisions par extourne, `DELETE` avec motif, `GET`. Les lignes portent des montants **positifs**, comme une facture.
 
@@ -190,7 +215,7 @@ Un avoir est envoyé sur le **même endpoint**, avec `document_type: "credit_not
 - **Ordre des corrections** : une facture qui porte un avoir comptabilisé ne peut être ni révisée ni annulée (`409`). Annuler d'abord l'avoir (`DELETE`), corriger la facture, puis renvoyer l'avoir.
 - `GET` et les réponses d'écriture ajoutent `document_type` et, pour un avoir lié, `credited_invoice_external_ref`.
 
-### 4.5 Erreurs de validation
+### 4.6 Erreurs de validation
 
 `422` avec le détail par champ ; les lignes sont nommées par leur rang :
 
@@ -224,7 +249,7 @@ curl -X PUT https://ledgerflow.example/api/v1/invoices/BF-I-1 \
 - **Limitation de débit** : compteurs en mémoire du processus (Rack::Attack). Suffisant tant que le déploiement reste mono-processus (`WEB_CONCURRENCY: 1`) ; avec plusieurs processus, passer le magasin de `config/initializers/rack_attack.rb` sur un cache partagé (Solid Cache).
 - **Pas de choix du journal** via l'API : le journal suit le type de facture. Pas de lettrage automatique d'un avoir.
 - **Pas de suppression de tiers** par l'API (désactiver via `active: false`).
-- **LedgerFlow ne notifie pas l'appelant** : il doit interroger `GET`. Un client sortant / webhook reste à concevoir.
+- **Pas de webhook** : LedgerFlow n'appelle jamais l'application tierce ; elle interroge `GET /api/v1/invoice_events`. Un webhook qui réveillerait l'interrogation reste possible plus tard.
 - **Lots asynchrones** et écritures libres : volontairement absents.
 - `POST /api/v1/journal_entries` a été **supprimé** ; `GET /api/v1/journal_entries` (lecture) reste.
-- Le budget vs réalisé (R11) est un sujet distinct : il suppose un client sortant vers BudgetFlow, non traité ici.
+- Le budget vs réalisé (R11) est un sujet distinct : il suppose que BudgetFlow pousse ses budgets vers LedgerFlow (cf. `budgetflow-adapter.md`), non traité ici.

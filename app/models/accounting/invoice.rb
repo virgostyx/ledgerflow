@@ -55,6 +55,8 @@ class Accounting::Invoice < ApplicationRecord
   validates :currency,      inclusion: { in: Accounting::MoneyPresenter::SUPPORTED_CURRENCIES }
   validates :exchange_rate, numericality: { greater_than: 0 }
 
+  after_commit :record_payment_event, on: :update, if: -> { external_digest.present? && saved_change_to_status? }
+
   before_validation :default_due_date, on: :create
   before_validation :apply_franchise_rules
 
@@ -186,6 +188,16 @@ class Accounting::Invoice < ApplicationRecord
 
   def cash_journal_is_cash
     errors.add(:cash_journal, "must be a cash journal") unless cash_journal.cash?
+  end
+
+  # Only API-managed invoices (external_digest): the third party reads these events to learn about payments.
+  def record_payment_event
+    was = status_before_last_save
+    type = if paid? then "paid"
+    elsif partially_paid? then "partially_paid"
+    elsif posted? && %w[paid partially_paid].include?(was) then "payment_reopened"
+    end
+    Accounting::InvoiceEvent.record!(self, type) if type
   end
 
   def credited_invoice_matches

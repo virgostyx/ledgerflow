@@ -805,6 +805,41 @@ ALTER SEQUENCE public.accounting_invoice_emails_id_seq OWNED BY public.accountin
 
 
 --
+-- Name: accounting_invoice_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_invoice_events (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    invoice_id bigint NOT NULL,
+    event_type character varying NOT NULL,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_invoice_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_invoice_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_invoice_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_invoice_events_id_seq OWNED BY public.accounting_invoice_events.id;
+
+
+--
 -- Name: accounting_invoice_line_annotations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2043,6 +2078,13 @@ ALTER TABLE ONLY public.accounting_invoice_emails ALTER COLUMN id SET DEFAULT ne
 
 
 --
+-- Name: accounting_invoice_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoice_events ALTER COLUMN id SET DEFAULT nextval('public.accounting_invoice_events_id_seq'::regclass);
+
+
+--
 -- Name: accounting_invoice_line_annotations id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2381,6 +2423,14 @@ ALTER TABLE ONLY public.accounting_intracom_listings
 
 ALTER TABLE ONLY public.accounting_invoice_emails
     ADD CONSTRAINT accounting_invoice_emails_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_invoice_events accounting_invoice_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoice_events
+    ADD CONSTRAINT accounting_invoice_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -3089,6 +3139,20 @@ CREATE INDEX index_accounting_invoice_emails_on_invoice_id ON public.accounting_
 --
 
 CREATE INDEX index_accounting_invoice_emails_on_sent_by_id ON public.accounting_invoice_emails USING btree (sent_by_id);
+
+
+--
+-- Name: index_accounting_invoice_events_on_entity_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoice_events_on_entity_id_and_id ON public.accounting_invoice_events USING btree (entity_id, id);
+
+
+--
+-- Name: index_accounting_invoice_events_on_invoice_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoice_events_on_invoice_id ON public.accounting_invoice_events USING btree (invoice_id);
 
 
 --
@@ -3837,6 +3901,14 @@ ALTER TABLE ONLY public.accounting_bank_accounts
 
 
 --
+-- Name: accounting_invoice_events fk_rails_21a060b812; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoice_events
+    ADD CONSTRAINT fk_rails_21a060b812 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
 -- Name: accounting_invoice_line_annotations fk_rails_2671676b6d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4253,6 +4325,14 @@ ALTER TABLE ONLY public.accounting_recurring_invoices
 
 
 --
+-- Name: accounting_invoice_events fk_rails_c545c3aa7e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoice_events
+    ADD CONSTRAINT fk_rails_c545c3aa7e FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_letterings fk_rails_c7d391d5f5; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4467,6 +4547,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929001100'),
 ('20260929001000'),
 ('20260929000900'),
 ('20260929000800'),
