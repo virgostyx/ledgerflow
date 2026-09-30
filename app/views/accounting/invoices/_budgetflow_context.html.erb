@@ -1,0 +1,17 @@
+<%# Shown only to entities that declared BudgetFlow, on invoices that came with a project context. %>
+<% if budgetflow_enabled? && (invoice.external_project_name.present? || invoice.external_budget_line.present?) %>
+  <div class="mb-4 max-w-2xl rounded-md bg-amber-50 border border-amber-200 px-4 py-3" data-section="budgetflow-context">
+    <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider">From BudgetFlow</p>
+    <dl class="mt-2 grid grid-cols-2 gap-x-8 text-sm text-amber-900">
+      <div>
+        <dt class="text-xs text-amber-700">Project</dt>
+        <dd class="font-medium"><%= invoice.external_project_name.presence || "—" %></dd>
+      </div>
+      <div>
+        <dt class="text-xs text-amber-700">Budget line</dt>
+        <dd class="font-mono font-medium"><%= invoice.external_budget_line.presence || "—" %></dd>
+      </div>
+    </dl>
+    <p class="mt-2 text-xs text-amber-700">Use them to choose the analytical accounts of the lines.</p>
+  </div>
+<% end %>

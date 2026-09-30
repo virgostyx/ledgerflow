@@ -74,7 +74,8 @@ class Accounting::ExternalInvoice
   def create_and_post(current, normalized, digest)
     invoice = Accounting::Invoice.new(normalized.slice(*ATTRIBUTES.map(&:to_sym)).merge(
       partner: normalized[:partner], fiscal_year: normalized[:fiscal_year], credited_invoice: normalized[:credited_invoice],
-      external_ref: @external_ref,
+      external_ref: @external_ref, external_project_name: normalized[:external_project_name],
+      external_budget_line: normalized[:external_budget_line],
       revision: (current&.revision || 0) + 1, external_digest: digest))
     normalized[:lines_attrs].each_with_index { |line, i| invoice.lines.build(line.merge(position: i + 1)) }
     return failure(:unprocessable, invoice.errors.to_hash) unless invoice.save
@@ -98,6 +99,8 @@ class Accounting::ExternalInvoice
     n[:partner]     = partner(payload[:partner_external_ref])
     n[:fiscal_year] = fiscal_year(n[:invoice_date])
     n[:lines_attrs] = lines(payload[:lines])
+    n[:external_project_name] = payload[:project_name].to_s.strip.presence
+    n[:external_budget_line]  = payload[:budget_line].to_s.strip.presence
     n[:credited_invoice] = credited_invoice(payload[:credited_invoice_external_ref], n[:document_type])
     n
   end
@@ -174,7 +177,9 @@ class Accounting::ExternalInvoice
 
   # Same content, same fingerprint, whatever the number formatting of the caller (0.1 or "0.10").
   def fingerprint(n)
-    content = { partner_id: n[:partner].id, credited_invoice_id: n[:credited_invoice]&.id, invoice: n.slice(*ATTRIBUTES.map(&:to_sym)),
+    content = { partner_id: n[:partner].id, credited_invoice_id: n[:credited_invoice]&.id,
+                context: n.slice(:external_project_name, :external_budget_line),
+                invoice: n.slice(*ATTRIBUTES.map(&:to_sym)),
                 lines: n[:lines_attrs].map { |l| l.merge(account: l[:account].code) } }
     Digest::SHA256.hexdigest(JSON.generate(canonical(content)))
   end
