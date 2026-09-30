@@ -1,6 +1,6 @@
 # API entrante : injecter de la comptabilité depuis une application tierce
 
-Statut : implémentée (2026-09-29). Premier client prévu : BudgetFlow.
+Statut : implémentée (2026-09-29), complétée le 2026-09-30 (entités BudgetFlow, brouillons, règlements détaillés). Premier client : BudgetFlow.
 Code : `app/controllers/api/v1/`, `app/services/accounting/external_invoice.rb`, `app/models/api_client.rb`.
 
 ## 1. Principes
@@ -13,6 +13,8 @@ Code : `app/controllers/api/v1/`, `app/services/accounting/external_invoice.rb`,
 - **Tout ou rien** : une création ou une révision qui échoue ne laisse aucune trace comptable.
 
 ## 2. Authentification et autorisation
+
+**L'API n'existe que pour les entités qui ont déclaré utiliser BudgetFlow** (case « This entity uses BudgetFlow » à la création de l'entité, modifiable par son administrateur dans ses réglages). Pour toute autre entité, l'écran « API Clients » n'existe pas, aucun client ne peut être créé, et tout appel (clé ou JWT) reçoit `403 {"error":"The BudgetFlow integration is not enabled for this entity"}`. Il en va de même pour tout ce que décrit ce document côté interface (file de traitement, renvoi au gestionnaire) : une entité non activée n'en voit rien.
 
 Chaque application est un **client API** créé par un administrateur dans *Settings → API Clients* : nom, permissions (scopes), clé `lf_…` affichée **une seule fois** (stockée sous forme de hash SHA-256). La clé peut être renouvelée (l'ancienne cesse de fonctionner aussitôt) ou révoquée (définitif).
 
@@ -114,13 +116,15 @@ Corps de réponse : `{id, external_ref, name, partner_type, vat_number, country,
 | `partner_external_ref` | Obligatoire. Doit avoir été envoyé via `PUT /partners` (sinon `422`, aucune création implicite). |
 | `document_type` | `invoice` (défaut) ou `credit_note` (cf. 4.5). |
 | `credited_invoice_external_ref` | Avoir seulement : référence de la facture créditée (facultatif). |
+| `post` | `true` par défaut : la facture est comptabilisée tout de suite. **`false` : elle reste un brouillon** que le comptable code et comptabilise dans LedgerFlow (mode de BudgetFlow). |
+| `project_name`, `budget_line` | Facultatifs. Nom du projet et ligne budgétaire `chapitre.ligne.sous-ligne`, affichés au comptable pour choisir les comptes analytiques. Font partie du contenu (les changer est une correction). |
 | `invoice_type` | Obligatoire : `supplier` ou `customer`. |
 | `invoice_date` | Obligatoire, ISO 8601. Doit tomber dans un **exercice ouvert**. |
 | `due_date`, `description`, `notes`, `project_id` | Facultatifs. `project_id` est l'identifiant BudgetFlow, sans clé étrangère. |
 | `currency`, `exchange_rate` | `EUR` et `1` par défaut. |
 | `vat_treatment` | `domestic` (défaut), `intracom_goods`, `intracom_services`, `construction_reverse_charge`, `export`, `exempt`. |
 | `lines[]` | Au moins une. L'ordre du tableau donne la position. |
-| `lines[].account_code` | **Code de compte PCMN** (ex. `604000`), obligatoire. Inconnu : `422` nommant la ligne. |
+| `lines[].account_code` | **Code de compte PCMN** (ex. `604000`). **Facultatif** : une ligne sans code va sur le compte d'attente `499000` (le comptable la code), et la facture ne peut pas être comptabilisée tant qu'une ligne y reste (`422` si `post: true`). Code inconnu : `422` nommant la ligne. Si le plan comptable n'a pas de compte `499000` : `422`. |
 | `lines[].quantity`, `unit_price`, `vat_rate` | Décimaux. `vat_rate` en pourcentage. |
 
 Les grilles TVA et les comptes de TVA ne sont **pas** envoyés : LedgerFlow les déduit (préfixe du compte de charge pour un achat, taux pour une vente), comme pour une facture saisie à l'écran. Les règles de franchise de TVA de l'entité s'appliquent.
@@ -133,6 +137,19 @@ Les grilles TVA et les comptes de TVA ne sont **pas** envoyés : LedgerFlow les 
 | Même contenu que la révision en cours | Rien | `200` |
 | Contenu différent | Révision en cours annulée par extourne, révision n+1 comptabilisée | `200` |
 | Révision en cours déjà annulée (par `DELETE`) | Nouvelle révision comptabilisée | `201` |
+
+**Brouillons** (`post: false`) :
+
+| Situation | Effet | Statut |
+|---|---|---|
+| Référence inconnue | Brouillon créé (pas d'écriture, pas de numéro, totaux calculés) | `201` |
+| Même contenu | Rien | `200` |
+| Contenu différent, brouillon **intact** | Brouillon remplacé en place (même document, même révision) | `200` |
+| Contenu différent, **le comptable y a travaillé** (lignes, comptes, annotations analytiques modifiés) | Refusé : `409` « The accountant is already processing this draft: ask for it to be returned first. » | `409` |
+| `DELETE` | Brouillon annulé, sans extourne (il n'y a pas d'écriture) | `200` |
+| Brouillon renvoyé ou annulé, puis nouvel envoi | Nouvelle révision | `201` |
+
+Un renvoi identique au contenu d'origine reste un `200` même si le comptable a déjà travaillé sur le brouillon : un rejeu n'est pas une correction. `post: true` sur un brouillon intact le remplace et le comptabilise.
 
 Envois simultanés pour une même référence : l'index unique garantit un seul gagnant, l'autre reçoit `409 {"errors":{"base":["Concurrent update, retry"]}}` sans rien avoir écrit ; il suffit de rejouer.
 
@@ -188,14 +205,29 @@ Les paiements se gèrent dans LedgerFlow (lettrage, rapprochement bancaire, lots
 
 | `type` | Quand | Champs propres |
 |---|---|---|
-| `paid` | La ligne fournisseur/client de la facture est entièrement réglée | `amount_eur` (EUR réglés sur cette ligne), `paid_on` (date du dernier mouvement de règlement) |
-| `partially_paid` | Règlement partiel | `amount_eur` réglé à ce jour, `paid_on` |
+| `posted` | Le comptable a comptabilisé un brouillon (pas émis quand l'API comptabilise à la création : la réponse le dit déjà) | `invoice_number` |
+| `paid` | La ligne fournisseur/client de la facture est entièrement réglée | règlement (ci-dessous) |
+| `partially_paid` | Règlement partiel | règlement à ce jour |
+| `payment_confirmed` | Le débit bancaire d'un paiement déjà fait (lot SEPA) vient d'être rapproché : on apprend la date de valeur et la référence réelles | règlement complet, avec les faits bancaires |
 | `payment_reopened` | Un règlement est défait (délettrage, allocation retirée) | aucun montant |
+| `returned` | Le comptable a renvoyé le brouillon au gestionnaire | `reason` (obligatoire) |
+
+**Règlement** (`paid`, `partially_paid`, `payment_confirmed`) : pour l'auditeur, un détail par paiement et des totaux :
+
+```json
+{ "amount_eur": "121.0", "paid_on": "2026-09-28", "reference": "E2E-REF-1",
+  "settlements": [ { "value_date": "2026-09-28", "transaction_date": "2026-09-27", "reference": "E2E-REF-1",
+      "description": "Payment ACME", "amount": "121.0", "currency": "EUR", "amount_eur": "121.0",
+      "shared": false, "source": "bank_transaction" } ] }
+```
+
+`value_date` = date de valeur du mouvement bancaire, `transaction_date` = date d'opération, `reference` = référence bancaire, `amount`/`currency` = le mouvement entier, `amount_eur` = **part réellement payée pour cette facture**, `shared: true` quand un virement règle plusieurs factures. `source` dit d'où vient l'information : `bank_transaction` (mouvement bancaire rapproché), `payment_batch` (lot SEPA exécuté, banque pas encore rapprochée : référence du lot), `journal_entry` (écriture de paiement sans mouvement importé, par exemple un compte à l'étranger), `transition` (rien d'autre n'est connu : la ligne entière, à la date de l'événement). Les totaux : `amount_eur` = somme des parts, `paid_on` = dernière date de valeur, `reference` = celle du dernier règlement.
 
 - **Curseur** : renvoyer `next_cursor` en `after` à l'appel suivant. Une page vide renvoie l'`after` reçu. Les événements sont **immuables** : un règlement défait ajoute un événement `payment_reopened`, il n'efface rien.
 - **Délai de sécurité** : un événement n'apparaît qu'au bout de 5 secondes, pour qu'une transaction encore ouverte ne publie pas un id inférieur à un curseur déjà avancé.
 - **Idempotence** : traiter deux fois le même `id` doit rester sans effet côté appelant.
-- **Limites de `amount_eur` et `paid_on`** : sans lettrage (lot SEPA exécuté, pas encore rapproché), `paid_on` est la date de l'événement et `amount_eur` le total de la ligne. Pour une facture en devise, `amount_eur` est le montant réglé **au taux de comptabilisation** : le montant réellement décaissé (écart de change) n'est pas fourni.
+- **Lot SEPA** : la facture passe à « payée » à l'exécution du lot, avant la banque. Le premier événement (`paid`) porte alors la référence du lot (`source: payment_batch`) ; le rapprochement du débit bancaire ajoute un `payment_confirmed` avec la date de valeur et la référence réelles. L'appelant doit traiter les deux.
+- **Devises** : `amount_eur` est ce qui a été imputé à la facture dans le règlement ; un écart de change que le comptable comptabilise à part n'y figure pas. Les comptes bancaires en devise étrangère et les paiements manuels restent à auditer (voir « Limites »).
 - **Le sens inverse n'existe pas** : un paiement saisi dans l'application tierce ne remonte pas vers LedgerFlow.
 
 ### 4.5 Avoirs (notes de crédit)
@@ -251,5 +283,8 @@ curl -X PUT https://ledgerflow.example/api/v1/invoices/BF-I-1 \
 - **Pas de suppression de tiers** par l'API (désactiver via `active: false`).
 - **Pas de webhook** : LedgerFlow n'appelle jamais l'application tierce ; elle interroge `GET /api/v1/invoice_events`. Un webhook qui réveillerait l'interrogation reste possible plus tard.
 - **Lots asynchrones** et écritures libres : volontairement absents.
+- **Comptes bancaires à l'étranger et paiements manuels** : non audités. Un paiement sans mouvement bancaire importé donne un règlement de `source: journal_entry` (date et référence de l'écriture) ; la devise du mouvement n'est pas convertie, `amount_eur` est ce qui est imputé à la facture.
+- **Analytique** : le comptable choisit les comptes analytiques à la main à partir de `project_name` et `budget_line` ; aucun pré-remplissage automatique.
+- **PDF de la facture** : LedgerFlow ne le conserve pas (la copie d'audit reste dans l'application tierce).
 - `POST /api/v1/journal_entries` a été **supprimé** ; `GET /api/v1/journal_entries` (lecture) reste.
 - Le budget vs réalisé (R11) est un sujet distinct : il suppose que BudgetFlow pousse ses budgets vers LedgerFlow (cf. `budgetflow-adapter.md`), non traité ici.

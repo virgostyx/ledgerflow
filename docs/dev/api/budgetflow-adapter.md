@@ -143,7 +143,26 @@ Décision du 2026-09-29 : les paiements se gèrent dans LedgerFlow. BudgetFlow l
 3. Un paiement défait dans LedgerFlow n'est qu'une alerte : la facture reste payée dans BudgetFlow jusqu'à correction humaine.
 4. BudgetFlow ne vérifie pas la révision d'un événement : la référence `bf-invoice-<id>` est stable d'une révision à l'autre.
 
-## 10. Décisions ouvertes
+## 10. Le comptable ne travaille que dans LedgerFlow (décision du 2026-09-30)
+
+**Principe : séparer par rôle.** Le gestionnaire de projet reste dans BudgetFlow (encoder, pièces, engagement, approbation) ; le comptable ne fait **que** LedgerFlow (codage, analytique, comptabilisation, paiement, renvoi éventuel). Tout ce qui suit est opt-in : seules les entités LedgerFlow qui ont déclaré utiliser BudgetFlow, et les entités BudgetFlow dont l'adaptateur est `ledgerflow`, changent de comportement.
+
+**Flux cible.** Le gestionnaire valide la facture (`validated`) → BudgetFlow l'envoie **automatiquement** en brouillon à LedgerFlow (`post: false`, sans comptes, avec `project_name` et `budget_line` = `chapitre.ligne.sous-ligne`) → elle apparaît dans la file « from BudgetFlow to process » de la liste des achats → le comptable code les lignes, choisit les comptes analytiques à partir du projet et de la ligne budgétaire, puis **comptabilise** ou **renvoie** au gestionnaire (motif obligatoire) → il met la facture en paiement → BudgetFlow reçoit l'état, le montant réellement payé, la date de valeur et la référence bancaire.
+
+| Événement LedgerFlow | Ce que BudgetFlow en fait (cible) |
+|---|---|
+| `posted` | Facture « comptabilisée » : état `accounted`, numéro comptable visible. |
+| `returned` (motif) | `return_to_draft` (acteur système, le motif devient le commentaire de rejet, le créateur et le circuit d'approbation sont prévenus), export remis à zéro ; après correction, nouvel envoi = révision suivante. |
+| `paid` / `payment_confirmed` | Facture payée ; `payment_amount_eur` = montant réellement payé, `paid_at` = **date de valeur**, `payment_executed_at` = date d'opération, `payment_reference` = référence bancaire ; l'événement complet (liste des règlements, id, numéro comptable) est écrit dans le journal d'audit de BudgetFlow. Un `payment_confirmed` ultérieur met à jour ces faits. |
+| `partially_paid` | Entrée du journal d'audit seulement (BudgetFlow n'a pas d'état partiel). |
+| `payment_reopened` | Alerte aux comptables (BudgetFlow ne sait pas « dépayer »). |
+
+**État d'avancement.**
+
+- **LedgerFlow : fait (2026-09-30).** Entité qui déclare BudgetFlow et étanchéité de l'API et des écrans ; champs `post`, `project_name`, `budget_line`, lignes sans compte (compte d'attente `499000`, comptabilisation refusée tant qu'il en reste), brouillons corrigés en place ou refusés en `409` si le comptable y a travaillé, annulés sans extourne ; événements `posted`, `returned`, `payment_confirmed` et règlement détaillé ; bouton « Return to project manager » ; file de traitement (bandeau, filtre, pastille, contexte projet). Voir `inbound-api.md`.
+- **BudgetFlow : à faire.** L'adaptateur envoie encore `account_code` et comptabilise tout de suite ; l'export reste déclenché par le comptable ; `PaymentSync` ne traite que `paid`, `partially_paid` et `payment_reopened`. Il faut : envoyer `post: false`, `project_name`, `budget_line` et aucun compte ; exporter automatiquement à la validation ; adapter les prérequis d'export ; alerter le gestionnaire (pas un comptable) si l'export échoue ; traiter `posted`, `returned`, `payment_confirmed` et les faits de règlement ; masquer l'export manuel.
+
+## 11. Décisions ouvertes
 
 1. ~~Accord pour écrire l'adaptateur dans BudgetFlow~~ : donné et réalisé.
 2. Champ `supplier_reference` côté LedgerFlow (point 6.2).
