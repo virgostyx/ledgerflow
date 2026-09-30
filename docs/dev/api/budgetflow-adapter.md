@@ -57,12 +57,15 @@ Le rapprochement par numéro de TVA reprend un tiers LedgerFlow déjà saisi à 
 | BudgetFlow (`Invoice`) | LedgerFlow | Remarque |
 |---|---|---|
 | — | `document_type` | `invoice` ou `credit_note` selon `invoice_type` |
+| — | `post` | toujours `false` : la facture arrive en **brouillon**, le comptable la code et la comptabilise dans LedgerFlow |
 | `effective_supplier` | `partner_external_ref` | `bf-supplier-{id}` |
 | — | `invoice_type` | toujours `supplier` |
 | `invoice_date`, `due_date` | `invoice_date`, `due_date` | ISO 8601 ; la date doit tomber dans un exercice **ouvert** |
 | `currency` | `currency` | |
 | `exchange_rate_used` (pas `effective_exchange_rate`, qui préfère le taux réel du paiement) | `exchange_rate` | **Inverser** (cf. 6.1). `"1.0"` pour l'EUR. |
 | `project.id` | `project_id` | |
+| `project.name` | `project_name` | affiché au comptable pour choisir les comptes analytiques |
+| `invoice.sub_line` (via l'engagement) | `budget_line` | `"#{chapter.code}.#{budget_line.code}.#{sub_line.code}"` |
 | `description` | `description` | |
 | `invoice_lines` (ordre `position`) | `lines[]` | ci-dessous |
 | `invoice_number` | — | Le numéro **du fournisseur** n'a pas de champ dédié côté LedgerFlow (cf. 6.2) |
@@ -75,7 +78,7 @@ Lignes :
 | `quantity` | `quantity` (chaîne décimale) |
 | `unit_price` (devise de la facture) | `unit_price` (chaîne décimale) |
 | `vat_code.rate` | `vat_rate` |
-| `accounting_account.number` | `account_code` (compte PCMN, inconnu : `422` nommant la ligne) |
+| `accounting_account.number` | **non envoyé** : le comptable seul code les lignes dans LedgerFlow (elles arrivent sur le compte d'attente 499000 ; la comptabilisation est refusée tant qu'il en reste) |
 
 Les montants sont envoyés en **chaînes décimales** (`"50.00"`) depuis des `BigDecimal`, jamais des `Float`. LedgerFlow recalcule les totaux et les grilles de TVA : ils ne s'envoient pas.
 
@@ -160,7 +163,10 @@ Décision du 2026-09-29 : les paiements se gèrent dans LedgerFlow. BudgetFlow l
 **État d'avancement.**
 
 - **LedgerFlow : fait (2026-09-30).** Entité qui déclare BudgetFlow et étanchéité de l'API et des écrans ; champs `post`, `project_name`, `budget_line`, lignes sans compte (compte d'attente `499000`, comptabilisation refusée tant qu'il en reste), brouillons corrigés en place ou refusés en `409` si le comptable y a travaillé, annulés sans extourne ; événements `posted`, `returned`, `payment_confirmed` et règlement détaillé ; bouton « Return to project manager » ; file de traitement (bandeau, filtre, pastille, contexte projet). Voir `inbound-api.md`.
-- **BudgetFlow : à faire.** L'adaptateur envoie encore `account_code` et comptabilise tout de suite ; l'export reste déclenché par le comptable ; `PaymentSync` ne traite que `paid`, `partially_paid` et `payment_reopened`. Il faut : envoyer `post: false`, `project_name`, `budget_line` et aucun compte ; exporter automatiquement à la validation ; adapter les prérequis d'export ; alerter le gestionnaire (pas un comptable) si l'export échoue ; traiter `posted`, `returned`, `payment_confirmed` et les faits de règlement ; masquer l'export manuel.
+- **BudgetFlow : fait (2026-09-30).** L'adaptateur envoie `post: false`, `project_name`, `budget_line` et aucun compte. Pour une entité `ledgerflow`, `Invoices::NotifyAccountantJob` (point unique appelé à la validation et après l'analyse IA) **exporte automatiquement** au lieu d'écrire au comptable ; le numéro fiscal du fournisseur et le journal BudgetFlow ne sont plus exigés ; un export en échec prévient le créateur et les administrateurs du projet (`AccountingMailer#export_failed`), pas un comptable ; le bouton d'export manuel ne reste que pour relancer un échec. `PaymentSync` traite `paid` et `payment_confirmed` (date de valeur → `paid_at`, date d'opération → `payment_executed_at`, référence bancaire → `payment_reference`, montant réellement payé → `payment_amount_eur`, événement complet dans le journal d'audit), `partially_paid` et `posted` (journal d'audit seulement), `returned` (retour en brouillon par l'acteur système, commentaire = motif, export remis à zéro) et `payment_reopened` (alerte).
+- **Écart avec la décision initiale.** Il n'y a **pas** de nouvel état `accounted` : plusieurs règles de BudgetFlow (édition, export, paiement manuel) reposent sur `accounting_exported?`, et un état « hors exported » aurait réactivé l'export et bloqué le paiement manuel. La comptabilisation est donc consignée dans le journal d'audit (action `ledgerflow_posted`, avec le numéro comptable), la facture restant `exported`.
+- **Vérification croisée (2026-09-30).** Les corps exacts de l'adaptateur ont été envoyés à la vraie API : brouillon non codé avec contexte, correction en place, comptabilisation refusée tant qu'une ligne est sur 499000, `posted`, `returned` (motif, puis révision 2 acceptée) et `paid` (date de valeur, référence bancaire, montant réel). Non automatisée : à refaire si un des deux contrats change.
+- **À noter.** Une correction envoyée par BudgetFlow **après** la comptabilisation par le comptable crée une nouvelle révision en brouillon et extourne l'écriture (règle historique des révisions, `inbound-api.md` 4.1) : la comptabilité garde la trace, mais le comptable doit comptabiliser à nouveau. À discuter si BudgetFlow ne devrait pas pouvoir corriger une facture déjà comptabilisée.
 
 ## 11. Décisions ouvertes
 
