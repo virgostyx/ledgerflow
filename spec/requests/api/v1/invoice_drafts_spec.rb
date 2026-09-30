@@ -113,4 +113,79 @@ RSpec.describe 'Api::V1 invoice drafts', type: :request do
       expect(json['errors']['base'].first).to include('499000')
     end
   end
+
+  describe 'correcting or withdrawing a draft' do
+    before { put_invoice }
+
+    def corrected(unit_price: '80.00') = payload.merge(lines: [ line.merge(unit_price: unit_price) ])
+
+    it 'replaces an untouched draft in place: same document, same revision, new content' do
+      original_id = invoice.id
+
+      put_invoice(corrected)
+
+      expect(response).to have_http_status(:ok)
+      expect(invoice).to have_attributes(id: original_id, revision: 1, status: 'draft', total_incl_vat: BigDecimal('193.6'))
+      expect(invoice.lines.count).to eq(1)
+      expect(Accounting::Invoice.external.where(external_ref: 'BF-I-1').count).to eq(1)
+    end
+
+    it 'replays the corrected content as a no-op' do
+      put_invoice(corrected)
+      put_invoice(corrected)
+
+      expect(response).to have_http_status(:ok)
+      expect(invoice.lines.count).to eq(1)
+    end
+
+    it 'answers 409 once the accountant has modified the draft, and leaves it alone' do
+      invoice.lines.first.update!(description: 'Recoded by the accountant')
+
+      put_invoice(corrected)
+
+      expect(response).to have_http_status(:conflict)
+      expect(json['errors']['base'].first).to match(/accountant/i)
+      expect(invoice.lines.first).to have_attributes(description: 'Recoded by the accountant', unit_price: BigDecimal('50'))
+    end
+
+    it 'counts an analytical annotation added by the accountant as a modification' do
+      axis    = create(:analytical_axis)
+      account = create(:analytical_account, analytical_axis: axis)
+      create(:invoice_line_annotation, invoice_line: invoice.lines.first, analytical_axis: axis, analytical_account: account)
+
+      put_invoice(corrected)
+
+      expect(response).to have_http_status(:conflict)
+    end
+
+    it 'still answers 200 to the very same payload after the accountant touched it (a retry is not a correction)' do
+      invoice.lines.first.update!(description: 'Recoded by the accountant')
+
+      put_invoice
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it 'posts the corrected draft when post is switched on' do
+      put_invoice(corrected.merge(post: true))
+
+      expect(response).to have_http_status(:ok)
+      expect(invoice).to be_posted
+      expect(invoice.journal_entry).to be_posted
+    end
+
+    it 'cancels a draft on DELETE, with no entry to reverse, and a later PUT starts revision 2' do
+      delete '/api/v1/invoices/BF-I-1', params: { reason: 'Sent by mistake' }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(invoice).to be_cancelled
+      expect(Accounting::JournalEntry.count).to eq(0)
+
+      put_invoice
+
+      expect(response).to have_http_status(:created)
+      expect(Accounting::Invoice.external.where(external_ref: 'BF-I-1').order(:revision).map { |i| [ i.revision, i.status ] })
+        .to eq([ [ 1, 'cancelled' ], [ 2, 'draft' ] ])
+    end
+  end
 end

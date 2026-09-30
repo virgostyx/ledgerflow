@@ -954,7 +954,8 @@ CREATE TABLE public.accounting_invoices (
     revision integer DEFAULT 1 NOT NULL,
     external_digest character varying,
     external_project_name character varying,
-    external_budget_line character varying
+    external_budget_line character varying,
+    external_state_digest character varying
 );
 
 
@@ -4550,6 +4551,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260930000300'),
 ('20260930000200'),
 ('20260930000100'),
 ('20260929001100'),

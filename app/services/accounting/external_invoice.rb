@@ -2,8 +2,9 @@
 # `post: false` leaves the document a draft: the accountant codes it and posts it in LedgerFlow (default: posted at once).
 # Credit notes are the same resource (document_type "credit_note", optionally linked to the credited invoice).
 # - upsert: unknown reference -> create + post; identical replay -> no-op; changed content -> the current document
-#   is cancelled (reversal) and a new revision is posted under the same reference, all or nothing.
-# - cancel: reverses the current document, with a mandatory reason (recorded in the audit trail).
+#   is cancelled (reversal) and a new revision is posted under the same reference, all or nothing. A draft nobody
+#   touched is replaced in place; once the accountant has worked on it (external_state_digest), the change is refused.
+# - cancel: reverses the current document, with a mandatory reason (recorded in the audit trail); a draft is just cancelled.
 # Returns a Result whose status is :created, :ok, :unprocessable, :conflict or :not_found.
 class Accounting::ExternalInvoice
   Result = Struct.new(:status, :invoice, :errors, keyword_init: true)
@@ -28,6 +29,7 @@ class Accounting::ExternalInvoice
       return failure(:unprocessable, document_type: [ "cannot change for an existing external_ref" ])
     end
     return Result.new(status: :ok, invoice: current) if current && !current.cancelled? && current.external_digest == digest
+    return correct_draft(current, normalized, digest) if current&.draft?
 
     write(current, normalized, digest)
   end
@@ -68,20 +70,32 @@ class Accounting::ExternalInvoice
     failure(:conflict, base: [ "Concurrent update, retry" ])
   end
 
+  # A draft has no entry to reverse.
   def cancel_current(invoice)
+    return cancel_draft(invoice) if invoice.draft?
+
     done = Accounting::CancelInvoice.call(invoice: invoice)
     done.success? ? Result.new(status: :ok, invoice: invoice.reload) : failure(:conflict, base: [ done.message ])
   end
 
   def create_and_post(current, normalized, digest)
-    invoice = Accounting::Invoice.new(normalized.slice(*ATTRIBUTES.map(&:to_sym)).merge(
-      partner: normalized[:partner], fiscal_year: normalized[:fiscal_year], credited_invoice: normalized[:credited_invoice],
-      external_ref: @external_ref, external_project_name: normalized[:external_project_name],
-      external_budget_line: normalized[:external_budget_line],
-      revision: (current&.revision || 0) + 1, external_digest: digest))
+    invoice = Accounting::Invoice.new(invoice_attributes(normalized, digest).merge(
+      external_ref: @external_ref, revision: (current&.revision || 0) + 1))
     normalized[:lines_attrs].each_with_index { |line, i| invoice.lines.build(line.merge(position: i + 1)) }
     return failure(:unprocessable, invoice.errors.to_hash) unless invoice.save
 
+    settle(invoice)
+  end
+
+  def invoice_attributes(normalized, digest)
+    normalized.slice(*ATTRIBUTES.map(&:to_sym)).merge(
+      partner: normalized[:partner], fiscal_year: normalized[:fiscal_year], credited_invoice: normalized[:credited_invoice],
+      external_project_name: normalized[:external_project_name], external_budget_line: normalized[:external_budget_line],
+      external_digest: digest)
+  end
+
+  # A document just saved: left as a draft, or posted at once.
+  def settle(invoice)
     return draft_result(invoice) unless @post
 
     posted = Accounting::PostInvoice.call(invoice: invoice)
@@ -90,11 +104,52 @@ class Accounting::ExternalInvoice
     Result.new(status: :created, invoice: invoice.reload)
   end
 
-  # A draft still shows its totals (PostInvoice would compute them when posting).
+  # A draft still shows its totals (PostInvoice would compute them when posting), and remembers what the API wrote.
   def draft_result(invoice)
     invoice.compute_totals
     invoice.save!
-    Result.new(status: :created, invoice: invoice.reload)
+    invoice.update_columns(external_state_digest: state_digest(invoice.reload))
+    Result.new(status: :created, invoice: invoice)
+  end
+
+  # The third party corrects a draft: replaced in place while the accountant has not worked on it, refused after.
+  def correct_draft(current, normalized, digest)
+    unless current.external_state_digest.present? && current.external_state_digest == state_digest(current)
+      return failure(:conflict, base: [ "The accountant is already processing this draft: ask for it to be returned first." ])
+    end
+
+    result = nil
+    ApplicationRecord.transaction(requires_new: true) do
+      current.lines.destroy_all
+      reset_omitted_attributes(current, normalized)
+      current.assign_attributes(invoice_attributes(normalized, digest))
+      normalized[:lines_attrs].each_with_index { |line, i| current.lines.build(line.merge(position: i + 1)) }
+      result = current.save ? settle(current) : failure(:unprocessable, current.errors.to_hash)
+      raise ActiveRecord::Rollback unless result.status == :created
+    end
+    result.status = :ok if result.status == :created
+    result
+  end
+
+  # What the new payload leaves out goes back to the default, it does not keep an earlier value.
+  def reset_omitted_attributes(invoice, normalized)
+    (ATTRIBUTES.map(&:to_sym) - normalized.keys).each { |key| invoice[key] = Accounting::Invoice.column_defaults[key.to_s] }
+    invoice.send(:default_due_date) if normalized[:due_date].nil?
+  end
+
+  def cancel_draft(invoice)
+    invoice.cancel!
+    Result.new(status: :ok, invoice: invoice)
+  end
+
+  # Header, lines and analytical annotations as they are in the database now.
+  def state_digest(invoice)
+    lines = invoice.lines.includes(:account, :analytical_annotations).map do |l|
+      [ l.account.code, l.description, l.quantity, l.unit_price, l.vat_rate,
+        l.analytical_annotations.map { |a| [ a.analytical_axis_id, a.analytical_account_id ] }.sort ]
+    end
+    header = invoice.slice(*ATTRIBUTES, :partner_id, :credited_invoice_id, :external_project_name, :external_budget_line)
+    Digest::SHA256.hexdigest(JSON.generate(canonical(header: header, lines: lines)))
   end
 
   # Validates and converts the payload; fills @errors. Amounts go through BigDecimal, never Float.
