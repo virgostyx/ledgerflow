@@ -100,4 +100,17 @@ RSpec.describe 'Api::V1 invoice drafts', type: :request do
       expect(Accounting::Invoice.external.count).to eq(0)
     end
   end
+
+  describe 'posting at once with lines still to be coded' do
+    let!(:suspense) { create(:account, code: '499000', label_fr: "Comptes d'attente", account_class: 4, entity: entity) }
+
+    it 'answers 422 and writes nothing' do
+      uncoded = { description: 'X', quantity: '1', unit_price: '100', vat_rate: '21' }
+
+      expect { put_invoice(payload.merge(post: true, lines: [ uncoded ])) }.not_to change(Accounting::Invoice, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json['errors']['base'].first).to include('499000')
+    end
+  end
 end

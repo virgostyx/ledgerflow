@@ -6,6 +6,7 @@ class Accounting::PostInvoice
     ApplicationRecord.transaction do
       result = with(invoice: invoice).reduce(
         Accounting::Actions::ValidateInvoice,
+        Accounting::Actions::ValidateInvoiceCoding,
         Accounting::Actions::ComputeInvoiceTotals,
         Accounting::Actions::ValidateCreditNoteAmount,
         Accounting::Actions::AssignInvoiceNumber,
