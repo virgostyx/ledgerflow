@@ -196,6 +196,7 @@ class Accounting::Invoice < ApplicationRecord
     type = if paid? then "paid"
     elsif partially_paid? then "partially_paid"
     elsif posted? && %w[paid partially_paid].include?(was) then "payment_reopened"
+    elsif posted? && was == "draft" then "posted"
     end
     Accounting::InvoiceEvent.record!(self, type) if type
   end

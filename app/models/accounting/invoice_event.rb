@@ -3,7 +3,11 @@
 class Accounting::InvoiceEvent < ApplicationRecord
   self.table_name = "accounting_invoice_events"
 
-  EVENT_TYPES = %w[paid partially_paid payment_reopened].freeze
+  # posted: the accountant (or the API) booked it. paid / partially_paid / payment_confirmed carry the settlement (value date,
+  # bank reference, amounts). payment_confirmed: the bank debit of a payment already made (a SEPA batch) is now reconciled.
+  # returned: the accountant sent a draft back to the project manager.
+  EVENT_TYPES = %w[posted paid partially_paid payment_confirmed payment_reopened returned].freeze
+  SETTLEMENT_EVENTS = %w[paid partially_paid payment_confirmed].freeze
   # The feed only shows events older than this: a transaction still open could commit an event with a lower id after
   # a reader has moved its cursor past it. ponytail: assumes transactions shorter than this.
   SETTLE_DELAY = 5.seconds
@@ -16,33 +20,27 @@ class Accounting::InvoiceEvent < ApplicationRecord
 
   scope :visible, -> { where(created_at: ..SETTLE_DELAY.ago) }
 
-  def self.record!(invoice, event_type)
+  def self.record!(invoice, event_type, reason: nil)
     payload = { external_ref: invoice.external_ref, revision: invoice.revision, invoice_number: invoice.invoice_number,
                 currency: invoice.currency, total_incl_vat: invoice.total_incl_vat.to_s("F") }
-    payload.merge!(settlement(invoice, event_type)) unless event_type == "payment_reopened"
+    payload[:reason] = reason if reason
+    payload.merge!(Accounting::InvoiceSettlement.call(invoice).to_payload) if SETTLEMENT_EVENTS.include?(event_type)
     create!(invoice: invoice, entity_id: invoice.entity_id, event_type: event_type, occurred_at: Time.current, payload: payload)
   end
 
-  # EUR settled on the invoice's payable line, and the date of the latest settling movement. Allocations (partial
-  # payments) first, then the total lettering; without either (a SEPA batch just executed) the whole line, today.
-  def self.settlement(invoice, event_type)
-    trade = invoice.journal_entry&.lines&.joins(:account)&.find_by(accounting_accounts: { code: Accounting::Actions::PayLetteredInvoices::TRADE_ACCOUNTS })
-    total = trade ? trade.debit + trade.credit : invoice.total_incl_vat_eur
-    allocations = trade ? Accounting::LineAllocation.touching(trade.id) : Accounting::LineAllocation.none
-
-    if event_type == "partially_paid" && allocations.any?
-      amount, paid_on = allocations.sum(:amount), allocations.maximum(:allocated_on)
-    else
-      amount, paid_on = total, settling_date(trade)
-    end
-    { amount_eur: amount.to_d.to_s("F"), paid_on: (paid_on || Date.current).iso8601 }
+  # A bank debit has just been reconciled with an entry: for every paid API invoice that entry settles (a payment batch, or
+  # payment lines linked to the invoice), tell the third party the bank facts, unless it already knows them.
+  def self.record_confirmations(bank_transaction)
+    entry_id = bank_transaction.journal_entry_id
+    ids = Accounting::JournalEntryLine.where(journal_entry_id: entry_id).where.not(invoice_id: nil).pluck(:invoice_id)
+    ids |= Accounting::PaymentBatchLine.active.joins(:payment_batch).where(accounting_payment_batches: { journal_entry_id: entry_id }).pluck(:invoice_id)
+    Accounting::Invoice.external.where(id: ids, status: %i[paid partially_paid]).find_each { |invoice| confirm(invoice) }
   end
 
-  def self.settling_date(trade)
-    return unless trade&.lettering_id
-
-    others = Accounting::JournalEntryLine.where(lettering_id: trade.lettering_id).where.not(id: trade.id)
-    Accounting::JournalEntry.where(id: others.select(:journal_entry_id)).maximum(:entry_date)
+  def self.confirm(invoice)
+    current = Accounting::InvoiceSettlement.call(invoice).to_payload[:settlements].as_json
+    last    = where(invoice_id: invoice.id, event_type: SETTLEMENT_EVENTS).order(:id).last
+    record!(invoice, "payment_confirmed") unless last && last.payload["settlements"] == current
   end
-  private_class_method :settling_date
+  private_class_method :confirm
 end

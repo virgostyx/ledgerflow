@@ -8,6 +8,10 @@ class Accounting::BankTransaction < ApplicationRecord
 
   enum :status, { pending: 0, reconciled: 1, ignored: 2 }
 
+  # The bank facts of a payment become known once its debit is reconciled: API invoices already marked paid (SEPA batch) get
+  # a payment_confirmed event. Only entities that use BudgetFlow.
+  after_commit :confirm_invoice_payments, on: :update, if: -> { saved_change_to_journal_entry_id? && journal_entry_id.present? }
+
   validates :transaction_date, presence: true
   validates :amount,           presence: true
 
@@ -26,5 +30,11 @@ class Accounting::BankTransaction < ApplicationRecord
     rel = rel.where(amount: 0..) if q[:direction] == "credit"
     rel = rel.where(amount: ...0) if q[:direction] == "debit"
     rel
+  end
+
+  private
+
+  def confirm_invoice_payments
+    Accounting::InvoiceEvent.record_confirmations(self) if entity.budgetflow?
   end
 end
