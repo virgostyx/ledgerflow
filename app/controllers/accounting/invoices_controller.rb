@@ -7,9 +7,10 @@ class Accounting::InvoicesController < ApplicationController
     @pagy, @invoices = pagy(policy_scope(Accounting::Invoice)
                               .includes(:journal, :partner)
                               .where(invoice_type: @invoice_type)
-                              .filter_by(filter_params)
+                              .filter_by(budgetflow_enabled? ? filter_params : filter_params.except(:source))
                               .order(invoice_date: :desc)
                               .autofilter(**autofilter_params))
+    @budgetflow_to_process = policy_scope(Accounting::Invoice).external.draft.supplier.count if budgetflow_enabled? && @invoice_type == "supplier"
   end
 
   def show

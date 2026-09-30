@@ -27,7 +27,7 @@ class ApplicationController < ActionController::Base
   end
 
   FILTER_KEYS = %i[q status journal_id fiscal_year_id partner_type country from to overdue unpaid
-                   inactive period_type bank_account_id direction].freeze
+                   inactive period_type bank_account_id direction source].freeze
 
   # List filters, submitted as q[...] by shared/_filters.
   def filter_params

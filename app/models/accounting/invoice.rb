@@ -224,6 +224,7 @@ class Accounting::Invoice < ApplicationRecord
     rel = rel.joins(:partner).search(q[:q], "accounting_invoices.invoice_number", "accounting_partners.name", "accounting_invoices.description") if q[:q].present?
     rel = rel.where(status: %i[posted partially_paid]) if q[:unpaid] == "1"
     rel = rel.where(status: %i[posted partially_paid], due_date: ...Date.current) if q[:overdue] == "1"
+    rel = rel.external if q[:source] == "1" # received from BudgetFlow (the controller drops this filter for other entities)
     rel
   end
 end

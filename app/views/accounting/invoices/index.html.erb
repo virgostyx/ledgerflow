@@ -19,11 +19,21 @@
   <% end %>
 <% end %>
 
-<%= render 'shared/filters', fields: [
+<% if @budgetflow_to_process.to_i.positive? %>
+  <div class="mb-4 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900">
+    <%= link_to "#{pluralize(@budgetflow_to_process, 'invoice')} from BudgetFlow to process",
+          accounting_purchases_path(q: { source: '1', status: 'draft' }), class: 'font-medium underline' %>
+    <span class="text-amber-700">: code the lines and the analytical accounts, then post or return them.</span>
+  </div>
+<% end %>
+
+<% filter_fields = [
   { name: :q, label: 'Search', type: :text },
   { name: :unpaid, label: 'Unpaid only', type: :checkbox },
   { name: :overdue, label: 'Overdue only', type: :checkbox }
 ] %>
+<% filter_fields << { name: :source, label: 'From BudgetFlow only', type: :checkbox } if budgetflow_enabled? && @invoice_type == 'supplier' %>
+<%= render 'shared/filters', fields: filter_fields %>
 <% if @invoices.empty? && !filters_active? %>
   <%= render Ui::EmptyStateComponent.new(
         title: "No #{section_title.downcase} invoices yet",
@@ -58,7 +68,15 @@
           <tr class="hover:bg-gray-50 transition-colors">
             <td class="px-4 py-3 font-mono text-sm text-primary-700"><%= presenter.entry_number_display %></td>
             <td class="px-4 py-3 text-gray-500 text-sm"><%= invoice.journal&.code %></td>
-            <td class="px-4 py-3 text-gray-700 font-medium"><%= invoice.partner.name %></td>
+            <td class="px-4 py-3 text-gray-700 font-medium">
+              <%= invoice.partner.name %>
+              <% if budgetflow_enabled? && invoice.external_digest.present? %>
+                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">BudgetFlow</span>
+                <% if invoice.external_project_name.present? || invoice.external_budget_line.present? %>
+                  <span class="block text-xs font-normal text-gray-500"><%= [ invoice.external_project_name, invoice.external_budget_line ].compact_blank.join(' · ') %></span>
+                <% end %>
+              <% end %>
+            </td>
             <td class="px-4 py-3 text-gray-500"><%= presenter.formatted_date %></td>
             <td class="px-4 py-3 text-right font-mono text-gray-900"><%= presenter.formatted_total %></td>
             <td class="px-4 py-3"><%= render Accounting::StatusBadgeComponent.new(status: invoice.status.to_sym) %></td>
