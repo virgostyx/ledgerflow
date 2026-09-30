@@ -147,9 +147,10 @@ Les grilles TVA et les comptes de TVA ne sont **pas** envoyés : LedgerFlow les 
 | Contenu différent, brouillon **intact** | Brouillon remplacé en place (même document, même révision) | `200` |
 | Contenu différent, **le comptable y a travaillé** (lignes, comptes, annotations analytiques modifiés) | Refusé : `409` « The accountant is already processing this draft: ask for it to be returned first. » | `409` |
 | `DELETE` | Brouillon annulé, sans extourne (il n'y a pas d'écriture) | `200` |
+| Facture **déjà comptabilisée** par le comptable, contenu différent | Refusé : `409` « Already booked in LedgerFlow: the accountant must cancel it there before it can be corrected. » Les livres appartiennent au comptable ; après son annulation dans LedgerFlow, un nouvel envoi crée une révision en brouillon. | `409` |
 | Brouillon renvoyé ou annulé, puis nouvel envoi | Nouvelle révision | `201` |
 
-Un renvoi identique au contenu d'origine reste un `200` même si le comptable a déjà travaillé sur le brouillon : un rejeu n'est pas une correction. `post: true` sur un brouillon intact le remplace et le comptabilise.
+Cette règle vaut pour le **mode brouillon** (`post: false`). Un client qui comptabilise d'office (`post` absent ou `true`) garde la révision par extourne décrite plus haut. Un renvoi identique au contenu d'origine reste un `200` même si le comptable a déjà travaillé sur le brouillon : un rejeu n'est pas une correction. `post: true` sur un brouillon intact le remplace et le comptabilise.
 
 Envois simultanés pour une même référence : l'index unique garantit un seul gagnant, l'autre reçoit `409 {"errors":{"base":["Concurrent update, retry"]}}` sans rien avoir écrit ; il suffit de rejouer.
 

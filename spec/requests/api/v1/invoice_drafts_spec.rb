@@ -188,4 +188,43 @@ RSpec.describe 'Api::V1 invoice drafts', type: :request do
         .to eq([ [ 1, 'cancelled' ], [ 2, 'draft' ] ])
     end
   end
+
+  describe 'an invoice the accountant has already posted' do
+    before do
+      put_invoice
+      Accounting::PostInvoice.call(invoice: invoice) # the accountant posts the draft in LedgerFlow
+    end
+
+    it 'cannot be corrected by the third party in draft mode (409): the books belong to the accountant' do
+      put_invoice(payload.merge(lines: [ line.merge(unit_price: '80.00') ]))
+
+      expect(response).to have_http_status(:conflict)
+      expect(json['errors']['base'].first).to match(/accountant.*cancel/i)
+      expect(Accounting::Invoice.external.where(external_ref: 'BF-I-1').count).to eq(1)
+      expect(invoice).to have_attributes(status: 'posted', total_incl_vat: BigDecimal('121'))
+      expect(Accounting::JournalEntry.where(status: :reversed).count).to eq(0)
+    end
+
+    it 'still answers 200 to the very same payload (a retry)' do
+      put_invoice
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it 'still accepts a correction from a client that books at once (post absent): revision by reversal, as before' do
+      put_invoice(payload.merge(post: nil, lines: [ line.merge(unit_price: '80.00') ]))
+
+      expect(response).to have_http_status(:ok)
+      expect(Accounting::Invoice.external.where(external_ref: 'BF-I-1').order(:revision).map(&:status)).to eq(%w[cancelled posted])
+    end
+
+    it 'takes a new draft revision once the accountant has cancelled the posted invoice' do
+      Accounting::CancelInvoice.call(invoice: invoice)
+
+      put_invoice(payload.merge(lines: [ line.merge(unit_price: '80.00') ]))
+
+      expect(response).to have_http_status(:created)
+      expect(json).to include('revision' => 2, 'status' => 'draft')
+    end
+  end
 end

@@ -4,6 +4,7 @@
 # - upsert: unknown reference -> create + post; identical replay -> no-op; changed content -> the current document
 #   is cancelled (reversal) and a new revision is posted under the same reference, all or nothing. A draft nobody
 #   touched is replaced in place; once the accountant has worked on it (external_state_digest), the change is refused.
+#   In draft mode, a document the accountant has already posted cannot be corrected at all (409): the books are theirs.
 # - cancel: reverses the current document, with a mandatory reason (recorded in the audit trail); a draft is just cancelled.
 # Returns a Result whose status is :created, :ok, :unprocessable, :conflict or :not_found.
 class Accounting::ExternalInvoice
@@ -12,6 +13,8 @@ class Accounting::ExternalInvoice
   # ponytail: no journal or credit-note choice yet; the journal follows the invoice type, as in the UI.
   ATTRIBUTES = %w[document_type invoice_type invoice_date due_date currency exchange_rate vat_treatment description notes project_id].freeze
   LINE_DECIMALS = %w[quantity unit_price vat_rate].freeze
+  # A client working in draft mode hands the books to the accountant: once posted, only they can undo it.
+  BOOKED_BY_ACCOUNTANT = "Already booked in LedgerFlow: the accountant must cancel it there before it can be corrected.".freeze
 
   def self.upsert(payload) = new.upsert(payload.to_h.with_indifferent_access)
   def self.cancel(external_ref:, reason:) = new.cancel(external_ref, reason)
@@ -30,6 +33,7 @@ class Accounting::ExternalInvoice
     end
     return Result.new(status: :ok, invoice: current) if current && !current.cancelled? && current.external_digest == digest
     return correct_draft(current, normalized, digest) if current&.draft?
+    return failure(:conflict, base: [ BOOKED_BY_ACCOUNTANT ]) if current && !current.cancelled? && !@post
 
     write(current, normalized, digest)
   end
