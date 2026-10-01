@@ -10,7 +10,13 @@ class Accounting::Actions::CreateBankJournalEntry
     bank_journal = bank_acct.journal
     bank_account_record = bank_journal.default_account
     counterpart = Accounting::Account.find(ctx.account_id)
-    abs_amount  = tx.amount.abs
+    foreign     = tx.currency != "EUR"
+    abs_amount  = foreign ? ctx[:eur_amount] : tx.amount.abs
+    # A foreign-currency movement is booked from the EUR amount the accountant gives; allocations stay EUR-only.
+    if foreign && (abs_amount.nil? || abs_amount <= 0 || ctx[:allocations].present?)
+      ctx.fail_with_rollback!(I18n.t("accounting.bank_reconciliation.foreign_needs_eur_amount", currency: tx.currency))
+      next
+    end
     label       = ctx.respond_to?(:label) ? ctx[:label].presence : tx.description
 
     entry = nil
@@ -30,9 +36,10 @@ class Accounting::Actions::CreateBankJournalEntry
     counterpart_side  = tx.credit? ? :credit : :debit
     zero              = BigDecimal("0")
 
+    foreign_attrs = foreign ? { currency: tx.currency, amount_currency: tx.amount.abs, exchange_rate: (abs_amount / tx.amount.abs).round(6) } : {}
     Accounting::JournalEntryLine.create!(
       journal_entry: entry, account: bank_account_record, label: label || tx.description,
-      bank_side => abs_amount, counterpart_side => zero
+      bank_side => abs_amount, counterpart_side => zero, **foreign_attrs
     )
     counterpart_lines.each do |invoice, amount|
       Accounting::JournalEntryLine.create!(

@@ -5,6 +5,8 @@ class Accounting::MatchBankTransaction
 
   # `open_invoices`: optional preloaded open customer invoices, so a caller matching many transactions queries them once.
   def self.call(transaction:, open_invoices: nil)
+    return if transaction.currency != "EUR" # amounts below are EUR: a foreign movement is never matched by amount
+
     match_batch(transaction) || match_invoice(transaction) || match_invoices(transaction, open_invoices) ||
       match_fees(transaction)
   end

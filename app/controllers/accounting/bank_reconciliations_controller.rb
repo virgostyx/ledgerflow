@@ -62,7 +62,7 @@ class Accounting::BankReconciliationsController < ApplicationController
   # A movement keyed in by hand (e.g. a foreign bank without CAMT statements); it then follows the usual reconciliation flow.
   def handle_manual_entry
     bank_account = Accounting::BankAccount.find(bank_params[:bank_account_id])
-    amount = BigDecimal(bank_params[:amount].to_s.strip.tr(",", ".").presence || "0", exception: false)
+    amount = parse_amount(bank_params[:amount])
     tx = bank_account.transactions.new(
       transaction_date: bank_params[:transaction_date], value_date: bank_params[:value_date].presence,
       amount: amount, currency: bank_account.currency, reference: bank_params[:reference].presence,
@@ -80,7 +80,7 @@ class Accounting::BankReconciliationsController < ApplicationController
   def handle_pay_invoice
     transaction = Accounting::BankTransaction.find(bank_params[:bank_transaction_id])
     invoice     = Accounting::Invoice.supplier.find(bank_params[:pay_invoice_id])
-    eur_amount  = BigDecimal(bank_params[:eur_amount].to_s.strip.tr(",", ".").presence || "0", exception: false)&.then { |a| a.positive? ? a : nil }
+    eur_amount  = parse_amount(bank_params[:eur_amount])&.then { |a| a.positive? ? a : nil }
 
     result = Accounting::PayInvoiceFromTransaction.call(transaction: transaction, invoice: invoice,
                                                         fiscal_year: Accounting::FiscalYear.current, eur_amount: eur_amount)
@@ -95,7 +95,8 @@ class Accounting::BankReconciliationsController < ApplicationController
       transaction: transaction,
       account_id:  bank_params[:account_id],
       fiscal_year: fiscal_year,
-      label:       bank_params[:label]
+      label:       bank_params[:label],
+      eur_amount:  parse_amount(bank_params[:eur_amount])&.then { |a| a.positive? ? a : nil }
     )
 
     redirect_for(result)
@@ -155,6 +156,8 @@ class Accounting::BankReconciliationsController < ApplicationController
       redirect_to failure_path, alert: result.message
     end
   end
+
+  def parse_amount(value) = BigDecimal(value.to_s.strip.tr(",", ".").presence || "0", exception: false)
 
   def bank_params
     @bank_params ||= params.fetch(:bank_reconciliation, {})

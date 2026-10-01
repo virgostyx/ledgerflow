@@ -56,6 +56,7 @@ en:
         not_open_supplier_invoice: "Only a posted supplier invoice can be paid this way."
         eur_amount_required: "The EUR amount actually debited is required."
         amount_mismatch: "The movement amount must equal the invoice total (same currency)."
+      foreign_needs_eur_amount: "This movement is in %{currency}: enter the EUR amount actually debited or credited (no invoice allocation on a foreign account)."
       manual_created: "Bank movement recorded."
       reconciled: "Transaction reconciled successfully."
       no_suggestion: "No suggestion available for this transaction."

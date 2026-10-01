@@ -109,6 +109,9 @@
                           ->(a) { "#{a.code} — #{a.label_fr}" }),
                         prompt: 'Select an account',
                         class: 'rounded-md border-gray-300 text-xs focus:ring-primary-500 focus:border-primary-500' %>
+                  <% unless tx.bank_account.currency == 'EUR' %>
+                    <%= text_field_tag 'bank_reconciliation[eur_amount]', nil, required: true, placeholder: "EUR amount (#{tx.currency} movement)", class: 'rounded-md border-gray-300 text-xs w-40' %>
+                  <% end %>
                   <%= submit_tag 'Reconcile',
                         class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700 transition-colors' %>
                 <% end %>

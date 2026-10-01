@@ -126,6 +126,23 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
     end
   end
 
+  describe 'PATCH /accounting/bank_reconciliation — foreign movement' do
+    let!(:usd_tx) do
+      bank_account.update_columns(currency: 'USD')
+      create(:bank_transaction, bank_account: bank_account, amount: -1000, currency: 'USD', reference: 'USD-1')
+    end
+
+    it 'needs the EUR amount, then books it' do
+      patch accounting_bank_reconciliation_path, params: { bank_reconciliation: { bank_transaction_id: usd_tx.id, account_id: counterpart.id } }
+      expect(flash[:alert]).to include('EUR amount')
+      expect(usd_tx.reload).to be_pending
+
+      patch accounting_bank_reconciliation_path, params: { bank_reconciliation: { bank_transaction_id: usd_tx.id, account_id: counterpart.id, eur_amount: '930,50' } }
+      expect(usd_tx.reload).to be_reconciled
+      expect(usd_tx.journal_entry.lines.sum(:debit)).to eq(BigDecimal('930.50'))
+    end
+  end
+
   describe 'PATCH /accounting/bank_reconciliation — lettrage échoué' do
     let!(:reconciled_tx) do
       create(:bank_transaction, bank_account: bank_account,

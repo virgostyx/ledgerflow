@@ -10,6 +10,35 @@ RSpec.describe Accounting::ReconcileBankTransaction, type: :service do
   let!(:counterpart)   { create(:account, code: '400000', label_fr: 'Clients',
                                 account_type: :asset, normal_balance: :debit) }
 
+  describe '.call — foreign-currency account' do
+    let!(:usd_account) { create(:bank_account).tap { |b| b.update_columns(currency: 'USD') } }
+    let!(:usd_tx) do
+      create(:bank_transaction, bank_account: usd_account, amount: BigDecimal('-1000'), currency: 'USD', description: 'Bank fees Zambia')
+    end
+
+    def reconcile(**extra)
+      described_class.call(transaction: usd_tx, account_id: counterpart.id, fiscal_year: fiscal_year, **extra)
+    end
+
+    it 'refuses to book the movement without its EUR amount (never treats USD as EUR)' do
+      expect(reconcile).to be_failure
+      expect(usd_tx.reload).to be_pending
+      expect(Accounting::JournalEntry.count).to eq(0)
+    end
+
+    it 'books the EUR amount given, keeping the foreign amount on the bank line' do
+      expect(reconcile(eur_amount: BigDecimal('930'))).to be_success
+
+      bank_line = usd_tx.reload.journal_entry.lines.find_by(credit: 930)
+      expect([ bank_line.currency, bank_line.amount_currency ]).to eq([ 'USD', BigDecimal('1000') ])
+      expect(usd_tx.journal_entry.lines.find_by(account: counterpart).debit).to eq(BigDecimal('930'))
+    end
+
+    it 'refuses invoice allocations on a foreign account' do
+      expect(reconcile(eur_amount: BigDecimal('930'), allocations: [ [ nil, BigDecimal('930') ] ])).to be_failure
+    end
+  end
+
   describe '.call — transaction CRDT (argent entrant)' do
     let!(:transaction) do
       create(:bank_transaction, bank_account: bank_account,

@@ -188,4 +188,11 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
       expect(described_class.call(transaction: debit('Fee'))).to be_nil
     end
   end
+
+  it 'suggests nothing for a movement in a foreign currency' do
+    usd_account = create(:bank_account).tap { |b| b.update_columns(currency: 'USD') }
+    tx = create(:bank_transaction, bank_account: usd_account, amount: 10, currency: 'USD', description: 'Bank fees')
+
+    expect(described_class.call(transaction: tx)).to be_nil
+  end
 end
