@@ -6,7 +6,7 @@ class Accounting::Settings::BaseController < ApplicationController
   private
 
   def authorize_settings_access!
-    unless current_user.admin? || current_user.accountant?
+    unless Accounting::Settings::BasePolicy.new(current_user, :settings).index?
       flash[:alert] = t("errors.not_authorized")
       redirect_to accounting_root_path
     end

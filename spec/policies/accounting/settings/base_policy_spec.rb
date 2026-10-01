@@ -1,11 +1,18 @@
 require "rails_helper"
 
 RSpec.describe Accounting::Settings::BasePolicy, type: :policy do
-  let(:admin)       { build_stubbed(:user, role: :admin) }
-  let(:accountant)  { build_stubbed(:user, role: :accountant) }
-  let(:manager)     { build_stubbed(:user, role: :manager) }
-  let(:auditor)     { build_stubbed(:user, role: :auditor) }
-  let(:budget_user) { build_stubbed(:user, role: :budget_user) }
+  include_context "with entity"
+
+  # Rights come from the role held in the current entity (F01); budget_user has no entity role.
+  let(:admin)       { member(:admin) }
+  let(:accountant)  { member(:accountant) }
+  let(:manager)     { member(:manager) }
+  let(:auditor)     { member(:auditor) }
+  let(:budget_user) { create(:user, role: :budget_user) }
+
+  def member(role)
+    create(:user, role: role).tap { |user| create(:user_entity, user: user, entity: entity, role: role) }
+  end
 
   def policy_for(user)
     described_class.new(user, :settings)

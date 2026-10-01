@@ -16,7 +16,7 @@ class Accounting::ColumnValuesController < ApplicationController
   def show
     name, access = RESOURCES.fetch(params[:resource]) { return head :not_found }
     model = name.constantize
-    return head :forbidden if access == :settings && !(current_user.admin? || current_user.accountant?)
+    return head :forbidden if access == :settings && !Accounting::Settings::BasePolicy.new(current_user, :settings).index?
 
     scope = access == :policy ? policy_scope(model) : model.all
     scope = scope.filter_by(filter_params) if model.respond_to?(:filter_by)

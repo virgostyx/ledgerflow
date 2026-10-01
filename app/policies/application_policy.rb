@@ -37,9 +37,9 @@ class ApplicationPolicy
     @membership ||= UserEntity.find_by(user: user, entity: current_entity, active: true)
   end
 
-  def entity_admin?      = membership&.admin?
-  def entity_accountant? = entity_admin? || membership&.accountant?
-  def entity_manager?    = entity_accountant? || membership&.manager?
-  def entity_auditor?    = entity_manager? || membership&.auditor?
+  def entity_admin?      = membership&.admin? == true
+  def entity_accountant? = entity_admin? || membership&.accountant? == true
+  def entity_manager?    = entity_accountant? || membership&.manager? == true
+  def entity_auditor?    = entity_manager? || membership&.auditor? == true
   def entity_any_member? = membership.present?
 end

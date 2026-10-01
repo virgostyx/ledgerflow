@@ -73,7 +73,7 @@
         </div>
       </div>
 
-      <% if current_user.admin? %>
+      <% if Accounting::Settings::BasePolicy.new(current_user, :settings).destroy? %>
         <div class="flex items-start gap-2 pt-2">
           <%= f.check_box :budgetflow_enabled, class: "mt-1 rounded border-gray-300" %>
           <%= f.label :budgetflow_enabled, class: "text-sm text-gray-700" do %>

@@ -8,7 +8,7 @@ RSpec.describe "Accounting::Settings::ApiClients", type: :request do
   let(:accountant) { create(:user, role: :accountant) }
 
   let!(:admin_membership)      { create(:user_entity, :admin, user: admin, entity: entity) }
-  let!(:accountant_membership) { create(:user_entity, user: accountant, entity: entity) }
+  let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
 
   let!(:client) { ApiClient.issue!(entity: entity, name: "BudgetFlow", scopes: %w[invoices:read]).first }
 

@@ -33,7 +33,7 @@ class Accounting::Settings::ApiClientsController < Accounting::Settings::BaseCon
   private
 
   def authorize_settings_access!
-    return if current_user.admin?
+    return if Accounting::Settings::BasePolicy.new(current_user, :settings).destroy?
 
     flash[:alert] = t("errors.not_authorized")
     redirect_to accounting_root_path

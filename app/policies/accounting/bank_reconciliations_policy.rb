@@ -1,4 +1,4 @@
 class Accounting::BankReconciliationsPolicy < ApplicationPolicy
-  def show?   = user.admin? || user.accountant?
-  def update? = user.admin? || user.accountant?
+  def show?   = entity_accountant?
+  def update? = entity_accountant?
 end

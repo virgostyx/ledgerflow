@@ -318,7 +318,7 @@ RSpec.describe "Accounting::Reports", type: :request do
     it "redirects a user without report access" do
       sign_out accountant
       budget_user = create(:user, role: :budget_user)
-      create(:user_entity, :accountant, user: budget_user, entity: entity)
+      create(:user_entity, :auditor, user: budget_user, entity: entity)
       sign_in budget_user
 
       get accounting_reports_aged_balance_path

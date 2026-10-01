@@ -1,9 +1,9 @@
 class Accounting::JournalEntryPolicy < ApplicationPolicy
   def post?
-    user.admin? || user.accountant?
+    entity_accountant?
   end
 
   def reverse?
-    user.admin? || user.accountant?
+    entity_accountant?
   end
 end

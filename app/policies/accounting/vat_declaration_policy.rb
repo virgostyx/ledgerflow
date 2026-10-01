@@ -1,10 +1,10 @@
 class Accounting::VatDeclarationPolicy < ApplicationPolicy
   def submit?
-    user.admin? || user.accountant?
+    entity_accountant?
   end
 
   def accept?
-    user.admin? || user.accountant?
+    entity_accountant?
   end
 
   def intervat_xml?
