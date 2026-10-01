@@ -10,6 +10,7 @@ class Accounting::BankReconciliationsController < ApplicationController
     end
     @bank_accounts = Accounting::BankAccount.where(active: true).order(:label_fr)
     @accounts      = Accounting::Account.where(is_leaf: true).order(:code)
+    @payable_invoices = Accounting::Invoice.supplier.posted.where(document_type: :invoice).includes(:partner).order(:due_date, :id)
   end
 
   def allocate
@@ -29,6 +30,8 @@ class Accounting::BankReconciliationsController < ApplicationController
       handle_camt_import
     elsif bank_params[:manual].present?
       handle_manual_entry
+    elsif bank_params[:pay_invoice_id].present?
+      handle_pay_invoice
     elsif bank_params[:ignore].present?
       handle_ignore
     elsif bank_params[:allocations].present?
@@ -72,6 +75,16 @@ class Accounting::BankReconciliationsController < ApplicationController
       message = tx.errors.full_messages.to_sentence.presence || t("accounting.bank_reconciliation.invalid_amount")
       redirect_to accounting_bank_reconciliation_path, alert: message
     end
+  end
+
+  def handle_pay_invoice
+    transaction = Accounting::BankTransaction.find(bank_params[:bank_transaction_id])
+    invoice     = Accounting::Invoice.supplier.find(bank_params[:pay_invoice_id])
+    eur_amount  = BigDecimal(bank_params[:eur_amount].to_s.strip.tr(",", ".").presence || "0", exception: false)&.then { |a| a.positive? ? a : nil }
+
+    result = Accounting::PayInvoiceFromTransaction.call(transaction: transaction, invoice: invoice,
+                                                        fiscal_year: Accounting::FiscalYear.current, eur_amount: eur_amount)
+    redirect_for(result)
   end
 
   def handle_reconciliation

@@ -121,6 +121,21 @@
               <% else %>
                 <%= manual_form %>
               <% end %>
+              <% if tx.debit? && @payable_invoices.any? %>
+                <details class="mt-2">
+                  <summary class="text-xs text-primary-600 cursor-pointer">Pay a supplier invoice</summary>
+                  <%= form_with url: accounting_bank_reconciliation_path, method: :patch, class: 'mt-2 flex gap-2 items-center' do %>
+                    <%= hidden_field_tag 'bank_reconciliation[bank_transaction_id]', tx.id %>
+                    <%= select_tag 'bank_reconciliation[pay_invoice_id]',
+                          options_for_select(@payable_invoices.map { |i| ["#{i.invoice_number} — #{i.partner.name} (#{i.total_incl_vat} #{i.currency})", i.id] }),
+                          class: 'rounded-md border-gray-300 text-xs' %>
+                    <% unless tx.bank_account.currency == 'EUR' %>
+                      <%= text_field_tag 'bank_reconciliation[eur_amount]', nil, required: true, placeholder: 'EUR amount debited', class: 'rounded-md border-gray-300 text-xs w-36' %>
+                    <% end %>
+                    <%= submit_tag 'Pay', class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700' %>
+                  <% end %>
+                </details>
+              <% end %>
               <% if tx.credit? %>
                 <%= link_to 'Allocate to invoices', allocate_accounting_bank_reconciliation_path(bank_transaction_id: tx.id),
                       class: 'block mt-2 text-xs text-primary-600 hover:underline' %>

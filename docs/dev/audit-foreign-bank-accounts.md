@@ -43,3 +43,13 @@ Also confirmed by reading: no manual bank-transaction entry (only CAMT.053.001.0
 6. **Later**: exchange-rate table and closing revaluation (F8); a foreign-bank statement format (MT940/CSV) if manual entry becomes tedious.
 
 Decision needed: which of 1–6 to implement (1 to 4 recommended as a first batch).
+
+## Status (2026-10-01)
+
+Implemented and committed locally (not pushed): recommendations 1 to 4.
+1. CAMT entries must match the account currency; SEPA batches refuse non-EUR invoices and non-EUR debtor accounts.
+2. Bank accounts accept any ISO currency; outside EUR the `iban` column holds a local account number (IBAN check only for EUR).
+3. "Record a movement manually" on the reconciliation page; `BankTransaction` currency must equal its account's, reference unique per account.
+4. "Pay a supplier invoice" on a pending debit (`Accounting::PayInvoiceFromTransaction`): bank/440000 lines carry the foreign amount, the EUR amount actually debited is entered by the accountant, the rate difference goes through `PostFxAdjustment`.
+
+Still open: 5 (real amount, currency, value date and FX difference in the BudgetFlow `paid` event) and 6.
