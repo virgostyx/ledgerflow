@@ -25,5 +25,5 @@ La fiche facture affiche un bloc « Peppol document » (références, lien vers 
 ## Exploitation
 Les fichiers sont stockés par Active Storage sur le disque du serveur : volume `ledgerflow_storage:/rails/storage` (`config/deploy.yml`, service `local`). **Ce volume doit être sauvegardé** : l'original d'une facture reçue est une pièce à conserver. Les enregistrements correspondants sont dans `active_storage_blobs` et `active_storage_attachments` (base principale).
 
-## Suite prévue
-La référence de commande est la clé de rapprochement avec un engagement BudgetFlow (numéro de contrat ou de bon de commande) : la « boîte de réception » BudgetFlow, qui rattache une facture Peppol à un engagement par le gestionnaire de projet, s'appuiera dessus. Non faite.
+## Pour les entités qui utilisent BudgetFlow
+La référence de commande est la clé de rapprochement avec un engagement BudgetFlow (numéro de contrat). À la réception, l'entité annonce la facture dans le flux d'événements (`received`, hors avoirs) ; BudgetFlow la présente à ses gestionnaires dans sa boîte de réception, et la **reprend** par `POST /api/v1/incoming_invoices/:id/claim` : le brouillon devient une facture adressée par la référence BudgetFlow, que l'export remplit ensuite sans doublon. Voir `docs/dev/api/inbound-api.md` 4.7. Le numéro de facture du fournisseur est conservé dans `supplier_reference` (la référence externe appartient alors à BudgetFlow). Dans la liste des achats, un brouillon Peppol pas encore repris porte une pastille « Peppol ».

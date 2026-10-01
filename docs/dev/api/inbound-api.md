@@ -117,6 +117,7 @@ Corps de réponse : `{id, external_ref, name, partner_type, vat_number, country,
 | `document_type` | `invoice` (défaut) ou `credit_note` (cf. 4.5). |
 | `credited_invoice_external_ref` | Avoir seulement : référence de la facture créditée (facultatif). |
 | `post` | `true` par défaut : la facture est comptabilisée tout de suite. **`false` : elle reste un brouillon** que le comptable code et comptabilise dans LedgerFlow (mode de BudgetFlow). |
+| `supplier_reference` | Facultatif. Numéro de la facture **chez le fournisseur** (pour BudgetFlow : `invoice_number`). Distinct de `external_ref`, qui est la clé de l'appelant. Fait partie du contenu. |
 | `project_name`, `budget_line` | Facultatifs. Nom du projet et ligne budgétaire `chapitre.ligne.sous-ligne`, affichés au comptable pour choisir les comptes analytiques. Font partie du contenu (les changer est une correction). |
 | `invoice_type` | Obligatoire : `supplier` ou `customer`. |
 | `invoice_date` | Obligatoire, ISO 8601. Doit tomber dans un **exercice ouvert**. |
@@ -207,6 +208,7 @@ Les paiements se gèrent dans LedgerFlow (lettrage, rapprochement bancaire, lots
 
 | `type` | Quand | Champs propres |
 |---|---|---|
+| `received` | Une facture Peppol vient d'arriver dans LedgerFlow (entités qui utilisent BudgetFlow seulement ; pas pour les avoirs). Charge : `lf_id` (à utiliser pour la reprise), `supplier_reference`, `supplier` (`name`, `vat_number`), `invoice_date`, `due_date`, `currency`, `amount_excl_vat`, `vat_amount`, `total_incl_vat`, `order_reference`, `buyer_reference`, `has_pdf`. Pas de `external_ref` : la facture n'est pas encore reprise. | voir 4.7 |
 | `posted` | Le comptable a comptabilisé un brouillon (pas émis quand l'API comptabilise à la création : la réponse le dit déjà) | `invoice_number` |
 | `paid` | La ligne fournisseur/client de la facture est entièrement réglée | règlement (ci-dessous) |
 | `partially_paid` | Règlement partiel | règlement à ce jour |
@@ -260,6 +262,22 @@ Un avoir est envoyé sur le **même endpoint**, avec `document_type: "credit_not
 ```
 
 Un exercice non ouvert à la date de facture donne `409` (`errors.invoice_date`) plutôt que `422` : c'est un état de la comptabilité, pas une erreur de saisie.
+
+### 4.7 Reprendre une facture Peppol reçue
+
+Une facture reçue par Peppol est annoncée par l'événement `received` (4.4). Le gestionnaire de projet la rattache à un engagement dans l'application tierce ; celle-ci la **reprend** pour que son export (`PUT /invoices/:external_ref`) remplisse ce même brouillon au lieu d'en créer un second.
+
+- `GET /api/v1/incoming_invoices/:id/documents/pdf` et `.../documents/xml` (scope `invoices:read`) : le PDF que le fournisseur a embarqué (dans le navigateur) et le XML UBL d'origine. `404` si l'id est inconnu, si la facture n'est pas une facture Peppol reçue, ou si le document n'existe pas. `:id` est le `lf_id` de l'événement.
+- `POST /api/v1/incoming_invoices/:id/claim` (scope `invoices:write`), corps `{"external_ref": "bf-invoice-10"}` : le brouillon devient le document que l'appelant adresse par cette référence (révision 1, toujours un brouillon, documents conservés). Le numéro du fournisseur reste dans `supplier_reference`. Réponse `200 {id, external_ref, status, supplier_reference, order_reference, buyer_reference}`.
+
+| Statut | Cas |
+|---|---|
+| `200` | Reprise faite, ou rejeu avec la même référence |
+| `404` | Facture inconnue ou non reçue par Peppol |
+| `409` | Déjà reprise sous une autre référence ; plus un brouillon (le comptable l'a comptabilisée ou annulée) ; référence déjà utilisée par un autre document |
+| `422` | `external_ref` absent |
+
+Ensuite, le `PUT /invoices/:external_ref` d'export suit la règle des brouillons (4.1) : remplacement en place si le comptable n'y a pas touché depuis la reprise, sinon `409` (le comptable la renvoie alors avec « Return to project manager »). Les lignes envoyées remplacent les lignes éventuelles ; la référence de commande, la référence acheteur et les documents restent.
 
 ## 5. Isolation entre pièces tierces et pièces saisies
 

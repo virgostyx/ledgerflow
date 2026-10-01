@@ -6,6 +6,7 @@ class Accounting::InvoicesController < ApplicationController
   def index
     @pagy, @invoices = pagy(policy_scope(Accounting::Invoice)
                               .includes(:journal, :partner)
+                              .then { |rel| budgetflow_enabled? ? rel.includes(:ubl_document_attachment) : rel }
                               .where(invoice_type: @invoice_type)
                               .filter_by(budgetflow_enabled? ? filter_params : filter_params.except(:source))
                               .order(invoice_date: :desc)

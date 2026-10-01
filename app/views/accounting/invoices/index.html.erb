@@ -70,6 +70,10 @@
             <td class="px-4 py-3 text-gray-500 text-sm"><%= invoice.journal&.code %></td>
             <td class="px-4 py-3 text-gray-700 font-medium">
               <%= invoice.partner.name %>
+              <%# A Peppol draft nobody took over yet: BudgetFlow may claim it. %>
+              <% if budgetflow_enabled? && invoice.draft? && invoice.external_digest.blank? && invoice.ubl_document.attached? %>
+                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-sky-100 text-sky-800">Peppol</span>
+              <% end %>
               <% if budgetflow_enabled? && invoice.external_digest.present? %>
                 <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">BudgetFlow</span>
                 <% if invoice.external_project_name.present? || invoice.external_budget_line.present? %>
