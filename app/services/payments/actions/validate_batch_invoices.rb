@@ -28,6 +28,10 @@ class Payments::Actions::ValidateBatchInvoices
       problems << I18n.t("payments.errors.invoice_not_eligible", number: invoice.invoice_number || invoice.id)
     end
 
+    if invoice.currency != "EUR"
+      problems << I18n.t("payments.errors.foreign_currency", number: invoice.invoice_number || invoice.id, currency: invoice.currency)
+    end
+
     unless invoice.partner.sepa_payable?
       problems << I18n.t("payments.errors.missing_iban", name: invoice.partner.name)
     end

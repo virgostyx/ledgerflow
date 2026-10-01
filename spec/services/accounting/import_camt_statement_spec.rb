@@ -9,6 +9,19 @@ RSpec.describe Accounting::ImportCamtStatement, type: :service do
   let(:camt_xml) { File.read(Rails.root.join('spec/fixtures/files/sample_camt.xml')) }
 
   describe '.call' do
+    context 'when an entry currency differs from the account currency' do
+      let(:usd_xml) do
+        camt_xml.sub(/Ccy="EUR"/, 'Ccy="USD"')
+      end
+
+      it 'fails and imports nothing' do
+        result = described_class.call(xml: usd_xml, bank_account: bank_account)
+        expect(result).to be_failure
+        expect(result.message).to include('USD', 'EUR')
+        expect(Accounting::BankTransaction.count).to eq(0)
+      end
+    end
+
     subject(:result) { described_class.call(xml: camt_xml, bank_account: bank_account) }
 
     it 'retourne un contexte de succès' do

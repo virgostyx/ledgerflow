@@ -404,6 +404,7 @@ en:
     errors:
       no_invoices_selected: "Select at least one invoice to include in the payment batch."
       invoice_not_eligible: "Invoice %{number} is not eligible for payment (must be a posted supplier invoice)."
+      foreign_currency:     "Invoice %{number} is in %{currency}: SEPA batches only pay in EUR. Record the payment manually."
       missing_iban:         "Supplier %{name} has no valid IBAN on file."
       already_in_batch:     "Invoice %{number} is already included in another active payment batch."
       batch_not_generated:  "Only a generated payment batch can be executed."

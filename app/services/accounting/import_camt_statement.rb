@@ -7,6 +7,10 @@ class Accounting::ImportCamtStatement
     entries = parse_entries(xml)
     imported = 0
 
+    if (bad = entries.find { |e| e[:currency] != bank_account.currency })
+      raise "entry currency #{bad[:currency]} does not match the account currency #{bank_account.currency}"
+    end
+
     ApplicationRecord.transaction do
       entries.each do |entry|
         next if Accounting::BankTransaction.exists?(

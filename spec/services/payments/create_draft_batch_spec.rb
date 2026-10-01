@@ -33,6 +33,18 @@ RSpec.describe Payments::CreateDraftBatch do
       expect(Accounting::PaymentBatch.count).to eq(0)
     end
 
+    it 'refuses a foreign-currency invoice (SEPA pays in EUR only)' do
+      invoice.update_columns(currency: 'USD')
+
+      result = described_class.call(
+        invoice_ids: [ invoice.id ], bank_account: bank_account, requested_execution_date: Date.current + 1
+      )
+
+      expect(result).to be_failure
+      expect(result.message).to include('USD')
+      expect(Accounting::PaymentBatch.count).to eq(0)
+    end
+
     it 'does not persist a batch when no invoices are given' do
       result = described_class.call(
         invoice_ids: [], bank_account: bank_account, requested_execution_date: Date.current + 1
