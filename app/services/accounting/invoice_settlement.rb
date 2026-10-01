@@ -14,9 +14,11 @@ class Accounting::InvoiceSettlement
     end
   end
 
-  Result = Struct.new(:items, :amount_eur, :paid_on, :reference, keyword_init: true) do
+  # fx_difference_eur: realized exchange result booked when lettering (positive = gain, negative = loss), 0 for an EUR invoice.
+  Result = Struct.new(:items, :amount_eur, :paid_on, :reference, :fx_difference_eur, keyword_init: true) do
     def to_payload
-      { amount_eur: amount_eur.to_s("F"), paid_on: paid_on.iso8601, reference: reference, settlements: items.map(&:to_payload) }
+      { amount_eur: amount_eur.to_s("F"), fx_difference_eur: fx_difference_eur.to_s("F"), paid_on: paid_on.iso8601,
+        reference: reference, settlements: items.map(&:to_payload) }
     end
   end
 
@@ -33,7 +35,8 @@ class Accounting::InvoiceSettlement
     items = from_lettering if items.empty?
     items = [ fallback ] if items.empty?
     latest = items.max_by(&:value_date)
-    Result.new(items: items, amount_eur: items.sum(&:amount_eur), paid_on: latest.value_date, reference: latest.reference)
+    Result.new(items: items, amount_eur: items.sum(&:amount_eur), paid_on: latest.value_date, reference: latest.reference,
+                  fx_difference_eur: fx_top_ups.sum(BigDecimal("0")) { |l| l.debit - l.credit })
   end
 
   private
@@ -77,14 +80,26 @@ class Accounting::InvoiceSettlement
   def from_lettering
     return [] unless @trade&.lettering_id
 
-    remaining = @trade.debit + @trade.credit
-    Accounting::JournalEntryLine.where(lettering_id: @trade.lettering_id).where.not(id: @trade.id).where("#{payment_side} > 0")
+    own_side  = payment_side == :debit ? :credit : :debit
+    remaining = @trade.debit + @trade.credit + fx_top_ups.sum(BigDecimal("0"), &own_side)
+    Accounting::JournalEntryLine.where(lettering_id: @trade.lettering_id).where.not(id: [ @trade.id, *fx_top_ups.map(&:id) ])
+                                .where("#{payment_side} > 0")
                                 .includes(:journal_entry).order(:id).filter_map do |line|
       amount = [ line.public_send(payment_side), remaining ].min
       next unless amount.positive?
 
       remaining -= amount
       from_entry(line.journal_entry, amount)
+    end
+  end
+
+  # The trade-account lines `PostFxAdjustment` added to the lettering to absorb the rate difference: not payments.
+  def fx_top_ups
+    @fx_top_ups ||= if @trade&.lettering_id
+      Accounting::JournalEntryLine.where(lettering_id: @trade.lettering_id).where.not(id: @trade.id)
+                                  .joins(:journal_entry).where("accounting_journal_entries.description LIKE 'FX adjustment%'").to_a
+    else
+      []
     end
   end
 

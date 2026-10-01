@@ -52,4 +52,6 @@ Implemented and committed locally (not pushed): recommendations 1 to 4.
 3. "Record a movement manually" on the reconciliation page; `BankTransaction` currency must equal its account's, reference unique per account.
 4. "Pay a supplier invoice" on a pending debit (`Accounting::PayInvoiceFromTransaction`): bank/440000 lines carry the foreign amount, the EUR amount actually debited is entered by the accountant, the rate difference goes through `PostFxAdjustment`.
 
-Still open: 5 (real amount, currency, value date and FX difference in the BudgetFlow `paid` event) and 6.
+5. `InvoiceSettlement` (hence the `paid`/`payment_confirmed` events) carries `fx_difference_eur`, counts the real EUR debited (not capped at the booked amount) and no longer counts the FX adjustment line as a payment. BudgetFlow is unchanged: it ignores the new field; its `payment_amount_eur` already takes `amount_eur`.
+
+Still open: 6.

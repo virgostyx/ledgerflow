@@ -40,6 +40,10 @@ RSpec.describe Accounting::PayInvoiceFromTransaction, type: :service do
     expect([ bank_line.currency, bank_line.amount_currency ]).to eq([ 'USD', BigDecimal('1000') ])
     fx = Accounting::JournalEntryLine.joins(:account).where(accounting_accounts: { code: '651200' })
     expect(fx.sum(:debit)).to eq(BigDecimal('50'))
+
+    settlement = Accounting::InvoiceSettlement.call(usd_invoice.reload)
+    expect(settlement.to_payload).to include(amount_eur: '950.0', fx_difference_eur: '-50.0')
+    expect(settlement.items.sole).to have_attributes(amount: BigDecimal('1000'), currency: 'USD', amount_eur: BigDecimal('950'))
   end
 
   it 'pays a foreign invoice from an EUR account with the amount actually debited' do

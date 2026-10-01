@@ -225,13 +225,13 @@ Les paiements se gèrent dans LedgerFlow (lettrage, rapprochement bancaire, lots
       "shared": false, "source": "bank_transaction" } ] }
 ```
 
-`value_date` = date de valeur du mouvement bancaire, `transaction_date` = date d'opération, `reference` = référence bancaire, `amount`/`currency` = le mouvement entier, `amount_eur` = **part réellement payée pour cette facture**, `shared: true` quand un virement règle plusieurs factures. `source` dit d'où vient l'information : `bank_transaction` (mouvement bancaire rapproché), `payment_batch` (lot SEPA exécuté, banque pas encore rapprochée : référence du lot), `journal_entry` (écriture de paiement sans mouvement importé, par exemple un compte à l'étranger), `transition` (rien d'autre n'est connu : la ligne entière, à la date de l'événement). Les totaux : `amount_eur` = somme des parts, `paid_on` = dernière date de valeur, `reference` = celle du dernier règlement.
+`value_date` = date de valeur du mouvement bancaire, `transaction_date` = date d'opération, `reference` = référence bancaire, `amount`/`currency` = le mouvement entier, `amount_eur` = **part réellement payée pour cette facture**, `shared: true` quand un virement règle plusieurs factures. `source` dit d'où vient l'information : `bank_transaction` (mouvement bancaire rapproché), `payment_batch` (lot SEPA exécuté, banque pas encore rapprochée : référence du lot), `journal_entry` (écriture de paiement sans mouvement importé, par exemple un compte à l'étranger), `transition` (rien d'autre n'est connu : la ligne entière, à la date de l'événement). Les totaux : `amount_eur` = somme des parts (montant EUR réellement décaissé, y compris l'écart de change), `fx_difference_eur` = résultat de change réalisé comptabilisé au lettrage (positif = gain, négatif = perte, `0.0` pour une facture en EUR), `paid_on` = dernière date de valeur, `reference` = celle du dernier règlement.
 
 - **Curseur** : renvoyer `next_cursor` en `after` à l'appel suivant. Une page vide renvoie l'`after` reçu. Les événements sont **immuables** : un règlement défait ajoute un événement `payment_reopened`, il n'efface rien.
 - **Délai de sécurité** : un événement n'apparaît qu'au bout de 5 secondes, pour qu'une transaction encore ouverte ne publie pas un id inférieur à un curseur déjà avancé.
 - **Idempotence** : traiter deux fois le même `id` doit rester sans effet côté appelant.
 - **Lot SEPA** : la facture passe à « payée » à l'exécution du lot, avant la banque. Le premier événement (`paid`) porte alors la référence du lot (`source: payment_batch`) ; le rapprochement du débit bancaire ajoute un `payment_confirmed` avec la date de valeur et la référence réelles. L'appelant doit traiter les deux.
-- **Devises** : `amount_eur` est ce qui a été imputé à la facture dans le règlement ; un écart de change que le comptable comptabilise à part n'y figure pas. Les comptes bancaires en devise étrangère et les paiements manuels restent à auditer (voir « Limites »).
+- **Devises** : `amount_eur` est ce qui a été imputé à la facture dans le règlement ; l'écart de change est donné à part dans `fx_difference_eur`. Pour un compte en devise étrangère, `amount`/`currency` = le mouvement dans la devise du compte, `amount_eur` = l'équivalent EUR saisi par le comptable (« Pay a supplier invoice »). Voir `docs/dev/audit-foreign-bank-accounts.md`.
 - **Le sens inverse n'existe pas** : un paiement saisi dans l'application tierce ne remonte pas vers LedgerFlow.
 
 ### 4.5 Avoirs (notes de crédit)
@@ -303,7 +303,7 @@ curl -X PUT https://ledgerflow.example/api/v1/invoices/BF-I-1 \
 - **Pas de suppression de tiers** par l'API (désactiver via `active: false`).
 - **Pas de webhook** : LedgerFlow n'appelle jamais l'application tierce ; elle interroge `GET /api/v1/invoice_events`. Un webhook qui réveillerait l'interrogation reste possible plus tard.
 - **Lots asynchrones** et écritures libres : volontairement absents.
-- **Comptes bancaires à l'étranger et paiements manuels** : non audités. Un paiement sans mouvement bancaire importé donne un règlement de `source: journal_entry` (date et référence de l'écriture) ; la devise du mouvement n'est pas convertie, `amount_eur` est ce qui est imputé à la facture.
+- **Comptes bancaires à l'étranger** : audités (`docs/dev/audit-foreign-bank-accounts.md`). Mouvement saisi à la main ou importé, paiement manuel d'une facture avec écart de change ; pas de paiement partiel manuel ni de réévaluation de clôture.
 - **Analytique** : le comptable choisit les comptes analytiques à la main à partir de `project_name` et `budget_line` ; aucun pré-remplissage automatique.
 - **PDF de la facture** : LedgerFlow ne le conserve pas (la copie d'audit reste dans l'application tierce).
 - `POST /api/v1/journal_entries` a été **supprimé** ; `GET /api/v1/journal_entries` (lecture) reste.

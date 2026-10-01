@@ -120,4 +120,48 @@ RSpec.describe Accounting::InvoiceSettlement, type: :service do
     expect(settlement).to have_attributes(amount_eur: BigDecimal('121'), paid_on: Date.current)
     expect(settlement.items.first.source).to eq('transition')
   end
+
+  describe 'foreign-currency invoice' do
+    let!(:misc) { create(:journal, journal_type: :misc, code: 'OD', label_fr: 'Miscellaneous') }
+
+    def usd_invoice
+      Accounting::ExternalInvoice.upsert(
+        external_ref: 'USD-1', partner_external_ref: 'BF-P-1', invoice_type: 'supplier', invoice_date: Date.current.to_s,
+        currency: 'USD', exchange_rate: '0.9',
+        lines: [ { account_code: '604000', description: 'X', quantity: '1', unit_price: '1000', vat_rate: '0' } ]
+      ).invoice # booked 900 EUR
+    end
+
+    it 'reports the EUR really paid and the exchange loss when more was debited than booked' do
+      invoice = usd_invoice
+      _tx, debit = reconciled_debit(950, transaction_date: Date.current, value_date: Date.current, reference: 'EUR-950')
+      Accounting::LetterLines.call(lines: [ trade_line(invoice), debit ])
+
+      settlement = described_class.call(invoice.reload)
+
+      expect(settlement.amount_eur).to eq(BigDecimal('950'))
+      expect(settlement.fx_difference_eur).to eq(BigDecimal('-50'))
+      expect(settlement.to_payload[:fx_difference_eur]).to eq('-50.0')
+    end
+
+    it 'reports an exchange gain when less was debited than booked, without counting the adjustment as a payment' do
+      invoice = usd_invoice
+      _tx, debit = reconciled_debit(850, transaction_date: Date.current, value_date: Date.current, reference: 'EUR-850')
+      Accounting::LetterLines.call(lines: [ trade_line(invoice), debit ])
+
+      settlement = described_class.call(invoice.reload)
+
+      expect(settlement.amount_eur).to eq(BigDecimal('850'))
+      expect(settlement.fx_difference_eur).to eq(BigDecimal('50'))
+      expect(settlement.items.size).to eq(1)
+    end
+
+    it 'is zero for an EUR invoice' do
+      invoice = api_invoice('BF-I-EUR')
+      _tx, debit = reconciled_debit(121, transaction_date: Date.current, value_date: Date.current, reference: 'E')
+      Accounting::LetterLines.call(lines: [ trade_line(invoice), debit ])
+
+      expect(described_class.call(invoice.reload).fx_difference_eur).to eq(0)
+    end
+  end
 end
