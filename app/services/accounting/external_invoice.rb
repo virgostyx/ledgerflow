@@ -14,9 +14,9 @@ class Accounting::ExternalInvoice
   # ponytail: no journal or credit-note choice yet; the journal follows the invoice type, as in the UI.
   ATTRIBUTES = %w[document_type invoice_type invoice_date due_date currency exchange_rate vat_treatment description notes project_id].freeze
   LINE_DECIMALS = %w[quantity unit_price vat_rate].freeze
-  # A client working in draft mode hands the books to the accountant: once posted, only they can undo it.
-  BOOKED_BY_ACCOUNTANT = "Already booked in LedgerFlow: the accountant must cancel it there before it can be corrected.".freeze
-  RETURN_FROM_LEDGERFLOW = "Already booked in LedgerFlow: the accountant must return it to the project manager from LedgerFlow.".freeze
+  # A client working in draft mode hands the books to the accountant: once posted, only they can undo it, by returning it
+  # to the project manager from LedgerFlow (neither a correction nor a deletion from the third party is accepted).
+  BOOKED_BY_ACCOUNTANT = "Already booked in LedgerFlow: the accountant must return it to the project manager from LedgerFlow.".freeze
 
   def self.upsert(payload) = new.upsert(payload.to_h.with_indifferent_access)
   def self.cancel(external_ref:, reason:) = new.cancel(external_ref, reason)
@@ -46,7 +46,7 @@ class Accounting::ExternalInvoice
     return failure(:not_found, base: [ "Unknown external_ref" ]) unless current
     return Result.new(status: :ok, invoice: current) if current.cancelled?
     # Handed over as a draft and now booked: only the accountant undoes it, by returning it from LedgerFlow.
-    return failure(:conflict, base: [ RETURN_FROM_LEDGERFLOW ]) if !current.draft? && current.external_state_digest.present?
+    return failure(:conflict, base: [ BOOKED_BY_ACCOUNTANT ]) if !current.draft? && current.external_state_digest.present?
     return failure(:unprocessable, reason: [ "is required" ]) if reason.blank?
 
     with_reason(reason) { cancel_current(current) }

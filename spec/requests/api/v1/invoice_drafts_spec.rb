@@ -199,7 +199,7 @@ RSpec.describe 'Api::V1 invoice drafts', type: :request do
       put_invoice(payload.merge(lines: [ line.merge(unit_price: '80.00') ]))
 
       expect(response).to have_http_status(:conflict)
-      expect(json['errors']['base'].first).to match(/accountant.*cancel/i)
+      expect(json['errors']['base'].first).to match(/accountant.*return/i)
       expect(Accounting::Invoice.external.where(external_ref: 'BF-I-1').count).to eq(1)
       expect(invoice).to have_attributes(status: 'posted', total_incl_vat: BigDecimal('121'))
       expect(Accounting::JournalEntry.where(status: :reversed).count).to eq(0)
