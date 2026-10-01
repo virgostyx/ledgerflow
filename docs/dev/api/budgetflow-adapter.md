@@ -169,7 +169,27 @@ Décision du 2026-09-29 : les paiements se gèrent dans LedgerFlow. BudgetFlow l
 - **Décision du 2026-09-30 : BudgetFlow ne corrige pas une facture déjà comptabilisée.** En mode brouillon (`post: false`, donc toujours pour BudgetFlow), un `PUT` au contenu différent sur une facture que le comptable a comptabilisée reçoit `409` : les livres appartiennent au comptable, qui doit d'abord la renvoyer au gestionnaire depuis LedgerFlow ; un nouvel envoi crée alors une révision en brouillon. L'export de BudgetFlow apparaît alors en échec et prévient le créateur et les administrateurs du projet. Les clients qui comptabilisent d'office gardent la révision par extourne.
 - **Décision du 2026-10-01 : BudgetFlow ne supprime pas non plus une facture comptabilisée.** `DELETE` renvoie `409` sur un document remis en brouillon puis comptabilisé. C'est au comptable de la **renvoyer au gestionnaire depuis LedgerFlow** (« Return to project manager », valable aussi pour une facture comptabilisée non payée) : l'écriture est extournée, l'événement `returned` porte le motif, BudgetFlow remet la facture en brouillon, et le gestionnaire la corrige ou l'abandonne. Pour ces factures, le bouton « Cancel invoice » de LedgerFlow disparaît, pour que l'annulation passe toujours par le renvoi et que BudgetFlow soit prévenu. Côté BudgetFlow, `reverse_invoice` (annulation d'une facture déjà exportée) échoue donc en `409` sur une facture comptabilisée : l'export passe en `reversal_failed` et les comptables du projet sont prévenus, comportement accepté.
 
-## 11. Décisions ouvertes
+## 11. Boîte de réception Peppol (2026-10-01)
+
+Une facture reçue par Peppol dans LedgerFlow peut concerner un projet BudgetFlow. Le **gestionnaire de projet** la rattache à un engagement dans BudgetFlow, sans que le comptable touche BudgetFlow, et la facture BudgetFlow **reprend** le brouillon LedgerFlow au lieu d'en créer un second.
+
+**Flux.**
+1. LedgerFlow reçoit le document UBL (brouillon, XML d'origine, PDF embarqué, `order_reference`, `buyer_reference`, numéro du fournisseur dans `supplier_reference`) et, pour une entité qui utilise BudgetFlow, émet l'événement **`received`** (pas pour les avoirs).
+2. `PaymentSync` (BudgetFlow) range l'événement dans la table `incoming_invoices` (une fois par `lf_id`) et prévient par e-mail les gestionnaires du projet rapproché.
+3. **Rapprochement** : engagements approuvés de l'entité dont le `contract_number` = `order_reference` ; `buyer_reference` = `Project#code` départage deux projets qui partagent un numéro.
+4. **Visibilité** : une facture rapprochée apparaît aux gestionnaires du projet (rôles `admin` et `data_entry`), les autres seulement aux propriétaires et administrateurs de l'entité. Lien et compteur « Inbox (n) » dans l'en-tête (première entité de l'utilisateur hors page d'entité).
+5. **Reprise** (`IncomingInvoices::ClaimOrganizer`) : contrôles (statut, engagement de l'entité et approuvé, **même devise que l'engagement**, circuit d'approbation du projet de l'engagement), PDF téléchargé chez LedgerFlow (ou téléversé s'il n'y en a pas), création par `Invoices::CreateOrganizer` (`invoice_number` = numéro du fournisseur, montant **hors TVA**, TVA, dates, description éditable), puis `POST /incoming_invoices/:lf_id/claim` avec `bf-invoice-<id>`. Tout ou rien : si LedgerFlow refuse, la facture BudgetFlow n'existe pas.
+6. La facture suit ensuite le circuit habituel ; à la validation, l'export automatique envoie une ligne de synthèse en `PUT` : LedgerFlow **remplit le brouillon repris** (même document, pièces conservées).
+7. « Not for a project » écarte la ligne : rien n'est envoyé, la facture reste au comptable dans LedgerFlow.
+
+**Limites.**
+- Le comptable qui a déjà codé le brouillon avant la reprise : l'export reçoit `409` ; il sort de l'impasse avec « Return to project manager ».
+- Une facture dans une autre devise que l'engagement ne peut pas être reprise.
+- Pas de PDF embarqué par le fournisseur : le gestionnaire téléverse le sien.
+- Les avoirs Peppol ne passent pas par la boîte.
+- Le compteur de l'en-tête interroge la boîte à chaque page (peu de lignes en attente) : à mettre en cache si elle grossit.
+
+## 12. Décisions ouvertes
 
 1. ~~Accord pour écrire l'adaptateur dans BudgetFlow~~ : donné et réalisé.
 2. Champ `supplier_reference` côté LedgerFlow (point 6.2).
