@@ -109,6 +109,7 @@
   {"code":"492100","label_fr":"Charges à imputer","account_class":4,"account_type":"liability","normal_balance":"credit","is_leaf":true,"reconcilable":false},
   {"code":"492200","label_fr":"Produits à reporter","account_class":4,"account_type":"liability","normal_balance":"credit","is_leaf":true,"reconcilable":false},
   {"code":"499000","label_fr":"Comptes d'attente","account_class":4,"account_type":"asset","normal_balance":"debit","is_leaf":true,"reconcilable":false},
+  {"code":"499100","label_fr":"Écarts de conversion — pertes latentes","account_class":4,"account_type":"liability","normal_balance":"credit","is_leaf":true,"reconcilable":false},
   {"code":"500000","label_fr":"Actions propres et parts","account_class":5,"account_type":"asset","normal_balance":"debit","is_leaf":true,"reconcilable":false},
   {"code":"510000","label_fr":"Actions et parts","account_class":5,"account_type":"asset","normal_balance":"debit","is_leaf":false,"reconcilable":false},
   {"code":"510100","label_fr":"Actions cotées","account_class":5,"account_type":"asset","normal_balance":"debit","is_leaf":true,"reconcilable":false},

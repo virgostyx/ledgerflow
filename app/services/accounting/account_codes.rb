@@ -13,4 +13,5 @@ module Accounting::AccountCodes
   ASSET_DISPOSAL  = "660100" # net book value of the fixed assets disposed of
   FX_LOSS         = "651200"
   FX_GAIN         = "751100"
+  FX_UNREALIZED   = "499100" # balance-sheet counterpart of the unrealized exchange losses booked at closing
 end

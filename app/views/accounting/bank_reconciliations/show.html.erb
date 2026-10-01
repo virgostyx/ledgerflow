@@ -19,9 +19,9 @@
             class: 'rounded-md border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500' %>
     </div>
     <div>
-      <%= label_tag :camt_file, 'CAMT.053 file', class: 'block text-xs font-medium text-gray-500 mb-1' %>
+      <%= label_tag :camt_file, 'Statement (CAMT.053 or CSV)', class: 'block text-xs font-medium text-gray-500 mb-1' %>
       <%= file_field_tag 'bank_reconciliation[camt_file]',
-            accept: '.xml,application/xml',
+            accept: '.xml,application/xml,.csv,text/csv',
             class: 'text-sm text-gray-500' %>
     </div>
     <%= submit_tag 'Import',

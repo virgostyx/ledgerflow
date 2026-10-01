@@ -133,6 +133,13 @@ en:
         return_not_external_draft: "Only a draft or a posted invoice received from BudgetFlow can be returned to the project manager."
         return_reason_required: "Give the project manager a reason for returning the invoice."
 
+    revaluation:
+      proposed: "Draft entry created: check it, then post it. Its reversal is drafted in the next fiscal year once that year exists."
+      errors:
+        missing_rate: "No closing rate for %{currencies}: enter it in Settings > Exchange rates first."
+        no_loss: "No unrealized exchange loss to book (gains are not booked before they are realized)."
+        missing_account: "Account(s) %{codes} missing: create them in the chart of accounts first."
+        no_journal: "No active miscellaneous journal."
     closing_checklist:
       title: "Closing checklist"
       intro: "What is left to do before this fiscal year is closed. Blocking items must be fixed; warnings can be left, after a look."

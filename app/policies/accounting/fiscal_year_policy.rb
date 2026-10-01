@@ -23,6 +23,10 @@ class Accounting::FiscalYearPolicy < ApplicationPolicy
     false
   end
 
+  def propose_revaluation?
+    user.admin? || user.accountant?
+  end
+
   def vat_regularization?
     user.admin? || user.accountant?
   end

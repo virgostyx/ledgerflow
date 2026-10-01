@@ -47,8 +47,12 @@ class Accounting::BankReconciliationsController < ApplicationController
 
   def handle_camt_import
     bank_account = Accounting::BankAccount.find(bank_params[:bank_account_id])
-    xml = bank_params[:camt_file]&.read
-    result = Accounting::ImportCamtStatement.call(xml: xml, bank_account: bank_account)
+    file = bank_params[:camt_file]
+    result = if File.extname(file.original_filename.to_s).casecmp?(".csv")
+      Accounting::ImportCsvStatement.call(csv: file.read.force_encoding("UTF-8"), bank_account: bank_account)
+    else
+      Accounting::ImportCamtStatement.call(xml: file.read, bank_account: bank_account)
+    end
 
     if result.success?
       redirect_to accounting_bank_reconciliation_path,

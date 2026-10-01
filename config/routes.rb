@@ -120,6 +120,7 @@ Rails.application.routes.draw do
           post :close
           get  :vat_regularization
           get  :revaluation
+          post :propose_revaluation
           post :regularize_prorata
           post :review_fixed_assets
         end

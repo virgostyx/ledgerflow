@@ -32,6 +32,28 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
     end
   end
 
+  describe "POST /accounting/fiscal_years/:id/propose_revaluation" do
+    it "drafts the entry, or explains why it cannot" do
+      create(:journal, :purchase, default_account: account_440)
+      create(:journal, journal_type: :misc, code: "OD", label_fr: "Miscellaneous")
+      create(:account, code: "499100", label_fr: "Unrealized", account_class: 4, account_type: :liability, normal_balance: :credit)
+      create(:partner, :supplier, :with_iban, external_ref: "S1")
+      Accounting::ExternalInvoice.upsert(
+        external_ref: "U1", partner_external_ref: "S1", invoice_type: "supplier", invoice_date: fiscal_year.start_date.to_s,
+        currency: "USD", exchange_rate: "0.9",
+        lines: [ { account_code: "604000", description: "Work", quantity: "1", unit_price: "1000", vat_rate: "0" } ]
+      )
+
+      post propose_revaluation_accounting_fiscal_year_path(fiscal_year)
+      expect(flash[:alert]).to include("No closing rate")
+
+      Accounting::ExchangeRate.create!(currency: "USD", rate_date: fiscal_year.end_date, rate: "0.95")
+      expect { post propose_revaluation_accounting_fiscal_year_path(fiscal_year) }.to change(Accounting::JournalEntry, :count).by(1)
+      expect(response).to redirect_to(accounting_journal_entry_path(Accounting::JournalEntry.last))
+      expect(Accounting::JournalEntry.last).to be_draft
+    end
+  end
+
   describe "GET /accounting/fiscal_years" do
     it "retourne 200" do
       get accounting_fiscal_years_path

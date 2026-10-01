@@ -54,4 +54,13 @@ Implemented and committed locally (not pushed): recommendations 1 to 4.
 
 5. `InvoiceSettlement` (hence the `paid`/`payment_confirmed` events) carries `fx_difference_eur`, counts the real EUR debited (not capped at the booked amount) and no longer counts the FX adjustment line as a payment. BudgetFlow is unchanged: it ignores the new field; its `payment_amount_eur` already takes `amount_eur`.
 
-Still open: 6.
+6. Done in three parts:
+   - Exchange-rate table `accounting_exchange_rates` (EUR per unit, latest rate on or before a date) with a settings page.
+   - Closing revaluation as a **report only** (`ForeignRevaluationQuery`, page `fiscal_years/:id/revaluation`, checklist item): open foreign receivables, payables and foreign bank balances at the closing rate. No entry is booked, because the accounts and the treatment of unrealized differences are not settled (see `docs/dev/reports/QUESTIONS.md`).
+   - CSV statement import (`ImportCsvStatement`) next to CAMT.053: `date`, `amount` or `debit`/`credit`, optional `value_date`, `reference`, `description`, `currency`; `;` or `,`; all or nothing. Rows without a reference are fingerprinted (date, amount, description): two identical rows in one file need a reference. MT940 is not implemented.
+
+Also closed on the way: a movement on a foreign account is reconciled only from the EUR amount the accountant enters (never the foreign amount read as EUR); no amount-based suggestion for foreign movements.
+
+Revaluation (decision: option A in version C): `ProposeRevaluationEntry` drafts the unrealized loss (Dr 651200 / Cr 499100, per currency) and its reversal in the next fiscal year; the accountant checks and posts. Account 499100 added to the seed charts; existing entities must create it.
+
+Open: MT940, partial manual payment.

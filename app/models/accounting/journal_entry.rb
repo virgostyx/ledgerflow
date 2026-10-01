@@ -6,6 +6,9 @@ class Accounting::JournalEntry < ApplicationRecord
   # source_type of the entries created by Accounting::ImportOpeningBalances.
   OPENING_SOURCE = "Accounting::OpeningBalance".freeze
 
+  # source_type of the drafts proposed by Accounting::ProposeRevaluationEntry (unrealized FX loss and its reversal).
+  REVALUATION_SOURCE = "Accounting::Revaluation".freeze
+
   acts_as_tenant :entity
   broadcasts_refreshes_to ->(r) { [ r.entity, :journal_entries ] }
 

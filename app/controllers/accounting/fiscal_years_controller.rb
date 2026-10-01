@@ -1,7 +1,7 @@
 class Accounting::FiscalYearsController < ApplicationController
   before_action :set_fiscal_year, only: [
     :show, :edit, :update, :destroy, :close,
-    :vat_regularization, :regularize_prorata, :review_fixed_assets, :revaluation
+    :vat_regularization, :regularize_prorata, :review_fixed_assets, :revaluation, :propose_revaluation
   ]
 
   def index
@@ -17,6 +17,18 @@ class Accounting::FiscalYearsController < ApplicationController
   def revaluation
     authorize @fiscal_year, :show?
     @rows = Accounting::ForeignRevaluationQuery.new(as_of: @fiscal_year.end_date).call
+  end
+
+  # Drafts the unrealized loss (and its reversal) for the accountant to check and post; never posts anything itself.
+  def propose_revaluation
+    authorize @fiscal_year
+    result = Accounting::ProposeRevaluationEntry.call(fiscal_year: @fiscal_year)
+
+    if result.success?
+      redirect_to accounting_journal_entry_path(result[:entry]), notice: t("accounting.revaluation.proposed")
+    else
+      redirect_to revaluation_accounting_fiscal_year_path(@fiscal_year), alert: result.message
+    end
   end
 
   def new

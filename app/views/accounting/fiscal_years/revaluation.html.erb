@@ -3,8 +3,13 @@
   <p class="mt-2 text-sm text-gray-500">
     Open receivables, open payables and foreign bank balances valued at the closing rate
     (<%= link_to "Exchange rates", accounting_settings_exchange_rates_path, class: "text-primary-600 hover:underline" %>).
-    Nothing is booked from here: a loss is to be recorded by the accountant; a gain is not recognized before it is realized.
+    Nothing is booked from here: a loss can be drafted below for you to check and post; a gain is not recognized before it is realized.
   </p>
+
+  <% if @rows.any? { |r| r.difference&.negative? } && policy(@fiscal_year).propose_revaluation? %>
+    <%= button_to "Draft the unrealized loss entry", propose_revaluation_accounting_fiscal_year_path(@fiscal_year), method: :post,
+          class: "mt-4 px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
+  <% end %>
 
   <div class="mt-6 bg-white rounded-lg border border-gray-200 overflow-x-clip">
     <table class="min-w-full divide-y divide-gray-200">

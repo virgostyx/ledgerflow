@@ -93,6 +93,17 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
     end
   end
 
+  describe 'PATCH /accounting/bank_reconciliation — import CSV' do
+    it 'imports a CSV statement chosen by its extension' do
+      file = Rack::Test::UploadedFile.new(StringIO.new("date;amount;reference\n2026-10-01;-10,00;CSV-1\n"), 'text/csv', original_filename: 'statement.csv')
+
+      expect {
+        patch accounting_bank_reconciliation_path, params: { bank_reconciliation: { bank_account_id: bank_account.id, camt_file: file } }
+      }.to change(Accounting::BankTransaction, :count).by(1)
+      expect(flash[:notice]).to include('1')
+    end
+  end
+
   describe 'PATCH /accounting/bank_reconciliation — manual entry' do
     let(:manual) do
       { bank_account_id: bank_account.id, manual: '1', transaction_date: '2026-09-30', value_date: '2026-10-01',
