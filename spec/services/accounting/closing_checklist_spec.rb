@@ -152,4 +152,33 @@ RSpec.describe Accounting::ClosingChecklist do
       expect(check(:next_fiscal_year)).to have_attributes(status: :ok)
     end
   end
+
+  describe "foreign-currency revaluation" do
+    let!(:supplier_account) { create(:account, code: "440000", label_fr: "Suppliers", account_type: :liability, normal_balance: :credit, account_class: 4, reconcilable: true) }
+
+    def open_usd_payable(booked: 900, usd: 1000)
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 5)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: bank, debit: booked, credit: 0)
+      create(:journal_entry_line, journal_entry: entry, account: supplier_account, debit: 0, credit: booked, currency: "USD", amount_currency: usd, exchange_rate: 0.9)
+      entry.post!
+    end
+
+    it "is ok without any foreign balance" do
+      expect(check(:foreign_revaluation)).to have_attributes(status: :ok, count: 0)
+    end
+
+    it "warns when a foreign balance has no closing rate" do
+      open_usd_payable
+
+      expect(check(:foreign_revaluation)).to have_attributes(status: :warning, count: 1)
+    end
+
+    it "warns with the unrealized loss when rates are known" do
+      open_usd_payable
+      Accounting::ExchangeRate.create!(currency: "USD", rate_date: fiscal_year.end_date, rate: "0.95")
+
+      expect(check(:foreign_revaluation)).to have_attributes(status: :warning, count: 1, amount: BigDecimal("-50"))
+    end
+  end
 end

@@ -1,0 +1,40 @@
+<div class="max-w-5xl">
+  <%= render Ui::PageHeaderComponent.new(title: "Foreign-currency balances at #{@fiscal_year.end_date}") %>
+  <p class="mt-2 text-sm text-gray-500">
+    Open receivables, open payables and foreign bank balances valued at the closing rate
+    (<%= link_to "Exchange rates", accounting_settings_exchange_rates_path, class: "text-primary-600 hover:underline" %>).
+    Nothing is booked from here: a loss is to be recorded by the accountant; a gain is not recognized before it is realized.
+  </p>
+
+  <div class="mt-6 bg-white rounded-lg border border-gray-200 overflow-x-clip">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <% %w[Position Currency Foreign Booked(EUR) Rate Revalued(EUR) Difference(EUR)].each do |h| %>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= h %></th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 font-mono text-sm">
+        <% @rows.each do |r| %>
+          <tr>
+            <td class="px-4 py-3 font-sans"><%= r.kind.to_s.humanize %></td>
+            <td class="px-4 py-3"><%= r.currency %></td>
+            <td class="px-4 py-3"><%= r.foreign_amount.round(2).to_s("F") %></td>
+            <td class="px-4 py-3"><%= r.booked_eur.round(2).to_s("F") %></td>
+            <% if r.rate %>
+              <td class="px-4 py-3"><%= r.rate.to_s("F") %></td>
+              <td class="px-4 py-3"><%= r.revalued_eur.to_s("F") %></td>
+              <td class="px-4 py-3 <%= r.difference.negative? ? 'text-red-700' : 'text-emerald-700' %>"><%= r.difference.to_s("F") %></td>
+            <% else %>
+              <td class="px-4 py-3 text-amber-700 font-sans" colspan="3">No rate on or before this date</td>
+            <% end %>
+          </tr>
+        <% end %>
+        <% if @rows.empty? %>
+          <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500 font-sans">No foreign-currency balance.</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

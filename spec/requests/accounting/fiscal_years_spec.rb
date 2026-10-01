@@ -12,6 +12,26 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
 
   before { sign_in admin }
 
+  describe "GET /accounting/fiscal_years/:id/revaluation" do
+    it "shows the foreign-currency positions, and the missing-rate notice" do
+      purchase = create(:journal, :purchase, default_account: account_440)
+      create(:partner, :supplier, :with_iban, external_ref: "S1")
+      Accounting::ExternalInvoice.upsert(
+        external_ref: "U1", partner_external_ref: "S1", invoice_type: "supplier", invoice_date: fiscal_year.start_date.to_s,
+        currency: "USD", exchange_rate: "0.9",
+        lines: [ { account_code: "604000", description: "Work", quantity: "1", unit_price: "1000", vat_rate: "0" } ]
+      )
+
+      get revaluation_accounting_fiscal_year_path(fiscal_year)
+      expect(response.body).to include("USD", "No rate on or before this date")
+
+      Accounting::ExchangeRate.create!(currency: "USD", rate_date: fiscal_year.end_date, rate: "0.95")
+      get revaluation_accounting_fiscal_year_path(fiscal_year)
+      expect(response.body).to include("-50.0")
+      expect(purchase).to be_present
+    end
+  end
+
   describe "GET /accounting/fiscal_years" do
     it "retourne 200" do
       get accounting_fiscal_years_path

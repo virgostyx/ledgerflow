@@ -103,3 +103,11 @@ Reporté, à traiter si un vrai besoin se présente (pas de fixture pour du code
 - Le PCMN livré (`db/seeds/pcmn_commercial.json`) place « Produits acquis » sous **490200** et « Produits à reporter » sous **492200**, alors que le PCMN officiel les met en **491** et **493** (490 charges à reporter, 491 produits acquis, 492 charges à imputer, 493 produits à reporter), comme le suppose la spec. Comportement prudent : R17 suit les **libellés** du plan tel que livré (`Accounting::Accrual::ACCOUNT_CODES`), sans modifier le plan. À trancher : corriger le seed (et migrer les données existantes) ou garder ce mapping.
 - La spec ne donne la formule que pour les reports; pour les charges à imputer / produits acquis, le montant = total du service × part écoulée jusqu'à l'arrêté (jours écoulés ÷ jours de la période).
 - Les écritures de régularisation et d'extourne sont générées en **brouillon**; I11 ne compte que les écritures validées.
+
+## Réévaluation des soldes en devises à la clôture — rapport seul, aucune écriture automatique (2026-10-01)
+
+Règle manquante : le traitement comptable belge des écarts de change **non réalisés** (créances, dettes et comptes bancaires en devises au taux de clôture) n'est pas fixé dans la spec ni dans le plan comptable livré (pas de compte de produit à reporter ni de provision pour écart de change dans `pcmn_commercial.json`).
+
+**Comportement prudent appliqué** : `Accounting::ForeignRevaluationQuery` calcule, par type de position et devise, le solde ouvert en devise, sa valeur comptabilisée, sa valeur au dernier taux connu (table `accounting_exchange_rates`) et la différence ; la page `fiscal_years/:id/revaluation` et l'élément « Foreign-currency balances » de la checklist de clôture (avertissement, jamais bloquant) les montrent. **Aucune écriture n'est passée** : un taux manquant n'est jamais deviné (ligne « No rate »). Principe de prudence retenu pour la suite : une perte latente se comptabilise, un gain latent ne se comptabilise pas avant sa réalisation.
+
+**À valider par le comptable / expert** : comptes à utiliser (perte latente, gain à reporter), extourne en début d'exercice suivant, traitement des paiements partiels. Limite connue : les paiements partiels par allocation réduisent bien le résiduel en EUR (et le montant en devise au prorata), mais le prorata suppose le même taux sur toute la ligne.

@@ -175,6 +175,9 @@ en:
         vat_review:
           label: "Fixed assets VAT review"
           problem: "%{count} fixed asset(s) still under VAT review."
+        foreign_revaluation:
+          label: "Foreign-currency balances"
+          problem: "%{count} foreign-currency position(s) to value at the closing rate (unrealized losses: %{amount})."
         next_fiscal_year:
           label: "Next fiscal year"
           problem: "The next fiscal year does not exist yet: create it to carry the balances forward."

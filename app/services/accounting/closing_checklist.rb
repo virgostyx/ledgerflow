@@ -17,7 +17,7 @@ class Accounting::ClosingChecklist
   end
 
   def call
-    checks = [ draft_entries, depreciation, balance, draft_invoices, bank, overdue_receivables, stale_credits ]
+    checks = [ draft_entries, depreciation, balance, draft_invoices, bank, overdue_receivables, stale_credits, foreign_revaluation ]
     checks += [ vat_declarations ] unless @entity.franchise?
     checks += [ vat_review ] if @entity.vat_scheme_mixed? && !@entity.franchise?
     checks << next_fiscal_year
@@ -66,6 +66,15 @@ class Accounting::ClosingChecklist
       Accounting::StaleCreditsQuery.new(kind: kind, as_of: @fiscal_year.end_date, min_age_days: STALE_CREDIT_DAYS).call.size
     end
     check(:stale_credits, count, :warning)
+  end
+
+  # Foreign balances still open at the year end: each needs a closing rate, and a loss is to be looked at (prudence).
+  # Nothing is booked automatically: see Accounting::ForeignRevaluationQuery and docs/dev/reports/QUESTIONS.md.
+  def foreign_revaluation
+    rows = Accounting::ForeignRevaluationQuery.new(as_of: @fiscal_year.end_date).call
+    needing_attention = rows.count { |r| r.difference.nil? || r.difference.nonzero? }
+    losses = rows.sum(BigDecimal("0")) { |r| [ r.difference.to_d, 0 ].min }
+    check(:foreign_revaluation, needing_attention, :warning, amount: losses)
   end
 
   # The periods already over (at `as_of`, within the year) whose VAT declaration was not submitted.

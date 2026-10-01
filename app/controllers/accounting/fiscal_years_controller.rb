@@ -1,7 +1,7 @@
 class Accounting::FiscalYearsController < ApplicationController
   before_action :set_fiscal_year, only: [
     :show, :edit, :update, :destroy, :close,
-    :vat_regularization, :regularize_prorata, :review_fixed_assets
+    :vat_regularization, :regularize_prorata, :review_fixed_assets, :revaluation
   ]
 
   def index
@@ -11,6 +11,12 @@ class Accounting::FiscalYearsController < ApplicationController
   def show
     authorize @fiscal_year
     @checklist = Accounting::ClosingChecklist.new(fiscal_year: @fiscal_year).call if @fiscal_year.open?
+  end
+
+  # Foreign-currency positions valued at the closing rate; informative, nothing is booked.
+  def revaluation
+    authorize @fiscal_year, :show?
+    @rows = Accounting::ForeignRevaluationQuery.new(as_of: @fiscal_year.end_date).call
   end
 
   def new
