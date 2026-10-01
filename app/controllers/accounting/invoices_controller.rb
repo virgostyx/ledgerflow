@@ -1,6 +1,6 @@
 class Accounting::InvoicesController < ApplicationController
   before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :return_invoice, :send_peppol,
-                                      :create_credit_note, :apply_credit_note, :pdf, :send_email, :duplicate ]
+                                      :create_credit_note, :apply_credit_note, :pdf, :document, :send_email, :duplicate ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
@@ -155,6 +155,17 @@ class Accounting::InvoicesController < ApplicationController
     else
       redirect_to accounting_invoice_path(@invoice), alert: result.message
     end
+  end
+
+  # The documents kept from a Peppol invoice: the original UBL XML (download) and the PDF the supplier embedded (in the browser).
+  def document
+    authorize @invoice, :show?
+
+    attachment = { "xml" => @invoice.ubl_document, "pdf" => @invoice.pdf_document }[params[:kind]]
+    return head(:not_found) unless attachment&.attached?
+
+    send_data attachment.download, filename: attachment.filename.to_s, type: attachment.content_type,
+                                   disposition: params[:kind] == "pdf" ? "inline" : "attachment"
   end
 
   def pdf

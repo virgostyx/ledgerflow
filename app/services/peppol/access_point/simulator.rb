@@ -56,6 +56,12 @@ class Peppol::AccessPoint::Simulator < Peppol::AccessPoint::Base
         <cbc:DueDate>#{30.days.from_now.to_date}</cbc:DueDate>
         <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
         <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+        <cbc:BuyerReference>SIM-PROJECT</cbc:BuyerReference>
+        <cac:OrderReference><cbc:ID>PO-SIM-001</cbc:ID></cac:OrderReference>
+        <cac:AdditionalDocumentReference>
+          <cbc:ID>invoice-pdf</cbc:ID>
+          <cac:Attachment><cbc:EmbeddedDocumentBinaryObject mimeCode="application/pdf" filename="simulated-invoice.pdf">#{Base64.strict_encode64(sample_pdf)}</cbc:EmbeddedDocumentBinaryObject></cac:Attachment>
+        </cac:AdditionalDocumentReference>
         <cac:AccountingSupplierParty><cac:Party>
           <cac:PartyName><cbc:Name>Simulated Supplier</cbc:Name></cac:PartyName>
           <cac:PartyTaxScheme><cbc:CompanyID>BE0123456749</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>
@@ -67,6 +73,12 @@ class Peppol::AccessPoint::Simulator < Peppol::AccessPoint::Base
         </cac:LegalMonetaryTotal>
       </Invoice>
     XML
+  end
+
+  # A tiny PDF, so that a simulated invoice shows what a real one brings.
+  def sample_pdf
+    "%PDF-1.4\n1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n" \
+      "3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] >>endobj\ntrailer<< /Root 1 0 R /Size 4 >>\n%%EOF\n"
   end
 
   def ensure_well_formed!(xml)

@@ -114,6 +114,17 @@ RSpec.describe Peppol::AccessPoint::Simulator do
       expect(result[:invoice]).to have_attributes(invoice_type: 'supplier', status: 'draft', entity_id: entity.id)
     end
 
+    it 'keeps what a real document brings: the original XML, the embedded PDF and the order and buyer references' do
+      ActsAsTenant.with_tenant(entity) { create(:fiscal_year, status: :open) }
+
+      invoice = ActsAsTenant.without_tenant { access_point.simulate_incoming }[:invoice]
+
+      expect(invoice).to have_attributes(order_reference: 'PO-SIM-001', buyer_reference: 'SIM-PROJECT')
+      expect(invoice.ubl_document).to be_attached
+      expect(invoice.pdf_document).to be_attached
+      expect(invoice.pdf_document.download).to start_with('%PDF')
+    end
+
     it 'says why nothing was booked' do
       expect(ActsAsTenant.without_tenant { access_point.simulate_incoming }.message).to match(/open fiscal year/)
     end

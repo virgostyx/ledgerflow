@@ -65,6 +65,7 @@
 <% end %>
 
 <%= render 'budgetflow_context', invoice: @invoice %>
+<%= render 'peppol_document', invoice: @invoice %>
 
 <% if policy(@invoice).return_to_sender? %>
   <%= form_with url: return_invoice_accounting_invoice_path(@invoice), method: :post, class: "mb-4 max-w-2xl rounded-md border border-gray-200 bg-white px-4 py-3" do %>

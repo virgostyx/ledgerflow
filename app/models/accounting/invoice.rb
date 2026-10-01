@@ -37,6 +37,10 @@ class Accounting::Invoice < ApplicationRecord
                              foreign_key: :invoice_id, dependent: :destroy,
                              inverse_of: :invoice
 
+  # A Peppol invoice keeps what was received: the original UBL XML (the legal original) and the PDF the supplier embedded in it.
+  has_one_attached :ubl_document
+  has_one_attached :pdf_document
+
   accepts_nested_attributes_for :lines, allow_destroy: true, reject_if: :all_blank
 
   # Documents managed through the third-party API (keyed by external_ref + revision), as opposed to invoices typed in the UI.

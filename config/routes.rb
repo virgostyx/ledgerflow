@@ -67,6 +67,7 @@ Rails.application.routes.draw do
           post :create_credit_note
           post :apply_credit_note
           get  :pdf
+          get  "documents/:kind", action: :document, as: :document
           post :send_email
           post :duplicate
         end
