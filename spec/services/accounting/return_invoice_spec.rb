@@ -32,13 +32,46 @@ RSpec.describe Accounting::ReturnInvoice, type: :service do
     expect(Accounting::InvoiceEvent.where(invoice_id: draft.id)).to be_empty
   end
 
-  it 'refuses a posted API invoice (it is reversed, not returned)' do
-    posted = Accounting::ExternalInvoice.upsert(payload.merge(post: true)).invoice
+  describe 'an invoice the accountant already posted' do
+    let(:posted) do
+      d = Accounting::ExternalInvoice.upsert(payload).invoice
+      Accounting::PostInvoice.call(invoice: d)
+      d.reload
+    end
 
-    result = described_class.call(invoice: posted, reason: 'x')
+    it 'reverses the entry, cancels the invoice and tells the third party, with the reason' do
+      result = described_class.call(invoice: posted, reason: 'Amount to correct')
 
-    expect(result).to be_failure
-    expect(posted.reload).to be_posted
+      expect(result).to be_success
+      expect(posted.reload).to be_cancelled
+      expect(posted.journal_entry.reload).to be_reversed
+      expect(Accounting::InvoiceEvent.where(invoice_id: posted.id).order(:id).last)
+        .to have_attributes(event_type: 'returned').and have_attributes(payload: hash_including('reason' => 'Amount to correct'))
+    end
+
+    it 'keeps the reason in the audit trail of the reversal' do
+      described_class.call(invoice: posted, reason: 'Amount to correct')
+
+      expect(Accounting::AuditLog.unscoped.where(action: 'reverse_entry').last.reason).to eq('Amount to correct')
+    end
+
+    it 'changes nothing, and does not tell the third party, when the reversal is refused (payment batch)' do
+      batch = create(:payment_batch, :generated, bank_account: create(:bank_account), total_amount: BigDecimal('121'))
+      create(:payment_batch_line, payment_batch: batch, invoice: posted, amount: BigDecimal('121'))
+
+      result = described_class.call(invoice: posted, reason: 'Amount to correct')
+
+      expect(result).to be_failure
+      expect(posted.reload).to be_posted
+      expect(Accounting::InvoiceEvent.where(invoice_id: posted.id, event_type: 'returned')).to be_empty
+    end
+
+    it 'refuses a paid invoice' do
+      posted.update_columns(status: Accounting::Invoice.statuses[:paid])
+
+      expect(described_class.call(invoice: posted, reason: 'x')).to be_failure
+      expect(posted.reload).to be_paid
+    end
   end
 
   it 'refuses a draft typed in the UI' do

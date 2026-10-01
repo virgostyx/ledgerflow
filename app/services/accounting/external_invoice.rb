@@ -6,6 +6,7 @@
 #   touched is replaced in place; once the accountant has worked on it (external_state_digest), the change is refused.
 #   In draft mode, a document the accountant has already posted cannot be corrected at all (409): the books are theirs.
 # - cancel: reverses the current document, with a mandatory reason (recorded in the audit trail); a draft is just cancelled.
+#   A document handed over as a draft and since booked is refused (409): the accountant returns it from LedgerFlow.
 # Returns a Result whose status is :created, :ok, :unprocessable, :conflict or :not_found.
 class Accounting::ExternalInvoice
   Result = Struct.new(:status, :invoice, :errors, keyword_init: true)
@@ -15,6 +16,7 @@ class Accounting::ExternalInvoice
   LINE_DECIMALS = %w[quantity unit_price vat_rate].freeze
   # A client working in draft mode hands the books to the accountant: once posted, only they can undo it.
   BOOKED_BY_ACCOUNTANT = "Already booked in LedgerFlow: the accountant must cancel it there before it can be corrected.".freeze
+  RETURN_FROM_LEDGERFLOW = "Already booked in LedgerFlow: the accountant must return it to the project manager from LedgerFlow.".freeze
 
   def self.upsert(payload) = new.upsert(payload.to_h.with_indifferent_access)
   def self.cancel(external_ref:, reason:) = new.cancel(external_ref, reason)
@@ -43,6 +45,8 @@ class Accounting::ExternalInvoice
     current = latest
     return failure(:not_found, base: [ "Unknown external_ref" ]) unless current
     return Result.new(status: :ok, invoice: current) if current.cancelled?
+    # Handed over as a draft and now booked: only the accountant undoes it, by returning it from LedgerFlow.
+    return failure(:conflict, base: [ RETURN_FROM_LEDGERFLOW ]) if !current.draft? && current.external_state_digest.present?
     return failure(:unprocessable, reason: [ "is required" ]) if reason.blank?
 
     with_reason(reason) { cancel_current(current) }

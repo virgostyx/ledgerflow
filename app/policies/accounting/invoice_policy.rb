@@ -7,13 +7,14 @@ class Accounting::InvoicePolicy < ApplicationPolicy
     user.admin? || user.accountant?
   end
 
+  # An invoice received from BudgetFlow is undone by returning it (reverse + tell BudgetFlow), never by cancelling alone.
   def cancel?
-    user.admin? || user.accountant?
+    (user.admin? || user.accountant?) && !from_budgetflow?
   end
 
-  # A draft received from BudgetFlow, for an entity that uses it: the accountant sends it back with a reason.
+  # A draft or posted invoice received from BudgetFlow, for an entity that uses it: the accountant sends it back with a reason.
   def return_to_sender?
-    (user.admin? || user.accountant?) && record.draft? && record.external_digest.present? && ActsAsTenant.current_tenant&.budgetflow? == true
+    (user.admin? || user.accountant?) && (record.draft? || record.posted?) && from_budgetflow?
   end
 
   def duplicate?
@@ -38,5 +39,11 @@ class Accounting::InvoicePolicy < ApplicationPolicy
 
   def send_peppol?
     user.admin? || user.accountant?
+  end
+
+  private
+
+  def from_budgetflow?
+    record.respond_to?(:external_digest) && record.external_digest.present? && ActsAsTenant.current_tenant&.budgetflow? == true
   end
 end

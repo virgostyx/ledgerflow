@@ -123,7 +123,7 @@ en:
         credit_note_invoice_has_receipts: "Receipts are already booked on this invoice, so the credit note stays open: settle it by lettering or refund it."
         credit_note_needs_invoice: "This credit note is not linked to an invoice."
         uncoded_lines: "Some lines are still on the suspense account %{code}: code them before posting."
-        return_not_external_draft: "Only a draft received from BudgetFlow can be returned to the project manager."
+        return_not_external_draft: "Only a draft or a posted invoice received from BudgetFlow can be returned to the project manager."
         return_reason_required: "Give the project manager a reason for returning the invoice."
 
     closing_checklist:

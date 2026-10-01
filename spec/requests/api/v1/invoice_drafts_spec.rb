@@ -211,6 +211,25 @@ RSpec.describe 'Api::V1 invoice drafts', type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it 'cannot be cancelled by the third party either (409): the accountant returns it to the project manager from LedgerFlow' do
+      delete '/api/v1/invoices/BF-I-1', params: { reason: 'Mistake' }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:conflict)
+      expect(json['errors']['base'].first).to match(/accountant.*return/i)
+      expect(invoice).to be_posted
+      expect(Accounting::JournalEntry.where(status: :reversed).count).to eq(0)
+    end
+
+    it 'can still be cancelled by a client that books at once (a document it did not hand over as a draft)' do
+      put '/api/v1/invoices/BF-I-2', params: payload.except(:post), headers: headers, as: :json
+      expect(Accounting::Invoice.external.find_by(external_ref: 'BF-I-2')).to be_posted
+
+      delete '/api/v1/invoices/BF-I-2', params: { reason: 'Mistake' }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(Accounting::Invoice.external.find_by(external_ref: 'BF-I-2')).to be_cancelled
+    end
+
     it 'still accepts a correction from a client that books at once (post absent): revision by reversal, as before' do
       put_invoice(payload.merge(post: nil, lines: [ line.merge(unit_price: '80.00') ]))
 

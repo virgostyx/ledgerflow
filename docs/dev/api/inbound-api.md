@@ -171,9 +171,10 @@ Corps ou paramètre `reason` **obligatoire** : le motif est enregistré dans la 
 
 | Statut | Signification |
 |---|---|
-| `200` | Facture annulée (extourne comptabilisée), ou déjà annulée (rejeu) |
+| `200` | Brouillon annulé (sans extourne), facture comptabilisée d'office annulée (extourne), ou déjà annulée (rejeu) |
+| `409 « Already booked in LedgerFlow: the accountant must return it to the project manager from LedgerFlow. »` | Document remis en mode brouillon (`post: false`) puis **comptabilisé** par le comptable : l'appelant ne peut ni le corriger ni le supprimer. Le comptable le renvoie depuis LedgerFlow (« Return to project manager » : écriture extournée, événement `returned` avec le motif), puis un nouvel envoi crée une révision en brouillon. |
 | `404 {"errors":{"base":["Unknown external_ref"]}}` | Référence inconnue |
-| `409` | Facture payée, lettrée, en lot de paiement, créditée ou liée à une immobilisation : défaire d'abord côté LedgerFlow |
+| `409` | Facture comptabilisée d'office payée, lettrée, en lot de paiement, créditée ou liée à une immobilisation : défaire d'abord côté LedgerFlow |
 | `422 {"errors":{"reason":["is required"]}}` | Motif absent |
 
 ### 4.3 Consulter : `GET /api/v1/invoices/:external_ref` (scope `invoices:read`)

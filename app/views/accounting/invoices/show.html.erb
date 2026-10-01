@@ -69,11 +69,13 @@
 <% if policy(@invoice).return_to_sender? %>
   <%= form_with url: return_invoice_accounting_invoice_path(@invoice), method: :post, class: "mb-4 max-w-2xl rounded-md border border-gray-200 bg-white px-4 py-3" do %>
     <label for="return_reason" class="block text-sm font-medium text-gray-700">Return to project manager</label>
-    <p class="text-xs text-gray-500">The invoice goes back to BudgetFlow with your reason; the project manager can correct it and send it again.</p>
+    <p class="text-xs text-gray-500">
+      The invoice goes back to BudgetFlow with your reason<%= @invoice.posted? ? ' and its journal entry is reversed' : '' %>; the project manager can correct it and send it again.
+    </p>
     <div class="mt-2 flex gap-2">
       <%= text_field_tag :reason, nil, id: "return_reason", required: true, placeholder: "Reason (required)",
             class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500" %>
-      <%= submit_tag "Return", data: { turbo_confirm: "Return this invoice to the project manager?" },
+      <%= submit_tag "Return", data: { turbo_confirm: @invoice.posted? ? "Return this invoice to the project manager? Its journal entry will be reversed." : "Return this invoice to the project manager?" },
             class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer" %>
     </div>
   <% end %>
