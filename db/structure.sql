@@ -612,6 +612,40 @@ ALTER SEQUENCE public.accounting_depreciation_entries_id_seq OWNED BY public.acc
 
 
 --
+-- Name: accounting_exchange_rates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_exchange_rates (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    currency character varying(3) NOT NULL,
+    rate_date date NOT NULL,
+    rate numeric(14,6) NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_exchange_rates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_exchange_rates_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_exchange_rates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_exchange_rates_id_seq OWNED BY public.accounting_exchange_rates.id;
+
+
+--
 -- Name: accounting_fiscal_years; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2149,6 +2183,13 @@ ALTER TABLE ONLY public.accounting_depreciation_entries ALTER COLUMN id SET DEFA
 
 
 --
+-- Name: accounting_exchange_rates id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_exchange_rates ALTER COLUMN id SET DEFAULT nextval('public.accounting_exchange_rates_id_seq'::regclass);
+
+
+--
 -- Name: accounting_fiscal_years id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2513,6 +2554,14 @@ ALTER TABLE ONLY public.accounting_depreciation_entries
 
 
 --
+-- Name: accounting_exchange_rates accounting_exchange_rates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_exchange_rates
+    ADD CONSTRAINT accounting_exchange_rates_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_fiscal_years accounting_fiscal_years_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2852,6 +2901,13 @@ CREATE INDEX idx_entries_journal_reference ON public.accounting_journal_entries 
 
 
 --
+-- Name: idx_exchange_rates_on_entity_currency_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_exchange_rates_on_entity_currency_date ON public.accounting_exchange_rates USING btree (entity_id, currency, rate_date);
+
+
+--
 -- Name: idx_invoice_line_annotations_uniqueness; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3185,6 +3241,13 @@ CREATE INDEX index_accounting_depreciation_entries_on_fixed_asset_id ON public.a
 --
 
 CREATE INDEX index_accounting_depreciation_entries_on_journal_entry_id ON public.accounting_depreciation_entries USING btree (journal_entry_id);
+
+
+--
+-- Name: index_accounting_exchange_rates_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_exchange_rates_on_entity_id ON public.accounting_exchange_rates USING btree (entity_id);
 
 
 --
@@ -4126,6 +4189,14 @@ ALTER TABLE ONLY public.accounting_invoice_emails
 
 
 --
+-- Name: accounting_exchange_rates fk_rails_349168c3df; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_exchange_rates
+    ADD CONSTRAINT fk_rails_349168c3df FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoice_line_annotations fk_rails_35cd3761f9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4756,6 +4827,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261001080000'),
 ('20261001070000'),
 ('20261001060000'),
 ('20261001054757'),

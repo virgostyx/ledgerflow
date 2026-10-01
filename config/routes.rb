@@ -166,6 +166,7 @@ Rails.application.routes.draw do
           member { patch :toggle_active }
         end
         resources :bank_accounts
+        resources :exchange_rates, only: [ :index, :create, :destroy ]
         resources :accounts, only: [ :index, :show, :new, :create, :edit, :update ]
         resources :analytical_axes do
           resources :analytical_accounts, shallow: true
