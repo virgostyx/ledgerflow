@@ -10,7 +10,7 @@ class Accounting::BankReconciliationsController < ApplicationController
     end
     @bank_accounts = Accounting::BankAccount.where(active: true).order(:label_fr)
     @accounts      = Accounting::Account.where(is_leaf: true).order(:code)
-    @payable_invoices = Accounting::Invoice.supplier.posted.where(document_type: :invoice).includes(:partner).order(:due_date, :id)
+    @payable_invoices = Accounting::Invoice.supplier.where(status: %i[posted partially_paid], document_type: :invoice).includes(:partner).order(:due_date, :id)
   end
 
   def allocate
@@ -87,7 +87,8 @@ class Accounting::BankReconciliationsController < ApplicationController
     eur_amount  = parse_amount(bank_params[:eur_amount])&.then { |a| a.positive? ? a : nil }
 
     result = Accounting::PayInvoiceFromTransaction.call(transaction: transaction, invoice: invoice,
-                                                        fiscal_year: Accounting::FiscalYear.current, eur_amount: eur_amount)
+                                                        fiscal_year: Accounting::FiscalYear.current, eur_amount: eur_amount,
+                                                        invoice_amount: parse_amount(bank_params[:invoice_amount])&.then { |a| a.positive? ? a : nil })
     redirect_for(result)
   end
 

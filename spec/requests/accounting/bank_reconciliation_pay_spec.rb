@@ -43,4 +43,18 @@ RSpec.describe 'Accounting::BankReconciliation — pay a supplier invoice', type
     expect(flash[:alert]).to be_present
     expect(tx.reload).to be_pending
   end
+
+  it 'records a deposit with invoice_amount, leaving the invoice partially paid and still offered for the balance' do
+    deposit = create(:bank_transaction, bank_account: bank_account, amount: -40, reference: 'DEP-1')
+    patch accounting_bank_reconciliation_path, params: {
+      bank_reconciliation: { bank_transaction_id: deposit.id, pay_invoice_id: invoice.id, invoice_amount: '40' }
+    }
+
+    expect(flash[:alert]).to be_nil
+    expect(invoice.reload).to be_partially_paid
+
+    create(:bank_transaction, bank_account: bank_account, amount: -60, reference: 'PAY-2')
+    get accounting_bank_reconciliation_path
+    expect(response.body).to include("Pay a supplier invoice").and include(invoice.invoice_number.to_s)
+  end
 end

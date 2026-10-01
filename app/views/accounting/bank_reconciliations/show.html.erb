@@ -135,6 +135,7 @@
                     <% unless tx.bank_account.currency == 'EUR' %>
                       <%= text_field_tag 'bank_reconciliation[eur_amount]', nil, required: true, placeholder: 'EUR amount debited', class: 'rounded-md border-gray-300 text-xs w-36' %>
                     <% end %>
+                    <%= text_field_tag 'bank_reconciliation[invoice_amount]', nil, placeholder: 'Deposit: amount for this invoice (optional)', class: 'rounded-md border-gray-300 text-xs w-56' %>
                     <%= submit_tag 'Pay', class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700' %>
                   <% end %>
                 </details>

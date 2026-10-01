@@ -78,4 +78,66 @@ RSpec.describe Accounting::PayInvoiceFromTransaction, type: :service do
     expect(result).to be_failure
     expect(tx.reload).to be_pending
   end
+
+  describe 'deposit (partial payment)' do
+    let(:eur_invoice) do
+      Accounting::ExternalInvoice.upsert(
+        external_ref: 'EUR-1', partner_external_ref: 'S1', invoice_type: 'supplier', invoice_date: Date.current.to_s,
+        lines: [ { account_code: '604000', description: 'Work', quantity: '1', unit_price: '1000', vat_rate: '0' } ]
+      ).invoice
+    end
+
+    def fx_sum(side) = Accounting::JournalEntryLine.joins(:account).where(accounting_accounts: { code: '651200' }).sum(side)
+
+    it 'settles part of a foreign invoice, books the exchange difference on the part, then the balance closes it' do
+      deposit = debit_tx(usd_bank, '400', 'USD')
+      result = call(transaction: deposit, invoice: usd_invoice, eur_amount: BigDecimal('380'), invoice_amount: BigDecimal('400'))
+
+      expect(result).to be_success, result.message
+      expect(usd_invoice.reload).to be_partially_paid
+      expect(deposit.reload).to be_reconciled
+      expect(fx_sum(:debit)).to eq(BigDecimal('20')) # 380 paid for a booked share of 360
+      trade = usd_invoice.journal_entry.lines.find_by(account: account_440)
+      expect(trade.open_amount).to eq(BigDecimal('540')) # 600 USD left at the booking rate
+
+      balance = debit_tx(usd_bank, '600', 'USD')
+      result = call(transaction: balance, invoice: usd_invoice, eur_amount: BigDecimal('560'))
+
+      expect(result).to be_success, result.message
+      expect(usd_invoice.reload).to be_paid
+      expect(fx_sum(:debit)).to eq(BigDecimal('40'))
+      settlement = Accounting::InvoiceSettlement.call(usd_invoice)
+      expect(settlement.to_payload).to include(amount_eur: '940.0', fx_difference_eur: '-40.0')
+      expect(settlement.items.map(&:amount)).to contain_exactly(BigDecimal('400'), BigDecimal('600'))
+    end
+
+    it 'books an exchange gain on a deposit paid for less than its booked share' do
+      result = call(transaction: debit_tx(usd_bank, '400', 'USD'), invoice: usd_invoice, eur_amount: BigDecimal('340'), invoice_amount: BigDecimal('400'))
+
+      expect(result).to be_success, result.message
+      expect(usd_invoice.reload).to be_partially_paid
+      expect(Accounting::InvoiceSettlement.call(usd_invoice).fx_difference_eur).to eq(BigDecimal('20'))
+      expect(usd_invoice.journal_entry.lines.find_by(account: account_440).open_amount).to eq(BigDecimal('540'))
+    end
+
+    it 'handles an EUR invoice: a deposit leaves it partially paid, the balance settles it' do
+      first = call(transaction: debit_tx(bank, '300', 'EUR'), invoice: eur_invoice, invoice_amount: BigDecimal('300'))
+
+      expect(first).to be_success, first.message
+      expect(eur_invoice.reload).to be_partially_paid
+
+      second = call(transaction: debit_tx(bank, '700', 'EUR'), invoice: eur_invoice)
+
+      expect(second).to be_success, second.message
+      expect(eur_invoice.reload).to be_paid
+      expect(Accounting::InvoiceSettlement.call(eur_invoice).amount_eur).to eq(BigDecimal('1000'))
+    end
+
+    it 'refuses an amount above what is left, a non-positive one, or a same-currency movement that differs' do
+      expect(call(transaction: debit_tx(usd_bank, '1100', 'USD'), invoice: usd_invoice, eur_amount: BigDecimal('990'), invoice_amount: BigDecimal('1100'))).to be_failure
+      expect(call(transaction: debit_tx(usd_bank, '5', 'USD'), invoice: usd_invoice, eur_amount: BigDecimal('4'), invoice_amount: BigDecimal('0'))).to be_failure
+      expect(call(transaction: debit_tx(usd_bank, '399', 'USD'), invoice: usd_invoice, eur_amount: BigDecimal('380'), invoice_amount: BigDecimal('400'))).to be_failure
+      expect(usd_invoice.reload).to be_posted
+    end
+  end
 end

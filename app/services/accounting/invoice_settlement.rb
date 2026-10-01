@@ -59,7 +59,7 @@ class Accounting::InvoiceSettlement
 
     Accounting::LineAllocation.touching(@trade.id).includes(debit_line: :journal_entry, credit_line: :journal_entry).filter_map do |allocation|
       other = allocation.debit_line_id == @trade.id ? allocation.credit_line : allocation.debit_line
-      next if @seen.include?(other.id)
+      next if @seen.include?(other.id) || fx_top_ups.any? { |l| l.id == other.id }
 
       @seen << other.id
       from_entry(other.journal_entry, allocation.amount, allocation.allocated_on)
@@ -93,13 +93,12 @@ class Accounting::InvoiceSettlement
     end
   end
 
-  # The trade-account lines `PostFxAdjustment` added to the lettering to absorb the rate difference: not payments.
+  # The trade-account lines booked for the rate difference (`PostFxAdjustment`, or a deposit's own FX entry): not payments.
   def fx_top_ups
-    @fx_top_ups ||= if @trade&.lettering_id
-      Accounting::JournalEntryLine.where(lettering_id: @trade.lettering_id).where.not(id: @trade.id)
-                                  .joins(:journal_entry).where("accounting_journal_entries.description LIKE 'FX adjustment%'").to_a
-    else
-      []
+    @fx_top_ups ||= begin
+      lines = @trade ? Accounting::LineAllocation.group_lines([ @trade ]) : []
+      lines |= Accounting::JournalEntryLine.where(lettering_id: @trade.lettering_id).includes(:journal_entry).to_a if @trade&.lettering_id
+      lines.select { |l| l.id != @trade.id && l.journal_entry.description.to_s.start_with?("FX adjustment") }
     end
   end
 

@@ -63,4 +63,4 @@ Also closed on the way: a movement on a foreign account is reconciled only from 
 
 Revaluation (decision: option A in version C): `ProposeRevaluationEntry` drafts the unrealized loss (Dr 651200 / Cr 499100, per currency) and its reversal in the next fiscal year; the accountant checks and posts. Account 499100 added to the seed charts; existing entities must create it.
 
-Open: MT940, partial manual payment.
+Deposit (partial manual payment), done: "Pay a supplier invoice" takes an optional amount for this invoice (invoice currency). The movement is allocated to that part (`LineAllocation`); the booked share is prorated, the last payment takes what is left, and the exchange difference of each payment is booked at once on its own `FX adjustment` entry. The invoice is partially paid until fully allocated, then lettered and paid. `InvoiceSettlement` lists each payment and sums `fx_difference_eur`. Limits: the proration assumes one booking rate for the whole invoice; no grouped transfer over several invoices; no deposit through a SEPA batch.\n\nOpen: MT940 (needs a real sample file).
