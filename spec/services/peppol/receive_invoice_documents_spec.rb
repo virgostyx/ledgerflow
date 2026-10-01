@@ -52,6 +52,22 @@ RSpec.describe Peppol::ReceiveInvoice, "documents and references" do
     expect(invoice).to have_attributes(order_reference: "PO-2026-014", buyer_reference: "PRJ-ZM-3.2.1")
   end
 
+  it "keeps the supplier's own invoice number apart from external_ref (which a third party may take over)" do
+    invoice = receive_xml(ubl)[:invoice]
+
+    expect(invoice).to have_attributes(supplier_reference: "SUP-2026-001", external_ref: "SUP-2026-001")
+  end
+
+  it "still recognises the document delivered again once its external_ref was taken over by BudgetFlow" do
+    xml = ubl
+    first = receive_xml(xml)[:invoice]
+    first.update_columns(external_ref: "bf-invoice-10")
+
+    expect { @again = receive_xml(xml) }.not_to change(Accounting::Invoice, :count)
+
+    expect(@again[:invoice]).to eq(first)
+  end
+
   it "leaves them empty when the supplier gave none" do
     invoice = receive_xml(ubl(references: false))[:invoice]
 

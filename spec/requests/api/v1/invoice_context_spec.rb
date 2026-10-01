@@ -31,6 +31,20 @@ RSpec.describe 'Api::V1 invoice project context', type: :request do
     expect(json).to include('project_name' => 'Water Access Zambia', 'budget_line' => '3.2.1')
   end
 
+  it "stores the supplier's own invoice number and returns it" do
+    put_invoice(payload.merge(supplier_reference: ' SUP-2026-001 '))
+
+    expect(invoice.supplier_reference).to eq('SUP-2026-001')
+    expect(json['supplier_reference']).to eq('SUP-2026-001')
+  end
+
+  it 'counts a changed supplier number as a real change (new revision)' do
+    put_invoice(payload.merge(supplier_reference: 'SUP-1'))
+    put_invoice(payload.merge(supplier_reference: 'SUP-2'))
+
+    expect(Accounting::Invoice.external.where(external_ref: 'BF-I-1').order(:revision).map(&:supplier_reference)).to eq(%w[SUP-1 SUP-2])
+  end
+
   it 'treats blank values as absent' do
     put_invoice(payload.merge(project_name: ' ', budget_line: ''))
 

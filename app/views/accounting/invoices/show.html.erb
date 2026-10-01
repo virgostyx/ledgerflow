@@ -98,6 +98,12 @@
         </dd>
       </div>
     <% end %>
+    <% if @invoice.supplier_reference.present? %>
+      <div>
+        <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier's invoice number</dt>
+        <dd class="mt-1 text-sm font-mono text-gray-900"><%= @invoice.supplier_reference %></dd>
+      </div>
+    <% end %>
     <div>
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Partner</dt>
       <dd class="mt-1 text-sm font-medium text-gray-900"><%= @invoice.partner.name %></dd>

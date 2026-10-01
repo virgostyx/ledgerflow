@@ -32,7 +32,7 @@ class Api::V1::InvoicesController < Api::V1::BaseController
   private
 
   def invoice_payload
-    params.permit(:partner_external_ref, :post, :project_name, :budget_line, :document_type, :credited_invoice_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,
+    params.permit(:partner_external_ref, :post, :project_name, :budget_line, :supplier_reference, :document_type, :credited_invoice_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,
                   :vat_treatment, :description, :notes, :project_id, lines: LINE_FIELDS)
           .to_h.merge(external_ref: params[:external_ref])
   end
@@ -45,7 +45,8 @@ class Api::V1::InvoicesController < Api::V1::BaseController
   # Single-document responses also name the credited invoice (one lookup; not used in lists).
   def serialize_detail(invoice)
     serialize_invoice(invoice).merge(credited_invoice_external_ref: invoice.credited_invoice&.external_ref,
-                                     project_name: invoice.external_project_name, budget_line: invoice.external_budget_line)
+                                     project_name: invoice.external_project_name, budget_line: invoice.external_budget_line,
+                                     supplier_reference: invoice.supplier_reference)
   end
 
   def serialize_invoice(invoice)

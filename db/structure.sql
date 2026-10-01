@@ -957,7 +957,8 @@ CREATE TABLE public.accounting_invoices (
     external_budget_line character varying,
     external_state_digest character varying,
     order_reference character varying,
-    buyer_reference character varying
+    buyer_reference character varying,
+    supplier_reference character varying
 );
 
 
@@ -3383,6 +3384,13 @@ CREATE INDEX index_accounting_invoices_on_entity_id ON public.accounting_invoice
 
 
 --
+-- Name: index_accounting_invoices_on_entity_partner_supplier_reference; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoices_on_entity_partner_supplier_reference ON public.accounting_invoices USING btree (entity_id, partner_id, supplier_reference) WHERE (supplier_reference IS NOT NULL);
+
+
+--
 -- Name: index_accounting_invoices_on_entity_ref_revision; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4748,6 +4756,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261001070000'),
 ('20261001060000'),
 ('20261001054757'),
 ('20260930000300'),

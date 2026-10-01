@@ -38,6 +38,7 @@ class Peppol::ReceiveInvoice
         due_date:        due_date.present? ? Date.parse(due_date) : nil,
         currency:        currency,
         external_ref:    invoice_number,
+        supplier_reference: invoice_number,
         order_reference: text_of(doc.at_xpath("//OrderReference/ID")),
         buyer_reference: text_of(doc.at_xpath("/*/BuyerReference")),
         subtotal_excl_vat: subtotal.present? ? BigDecimal(subtotal) : BigDecimal("0"),
@@ -60,8 +61,11 @@ class Peppol::ReceiveInvoice
     raise ArgumentError, "Missing required UBL fields" if values.any?(&:blank?)
   end
 
+  # By the supplier's number: external_ref may since have been taken over by a third party (an invoice received before
+  # supplier_reference existed still carries the number there).
   def self.already_received(partner, invoice_number)
-    Accounting::Invoice.supplier.where(partner: partner, external_ref: invoice_number).where.not(status: :cancelled).first
+    Accounting::Invoice.supplier.where(partner: partner).where.not(status: :cancelled)
+                       .where("supplier_reference = :n OR (supplier_reference IS NULL AND external_ref = :n)", n: invoice_number).first
   end
 
   def self.text_of(node) = node&.text.to_s.strip.presence
