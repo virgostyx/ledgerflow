@@ -45,6 +45,8 @@ class Accounting::Invoice < ApplicationRecord
 
   # Documents managed through the third-party API (keyed by external_ref + revision), as opposed to invoices typed in the UI.
   scope :external, -> { where.not(external_digest: nil) }
+  # A supplier invoice that arrived through Peppol (it keeps the UBL original), which a third party may take over.
+  scope :peppol_received, -> { supplier.invoice.joins(:ubl_document_attachment) }
 
   autofilter_column :invoice_number, sql: "accounting_invoices.invoice_number", type: :string, filter: false
   autofilter_column :journal,        sql: "accounting_journals.code", type: :string, left_joins: :journal

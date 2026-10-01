@@ -20,6 +20,8 @@ class Accounting::ExternalInvoice
 
   def self.upsert(payload) = new.upsert(payload.to_h.with_indifferent_access)
   def self.cancel(external_ref:, reason:) = new.cancel(external_ref, reason)
+  # What the draft looks like now (header, lines, analytical annotations): compared later to see whether anyone worked on it.
+  def self.state_digest(invoice) = new.state_digest(invoice)
 
   def upsert(payload)
     @external_ref = payload[:external_ref]
@@ -50,6 +52,16 @@ class Accounting::ExternalInvoice
     return failure(:unprocessable, reason: [ "is required" ]) if reason.blank?
 
     with_reason(reason) { cancel_current(current) }
+  end
+
+  # Header, lines and analytical annotations as they are in the database now.
+  def state_digest(invoice)
+    lines = invoice.lines.includes(:account, :analytical_annotations).map do |l|
+      [ l.account.code, l.description, l.quantity, l.unit_price, l.vat_rate,
+        l.analytical_annotations.map { |a| [ a.analytical_axis_id, a.analytical_account_id ] }.sort ]
+    end
+    header = invoice.slice(*ATTRIBUTES, :partner_id, :credited_invoice_id, :external_project_name, :external_budget_line, :supplier_reference)
+    Digest::SHA256.hexdigest(JSON.generate(canonical(header: header, lines: lines)))
   end
 
   private
@@ -150,15 +162,6 @@ class Accounting::ExternalInvoice
     Result.new(status: :ok, invoice: invoice)
   end
 
-  # Header, lines and analytical annotations as they are in the database now.
-  def state_digest(invoice)
-    lines = invoice.lines.includes(:account, :analytical_annotations).map do |l|
-      [ l.account.code, l.description, l.quantity, l.unit_price, l.vat_rate,
-        l.analytical_annotations.map { |a| [ a.analytical_axis_id, a.analytical_account_id ] }.sort ]
-    end
-    header = invoice.slice(*ATTRIBUTES, :partner_id, :credited_invoice_id, :external_project_name, :external_budget_line, :supplier_reference)
-    Digest::SHA256.hexdigest(JSON.generate(canonical(header: header, lines: lines)))
-  end
 
   # Validates and converts the payload; fills @errors. Amounts go through BigDecimal, never Float.
   def normalize(payload)
