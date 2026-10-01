@@ -18,7 +18,7 @@ class Accounting::BankAccount < ApplicationRecord
 
   validates :label_fr,   presence: true
   validates :iban,       presence: true, uniqueness: { scope: :entity_id }
-  validates :currency,   presence: true, inclusion: { in: %w[EUR] }
+  validates :currency,   presence: true, format: { with: /\A[A-Z]{3}\z/ }
   validates :journal_id, uniqueness: true, allow_nil: true
 
   validate :iban_format
@@ -37,7 +37,7 @@ class Accounting::BankAccount < ApplicationRecord
   private
 
   def iban_format
-    return if iban.blank?
+    return if iban.blank? || currency != "EUR" # foreign accounts hold a local account number in `iban`
     errors.add(:iban, :invalid) unless IBANTools::IBAN.valid?(iban)
   end
 

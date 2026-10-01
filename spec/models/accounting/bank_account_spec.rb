@@ -25,6 +25,18 @@ RSpec.describe Accounting::BankAccount, type: :model do
       expect(build(:bank_account, journal: bank_journal, iban: "BE71096123456769")).to be_valid
     end
 
+    it "accepts a non-EUR account with a local account number instead of an IBAN" do
+      expect(build(:bank_account, journal: bank_journal, currency: "USD", iban: "0012-345678")).to be_valid
+    end
+
+    it "still requires a valid IBAN for an EUR account" do
+      expect(build(:bank_account, journal: bank_journal, currency: "EUR", iban: "0012345678")).not_to be_valid
+    end
+
+    it "rejects a currency that is not a 3-letter ISO code" do
+      expect(build(:bank_account, journal: bank_journal, currency: "dollar")).not_to be_valid
+    end
+
     it "requires journal to be of type bank" do
       misc_journal = create(:journal)
       account = build(:bank_account, journal: misc_journal)

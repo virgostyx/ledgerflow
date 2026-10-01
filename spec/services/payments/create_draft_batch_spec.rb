@@ -45,6 +45,17 @@ RSpec.describe Payments::CreateDraftBatch do
       expect(Accounting::PaymentBatch.count).to eq(0)
     end
 
+    it 'refuses a non-EUR bank account as SEPA debtor' do
+      bank_account.update_columns(currency: 'USD')
+
+      result = described_class.call(
+        invoice_ids: [ invoice.id ], bank_account: bank_account, requested_execution_date: Date.current + 1
+      )
+
+      expect(result).to be_failure
+      expect(Accounting::PaymentBatch.count).to eq(0)
+    end
+
     it 'does not persist a batch when no invoices are given' do
       result = described_class.call(
         invoice_ids: [], bank_account: bank_account, requested_execution_date: Date.current + 1

@@ -55,13 +55,21 @@
         ) %>
   </div>
 
-  <div class="grid grid-cols-2 gap-5">
+  <div class="grid grid-cols-3 gap-5">
     <div class="relative" data-controller="floating-label">
       <%= f.text_field :iban,
             placeholder: " ",
             class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm font-mono text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500",
             data: { floating_label_target: "input", action: "focus->floating-label#focus blur->floating-label#blur" } %>
-      <%= f.label :iban, "IBAN", class: "lf-floating-label", data: { floating_label_target: "label" } %>
+      <%= f.label :iban, "IBAN / account number", class: "lf-floating-label", data: { floating_label_target: "label" } %>
+    </div>
+
+    <div class="relative" data-controller="floating-label">
+      <%= f.text_field :currency, value: "EUR", maxlength: 3,
+            placeholder: " ",
+            class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm font-mono uppercase text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500",
+            data: { floating_label_target: "input", action: "focus->floating-label#focus blur->floating-label#blur" } %>
+      <%= f.label :currency, "Currency (ISO code)", class: "lf-floating-label", data: { floating_label_target: "label" } %>
     </div>
 
     <div class="relative" data-controller="floating-label">

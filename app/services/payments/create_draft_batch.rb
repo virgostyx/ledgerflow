@@ -9,6 +9,7 @@ class Payments::CreateDraftBatch
         bank_account: bank_account,
         requested_execution_date: requested_execution_date
       ).reduce(
+        Payments::Actions::ValidateBatchBankAccount,
         Payments::Actions::ValidateBatchInvoices,
         Payments::Actions::CreatePaymentBatchRecord
       )

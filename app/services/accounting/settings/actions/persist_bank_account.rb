@@ -11,7 +11,7 @@ class Accounting::Settings::Actions::PersistBankAccount
       label_nl: p[:label_nl],
       iban:     p[:iban]&.upcase&.gsub(/\s+/, ""),
       bic:      p[:bic]&.upcase,
-      currency: p[:currency].presence || "EUR",
+      currency: p[:currency].presence&.upcase || "EUR",
       notes:    p[:notes],
       active:   true
     )
