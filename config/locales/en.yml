@@ -51,6 +51,7 @@ en:
 
     bank_reconciliation:
       imported:   "Statement imported: %{count} transaction(s) created."
+      manual_created: "Bank movement recorded."
       reconciled: "Transaction reconciled successfully."
       no_suggestion: "No suggestion available for this transaction."
       ignored: "Transaction ignored."

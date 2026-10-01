@@ -93,6 +93,39 @@ RSpec.describe 'Accounting::BankReconciliation', type: :request do
     end
   end
 
+  describe 'PATCH /accounting/bank_reconciliation — manual entry' do
+    let(:manual) do
+      { bank_account_id: bank_account.id, manual: '1', transaction_date: '2026-09-30', value_date: '2026-10-01',
+        amount: '-950,25', reference: 'SWIFT-123', description: 'Zambia supplier' }
+    end
+
+    it 'creates a pending transaction in the account currency' do
+      expect { patch accounting_bank_reconciliation_path, params: { bank_reconciliation: manual } }
+        .to change(Accounting::BankTransaction, :count).by(1)
+
+      tx = Accounting::BankTransaction.last
+      expect(tx).to be_pending
+      expect([ tx.amount, tx.currency, tx.reference, tx.value_date ])
+        .to eq([ BigDecimal('-950.25'), bank_account.currency, 'SWIFT-123', Date.new(2026, 10, 1) ])
+      expect(tx.raw_data).to include('manual' => true)
+    end
+
+    it 'rejects an invalid amount and a reference already used on the account' do
+      expect { patch accounting_bank_reconciliation_path, params: { bank_reconciliation: manual.merge(amount: 'abc') } }
+        .not_to change(Accounting::BankTransaction, :count)
+      create(:bank_transaction, bank_account: bank_account, reference: 'SWIFT-123')
+      expect { patch accounting_bank_reconciliation_path, params: { bank_reconciliation: manual } }
+        .not_to change(Accounting::BankTransaction, :count)
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'is refused to a manager' do
+      sign_in manager
+      expect { patch accounting_bank_reconciliation_path, params: { bank_reconciliation: manual } }
+        .not_to change(Accounting::BankTransaction, :count)
+    end
+  end
+
   describe 'PATCH /accounting/bank_reconciliation — lettrage échoué' do
     let!(:reconciled_tx) do
       create(:bank_transaction, bank_account: bank_account,

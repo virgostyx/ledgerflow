@@ -14,6 +14,8 @@ class Accounting::BankTransaction < ApplicationRecord
 
   validates :transaction_date, presence: true
   validates :amount,           presence: true
+  validates :reference,        uniqueness: { scope: :bank_account_id }, allow_nil: true
+  validate  :currency_matches_account
 
   scope :pending, -> { where(status: :pending) }
 
@@ -33,6 +35,11 @@ class Accounting::BankTransaction < ApplicationRecord
   end
 
   private
+
+  def currency_matches_account
+    return unless bank_account && currency.present? && currency != bank_account.currency
+    errors.add(:currency, "#{currency} does not match the account currency #{bank_account.currency}")
+  end
 
   def confirm_invoice_payments
     Accounting::InvoiceEvent.record_confirmations(self) if entity.budgetflow?

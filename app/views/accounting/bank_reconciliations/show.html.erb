@@ -27,6 +27,23 @@
     <%= submit_tag 'Import',
           class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
   <% end %>
+
+  <details class="mt-4">
+    <summary class="text-sm font-medium text-primary-600 cursor-pointer">Record a movement manually</summary>
+    <%= form_with url: accounting_bank_reconciliation_path, method: :patch, scope: :bank_reconciliation,
+                  class: 'flex flex-wrap gap-3 items-end mt-3' do |f| %>
+      <%= hidden_field_tag 'bank_reconciliation[manual]', '1' %>
+      <%= select_tag 'bank_reconciliation[bank_account_id]',
+            options_for_select(@bank_accounts.map { |a| ["#{a.label_fr} (#{a.currency})", a.id] }),
+            class: 'rounded-md border-gray-300 text-sm' %>
+      <%= date_field_tag 'bank_reconciliation[transaction_date]', Date.current, required: true, title: 'Booking date', class: 'rounded-md border-gray-300 text-sm' %>
+      <%= date_field_tag 'bank_reconciliation[value_date]', nil, title: 'Value date', class: 'rounded-md border-gray-300 text-sm' %>
+      <%= text_field_tag 'bank_reconciliation[amount]', nil, required: true, placeholder: 'Amount (− = outgoing)', class: 'rounded-md border-gray-300 text-sm' %>
+      <%= text_field_tag 'bank_reconciliation[reference]', nil, placeholder: 'Reference', class: 'rounded-md border-gray-300 text-sm' %>
+      <%= text_field_tag 'bank_reconciliation[description]', nil, placeholder: 'Description', class: 'rounded-md border-gray-300 text-sm' %>
+      <%= submit_tag 'Record', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
+    <% end %>
+  </details>
 </div>
 
 <%= render 'shared/filters', fields: [

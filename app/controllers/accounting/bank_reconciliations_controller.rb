@@ -27,6 +27,8 @@ class Accounting::BankReconciliationsController < ApplicationController
 
     if bank_params[:camt_file].present?
       handle_camt_import
+    elsif bank_params[:manual].present?
+      handle_manual_entry
     elsif bank_params[:ignore].present?
       handle_ignore
     elsif bank_params[:allocations].present?
@@ -51,6 +53,24 @@ class Accounting::BankReconciliationsController < ApplicationController
                             count: result[:imported_count])
     else
       redirect_to accounting_bank_reconciliation_path, alert: result.message
+    end
+  end
+
+  # A movement keyed in by hand (e.g. a foreign bank without CAMT statements); it then follows the usual reconciliation flow.
+  def handle_manual_entry
+    bank_account = Accounting::BankAccount.find(bank_params[:bank_account_id])
+    amount = BigDecimal(bank_params[:amount].to_s.strip.tr(",", ".").presence || "0", exception: false)
+    tx = bank_account.transactions.new(
+      transaction_date: bank_params[:transaction_date], value_date: bank_params[:value_date].presence,
+      amount: amount, currency: bank_account.currency, reference: bank_params[:reference].presence,
+      description: bank_params[:description], raw_data: { manual: true }
+    )
+
+    if amount&.finite? && amount.nonzero? && tx.save
+      redirect_to accounting_bank_reconciliation_path, notice: t("accounting.bank_reconciliation.manual_created")
+    else
+      message = tx.errors.full_messages.to_sentence.presence || t("accounting.bank_reconciliation.invalid_amount")
+      redirect_to accounting_bank_reconciliation_path, alert: message
     end
   end
 
