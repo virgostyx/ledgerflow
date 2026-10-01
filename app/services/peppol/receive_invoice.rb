@@ -47,7 +47,10 @@ class Peppol::ReceiveInvoice
         partner:         partner,
         fiscal_year:     fiscal_year,
         status:          :draft
-      ).tap { |created| keep_documents(created, xml, doc, invoice_number) }
+      ).tap do |created|
+        keep_documents(created, xml, doc, invoice_number)
+        announce(created)
+      end
     end
 
     LightService::Context.make(invoice: invoice)
@@ -66,6 +69,11 @@ class Peppol::ReceiveInvoice
   def self.already_received(partner, invoice_number)
     Accounting::Invoice.supplier.where(partner: partner).where.not(status: :cancelled)
                        .where("supplier_reference = :n OR (supplier_reference IS NULL AND external_ref = :n)", n: invoice_number).first
+  end
+
+  # An entity that uses BudgetFlow tells it about the invoice (credit notes are not handled there yet).
+  def self.announce(invoice)
+    Accounting::InvoiceEvent.record_received!(invoice) if ActsAsTenant.current_tenant&.budgetflow? && invoice.invoice?
   end
 
   def self.text_of(node) = node&.text.to_s.strip.presence
@@ -91,5 +99,5 @@ class Peppol::ReceiveInvoice
   end
 
   def self.file_name(name) = name.to_s.gsub(/[^\w.\-]+/, "_")
-  private_class_method :validate_required!, :already_received, :text_of, :keep_documents, :embedded_pdf, :file_name
+  private_class_method :validate_required!, :already_received, :announce, :text_of, :keep_documents, :embedded_pdf, :file_name
 end

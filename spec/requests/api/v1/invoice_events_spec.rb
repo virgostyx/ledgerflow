@@ -101,4 +101,30 @@ RSpec.describe 'Api::V1::InvoiceEvents', type: :request do
 
     expect(response).to have_http_status(:unauthorized)
   end
+
+  it 'carries the received event of a Peppol invoice, flattened like the others' do
+    create(:partner, :with_vat, partner_type: :supplier, name: 'Fournisseur SA') # BE0123456789
+    xml = <<~XML
+      <?xml version="1.0" encoding="UTF-8"?>
+      <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+               xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+               xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+        <cbc:ID>SUP-9</cbc:ID><cbc:IssueDate>2026-09-01</cbc:IssueDate><cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+        <cac:OrderReference><cbc:ID>PO-2026-014</cbc:ID></cac:OrderReference>
+        <cac:AccountingSupplierParty><cac:Party><cac:PartyName><cbc:Name>Fournisseur SA</cbc:Name></cac:PartyName>
+          <cac:PartyTaxScheme><cbc:CompanyID>BE0123456789</cbc:CompanyID></cac:PartyTaxScheme></cac:Party></cac:AccountingSupplierParty>
+        <cac:LegalMonetaryTotal><cbc:TaxExclusiveAmount currencyID="EUR">100.00</cbc:TaxExclusiveAmount>
+          <cbc:TaxInclusiveAmount currencyID="EUR">121.00</cbc:TaxInclusiveAmount></cac:LegalMonetaryTotal>
+        <cac:TaxTotal><cbc:TaxAmount currencyID="EUR">21.00</cbc:TaxAmount></cac:TaxTotal>
+      </Invoice>
+    XML
+    received = Peppol::ReceiveInvoice.call(xml: xml, fiscal_year: fiscal_year)[:invoice]
+    travel 6.seconds
+
+    feed
+
+    expect(json['events'].map { |e| e['type'] }).to eq(%w[received])
+    expect(json['events'].first).to include('lf_id' => received.id, 'supplier_reference' => 'SUP-9', 'order_reference' => 'PO-2026-014',
+                                            'total_incl_vat' => '121.0', 'has_pdf' => false)
+  end
 end

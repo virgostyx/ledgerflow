@@ -6,7 +6,8 @@ class Accounting::InvoiceEvent < ApplicationRecord
   # posted: the accountant (or the API) booked it. paid / partially_paid / payment_confirmed carry the settlement (value date,
   # bank reference, amounts). payment_confirmed: the bank debit of a payment already made (a SEPA batch) is now reconciled.
   # returned: the accountant sent a draft back to the project manager.
-  EVENT_TYPES = %w[posted paid partially_paid payment_confirmed payment_reopened returned].freeze
+  # received: a Peppol invoice has just arrived, for the third party to take over (see Peppol::ReceiveInvoice).
+  EVENT_TYPES = %w[received posted paid partially_paid payment_confirmed payment_reopened returned].freeze
   SETTLEMENT_EVENTS = %w[paid partially_paid payment_confirmed].freeze
   # The feed only shows events older than this: a transaction still open could commit an event with a lower id after
   # a reader has moved its cursor past it. ponytail: assumes transactions shorter than this.
@@ -26,6 +27,20 @@ class Accounting::InvoiceEvent < ApplicationRecord
     payload[:reason] = reason if reason
     payload.merge!(Accounting::InvoiceSettlement.call(invoice).to_payload) if SETTLEMENT_EVENTS.include?(event_type)
     create!(invoice: invoice, entity_id: invoice.entity_id, event_type: event_type, occurred_at: Time.current, payload: payload)
+  end
+
+  # What the project manager needs to recognise a received invoice and take it: who, how much, which order it answers.
+  def self.record_received!(invoice)
+    partner = invoice.partner
+    payload = {
+      lf_id: invoice.id, supplier_reference: invoice.supplier_reference,
+      supplier: { name: partner.name, vat_number: partner.vat_number },
+      invoice_date: invoice.invoice_date&.iso8601, due_date: invoice.due_date&.iso8601, currency: invoice.currency,
+      amount_excl_vat: invoice.subtotal_excl_vat.to_s("F"), vat_amount: invoice.vat_amount.to_s("F"),
+      total_incl_vat: invoice.total_incl_vat.to_s("F"), order_reference: invoice.order_reference,
+      buyer_reference: invoice.buyer_reference, has_pdf: invoice.pdf_document.attached?
+    }
+    create!(invoice: invoice, entity_id: invoice.entity_id, event_type: "received", occurred_at: Time.current, payload: payload)
   end
 
   # A bank debit has just been reconciled with an entry: for every paid API invoice that entry settles (a payment batch, or
