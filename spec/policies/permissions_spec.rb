@@ -26,6 +26,8 @@ RSpec.describe Permissions do
     "closing.adjust"         => [ [ Accounting::FiscalYearPolicy, :propose_revaluation? ], [ Accounting::AccrualPolicy, :index? ], [ Accounting::ConsistencyRunPolicy, :acknowledge? ] ],
     "fiscal_years.manage"    => [ [ Accounting::FiscalYearPolicy, :close? ], [ Accounting::FiscalYearPolicy, :create? ], [ Accounting::FiscalYearPolicy, :update? ] ],
     "reports.view"           => [ [ Accounting::ReportPolicy, :trial_balance? ] ],
+    "reports.export"         => [ [ Accounting::ReportPolicy, :export? ] ],
+    "reports.export_readonly" => [ [ Accounting::ReportPolicy, :export_readonly? ] ],
     "audit.view"             => [ [ Accounting::AuditLogPolicy, :index? ], [ Accounting::ClosingBundlePolicy, :show? ], [ Accounting::ConsistencyRunPolicy, :index? ] ]
   }.freeze
 

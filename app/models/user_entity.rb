@@ -4,7 +4,13 @@ class UserEntity < ApplicationRecord
   belongs_to :user
   belongs_to :entity
 
-  enum :role, { admin: 0, accountant: 1, manager: 2, auditor: 3 }
+  enum :role, { admin: 0, accountant: 1, manager: 2, auditor: 3, assistant: 4 }
+
+  # What each role is called on screen (the stored names predate the five roles of docs/dev/features/spec.md §4).
+  LABELS = { "admin" => "Owner", "accountant" => "Accountant", "assistant" => "Assistant", "manager" => "Reader", "auditor" => "External auditor" }.freeze
+
+  def self.label_for(role) = LABELS.fetch(role.to_s)
+  def self.options_for_select = roles.keys.map { |role| [ label_for(role), role ] }
 
   validates :role, presence: true
   validates :user_id, uniqueness: { scope: :entity_id, message: :taken }

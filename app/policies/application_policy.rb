@@ -38,4 +38,7 @@ class ApplicationPolicy
   end
 
   def can?(permission) = Permissions.allowed?(membership&.role, permission)
+
+  # Exporting: always for the roles that write, and for the read-only roles only when the entity allows it.
+  def can_export? = can?("reports.export") || (can?("reports.export_readonly") && current_entity&.read_only_export? == true)
 end

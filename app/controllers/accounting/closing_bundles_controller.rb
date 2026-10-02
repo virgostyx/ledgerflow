@@ -10,7 +10,7 @@ class Accounting::ClosingBundlesController < ApplicationController
 
   def bundle
     authorize :closing_bundle, :bundle?, policy_class: Accounting::ClosingBundlePolicy
-    result = Accounting::ClosingBundle.call(fiscal_year: @fiscal_year)
+    result = Accounting::ClosingBundle.call(fiscal_year: @fiscal_year, watermark: export_watermark)
     audit("closing_bundle", files: result.manifest[:files].size)
     send_data result.zip, filename: "closing_bundle_#{@fiscal_year.year}.zip", type: "application/zip"
   end

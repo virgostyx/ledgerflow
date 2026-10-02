@@ -1966,7 +1966,9 @@ CREATE TABLE public.entities (
     peppol_webhook_token character varying,
     budgetflow_enabled boolean DEFAULT false NOT NULL,
     four_eyes boolean DEFAULT false NOT NULL,
-    four_eyes_threshold numeric(15,2)
+    four_eyes_threshold numeric(15,2),
+    features jsonb DEFAULT '{}'::jsonb NOT NULL,
+    read_only_export boolean DEFAULT false NOT NULL
 );
 
 
@@ -5051,6 +5053,8 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002140000'),
+('20261002130000'),
 ('20261002120000'),
 ('20261002110000'),
 ('20261002100000'),

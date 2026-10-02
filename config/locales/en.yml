@@ -17,6 +17,7 @@ en:
 
   errors:
     not_authorized: "You are not authorized to perform this action."
+    feature_off: "This feature is not enabled for this entity."
 
   entities:
     create_first_entity: "Please create your first entity to get started."

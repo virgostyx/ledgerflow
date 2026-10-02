@@ -27,10 +27,33 @@ class Entity < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
+  # The features of docs/dev/features/spec.md that are built, each shipped behind a per-entity flag. A function adds its
+  # key here when it ships.
+  FEATURES = %w[f01].freeze
+
+  validate :features_are_known
+
+  # A flag is off unless the owner turned it on. Asking about a feature that does not exist is a bug, not a "no".
+  def feature?(name)
+    raise ArgumentError, "unknown feature #{name.inspect}" unless FEATURES.include?(name.to_s)
+
+    features[name.to_s] == true
+  end
+
+  # Form values ("1"/"0") become booleans; flags that are not sent keep their value.
+  def features=(value)
+    super(features.merge(value.to_h.stringify_keys.transform_values { |v| ActiveModel::Type::Boolean.new.cast(v) }))
+  end
+
   # Declared by the entity: turns on everything BudgetFlow-related (API clients, invoice queue, payment feed).
   def budgetflow? = budgetflow_enabled?
 
   private
+
+  def features_are_known
+    unknown = features.keys - FEATURES
+    errors.add(:features, "unknown: #{unknown.join(', ')}") if unknown.any?
+  end
 
   def peppol_participant_id_format
     errors.add(:peppol_participant_id, :invalid) unless peppol_participant_id.nil? || Peppol::ParticipantId.valid?(peppol_participant_id)

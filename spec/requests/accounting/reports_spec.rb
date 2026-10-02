@@ -315,10 +315,9 @@ RSpec.describe "Accounting::Reports", type: :request do
       expect(html.scan("Old Credit Co").size).to eq(1) # main table only
     end
 
-    it "redirects a user without report access" do
+    it "redirects a user without report access (no access to the entity)" do
       sign_out accountant
       budget_user = create(:user, role: :budget_user)
-      create(:user_entity, :auditor, user: budget_user, entity: entity)
       sign_in budget_user
 
       get accounting_reports_aged_balance_path

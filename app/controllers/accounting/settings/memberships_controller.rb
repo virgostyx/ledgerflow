@@ -1,5 +1,6 @@
 # F01: who has access to this entity and with which role, expiry date or deactivation. Owners only.
 class Accounting::Settings::MembershipsController < Accounting::Settings::BaseController
+  before_action { require_feature!(:f01) }
   before_action { authorize UserEntity }
 
   def index

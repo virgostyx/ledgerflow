@@ -225,4 +225,34 @@ RSpec.describe Entity, type: :model do
       end
     end
   end
+
+  describe 'feature flags (F01)' do
+    it 'starts with every feature off' do
+      expect(Entity.new.features).to eq({})
+      expect(Entity.new.feature?(:f01)).to be false
+    end
+
+    it 'tells whether a feature is on, by symbol or by string' do
+      entity = build(:entity, features: { 'f01' => true })
+
+      expect(entity.feature?(:f01)).to be true
+      expect(entity.feature?('f01')).to be true
+    end
+
+    it 'turns a checkbox value into a boolean and keeps the other flags' do
+      entity = build(:entity, features: { 'f01' => true })
+
+      entity.features = { 'f01' => '0' }
+
+      expect(entity.features).to eq('f01' => false)
+    end
+
+    it 'refuses a feature that does not exist' do
+      expect(build(:entity, features: { 'f99' => true })).not_to be_valid
+    end
+
+    it 'refuses to ask about a feature that does not exist, instead of answering no' do
+      expect { Entity.new.feature?(:f99) }.to raise_error(ArgumentError)
+    end
+  end
 end

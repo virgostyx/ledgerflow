@@ -1,4 +1,7 @@
 class Accounting::ReportPolicy < ApplicationPolicy
+  def export? = can_export?
+  def export_readonly? = can?("reports.export_readonly")
+
   def trial_balance?    = can?("reports.view")
   def balance_sheet?    = trial_balance?
   def income_statement? = trial_balance?

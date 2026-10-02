@@ -9,7 +9,8 @@ class Accounting::ClosingBundle
     def valid? = mismatches.empty? && missing.empty?
   end
 
-  def self.call(fiscal_year:) = new(fiscal_year).call
+  # `watermark`: the name stamped on every PDF of the bundle (the external auditor's, F01).
+  def self.call(fiscal_year:, watermark: nil) = new(fiscal_year, watermark).call
 
   # Recomputes each file's hash against the manifest inside the ZIP.
   def self.verify(zip_data)
@@ -21,8 +22,9 @@ class Accounting::ClosingBundle
     Verification.new(checked: listed.size, mismatches: mismatches - missing, missing: missing)
   end
 
-  def initialize(fiscal_year)
+  def initialize(fiscal_year, watermark = nil)
     @fiscal_year = fiscal_year
+    @watermark = watermark
     @end = fiscal_year.end_date
   end
 
@@ -44,7 +46,7 @@ class Accounting::ClosingBundle
 
   def pdf(title, headers, rows)
     columns = headers.each_with_index.map { |h, i| [ h, ->(r) { r[i] } ] }
-    Reports::Exporters::Pdf.call(Reports::Result.new(rows: rows), columns: columns, title: "#{title} — #{@fiscal_year.year}")
+    Reports::Exporters::Pdf.call(Reports::Result.new(rows: rows), columns: columns, title: "#{title} — #{@fiscal_year.year}", watermark: @watermark)
   end
 
   def trial_balance

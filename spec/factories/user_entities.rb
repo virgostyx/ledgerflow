@@ -9,5 +9,6 @@ FactoryBot.define do
     trait :accountant do role { :accountant } end
     trait :manager    do role { :manager }    end
     trait :auditor    do role { :auditor }    end
+    trait :assistant  do role { :assistant }  end
   end
 end

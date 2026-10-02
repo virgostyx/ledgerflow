@@ -14,7 +14,7 @@ class ApplicationController < ActionController::Base
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
-  helper_method :filter_params, :filters_active?, :autofilter_params, :budgetflow_enabled?
+  helper_method :filter_params, :filters_active?, :autofilter_params, :budgetflow_enabled?, :feature?
 
   private
 
@@ -50,6 +50,22 @@ class ApplicationController < ActionController::Base
 
   # Whether the current entity declared the BudgetFlow integration; everything BudgetFlow-related hangs on it.
   def budgetflow_enabled? = ActsAsTenant.current_tenant&.budgetflow? || false
+
+  # Whether a feature (docs/dev/features/spec.md) is turned on for the current entity.
+  def feature?(name) = ActsAsTenant.current_tenant&.feature?(name) || false
+
+  # The name stamped on the PDFs an external auditor downloads (F01); nil for every other role.
+  def export_watermark
+    membership = UserEntity.current.find_by(user: current_user, entity: ActsAsTenant.current_tenant)
+    current_user.full_name if membership&.auditor?
+  end
+
+  # A screen of a feature that is off is closed, not hidden by chance: the guard is on the server.
+  def require_feature!(name)
+    return if feature?(name)
+
+    redirect_to accounting_root_path, alert: t("errors.feature_off")
+  end
 
   def set_current_entity
     return unless current_user

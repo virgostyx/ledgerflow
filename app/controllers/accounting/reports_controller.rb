@@ -1,5 +1,7 @@
 class Accounting::ReportsController < ApplicationController
   before_action :set_fiscal_year
+  # Downloads (CSV, Excel, PDF) are exports: the read-only roles get them only when the entity allows it (F01).
+  before_action(if: -> { %i[csv xlsx pdf].include?(request.format.symbol) }) { authorize :report, :export?, policy_class: Accounting::ReportPolicy }
 
   # R01 (docs/dev/reports/spec.md §5): ouverture/mouvements/clôture, comparatif N-1,
   # drill-down vers le grand livre, exports via le socle Reports::* (§2.1/§14).
@@ -19,7 +21,7 @@ class Accounting::ReportsController < ApplicationController
       format.xlsx { send_data Reports::Exporters::Xlsx.call(@result, columns: trial_balance_export_columns, title: "Trial balance"),
                               filename: "balance_#{@fiscal_year.year}.xlsx",
                               type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
-      format.pdf  { send_data Reports::Exporters::Pdf.call(@result, columns: trial_balance_export_columns, title: "Trial balance"),
+      format.pdf  { send_data Reports::Exporters::Pdf.call(@result, columns: trial_balance_export_columns, title: "Trial balance", watermark: export_watermark),
                               filename: "balance_#{@fiscal_year.year}.pdf", type: "application/pdf" }
     end
   rescue ArgumentError

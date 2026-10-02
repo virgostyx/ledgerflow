@@ -7,7 +7,7 @@ class Accounting::JournalEntriesController < ApplicationController
 
   def show
     authorize @entry
-    @period_lock = Accounting::PeriodLock.covering(@entry.entry_date).first
+    @period_lock = Accounting::PeriodLock.covering(@entry.entry_date).first if feature?(:f01)
   end
 
   def new
@@ -26,6 +26,12 @@ class Accounting::JournalEntriesController < ApplicationController
     saved = ApplicationRecord.transaction do
       ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
       @entry.save
+    end
+
+    if saved && !policy(@entry).post?
+      # Whoever may only draft (an assistant) never validates: the entry waits for someone who may.
+      redirect_to accounting_journal_entry_path(@entry), notice: t("accounting.journal_entries.created")
+      return
     end
 
     if saved && @entry.four_eyes_blocks?(current_user)

@@ -11,10 +11,10 @@ RSpec.describe "Policies use the role held in the current entity" do
     [ Accounting::InvoicePolicy,          :invoice,  :post?,                 %i[admin accountant] ],
     [ Accounting::InvoicePolicy,          :invoice,  :send_peppol?,          %i[admin accountant] ],
     [ Accounting::FiscalYearPolicy,       :year,     :close?,                %i[admin] ],
-    [ Accounting::ReportPolicy,           :report,   :trial_balance?,        %i[admin accountant manager] ],
+    [ Accounting::ReportPolicy,           :report,   :trial_balance?,        %i[admin accountant assistant manager auditor] ],
     [ Accounting::Settings::BasePolicy,   :settings, :index?,                %i[admin accountant] ],
     [ Accounting::Settings::BasePolicy,   :settings, :destroy?,              %i[admin] ],
-    [ Accounting::BankReconciliationsPolicy, :bank,  :update?,               %i[admin accountant] ]
+    [ Accounting::BankReconciliationsPolicy, :bank,  :update?,               %i[admin accountant assistant] ]
   ].freeze
 
   def user_with(global_role:, entity_role: nil)
@@ -25,7 +25,7 @@ RSpec.describe "Policies use the role held in the current entity" do
 
   CASES.each do |policy, record, action, allowed|
     describe "#{policy}##{action}" do
-      %i[admin accountant manager auditor].each do |entity_role|
+      UserEntity.roles.keys.map(&:to_sym).each do |entity_role|
         it "#{allowed.include?(entity_role) ? 'allows' : 'denies'} a #{entity_role} of the entity, whatever the global role" do
           # the global role is the opposite of what the entity role should yield
           global = allowed.include?(entity_role) ? :auditor : :admin

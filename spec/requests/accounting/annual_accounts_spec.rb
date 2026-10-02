@@ -84,10 +84,16 @@ RSpec.describe "Accounting::Reports annual accounts", type: :request do
     expect(response.body).to include("M1", "M12", "Cumulative")
   end
 
-  it "is refused to an auditor, like the other financial reports" do
+  it "is open to an external auditor, like the other reports (F01 capability table: everyone consults the reports)" do
     sign_in auditor
     get accounting_reports_annual_accounts_path
+    expect(response).to have_http_status(:ok)
+  end
+
+  it "is closed to someone with no access to the entity" do
+    sign_out accountant
+    sign_in create(:user, role: :budget_user)
+    get accounting_reports_annual_accounts_path
     expect(response).to have_http_status(:redirect)
-    expect(response.body).not_to include("TOTAL ASSETS")
   end
 end

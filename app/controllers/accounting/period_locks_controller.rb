@@ -1,6 +1,8 @@
 # F01: the periods whose entries can no longer be posted. Locking is for accountants and owners, unlocking
 # (with a mandatory reason, announced to the owners) for owners only.
 class Accounting::PeriodLocksController < ApplicationController
+  before_action { require_feature!(:f01) }
+
   def index
     authorize Accounting::PeriodLock
     @locks = Accounting::PeriodLock.includes(:locked_by, :unlocked_by).order(starts_on: :desc, id: :desc)

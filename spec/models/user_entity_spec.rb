@@ -22,7 +22,7 @@ RSpec.describe UserEntity, type: :model do
 
   describe 'enums' do
     it { should define_enum_for(:role)
-           .with_values(admin: 0, accountant: 1, manager: 2, auditor: 3) }
+           .with_values(admin: 0, accountant: 1, manager: 2, auditor: 3, assistant: 4) }
   end
 
   describe 'scopes' do

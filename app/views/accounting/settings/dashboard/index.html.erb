@@ -128,7 +128,7 @@
     <% end %>
 
 
-    <% if policy(UserEntity).index? %>
+    <% if feature?(:f01) && policy(UserEntity).index? %>
       <%= link_to accounting_settings_memberships_path,
             class: "group flex items-start gap-4 p-5 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all" do %>
         <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">

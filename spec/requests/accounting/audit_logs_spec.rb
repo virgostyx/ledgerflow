@@ -82,12 +82,15 @@ RSpec.describe "Accounting::AuditLogs", type: :request do
       expect(response.body).to include("Chain broken at entry ##{victim.id}")
     end
 
-    it "is open to auditors and managers" do
-      [ auditor, manager ].each do |user|
-        sign_in user
-        get accounting_audit_logs_path
-        expect(response).to have_http_status(:ok)
-      end
+    it "is open to the external auditor, and closed to the reader (F01 capability table)" do
+      sign_in auditor
+      get accounting_audit_logs_path
+      expect(response).to have_http_status(:ok)
+
+      sign_out auditor
+      sign_in manager
+      get accounting_audit_logs_path
+      expect(response).to have_http_status(:redirect)
     end
   end
 
