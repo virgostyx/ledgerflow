@@ -35,4 +35,10 @@ Décisions prises par prudence pendant l'implémentation (règle du §17.1 de `d
 - **Service de fichiers par l'application** plutôt que par des adresses signées d'Active Storage : plus simple à rendre étanche par société et par droit. Les « liens signés à durée limitée » dont parle la spec (réponse d'un tiers, F08) restent à construire.
 - **Chiffrement au repos / S3 / sauvegarde** : le volume `ledgerflow_storage` doit être sauvegardé et chiffré par l'hébergement ; rien dans le code ne chiffre les fichiers.
 - **Dépendances système** pour l'extraction à venir : `tesseract-ocr` (avec les langues fr, nl, en) et `poppler-utils` (`pdftotext`, `pdftoppm`) dans l'image Docker.
+- **Extraction : propositions seulement.** Rien lu d'un document n'est appliqué sans confirmation. Le brouillon de facture utilise la valeur confirmée, à défaut la valeur proposée (l'audit liste les champs qui n'étaient que proposés). **À valider** : faut-il exiger que les champs essentiels (numéro, date, total) soient confirmés avant de créer le brouillon ?
+- **Brouillon sans ligne.** Le brouillon ne reçoit aucune ligne (pas de compte deviné, pas de TVA devinée) ; seuls les montants de référence de l'en-tête sont préremplis. Les factures saisies dans l'interface ne bloquent pas une ligne sur un compte d'attente à la validation (seules les factures de l'API le font), d'où ce choix.
+- **Doublon probable** : même fournisseur + même numéro de facture, hors factures annulées. La spec cite aussi « même montant » : non exigé ici (un numéro réutilisé avec un autre montant reste un doublon à examiner). Contournable avec un motif, audité.
+- **OCR** : seuil de confiance de 60 (moyenne des mots) en dessous duquel rien n'est gardé ; langues fra, nld, eng quand elles sont installées. Seuil et langues à régler à l'usage sur de vrais scans.
+- **Devise du brouillon** : EUR, ou la devise lue si son taux est connu dans la table des taux de la société ; jamais de taux deviné.
+- **Résultats de lecture sur un document figé** : écrits (données dérivées) même si le document est lié à une écriture validée ; le fichier et ses détails restent figés, la confirmation d'un champ est refusée.
 

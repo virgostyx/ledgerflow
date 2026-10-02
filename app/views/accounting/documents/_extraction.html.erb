@@ -1,0 +1,68 @@
+<%# What was read from the document (F03): proposals, never data until a person confirms them. %>
+<% extraction = document.extracted_data["extraction"] || {} %>
+<% status = extraction["status"] %>
+<section class="rounded-lg border border-gray-200 bg-white p-4" id="extraction">
+  <div class="mb-2 flex items-center justify-between gap-2">
+    <h2 class="text-sm font-semibold text-gray-900">Proposed fields</h2>
+    <% if policy(document).rerun? && status.present? && status != "not_applicable" %>
+      <%= button_to "Read again", rerun_accounting_document_path(document), method: :post, class: "text-xs font-medium text-primary-700 hover:underline" %>
+    <% end %>
+  </div>
+
+  <p class="mb-3 text-sm text-gray-600">
+    <% confidence = extraction["confidence"] ? " (confidence #{extraction['confidence']} %)" : "" %>
+    <% if status == "pending" %>Reading in progress…
+    <% elsif status == "done" %>Read from <%= t("documents.extraction.methods.#{extraction['method']}", default: extraction["method"].to_s) %><%= confidence %>. These are proposals: check each one and confirm it.
+    <% elsif status == "unreadable" %>This document cannot be read (protected or damaged): nothing was extracted.
+    <% elsif status == "low_confidence" %>The scan was not sure enough to be trusted<%= confidence %>: nothing was extracted.
+    <% elsif status == "not_applicable" %>Nothing to read in this type of file.
+    <% elsif status == "failed" %>Reading failed: <%= extraction["error"] %>. It is tried again up to three times; you can also read it again.
+    <% else %>Not read yet.
+    <% end %>
+  </p>
+
+  <% fields = extraction["fields"] || {} %>
+  <% if fields.any? %>
+    <% order = %w[supplier_name supplier_vat invoice_number invoice_date due_date subtotal vat_amount total currency iban structured_communication document_type] %>
+    <% confirmers = User.where(id: fields.values.filter_map { |f| f["confirmed_by"] }).index_by(&:id) %>
+    <% can_confirm = policy(document).confirm_field? && !document.locked? %>
+    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+        <tr><th class="py-2 pr-3">Field</th><th class="pr-3">Value</th><th class="pr-3">Read from</th><th></th></tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 align-top">
+        <% fields.except("supplier_partner_id").sort_by { |name, _| order.index(name) || order.size }.each do |name, field| %>
+          <% form_id = "field-form-#{name}" %>
+          <tr>
+            <td class="py-2 pr-3 font-medium text-gray-900"><%= t("documents.fields.#{name}", default: name.humanize) %></td>
+            <td class="pr-3">
+              <% if can_confirm && Accounting::ConfirmDocumentField::FIELDS.include?(name) %>
+                <%= text_field_tag :value, field["value"], form: form_id, id: "value_#{name}", class: "w-44 rounded-md border border-gray-300 px-2 py-1 text-sm font-mono" %>
+              <% else %>
+                <span class="font-mono"><%= field["value"] %></span>
+              <% end %>
+            </td>
+            <td class="pr-3 text-xs text-gray-500">
+              <% if field["snippet"].present? %><span class="block"><%= field["snippet"] %></span><% end %>
+              <% if field["page"] %>page <%= field["page"] %><% end %>
+            </td>
+            <td>
+              <% if field["confirmed"] %>
+                <span class="text-xs text-emerald-700">Confirmed by <%= confirmers[field["confirmed_by"]]&.full_name || "someone" %></span>
+              <% else %>
+                <span class="block text-xs text-gray-600">To confirm</span>
+                <% if field["confidence"] == "low" %><span class="block text-xs font-medium text-amber-700">Check this one</span><% end %>
+              <% end %>
+              <% if can_confirm && Accounting::ConfirmDocumentField::FIELDS.include?(name) %>
+                <%= form_with url: confirm_field_accounting_document_path(document), method: :post, id: form_id do %>
+                  <%= hidden_field_tag :field, name, id: nil %>
+                  <%= submit_tag field["confirmed"] ? "Update" : "Confirm", class: "mt-1 text-xs font-medium text-primary-700 hover:underline cursor-pointer" %>
+                <% end %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table></div>
+  <% end %>
+</section>

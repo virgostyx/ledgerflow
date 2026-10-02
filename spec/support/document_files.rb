@@ -47,6 +47,51 @@ module DocumentFiles
     XML
   end
 
+  # A real UBL BIS Billing 3.0 invoice: supplier, dates, payment means (IBAN, structured communication) and totals.
+  def sample_full_ubl(number: "UBL-2026-9", vat: "BE0123456749", iban: "BE68539007547034", communication: nil, root: "Invoice")
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8"?>
+      <#{root} xmlns="urn:oasis:names:specification:ubl:schema:xsd:#{root}-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+        <cbc:ID>#{number}</cbc:ID>
+        <cbc:IssueDate>2026-03-12</cbc:IssueDate>
+        <cbc:DueDate>2026-04-11</cbc:DueDate>
+        <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+        <cac:AccountingSupplierParty><cac:Party>
+          <cac:PartyName><cbc:Name>ACME Consulting</cbc:Name></cac:PartyName>
+          <cac:PartyTaxScheme><cbc:CompanyID>#{vat}</cbc:CompanyID></cac:PartyTaxScheme>
+        </cac:Party></cac:AccountingSupplierParty>
+        <cac:PaymentMeans>
+          <cbc:PaymentMeansCode>30</cbc:PaymentMeansCode>
+          #{communication ? "<cbc:PaymentID>#{communication}</cbc:PaymentID>" : ""}
+          <cac:PayeeFinancialAccount><cbc:ID>#{iban}</cbc:ID></cac:PayeeFinancialAccount>
+        </cac:PaymentMeans>
+        <cac:TaxTotal><cbc:TaxAmount currencyID="EUR">210.00</cbc:TaxAmount></cac:TaxTotal>
+        <cac:LegalMonetaryTotal>
+          <cbc:TaxExclusiveAmount currencyID="EUR">1000.00</cbc:TaxExclusiveAmount>
+          <cbc:TaxInclusiveAmount currencyID="EUR">1210.00</cbc:TaxInclusiveAmount>
+          <cbc:PayableAmount currencyID="EUR">1210.00</cbc:PayableAmount>
+        </cac:LegalMonetaryTotal>
+      </#{root}>
+    XML
+  end
+
+  def ocr_tools_available? = %w[tesseract pdftoppm].all? { |tool| system("which", tool, out: File::NULL, err: File::NULL) }
+
+  # A scan: the pages of a PDF turned into pictures (poppler), so there is no text layer left.
+  def render_pdf_to_png(pdf_bytes, resolution: 150)
+    Dir.mktmpdir do |dir|
+      File.binwrite(File.join(dir, "in.pdf"), pdf_bytes)
+      system("pdftoppm", "-png", "-r", resolution.to_s, "-f", "1", "-l", "1", File.join(dir, "in.pdf"), File.join(dir, "page"), exception: true)
+      File.binread(Dir[File.join(dir, "page*.png")].min)
+    end
+  end
+
+  # A PDF that holds only a picture: no text layer, what a scanner produces.
+  def sample_scanned_pdf(text)
+    png = render_pdf_to_png(Prawn::Document.new { |pdf| pdf.text text, size: 28 }.render)
+    Prawn::Document.new { |pdf| pdf.image StringIO.new(png), fit: [ 500, 700 ] }.render
+  end
+
   def sample_exe = "MZ\x90\x00\x03\x00\x00\x00".b + ("\x00" * 200)
 
   def upload_io(content, filename) = { io: StringIO.new(content), filename: filename }

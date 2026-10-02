@@ -37,6 +37,21 @@
   </div>
 
   <div class="space-y-6">
+    <% if policy(@document).create_invoice? && !@document.archived? %>
+      <% proposed = @document.extracted_data.dig("extraction", "fields", "supplier_partner_id") %>
+      <section class="rounded-lg border border-gray-200 bg-white p-4">
+        <h2 class="mb-2 text-sm font-semibold text-gray-900">Create a draft invoice</h2>
+        <p class="mb-2 text-xs text-gray-500">A draft purchase invoice with what was read here. Nothing is posted and no line is invented: you add the lines and their accounts.</p>
+        <%= form_with url: create_invoice_accounting_document_path(@document), method: :post, class: "space-y-2" do %>
+          <%= select_tag :partner_id, options_from_collection_for_select(Accounting::Partner.where(partner_type: %i[supplier both]).order(:name), :id, :name, proposed&.dig("value")),
+                include_blank: "Choose the supplier", class: "w-full rounded-md border border-gray-300 px-2 py-1 text-sm" %>
+          <details class="text-xs text-gray-600"><summary class="cursor-pointer">Already entered? Create another anyway</summary>
+            <%= text_field_tag :override_reason, nil, placeholder: "Reason (needed if the invoice number already exists)", class: "mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm" %>
+          </details>
+          <%= submit_tag "Create the draft", class: "btn-primary text-sm" %>
+        <% end %>
+      </section>
+    <% end %>
     <section class="rounded-lg border border-gray-200 bg-white p-4">
       <h2 class="mb-2 text-sm font-semibold text-gray-900">Linked to</h2>
       <% if @links.empty? %>
@@ -85,3 +100,5 @@
     </section>
   </div>
 </div>
+
+<div class="mt-6"><%= render "accounting/documents/extraction", document: @document %></div>

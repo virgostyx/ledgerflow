@@ -94,6 +94,9 @@ Rails.application.routes.draw do
           get  :file
           get  :download
           post :archive
+          post :confirm_field
+          post :rerun
+          post :create_invoice
         end
       end
       resources :document_links, only: %i[create destroy]

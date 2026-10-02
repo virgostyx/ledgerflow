@@ -40,6 +40,8 @@ class Accounting::UploadDocument
   private
 
   def store(type, sha256, extracted)
+    status = extraction_status(type, extracted)
+    extracted["extraction"] = { "status" => status }
     document = Accounting::Document.new(name: @filename, content_type: TYPES.fetch(type), byte_size: @bytes.bytesize, sha256: sha256,
                                         origin: @origin, kind: @kind || :other, uploaded_by: @user, extracted_data: extracted)
     document.file.attach(io: StringIO.new(@bytes), filename: storage_filename, content_type: TYPES.fetch(type))
@@ -48,7 +50,16 @@ class Accounting::UploadDocument
       Accounting::AuditLog.record!(auditable: document, action: "document_upload", user: @user,
                                    payload: { name: document.name, sha256: sha256, byte_size: document.byte_size, content_type: document.content_type, origin: @origin.to_s })
     end
+    Accounting::ExtractDocumentJob.perform_later(document.id, document.entity_id) if status == "pending"
     LightService::Context.make(document: document)
+  end
+
+  # What is read later by the job ("pending"), what cannot be read, and what has nothing to read.
+  def extraction_status(type, extracted)
+    if extracted["unreadable"] then "unreadable"
+    elsif %i[pdf png jpeg tiff xml].include?(type) then "pending"
+    else "not_applicable"
+    end
   end
 
   def refuse(reason, **extra)

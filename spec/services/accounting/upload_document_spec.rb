@@ -144,6 +144,33 @@ RSpec.describe Accounting::UploadDocument do
     end
   end
 
+  describe "reading it afterwards" do
+    def extraction_status(result) = result[:document].extracted_data.dig("extraction", "status")
+
+    it "marks a PDF, a picture or an XML as pending, and queues the reading" do
+      [ [ sample_pdf("p"), "a.pdf" ], [ sample_png, "a.png" ], [ sample_ubl, "a.xml" ] ].each do |content, name|
+        result = nil
+        expect { result = upload(content, name) }.to have_enqueued_job(Accounting::ExtractDocumentJob).with(a_kind_of(Integer), entity.id)
+        expect(extraction_status(result)).to eq("pending")
+      end
+    end
+
+    it "has nothing to read in a spreadsheet or a CSV, and queues nothing" do
+      expect { upload(sample_csv, "a.csv") }.not_to have_enqueued_job(Accounting::ExtractDocumentJob)
+      expect(extraction_status(upload(sample_xlsx, "a.xlsx"))).to eq("not_applicable")
+    end
+
+    it "does not queue a password-protected PDF, which is marked unreadable" do
+      result = nil
+      expect { result = upload(sample_encrypted_pdf, "l.pdf") }.not_to have_enqueued_job(Accounting::ExtractDocumentJob)
+      expect(extraction_status(result)).to eq("unreadable")
+    end
+
+    it "queues nothing for a refused file" do
+      expect { upload(sample_exe, "x.pdf") }.not_to have_enqueued_job(Accounting::ExtractDocumentJob)
+    end
+  end
+
   describe "duplicates" do
     it "refuses the same content twice, pointing to the first document" do
       first = upload(sample_pdf("dup"), "first.pdf")[:document]

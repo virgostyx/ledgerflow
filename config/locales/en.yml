@@ -36,6 +36,28 @@ en:
     archived: "Document archived."
     deleted:  "Document deleted."
     linked:   "Document attached."
+    field_confirmed: "Field confirmed."
+    invoice_created: "Draft invoice created from the document: add the lines and their accounts, then check it before posting."
+    rerun: "The document is being read again."
+    fields:
+      supplier_name: "Supplier"
+      supplier_vat: "Supplier VAT number"
+      supplier_partner_id: "Supplier (partner)"
+      invoice_number: "Invoice number"
+      invoice_date: "Invoice date"
+      due_date: "Due date"
+      subtotal: "Total excl. VAT"
+      vat_amount: "VAT"
+      total: "Total incl. VAT"
+      currency: "Currency"
+      iban: "IBAN"
+      structured_communication: "Structured communication"
+      document_type: "Document type"
+    extraction:
+      methods:
+        text_layer: "the text layer"
+        ocr: "OCR"
+        ubl: "the XML (UBL)"
     unlinked: "Document detached."
     errors:
       no_such_target:   "No entry matches that reference."
@@ -49,6 +71,12 @@ en:
       bad_target:       "This document cannot be linked to that."
       already_linked:   "This document is already linked to that."
       evidence:         "This document justifies a validated entry: it stays attached (it can only be archived)."
+      no_supplier:      "Choose a supplier of this entity."
+      no_fiscal_year:   "No open fiscal year covers the invoice date (%{date})."
+      duplicate_invoice: "A supplier invoice %{number} from this supplier already exists. Give a reason to create another one anyway."
+      field_unknown_field: "This field does not exist."
+      field_frozen:        "This document justifies a validated entry: its fields can no longer be changed."
+      field_bad_value:     "This value is not valid for this field."
 
   entities:
     create_first_entity: "Please create your first entity to get started."

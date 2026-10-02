@@ -341,4 +341,194 @@ RSpec.describe "Accounting::Documents", type: :request do
       end
     end
   end
+
+  describe "what was read from the document" do
+    let(:invoice_text) { "ACME Consulting SPRL\nInvoice No: INV-2026-0042\nInvoice date: 12/03/2026\nTotal excl. VAT 1.000,00 EUR\nVAT 21% 210,00 EUR\nTotal incl. VAT 1.210,00 EUR" }
+    let(:document) do
+      content = Prawn::Document.new { |pdf| invoice_text.each_line { |line| pdf.text line.chomp } }.render
+      Accounting::UploadDocument.call(io: StringIO.new(content), filename: "acme.pdf", user: accountant)[:document].tap { |doc| Accounting::ExtractDocument.call(document: doc) }
+    end
+
+    def mark(status, **extra) = document.update_columns(extracted_data: document.extracted_data.merge("extraction" => { "status" => status }.merge(extra)))
+
+    it "shows how it was read" do
+      get accounting_document_path(document)
+
+      expect(response.body).to include("Read from the text layer")
+    end
+
+    it "proposes each field with where it came from, and asks to confirm it" do
+      get accounting_document_path(document)
+
+      expect(response.body).to include("Proposed fields", "Invoice number", "INV-2026-0042", "Total incl. VAT 1.210,00 EUR", "page 1", "To confirm")
+      expect(response.body).to include(confirm_field_accounting_document_path(document))
+    end
+
+    it "flags the proposals it is less sure of" do
+      document.update_columns(extracted_data: { "extraction" => { "status" => "done", "method" => "text_layer", "confidence" => 100,
+        "fields" => { "total" => { "value" => "250.00", "snippet" => "Amount due: 250,00", "page" => 1, "confidence" => "low", "confirmed" => false } } } })
+
+      get accounting_document_path(document)
+
+      expect(response.body).to include("Check this one")
+    end
+
+    it "says when the reading is still going on, failed, not sure or not possible" do
+      { "pending" => "Reading in progress", "unreadable" => "cannot be read", "low_confidence" => "not sure enough", "not_applicable" => "Nothing to read" }.each do |status, text|
+        mark(status)
+        get accounting_document_path(document)
+        expect(response.body).to include(text)
+      end
+
+      mark("failed", "error" => "disk on fire")
+      get accounting_document_path(document)
+      expect(response.body).to include("failed", "disk on fire")
+    end
+
+    it "shows who confirmed a field" do
+      Accounting::ConfirmDocumentField.call(document: document, field: "total", value: "1210.00", user: owner)
+
+      get accounting_document_path(document)
+
+      expect(response.body).to include("Confirmed by #{owner.full_name}")
+    end
+
+    describe "POST /accounting/documents/:id/confirm_field" do
+      it "confirms, or corrects, a field" do
+        post confirm_field_accounting_document_path(document), params: { field: "total", value: "1.200,00" }
+
+        expect(response).to redirect_to(accounting_document_path(document))
+        field = document.reload.extracted_data.dig("extraction", "fields", "total")
+        expect(field).to include("value" => "1200.00", "confirmed" => true, "confirmed_by" => accountant.id)
+      end
+
+      it "says why a value is refused, and keeps the proposal" do
+        post confirm_field_accounting_document_path(document), params: { field: "total", value: "abc" }
+
+        expect(flash[:alert]).to match(/not valid/i)
+        expect(document.reload.extracted_data.dig("extraction", "fields", "total", "confirmed")).to be false
+      end
+
+      it "is refused on a document frozen by a validated entry" do
+        Accounting::LinkDocument.call(document: document, target: create(:journal_entry, :posted, fiscal_year: fiscal_year), user: accountant)
+
+        post confirm_field_accounting_document_path(document), params: { field: "total", value: "1210.00" }
+
+        expect(flash[:alert]).to match(/validated entry/i)
+        expect(document.reload.extracted_data.dig("extraction", "fields", "total", "confirmed")).to be false
+      end
+
+      it "is allowed to an assistant, refused to a reader" do
+        sign_out accountant
+        sign_in assistant
+        post confirm_field_accounting_document_path(document), params: { field: "invoice_number", value: "INV-2026-0042" }
+        expect(document.reload.extracted_data.dig("extraction", "fields", "invoice_number", "confirmed")).to be true
+
+        sign_out assistant
+        sign_in reader
+        post confirm_field_accounting_document_path(document), params: { field: "total", value: "1210.00" }
+        expect(document.reload.extracted_data.dig("extraction", "fields", "total", "confirmed")).to be false
+      end
+    end
+
+    describe "POST /accounting/documents/:id/rerun" do
+      it "reads the document again, in the background" do
+        expect { post rerun_accounting_document_path(document) }.to have_enqueued_job(Accounting::ExtractDocumentJob).with(document.id, entity.id)
+
+        expect(document.reload.extracted_data.dig("extraction", "status")).to eq("pending")
+        expect(response).to redirect_to(accounting_document_path(document))
+      end
+
+      it "keeps what a person confirmed" do
+        Accounting::ConfirmDocumentField.call(document: document, field: "total", value: "1200.00", user: owner)
+
+        post rerun_accounting_document_path(document)
+
+        expect(document.reload.extracted_data.dig("extraction", "fields", "total", "value")).to eq("1200.00")
+      end
+
+      it "is refused to a reader" do
+        id = document.id # uploaded (and queued) now, not inside the expectation
+        sign_out accountant
+        sign_in reader
+
+        expect { post rerun_accounting_document_path(id) }.not_to have_enqueued_job(Accounting::ExtractDocumentJob)
+      end
+    end
+  end
+
+  describe "the extraction in the list" do
+    it "tells the reading status of each document" do
+      create(:document, name: "waiting.pdf", extracted_data: { "extraction" => { "status" => "pending" } })
+      create(:document, name: "done.pdf", extracted_data: { "extraction" => { "status" => "done" } })
+
+      get accounting_documents_path
+
+      expect(response.body).to include("Reading", "Read")
+    end
+  end
+
+  describe "creating a draft invoice from a document" do
+    let!(:journal)  { create(:journal, :purchase) }
+    let!(:supplier) { create(:partner, :supplier, vat_number: "BE0123456749", name: "ACME Consulting") }
+    let(:document) do
+      text = "VAT BE0123456749\nInvoice No: INV-2026-0042\nInvoice date: #{Date.current.strftime('%d/%m/%Y')}\nTotal incl. VAT 1.210,00 EUR"
+      content = Prawn::Document.new { |pdf| text.each_line { |line| pdf.text line.chomp } }.render
+      Accounting::UploadDocument.call(io: StringIO.new(content), filename: "acme.pdf", user: accountant)[:document].tap { |doc| Accounting::ExtractDocument.call(document: doc) }
+    end
+
+    it "offers it on the document, with the supplier that was recognised" do
+      get accounting_document_path(document)
+
+      expect(response.body).to include("Create a draft invoice", create_invoice_accounting_document_path(document), "ACME Consulting")
+      expect(response.body).to match(/<option selected="selected" value="#{supplier.id}"/)
+    end
+
+    it "creates the draft and opens it, to add the lines" do
+      expect { post create_invoice_accounting_document_path(document), params: { partner_id: supplier.id } }.to change(Accounting::Invoice, :count).by(1)
+
+      invoice = Accounting::Invoice.last
+      expect(response).to redirect_to(edit_accounting_invoice_path(invoice))
+      expect(invoice).to be_draft
+      expect(invoice.supplier_reference).to eq("INV-2026-0042")
+      expect(document.reload.links.sole.target).to eq(invoice)
+      expect(flash[:notice]).to match(/add the lines/i)
+    end
+
+    it "needs a supplier" do
+      expect { post create_invoice_accounting_document_path(document), params: { partner_id: "" } }.not_to change(Accounting::Invoice, :count)
+
+      expect(flash[:alert]).to match(/choose a supplier/i)
+    end
+
+    it "warns about a probable duplicate, and goes through with a reason" do
+      create(:invoice, :supplier, partner: supplier, supplier_reference: "INV-2026-0042", fiscal_year: fiscal_year, journal: journal)
+
+      expect { post create_invoice_accounting_document_path(document), params: { partner_id: supplier.id } }.not_to change(Accounting::Invoice, :count)
+      expect(flash[:alert]).to match(/already exists/i)
+
+      expect { post create_invoice_accounting_document_path(document), params: { partner_id: supplier.id, override_reason: "Re-issued invoice" } }.to change(Accounting::Invoice, :count).by(1)
+      expect(audit("document_duplicate_override").sole.reason).to eq("Re-issued invoice")
+    end
+
+    it "is allowed to an assistant and refused to a reader" do
+      sign_out accountant
+      sign_in assistant
+      expect { post create_invoice_accounting_document_path(document), params: { partner_id: supplier.id } }.to change(Accounting::Invoice, :count).by(1)
+
+      other = create(:document, content: sample_pdf("another"))
+      sign_out assistant
+      sign_in reader
+      expect { post create_invoice_accounting_document_path(other), params: { partner_id: supplier.id } }.not_to change(Accounting::Invoice, :count)
+    end
+
+    it "does not offer it to a reader" do
+      sign_out accountant
+      sign_in reader
+
+      get accounting_document_path(document)
+
+      expect(response.body).not_to include("Create a draft invoice")
+    end
+  end
 end

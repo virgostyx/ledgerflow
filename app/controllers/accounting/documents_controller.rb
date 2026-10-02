@@ -2,7 +2,7 @@
 # the right), never by a public address. A viewing is not audited; a download, an archiving and a deletion are.
 class Accounting::DocumentsController < ApplicationController
   before_action { require_feature!(:f03) }
-  before_action :set_document, only: %i[show update destroy file download archive]
+  before_action :set_document, only: %i[show update destroy file download archive confirm_field rerun create_invoice]
 
   # What a browser may show in the page: nothing that can carry markup or script.
   INLINE_TYPES = %w[application/pdf image/png image/jpeg].freeze
@@ -58,6 +58,35 @@ class Accounting::DocumentsController < ApplicationController
     authorize @document
     Accounting::AuditLog.record!(auditable: @document, action: "document_download", payload: { name: @document.name, sha256: @document.sha256 })
     send_file_data(inline: false)
+  end
+
+  # A person confirms, or corrects, one field proposed from the document.
+  def confirm_field
+    authorize @document
+    result = Accounting::ConfirmDocumentField.call(document: @document, field: params[:field], value: params[:value], user: current_user)
+    flash[result.success? ? :notice : :alert] = result.success? ? t("documents.field_confirmed") : result.message
+    redirect_to accounting_document_path(@document)
+  end
+
+  # A prefilled DRAFT supplier invoice, linked to the document; the accountant adds the lines. Nothing is posted.
+  def create_invoice
+    authorize @document
+    partner = Accounting::Partner.find_by(id: params[:partner_id])
+    result = Accounting::CreateInvoiceFromDocument.call(document: @document, partner: partner, user: current_user, override_reason: params[:override_reason])
+    if result.success?
+      redirect_to edit_accounting_invoice_path(result[:invoice]), notice: t("documents.invoice_created")
+    else
+      redirect_to accounting_document_path(@document), alert: result.message
+    end
+  end
+
+  # Reads the document again in the background; what a person confirmed is kept.
+  def rerun
+    authorize @document
+    extraction = (@document.extracted_data["extraction"] || {}).merge("status" => "pending").except("error")
+    @document.update_columns(extracted_data: @document.extracted_data.merge("extraction" => extraction), updated_at: Time.current)
+    Accounting::ExtractDocumentJob.perform_later(@document.id, @document.entity_id)
+    redirect_to accounting_document_path(@document), notice: t("documents.rerun")
   end
 
   def archive
