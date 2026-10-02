@@ -4,6 +4,7 @@ class ApplicationController < ActionController::Base
   set_current_tenant_through_filter
 
   before_action :authenticate_user!
+  before_action :require_second_factor!
   before_action :set_audit_context
   before_action :set_locale
   before_action :set_current_entity
@@ -53,6 +54,25 @@ class ApplicationController < ActionController::Base
 
   # Whether a feature (docs/dev/features/spec.md) is turned on for the current entity.
   def feature?(name) = ActsAsTenant.current_tenant&.feature?(name) || false
+
+  # F01: after the password, a person who enrolled a second factor is asked for a code, and one whose role requires
+  # it must enrol first. A passkey counts as the second factor (see PasskeySessionsController).
+  def require_second_factor!
+    return unless current_user && Rails.configuration.x.second_factor_required
+    return if devise_controller? || second_factor_passed?
+
+    if current_user.totp_enabled?
+      session[:after_second_factor_path] = request.fullpath if request.get?
+      redirect_to two_factor_challenge_path
+    elsif current_user.second_factor_required?
+      redirect_to two_factor_path, alert: t("errors.second_factor_required")
+    end
+  end
+
+  # Tied to the user, so one person's verification never serves another's session.
+  def second_factor_passed? = session[:second_factor_user_id] == current_user.id
+
+  def second_factor_passed!(user = current_user) = session[:second_factor_user_id] = user.id
 
   # The name stamped on the PDFs an external auditor downloads (F01); nil for every other role.
   def export_watermark

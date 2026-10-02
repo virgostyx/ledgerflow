@@ -19,6 +19,8 @@ class User < ApplicationRecord
 
   RECOVERY_CODE_COUNT = 10
 
+  encrypts :totp_secret
+
   validates :full_name, presence: true
   validates :email,     presence: true
 
@@ -55,6 +57,45 @@ class User < ApplicationRecord
     match = recovery_codes.unused.find { |rc| BCrypt::Password.new(rc.code_digest) == code.to_s.strip.downcase }
     match ? match.update!(used_at: Time.current) : false
   end
+
+  # --- Second factor (F01) ----------------------------------------------------------------------------------
+
+  def totp_enabled? = totp_enabled_at.present?
+
+  # Whoever can validate, unlock or administer in an entity where F01 is on must sign in with a second factor.
+  def second_factor_required?
+    user_entities.current.includes(:entity).any? { |membership| Permissions.sensitive?(membership.role) && membership.entity.feature?(:f01) }
+  end
+
+  # A new secret to show (as text and QR code) until a code from the app confirms it; the same one on a revisit.
+  def begin_totp_enrollment!
+    return totp_secret if totp_secret.present? && !totp_enabled?
+
+    update!(totp_secret: Totp.generate_secret, totp_enabled_at: nil, totp_last_step: nil)
+    totp_secret
+  end
+
+  def confirm_totp!(code)
+    return false if totp_secret.blank? || totp_enabled?
+
+    step = Totp.verify(totp_secret, code)
+    return false unless step
+
+    update!(totp_enabled_at: Time.current, totp_last_step: step)
+    true
+  end
+
+  # True once per code: the step is recorded atomically, so two simultaneous uses of the same code cannot both pass.
+  def verify_totp!(code)
+    return false unless totp_enabled?
+
+    step = Totp.verify(totp_secret, code, after_step: totp_last_step)
+    return false unless step
+
+    User.where(id: id).where("totp_last_step IS NULL OR totp_last_step < ?", step).update_all(totp_last_step: step) == 1
+  end
+
+  def disable_totp! = update!(totp_secret: nil, totp_enabled_at: nil, totp_last_step: nil)
 
   # Every failed password attempt is audited (with the count, and whether it locked the account).
   def valid_for_authentication?

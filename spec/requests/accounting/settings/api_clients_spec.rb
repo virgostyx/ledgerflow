@@ -90,4 +90,37 @@ RSpec.describe "Accounting::Settings::ApiClients", type: :request do
 
     expect(response).to redirect_to(accounting_root_path)
   end
+
+  describe "owner of a key (F01)" do
+    it "is the person who creates it" do
+      post accounting_settings_api_clients_path, params: { api_client: { name: "Other app", scopes: [ "invoices:read" ] } }
+
+      expect(ApiClient.find_by(name: "Other app").owner).to eq(admin)
+    end
+
+    it "is shown in the list" do
+      owned = ApiClient.issue!(entity: entity, name: "Owned app", scopes: [], owner: admin).first
+
+      get accounting_settings_api_clients_path
+
+      expect(response.body).to include("Owned app", admin.full_name)
+      expect(owned.owner).to eq(admin)
+    end
+
+    it "is attached when a key without owner is rotated" do
+      expect(client.owner).to be_nil
+
+      post rotate_accounting_settings_api_client_path(client)
+
+      expect(client.reload.owner).to eq(admin)
+    end
+
+    it "keeps its owner when rotated" do
+      owned = ApiClient.issue!(entity: entity, name: "Owned app", scopes: [], owner: accountant).first
+
+      post rotate_accounting_settings_api_client_path(owned)
+
+      expect(owned.reload.owner).to eq(accountant)
+    end
+  end
 end

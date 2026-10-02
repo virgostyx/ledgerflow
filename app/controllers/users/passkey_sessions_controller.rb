@@ -26,6 +26,7 @@ module Users
       )
       stored.update!(sign_count: webauthn_credential.sign_count, last_used_at: Time.current)
       sign_in(user)
+      second_factor_passed!(user) # a passkey is verified by the device: that is the second factor
       Accounting::AuditLogin.call(user: user, action: "login", method: "passkey")
       render json: { redirect_to: accounting_root_path }
     rescue WebAuthn::SignCountVerificationError

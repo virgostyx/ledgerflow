@@ -122,6 +122,7 @@ GEM
       actionpack (>= 6.1)
       caxlsx (>= 4.0)
     cbor (0.5.10.3)
+    chunky_png (1.4.0)
     concurrent-ruby (1.3.8)
     connection_pool (3.0.2)
     cose (1.3.1)
@@ -392,6 +393,10 @@ GEM
       actionpack (>= 7.0)
       railties (>= 7.0)
     rexml (3.4.4)
+    rqrcode (3.2.0)
+      chunky_png (~> 1.0)
+      rqrcode_core (~> 2.0)
+    rqrcode_core (2.1.0)
     rspec-core (3.13.6)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.5)
@@ -607,6 +612,7 @@ DEPENDENCIES
   rack-attack
   rack-mini-profiler
   rails (~> 8.1.3)
+  rqrcode (~> 3.2)
   rspec-rails
   rubocop-rails-omakase
   selenium-webdriver
@@ -664,6 +670,7 @@ CHECKSUMS
   caxlsx (4.4.2) sha256=41bb1141eb083f2f72e0a34db85684a2ec48d38fed4c1ff20c1525c47cdc93eb
   caxlsx_rails (0.7.1) sha256=3151aeb43ff71cbcd64598f85f80d1c182063a96824f6ce9ab3f6f071676c6f4
   cbor (0.5.10.3) sha256=c3aa1d0c7e9bbffe8de4bed554f588d7926c62276ffe2dd7fabb65bae801d28a
+  chunky_png (1.4.0) sha256=89d5b31b55c0cf4da3cf89a2b4ebc3178d8abe8cbaf116a1dba95668502fdcfe
   concurrent-ruby (1.3.8) sha256=b2f1be836e968ccc78ccfce277ea79c72a88633f22306782c16ff23fb415d1e1
   connection_pool (3.0.2) sha256=33fff5ba71a12d2aa26cb72b1db8bba2a1a01823559fb01d29eb74c286e62e0a
   cose (1.3.1) sha256=d5d4dbcd6b035d513edc4e1ab9bc10e9ce13b4011c96e3d1b8fe5e6413fd6de5
@@ -791,6 +798,8 @@ CHECKSUMS
   request_store (1.7.0) sha256=e1b75d5346a315f452242a68c937ef8e48b215b9453a77a6c0acdca2934c88cb
   responders (3.2.0) sha256=89c2d6ac0ae16f6458a11524cae4a8efdceba1a3baea164d28ee9046bd3df55a
   rexml (3.4.4) sha256=19e0a2c3425dfbf2d4fc1189747bdb2f849b6c5e74180401b15734bc97b5d142
+  rqrcode (3.2.0) sha256=64c1494ca6bb67d731330f38b50e3fd09eeab4f5dcd04b608e21218d1d0b9542
+  rqrcode_core (2.1.0) sha256=f303b85df89c1b8fc5ee8dc19808c9dc4330e6329b660d99d4a8cbb36ca13051
   rspec-core (3.13.6) sha256=a8823c6411667b60a8bca135364351dda34cd55e44ff94c4be4633b37d828b2d
   rspec-expectations (3.13.5) sha256=33a4d3a1d95060aea4c94e9f237030a8f9eae5615e9bd85718fe3a09e4b58836
   rspec-mocks (3.13.8) sha256=086ad3d3d17533f4237643de0b5c42f04b66348c28bf6b9c2d3f4a3b01af1d47

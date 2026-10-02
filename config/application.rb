@@ -13,6 +13,9 @@ module Ledgerflow
 
     # The Peppol simulator fakes deliveries: only development and test switch it on (validated by Entity).
     config.x.peppol_simulator_allowed = false
+    # F01: whoever can validate, unlock or administer must sign in with a second factor (TOTP or a passkey).
+    # The test suite switches it off (its request specs sign in with a helper); the specs of the flow switch it on.
+    config.x.second_factor_required = true
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.

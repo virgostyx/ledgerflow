@@ -3,8 +3,10 @@
 Décisions prises par prudence pendant l'implémentation (règle du §17.1 de `docs/dev/features/spec.md`), à faire valider.
 
 ## F01 — Rôles
-- **Correspondance des rôles** : le code a `admin`, `accountant`, `manager`, `auditor` ; la spec a Propriétaire, Comptable, Assistant, Lecteur, Auditeur externe. Décision : garder les 4 rôles actuels sans rien changer de leurs droits, et ne pas ajouter « Assistant » ni « Auditeur externe » tant qu'on n'a pas tranché qui fait quoi. **À valider** : `manager` devient-il l'Assistant (saisie de brouillons, lettrage, export) ? `auditor` voit-il les rapports (la spec dit oui, le code dit non) ?
-- **`users.role` global** : conservé en base (utilisé par les seeds, l'API héritée) mais **plus lu par aucune policy**. À supprimer ou à réduire à « administrateur de la plateforme » quand ce rôle existera.
+- **Correspondance retenue (décision de l'utilisateur)** : `admin` = Propriétaire, `accountant` = Comptable, `assistant` (nouveau) = Assistant, `manager` = Lecteur, `auditor` = Auditeur externe. Les noms stockés ne changent pas, seuls les libellés. Conséquences assumées : l'auditeur externe voit désormais les rapports (la spec le veut) ; le Lecteur perd la piste d'audit, la liasse et les contrôles de cohérence (réservés à propriétaire, comptable et auditeur externe).
+- **`users.role` global** : conservé en base (seeds, API héritée) mais **plus lu par aucune policy**. À supprimer ou à réduire à « administrateur de la plateforme » quand ce rôle existera.
+- **Assistant et rapprochement** : la spec lui permet de rapprocher, ce qui valide aujourd'hui le paiement. À corriger par F02 (brouillon par défaut), sinon l'assistant valide indirectement.
+- **Export des rôles en lecture** : une seule option de société (`read_only_export`), éteinte par défaut, pour Lecteur et Auditeur externe ensemble (décision de l'utilisateur).
 
 ## F01 — Quatre yeux
 - Appliqué aux seules écritures **saisies à la main** (`created_by_id`). Les écritures générées par une facture, un paiement, la clôture ou un import n'ont pas d'auteur et ne sont pas bloquées, sinon chaque postage de facture serait refusé à l'auteur de la facture. **À valider** : faut-il un contrôle équivalent sur la validation d'une facture (auteur du brouillon ≠ valideur) ?
@@ -17,3 +19,10 @@ Décisions prises par prudence pendant l'implémentation (règle du §17.1 de `d
 
 ## Drapeaux
 - Colonne jsonb `entities.features` plutôt que Flipper (décision validée). Éteint par défaut ; le propriétaire active. L'« administrateur de la plateforme » de la spec n'existe pas comme rôle : aujourd'hui, seul le propriétaire de la société active un drapeau.
+
+## F01 — Second facteur et clés d'API
+- **QR code** : gem `rqrcode` ajoutée (décision de l'utilisateur) ; le code TOTP lui-même est écrit sans gem (RFC 6238).
+- **Chiffrement** : `users.totp_secret` utilise `encrypts` : en production, les clés `active_record_encryption` doivent exister (`bin/rails db:encryption:init`), comme pour les identifiants Peppol.
+- **Perte de l'application d'authentification** : pas de procédure en libre-service. À décider : codes de secours TOTP, ou réinitialisation par un propriétaire (écran).
+- **Clés d'API sans propriétaire** (émises avant F01) : elles gardent leur comportement jusqu'à la prochaine rotation. À décider : les migrer en attribuant un propriétaire, ou refuser les clés sans propriétaire après une date.
+- **Défaut `post` de l'API** : l'API valide si `post` est absent. Un propriétaire sans droit de valider reçoit 403 plutôt qu'un brouillon silencieux (choix prudent : l'intégration saurait sinon moins ce qui s'est passé).

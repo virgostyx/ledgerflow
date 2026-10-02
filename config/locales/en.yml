@@ -18,6 +18,14 @@ en:
   errors:
     not_authorized: "You are not authorized to perform this action."
     feature_off: "This feature is not enabled for this entity."
+    second_factor_required: "Two-factor authentication is required for your role: set it up to continue."
+
+  users:
+    two_factor:
+      enabled:           "Two-factor authentication is on."
+      disabled:          "Two-factor authentication is off."
+      wrong_code:        "That code is not valid. Check the clock of your device and try the current code."
+      required_for_role: "Your role requires two-factor authentication: it cannot be switched off."
 
   entities:
     create_first_entity: "Please create your first entity to get started."

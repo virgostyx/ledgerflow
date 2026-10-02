@@ -98,3 +98,5 @@ group :test do
 end
 
 gem "pagy", "~> 9.4"
+
+gem "rqrcode", "~> 3.2"

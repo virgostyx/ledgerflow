@@ -54,6 +54,30 @@ RSpec.describe "Users::PasskeySessions", type: :request do
     expect(response).to have_http_status(:unprocessable_content)
   end
 
+  describe "second factor (F01)" do
+    around do |example|
+      previous = Rails.configuration.x.second_factor_required
+      Rails.configuration.x.second_factor_required = true
+      example.run
+    ensure
+      Rails.configuration.x.second_factor_required = previous
+    end
+
+    before do
+      secret = user.begin_totp_enrollment!
+      user.confirm_totp!(Totp.code(secret))
+    end
+
+    it "counts as the second factor: someone with an authenticator is not asked for a code after a passkey" do
+      sign_in_with_passkey
+
+      get accounting_journal_entries_path
+
+      expect(response).not_to redirect_to(two_factor_challenge_path)
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
   describe "audit trail (F01)" do
     def audit(action) = Accounting::AuditLog.where(action: action, auditable_id: user.id)
 
@@ -101,6 +125,27 @@ RSpec.describe "Users::RecoveryCodeSessions", type: :request do
     user.update!(active: false)
     post recovery_code_session_path, params: { email: user.email, recovery_code: codes.first }
     expect(response).to have_http_status(:unprocessable_content)
+  end
+
+  describe "second factor (F01)" do
+    around do |example|
+      previous = Rails.configuration.x.second_factor_required
+      Rails.configuration.x.second_factor_required = true
+      example.run
+    ensure
+      Rails.configuration.x.second_factor_required = previous
+    end
+
+    it "is not a second factor: someone with an authenticator is still challenged after a recovery code" do
+      create(:user_entity, :accountant, user: user)
+      secret = user.begin_totp_enrollment!
+      user.confirm_totp!(Totp.code(secret, Time.current - 30))
+      post recovery_code_session_path, params: { email: user.email, recovery_code: codes.first }
+
+      get accounting_journal_entries_path
+
+      expect(response).to redirect_to(two_factor_challenge_path)
+    end
   end
 
   describe "audit trail (F01)" do

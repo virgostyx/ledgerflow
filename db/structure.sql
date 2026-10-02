@@ -1866,7 +1866,8 @@ CREATE TABLE public.api_clients (
     active boolean DEFAULT true NOT NULL,
     last_used_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    owner_id bigint
 );
 
 
@@ -2120,7 +2121,10 @@ CREATE TABLE public.users (
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    webauthn_id character varying
+    webauthn_id character varying,
+    totp_secret character varying,
+    totp_enabled_at timestamp(6) without time zone,
+    totp_last_step bigint
 );
 
 
@@ -4096,6 +4100,13 @@ CREATE UNIQUE INDEX index_api_clients_on_key_digest ON public.api_clients USING 
 
 
 --
+-- Name: index_api_clients_on_owner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_clients_on_owner_id ON public.api_clients USING btree (owner_id);
+
+
+--
 -- Name: index_api_requests_on_api_client_id_and_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4911,6 +4922,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 
 --
+-- Name: api_clients fk_rails_dcea944c33; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_clients
+    ADD CONSTRAINT fk_rails_dcea944c33 FOREIGN KEY (owner_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_fiscal_years fk_rails_dd957818bc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5053,6 +5072,8 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002160000'),
+('20261002150000'),
 ('20261002140000'),
 ('20261002130000'),
 ('20261002120000'),

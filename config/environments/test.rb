@@ -29,6 +29,7 @@ Rails.application.configure do
   config.action_controller.allow_forgery_protection = false
 
   config.x.peppol_simulator_allowed = true
+  config.x.second_factor_required = false
 
   # Column encryption (per-entity Peppol credentials). Fixed keys, NOT secret: test only.
   # Production reads its own from the credentials (active_record_encryption: primary_key, deterministic_key,

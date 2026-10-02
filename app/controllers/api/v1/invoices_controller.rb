@@ -3,6 +3,9 @@
 class Api::V1::InvoicesController < Api::V1::BaseController
   self.action_scopes = { index: "invoices:read", show: "invoices:read", update: "invoices:write", destroy: "invoices:write" }
 
+  before_action :require_post_right, only: :update
+  before_action :require_reverse_right, only: :destroy
+
   LINE_FIELDS = %i[account_code description quantity unit_price vat_rate].freeze
   STATUS_CODES = { created: :created, ok: :ok, unprocessable: :unprocessable_content, conflict: :conflict, not_found: :not_found }.freeze
 
@@ -30,6 +33,23 @@ class Api::V1::InvoicesController < Api::V1::BaseController
   end
 
   private
+
+  # The API posts unless told not to; a key whose owner may not validate entries must say post=false (F01).
+  def require_post_right
+    return unless @api_client && posting_requested? && !@api_client.may_post?
+
+    render json: { error: "Forbidden", reason: "The owner of this key may not post invoices: send post=false" }, status: :forbidden
+  end
+
+  # Cancelling a posted invoice reverses its entry; a draft has nothing to reverse.
+  def require_reverse_right
+    return unless @api_client && !@api_client.owner_permits?("entries.reverse")
+    return unless Accounting::Invoice.external.where(external_ref: params[:external_ref]).order(:revision).last&.posted?
+
+    render json: { error: "Forbidden", reason: "The owner of this key may not reverse entries" }, status: :forbidden
+  end
+
+  def posting_requested? = params[:post].nil? || ActiveModel::Type::Boolean.new.cast(params[:post])
 
   def invoice_payload
     params.permit(:partner_external_ref, :post, :project_name, :budget_line, :supplier_reference, :document_type, :credited_invoice_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,

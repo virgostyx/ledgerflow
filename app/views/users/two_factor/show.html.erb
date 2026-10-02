@@ -1,0 +1,17 @@
+<h2 class="text-xl font-semibold text-gray-900 mb-2">Set up two-factor authentication</h2>
+<p class="text-sm text-gray-500 mb-6">
+  <% if current_user.second_factor_required? %>Your role can validate, unlock or administer, so a second factor is required.<% else %>Add a code from an authenticator app to your sign-in.<% end %>
+  Scan the QR code with an authenticator app (or type the key), then enter the 6-digit code it shows.
+</p>
+
+<div class="mb-4 flex justify-center rounded-lg border border-gray-200 bg-white p-4 w-56 mx-auto"><%= raw @qr_svg %></div>
+<p class="mb-6 text-center text-xs text-gray-500">Or type this key: <span class="font-mono text-sm text-gray-900"><%= @secret %></span></p>
+
+<%= form_with url: two_factor_path, method: :post, html: { class: "space-y-4" } do %>
+  <div>
+    <%= label_tag :code, "Code from the app", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= text_field_tag :code, nil, required: true, autofocus: true, inputmode: "numeric", autocomplete: "one-time-code", maxlength: 7,
+          class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500" %>
+  </div>
+  <%= submit_tag "Turn on", class: "w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors cursor-pointer" %>
+<% end %>

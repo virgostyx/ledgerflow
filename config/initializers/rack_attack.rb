@@ -13,6 +13,11 @@ class Rack::Attack
     req.ip if req.post? && %w[/passkey_session /recovery_code_session].include?(req.path)
   end
 
+  # Guessing a two-factor code: 5 tries per 20 seconds per IP
+  throttle("two_factor/ip", limit: 5, period: 20.seconds) do |req|
+    req.ip if req.post? && req.path.start_with?("/two_factor")
+  end
+
   # API throttle: 300 requests per minute per IP
   throttle("api/ip", limit: 300, period: 1.minute) do |req|
     req.ip if req.path.start_with?("/api/")

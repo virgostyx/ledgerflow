@@ -17,6 +17,10 @@ Rails.application.routes.draw do
     post "recovery_code_session",     to: "users/recovery_code_sessions#create", as: :recovery_code_session
   end
 
+  resource :two_factor, only: %i[show create destroy], controller: "users/two_factor"
+  get  "two_factor/challenge", to: "users/two_factor#challenge", as: :two_factor_challenge
+  post "two_factor/challenge", to: "users/two_factor#verify"
+
   resources :passkeys, only: %i[index create destroy], controller: "users/passkeys" do
     get :options, on: :collection
   end

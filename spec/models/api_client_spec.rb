@@ -58,4 +58,67 @@ RSpec.describe ApiClient, type: :model do
       expect(described_class.authenticate(new_key)).to eq(client)
     end
   end
+
+  describe 'bound to its owner (F01: a key never has more rights than the person behind it)' do
+    def owner_with(role, **attrs) = create(:user).tap { |user| create(:user_entity, role, user: user, entity: entity, **attrs) }
+    def owned_client(**attrs) = build_client(key_digest: SecureRandom.hex(8), **attrs)
+
+    it 'is valid when every scope is within the owner\'s rights' do
+      %i[admin accountant assistant].each do |role|
+        expect(owned_client(owner: owner_with(role), scopes: %w[invoices:read invoices:write partners:write])).to be_valid
+      end
+    end
+
+    it 'refuses, at creation, a scope the owner could not use by hand' do
+      client = owned_client(owner: owner_with(:manager), scopes: %w[invoices:read invoices:write])
+
+      expect(client).not_to be_valid
+      expect(client.errors[:scopes].join).to match(/invoices:write/)
+    end
+
+    it 'lets a read-only owner hold a read key' do
+      expect(owned_client(owner: owner_with(:auditor), scopes: %w[invoices:read])).to be_valid
+    end
+
+    it 'refuses an owner who has no access to the entity' do
+      expect(owned_client(owner: create(:user), scopes: %w[invoices:read])).not_to be_valid
+    end
+
+    it 'refuses an owner whose access expired' do
+      expect(owned_client(owner: owner_with(:accountant, valid_until: Date.current - 1), scopes: %w[invoices:read])).not_to be_valid
+    end
+
+    it 'stops allowing a scope the moment the owner loses the right (checked at every use)' do
+      owner = owner_with(:accountant)
+      client = owned_client(owner: owner, scopes: %w[invoices:write]).tap(&:save!)
+      expect(client.allows?('invoices:write')).to be true
+
+      UserEntity.find_by(user: owner, entity: entity).update!(role: :manager)
+
+      expect(client.reload.allows?('invoices:write')).to be false
+    end
+
+    it 'stops allowing anything once the owner\'s access is deactivated or expired' do
+      owner = owner_with(:accountant)
+      client = owned_client(owner: owner, scopes: %w[invoices:read invoices:write]).tap(&:save!)
+
+      UserEntity.find_by(user: owner, entity: entity).update!(active: false)
+
+      expect(client.reload.allows?('invoices:read')).to be false
+      expect(client.allows?('invoices:write')).to be false
+    end
+
+    it 'may post invoices only if the owner may validate' do
+      expect(owned_client(owner: owner_with(:accountant)).may_post?).to be true
+      expect(owned_client(owner: owner_with(:assistant)).may_post?).to be false
+    end
+
+    it 'keeps a key without owner working as before (keys issued before F01)' do
+      client = owned_client(scopes: %w[invoices:read invoices:write])
+
+      expect(client).to be_valid
+      expect(client.allows?('invoices:write')).to be true
+      expect(client.may_post?).to be true
+    end
+  end
 end

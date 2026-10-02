@@ -5,7 +5,7 @@ class Accounting::Settings::ApiClientsController < Accounting::Settings::BaseCon
   before_action :set_client, only: [ :rotate, :revoke ]
 
   def index
-    @clients = clients.order(:name)
+    @clients = clients.includes(:owner).order(:name)
   end
 
   def new
@@ -13,7 +13,7 @@ class Accounting::Settings::ApiClientsController < Accounting::Settings::BaseCon
   end
 
   def create
-    @client, @key = ApiClient.issue!(**client_params.to_h.symbolize_keys, entity: current_entity)
+    @client, @key = ApiClient.issue!(**client_params.to_h.symbolize_keys, entity: current_entity, owner: current_user)
     render :key
   rescue ActiveRecord::RecordInvalid => e
     @client = e.record
@@ -21,6 +21,7 @@ class Accounting::Settings::ApiClientsController < Accounting::Settings::BaseCon
   end
 
   def rotate
+    @client.update!(owner: current_user) if @client.owner.nil? # re-issuing the key is when it gets an owner
     @key = @client.rotate!
     render :key
   end
