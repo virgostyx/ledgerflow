@@ -38,6 +38,7 @@ en:
       already_reconciled: "This transaction has already been reconciled."
       unlock_reason_required: "A reason is required to unlock a period."
       period_not_locked: "This period is not locked."
+      four_eyes: "Another person must validate this entry: its author cannot."
       period_locked: "The period %{starts_on} to %{ends_on} is locked: nothing can be posted in it."
 
     partners:
@@ -49,6 +50,7 @@ en:
       created:  "Entry saved as draft."
       updated:  "Entry updated."
       posted:   "Entry posted and recorded."
+      saved_for_review: "Entry saved as a draft: another person must validate it."
       reversed: "Entry reversed by %{reference}."
       reversal_description: "Reversal of %{reference}"
 

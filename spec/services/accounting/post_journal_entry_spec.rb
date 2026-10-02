@@ -94,4 +94,62 @@ RSpec.describe Accounting::PostJournalEntry, type: :service do
       expect(post_dated(month_start)).to be_success
     end
   end
+
+  describe '.call — quatre yeux (F01)' do
+    let(:author)   { create(:user) }
+    let(:reviewer) { create(:user) }
+    let(:entry)    { create(:journal_entry, :with_balanced_lines, fiscal_year: fiscal_year, created_by: author) }
+
+    def post_as(user) = Current.set(user: user) { described_class.call(entry: entry) }
+
+    context 'quand l option est active sans seuil' do
+      before { entity.update!(four_eyes: true) }
+
+      it 'refuse que l auteur valide sa propre écriture' do
+        result = post_as(author)
+
+        expect(result).to be_failure
+        expect(result.message).to match(/another person/i)
+        expect(entry.reload).to be_draft
+      end
+
+      it 'accepte qu un autre utilisateur la valide' do
+        expect(post_as(reviewer)).to be_success
+      end
+
+      it 'ne bloque pas une écriture sans auteur (générée par le système)' do
+        entry.update_columns(created_by_id: nil)
+
+        expect(post_as(author)).to be_success
+      end
+
+      it 'ne bloque pas un traitement sans utilisateur (tâche de fond, API)' do
+        expect(Current.set(user: nil) { described_class.call(entry: entry) }).to be_success
+      end
+    end
+
+    context 'quand l option est inactive' do
+      it 'laisse l auteur valider' do
+        expect(post_as(author)).to be_success
+      end
+    end
+
+    context 'avec un seuil' do
+      let(:total) { entry.lines.sum(:debit) }
+
+      before { entity.update!(four_eyes: true) }
+
+      it 'applique la règle à partir du seuil (borne incluse)' do
+        entity.update!(four_eyes_threshold: total)
+
+        expect(post_as(author)).to be_failure
+      end
+
+      it 'laisse l auteur valider sous le seuil' do
+        entity.update!(four_eyes_threshold: total + 0.01)
+
+        expect(post_as(author)).to be_success
+      end
+    end
+  end
 end

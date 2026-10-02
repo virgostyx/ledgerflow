@@ -322,4 +322,54 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
       expect(response).to redirect_to(accounting_root_path)
     end
   end
+
+  describe 'four eyes (F01)' do
+    let(:reviewer) { create(:user, role: :accountant) }
+    let!(:reviewer_membership) { create(:user_entity, :accountant, user: reviewer, entity: entity) }
+    let(:params) do
+      { accounting_journal_entry: { journal_id: journal.id, fiscal_year_id: fiscal_year.id, entry_date: Date.current, description: 'Four eyes',
+                                    lines_attributes: { '0' => { account_id: account_604.id, debit: '100.00', credit: '0', label: 'Charges' },
+                                                        '1' => { account_id: account_440.id, debit: '0', credit: '100.00', label: 'Fournisseur' } } } }
+    end
+
+    before { entity.update!(four_eyes: true) }
+
+    it 'keeps the author\'s entry as a draft for another person to validate' do
+      expect { post accounting_journal_entries_path, params: params }.to change(Accounting::JournalEntry, :count).by(1)
+
+      entry = Accounting::JournalEntry.last
+      expect(entry).to be_draft
+      expect(entry.created_by).to eq(accountant)
+      expect(response).to redirect_to(accounting_journal_entry_path(entry))
+      expect(flash[:notice]).to match(/another person/i)
+    end
+
+    it 'refuses that the author validates the draft afterwards' do
+      post accounting_journal_entries_path, params: params
+      entry = Accounting::JournalEntry.last
+
+      post post_entry_accounting_journal_entry_path(entry)
+
+      expect(entry.reload).to be_draft
+    end
+
+    it 'lets another accountant validate it' do
+      post accounting_journal_entries_path, params: params
+      entry = Accounting::JournalEntry.last
+      sign_out accountant
+      sign_in reviewer
+
+      post post_entry_accounting_journal_entry_path(entry)
+
+      expect(entry.reload).to be_posted
+    end
+
+    it 'still creates and validates in one go when the entity does not require it' do
+      entity.update!(four_eyes: false)
+
+      post accounting_journal_entries_path, params: params
+
+      expect(Accounting::JournalEntry.last).to be_posted
+    end
+  end
 end

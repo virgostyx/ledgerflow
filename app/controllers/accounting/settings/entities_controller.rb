@@ -17,7 +17,8 @@ class Accounting::Settings::EntitiesController < Accounting::Settings::BaseContr
 
   def entity_params
     allowed = %i[name legal_name legal_form vat_number country address_line1 address_line2 zip_code city]
-    allowed << :budgetflow_enabled if Accounting::Settings::BasePolicy.new(current_user, :settings).destroy? # declaring the BudgetFlow integration is the administrator's call
+    # the BudgetFlow declaration and the four-eyes rule are the owner's call
+    allowed.push(:budgetflow_enabled, :four_eyes, :four_eyes_threshold) if Accounting::Settings::BasePolicy.new(current_user, :settings).destroy?
     params.require(:entity).permit(*allowed)
   end
 end

@@ -1117,7 +1117,8 @@ CREATE TABLE public.accounting_journal_entries (
     locked_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    entity_id bigint NOT NULL
+    entity_id bigint NOT NULL,
+    created_by_id bigint
 );
 
 
@@ -1963,7 +1964,9 @@ CREATE TABLE public.entities (
     peppol_participant_id character varying,
     peppol_credentials text,
     peppol_webhook_token character varying,
-    budgetflow_enabled boolean DEFAULT false NOT NULL
+    budgetflow_enabled boolean DEFAULT false NOT NULL,
+    four_eyes boolean DEFAULT false NOT NULL,
+    four_eyes_threshold numeric(15,2)
 );
 
 
@@ -3671,6 +3674,13 @@ CREATE INDEX index_accounting_invoices_on_status ON public.accounting_invoices U
 
 
 --
+-- Name: index_accounting_journal_entries_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journal_entries_on_created_by_id ON public.accounting_journal_entries USING btree (created_by_id);
+
+
+--
 -- Name: index_accounting_journal_entries_on_entity_and_reference; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5027,12 +5037,21 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 
 
 --
+-- Name: accounting_journal_entries fk_rails_ffd2ccf3ea; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entries
+    ADD CONSTRAINT fk_rails_ffd2ccf3ea FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002120000'),
 ('20261002110000'),
 ('20261002100000'),
 ('20261002090000'),

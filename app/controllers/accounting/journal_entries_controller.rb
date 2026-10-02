@@ -19,12 +19,18 @@ class Accounting::JournalEntriesController < ApplicationController
   end
 
   def create
-    @entry = Accounting::JournalEntry.new(entry_params)
+    @entry = Accounting::JournalEntry.new(entry_params.merge(created_by: current_user))
     authorize @entry
 
     saved = ApplicationRecord.transaction do
       ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
       @entry.save
+    end
+
+    if saved && @entry.four_eyes_blocks?(current_user)
+      # The entity requires a second person: the author's entry waits as a draft.
+      redirect_to accounting_journal_entry_path(@entry), notice: t("accounting.journal_entries.saved_for_review")
+      return
     end
 
     if saved

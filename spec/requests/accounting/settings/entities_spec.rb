@@ -91,4 +91,30 @@ RSpec.describe "Accounting::Settings::Entities", type: :request do
       expect(response.body).to include(edit_accounting_settings_entity_path)
     end
   end
+
+  describe "four-eyes option (F01)" do
+    let(:accountant) { create(:user, role: :accountant) }
+    let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+
+    it "lets the owner require a second person, from an amount upward" do
+      patch accounting_settings_entity_path, params: { entity: { four_eyes: "1", four_eyes_threshold: "500.00" } }
+
+      expect(entity.reload.four_eyes).to be true
+      expect(entity.four_eyes_threshold).to eq(500)
+    end
+
+    it "shows the option to the owner" do
+      get edit_accounting_settings_entity_path
+
+      expect(response.body).to include("entity[four_eyes]")
+    end
+
+    it "ignores the option when an accountant sends it" do
+      sign_in accountant
+
+      patch accounting_settings_entity_path, params: { entity: { four_eyes: "1" } }
+
+      expect(entity.reload.four_eyes).to be false
+    end
+  end
 end

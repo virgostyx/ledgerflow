@@ -6,6 +6,7 @@ class Accounting::PostJournalEntry
     ApplicationRecord.transaction do
       result = with(entry: entry).reduce(
         Accounting::Actions::ValidatePeriodOpen,
+        Accounting::Actions::ValidateFourEyes,
         Accounting::Actions::ValidateBalance,
         Accounting::Actions::AssignSequenceNumber,
         Accounting::Actions::LockEntry,
