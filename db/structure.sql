@@ -11,6 +11,20 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: date_in_locked_period(bigint, date); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.date_in_locked_period(p_entity_id bigint, p_date date) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM accounting_period_locks l
+    WHERE l.entity_id = p_entity_id AND l.status = 0 AND p_date BETWEEN l.starts_on AND l.ends_on
+  )
+$$;
+
+
+--
 -- Name: enforce_double_entry_check(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -33,6 +47,73 @@ BEGIN
 
   RETURN NEW;
 END;
+$$;
+
+
+--
+-- Name: enforce_period_lock_on_entries(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_period_lock_on_entries() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF current_setting('ledgerflow.lock_override', true) = 'on' THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+  IF TG_OP IN ('UPDATE', 'DELETE') AND OLD.status <> 0 AND date_in_locked_period(OLD.entity_id, OLD.entry_date) THEN
+    RAISE EXCEPTION 'entry % is validated and inside a locked period', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF TG_OP IN ('INSERT', 'UPDATE') AND NEW.status <> 0 AND date_in_locked_period(NEW.entity_id, NEW.entry_date) THEN
+    RAISE EXCEPTION 'entry % cannot be validated inside a locked period', NEW.id USING ERRCODE = 'raise_exception';
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+
+--
+-- Name: enforce_period_lock_on_lines(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_period_lock_on_lines() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF current_setting('ledgerflow.lock_override', true) = 'on' THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+  -- lettering stays possible in a locked period: only these columns may change
+  IF TG_OP = 'UPDATE' AND NEW.journal_entry_id = OLD.journal_entry_id
+     AND (to_jsonb(NEW) - ARRAY['lettering_id', 'amount_residual', 'updated_at'])
+       = (to_jsonb(OLD) - ARRAY['lettering_id', 'amount_residual', 'updated_at']) THEN
+    RETURN NEW;
+  END IF;
+  IF TG_OP IN ('UPDATE', 'DELETE') AND entry_in_locked_period(OLD.journal_entry_id) THEN
+    RAISE EXCEPTION 'line % belongs to a validated entry of a locked period', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF TG_OP IN ('INSERT', 'UPDATE') AND entry_in_locked_period(NEW.journal_entry_id) THEN
+    RAISE EXCEPTION 'a line cannot be added to a validated entry of a locked period' USING ERRCODE = 'raise_exception';
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+
+--
+-- Name: entry_in_locked_period(bigint); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.entry_in_locked_period(p_entry_id bigint) RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM accounting_journal_entries e
+    JOIN accounting_period_locks l ON l.entity_id = e.entity_id AND l.status = 0
+                                  AND e.entry_date BETWEEN l.starts_on AND l.ends_on
+    WHERE e.id = p_entry_id AND e.status <> 0
+  )
 $$;
 
 
@@ -4162,6 +4243,20 @@ CREATE CONSTRAINT TRIGGER enforce_double_entry AFTER INSERT OR UPDATE ON public.
 
 
 --
+-- Name: accounting_journal_entries enforce_period_lock_entries; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER enforce_period_lock_entries BEFORE INSERT OR DELETE OR UPDATE ON public.accounting_journal_entries FOR EACH ROW EXECUTE FUNCTION public.enforce_period_lock_on_entries();
+
+
+--
+-- Name: accounting_journal_entry_lines enforce_period_lock_lines; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER enforce_period_lock_lines BEFORE INSERT OR DELETE OR UPDATE ON public.accounting_journal_entry_lines FOR EACH ROW EXECUTE FUNCTION public.enforce_period_lock_on_lines();
+
+
+--
 -- Name: accounting_invoices fk_rails_0010c52c65; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4936,6 +5031,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002100000'),
 ('20261002090000'),
 ('20261001080000'),
 ('20261001070000'),
