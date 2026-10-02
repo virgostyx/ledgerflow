@@ -97,6 +97,8 @@ Rails.application.routes.draw do
           post :confirm_field
           post :rerun
           post :create_invoice
+          post :split
+          post :legal_hold
         end
       end
       resources :document_links, only: %i[create destroy]
@@ -195,7 +197,9 @@ Rails.application.routes.draw do
         resource :peppol_settings, only: [ :edit, :update ] do
           post :simulate_incoming
         end
-        resource :entity, only: [ :edit, :update ]
+        resource :entity, only: [ :edit, :update ] do
+          post :regenerate_documents_address
+        end
         resources :memberships, only: %i[index create update]
         resources :api_clients, only: [ :index, :new, :create ] do
           member do

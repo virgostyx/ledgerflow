@@ -1,6 +1,11 @@
 require "active_support/core_ext/integer/time"
 
 Rails.application.configure do
+  # Mail received for the documents of an entity (documents+<secret>@<domain>, F03): the relay ingress accepts messages
+  # piped by the mail server (bin/rails action_mailbox:ingress:postfix|exim|qmail URL=... INGRESS_PASSWORD=...). It stays
+  # closed until the password is set (credentials action_mailbox.ingress_password or RAILS_INBOUND_EMAIL_PASSWORD).
+  config.action_mailbox.ingress = :relay
+
   # Settings specified here will take precedence over those in config/application.rb.
 
   # Code is not reloaded between requests.

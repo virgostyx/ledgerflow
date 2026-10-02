@@ -107,6 +107,17 @@ RSpec.describe "Accounting::Documents", type: :request do
       expect(flash[:alert]).to include("evil.pdf", "empty.pdf")
     end
 
+    it "answers a script (drag and drop with progress) with a bare 200 and keeps the messages for the next page" do
+      params = { files: [ uploaded(sample_pdf("dnd"), "dnd.pdf"), uploaded(sample_exe, "evil.pdf") ] }
+
+      expect { post accounting_documents_path, params: params, headers: { "Accept" => "application/json" } }.to change(Accounting::Document, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to be_blank
+      expect(flash[:notice]).to match(/1 document uploaded/i)
+      expect(flash[:alert]).to include("evil.pdf")
+    end
+
     it "refuses the same file twice and points to the first" do
       post accounting_documents_path, params: { files: [ uploaded(sample_pdf("dup"), "first.pdf") ] }
       post accounting_documents_path, params: { files: [ uploaded(sample_pdf("dup"), "second.pdf") ] }
@@ -120,6 +131,22 @@ RSpec.describe "Accounting::Documents", type: :request do
 
       expect(Accounting::Document.last).to be_purchase_invoice
       expect(Accounting::Document.last.uploaded_by).to eq(accountant)
+    end
+
+    it "unpacks a ZIP archive: each file inside becomes a document, and the archive itself is not kept" do
+      archive = Accounting::Zipper.build([ [ "a.pdf", sample_pdf("a") ], [ "b.png", sample_png ], [ "bad.pdf", sample_exe ] ])
+
+      expect { post accounting_documents_path, params: { files: [ uploaded(archive, "batch.zip", "application/zip") ] } }.to change(Accounting::Document, :count).by(2)
+
+      expect(Accounting::Document.pluck(:name)).to contain_exactly("a.pdf", "b.png")
+      expect(flash[:notice]).to match(/2 documents uploaded/i)
+      expect(flash[:alert]).to include("batch.zip / bad.pdf")
+    end
+
+    it "mentions archives on the upload form" do
+      get accounting_documents_path
+
+      expect(response.body).to match(/ZIP/)
     end
 
     it "asks to choose a file when there is none" do
@@ -317,7 +344,7 @@ RSpec.describe "Accounting::Documents", type: :request do
     end
 
     it "is refused under a legal hold" do
-      document.update!(legal_hold: true)
+      document.update!(legal_hold: true, legal_hold_reason: "Dispute")
 
       travel_to(document.retention_until + 1) do
         expect { delete accounting_document_path(document) }.not_to change(Accounting::Document, :count)
@@ -529,6 +556,360 @@ RSpec.describe "Accounting::Documents", type: :request do
       get accounting_document_path(document)
 
       expect(response.body).not_to include("Create a draft invoice")
+    end
+  end
+
+  describe "searching the documents" do
+    let(:supplier) { create(:partner, :supplier, name: "ACME Consulting") }
+    let!(:invoice_doc) do
+      create(:document, name: "Facture Électricité.pdf", origin: :email, search_text: "Invoice INV-2026-0042 consulting",
+                        extracted_data: { "extraction" => { "status" => "done", "fields" => {
+                          "total" => { "value" => "1210.00", "confirmed" => false }, "invoice_date" => { "value" => "2026-03-12", "confirmed" => false },
+                          "supplier_partner_id" => { "value" => supplier.id, "confirmed" => false } } } })
+    end
+    let!(:contract_doc) { create(:document, name: "Contrat bail.pdf", search_text: "bail commercial", extracted_data: { "extraction" => { "fields" => { "total" => { "value" => "800.00" } } } }) }
+
+    def listed(**params)
+      get accounting_documents_path(params)
+      [ invoice_doc, contract_doc ].select { |doc| response.body.include?(doc.name) }.map(&:name)
+    end
+
+    it "searches the name, the text read and the values read, with or without accents" do
+      expect(listed(q: "electricite")).to eq([ invoice_doc.name ])
+      expect(listed(q: "INV-2026-0042")).to eq([ invoice_doc.name ])
+      expect(listed(q: "1210")).to eq([ invoice_doc.name ])
+      expect(listed(q: "commercial")).to eq([ contract_doc.name ])
+    end
+
+    it "filters by supplier, by period, by amount and by origin" do
+      expect(listed(partner_id: supplier.id)).to eq([ invoice_doc.name ])
+      expect(listed(from: "2026-03-01", to: "2026-03-31")).to eq([ invoice_doc.name ])
+      expect(listed(min_amount: "1000")).to eq([ invoice_doc.name ])
+      expect(listed(max_amount: "900")).to eq([ contract_doc.name ])
+      expect(listed(origin: "email")).to eq([ invoice_doc.name ])
+    end
+
+    it "reads amounts the way they are written in Belgium" do
+      expect(listed(min_amount: "1.000,00")).to eq([ invoice_doc.name ])
+    end
+
+    it "combines the filters" do
+      expect(listed(q: "consulting", min_amount: "1000", origin: "email")).to eq([ invoice_doc.name ])
+      expect(listed(q: "consulting", min_amount: "5000")).to be_empty
+    end
+
+    it "ignores what is not a valid date, amount, partner or origin, instead of failing" do
+      expect(listed(from: "not a date", to: "2026-13-45", min_amount: "abc", max_amount: "", partner_id: "x", origin: "nope").size).to eq(2)
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "does not let a wildcard or a quote through" do
+      expect(listed(q: "%")).to be_empty
+      expect(listed(q: "'; DROP TABLE accounting_documents; --")).to be_empty
+      expect(Accounting::Document.count).to eq(2)
+    end
+
+    it "offers the filters, and remembers what was asked" do
+      get accounting_documents_path(q: "bail", min_amount: "100")
+
+      expect(response.body).to include('name="q"', 'name="partner_id"', 'name="from"', 'name="to"', 'name="min_amount"', 'name="max_amount"', 'name="origin"')
+      expect(response.body).to include('value="bail"', 'value="100"')
+    end
+
+    it "lists, in the supplier filter, the suppliers of this entity only" do
+      ActsAsTenant.with_tenant(create(:entity)) { create(:partner, :supplier, name: "Foreign Supplier") }
+
+      get accounting_documents_path
+
+      expect(response.body).to include("ACME Consulting")
+      expect(response.body).not_to include("Foreign Supplier")
+    end
+
+    it "finds archived documents when asked for the archive" do
+      contract_doc.update!(status: :archived)
+
+      expect(listed(q: "bail")).to be_empty
+      expect(listed(q: "bail", status: "archived")).to eq([ contract_doc.name ])
+    end
+  end
+
+  describe "splitting a PDF" do
+    # let!: the PDF exists before a test counts the documents it creates
+    let!(:scan) do
+      Accounting::UploadDocument.call(io: StringIO.new(sample_multipage_pdf("Invoice A", "Invoice B", "Invoice C")), filename: "three.pdf", user: accountant, origin: :scan)[:document]
+    end
+
+    it "offers it on a PDF of several pages, saying how many" do
+      get accounting_document_path(scan)
+
+      expect(response.body).to include("Split this PDF", split_accounting_document_path(scan), "3 pages")
+    end
+
+    it "does not offer it on a one-page PDF, an image or a spreadsheet" do
+      one = create(:document, content: sample_pdf("one page"))
+      image = create(:document, name: "a.png", content_type: "image/png", content: sample_png)
+      book = create(:document, name: "a.xlsx", content_type: Accounting::UploadDocument::XLSX, content: sample_xlsx)
+
+      [ one, image, book ].each do |doc|
+        get accounting_document_path(doc)
+        expect(response.body).not_to include("Split this PDF")
+      end
+    end
+
+    it "cuts it into documents linked to the parent" do
+      expect { post split_accounting_document_path(scan), params: { ranges: "1,2,3" } }.to change(Accounting::Document, :count).by(3)
+
+      expect(response).to redirect_to(accounting_document_path(scan))
+      expect(flash[:notice]).to match(/3 documents? created/i)
+      expect(scan.reload.children.count).to eq(3)
+    end
+
+    it "lists the children on the parent and the parent on each child" do
+      post split_accounting_document_path(scan), params: { ranges: "1,2-3" }
+      first, second = scan.reload.children.order(:id)
+
+      get accounting_document_path(scan)
+      expect(response.body).to include("Cut into", first.name, accounting_document_path(first), second.name)
+
+      get accounting_document_path(first)
+      expect(response.body).to include("Cut out of", scan.name, accounting_document_path(scan))
+    end
+
+    it "says why the pages are refused, and cuts nothing" do
+      expect { post split_accounting_document_path(scan), params: { ranges: "1-3" } }.not_to change(Accounting::Document, :count)
+      expect(flash[:alert]).to match(/whole document/i)
+
+      expect { post split_accounting_document_path(scan), params: { ranges: "9" } }.not_to change(Accounting::Document, :count)
+      expect(flash[:alert]).to match(/ranges such as/i)
+    end
+
+    it "reports the pages that were already cut" do
+      post split_accounting_document_path(scan), params: { ranges: "1,2" }
+
+      post split_accounting_document_path(scan), params: { ranges: "2,3" }
+
+      expect(flash[:notice]).to match(/1 document created/i)
+      expect(flash[:alert]).to include("page 2")
+    end
+
+    it "is allowed to an assistant and refused to a reader" do
+      id = scan.id
+      sign_out accountant
+      sign_in reader
+      expect { post split_accounting_document_path(id), params: { ranges: "1,2,3" } }.not_to change(Accounting::Document, :count)
+
+      sign_out reader
+      sign_in assistant
+      expect { post split_accounting_document_path(id), params: { ranges: "1,2,3" } }.to change(Accounting::Document, :count).by(3)
+    end
+
+    it "is closed for a document of another entity" do
+      foreign = ActsAsTenant.with_tenant(create(:entity)) { Accounting::UploadDocument.call(io: StringIO.new(sample_multipage_pdf("x", "y")), filename: "f.pdf", user: accountant)[:document] }
+
+      post split_accounting_document_path(foreign), params: { ranges: "1,2" }
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "the integrity of the stored file" do
+    let!(:document) { create(:document, name: "checked.pdf") }
+
+    it "says when it was last verified" do
+      Accounting::VerifyDocument.call(document: document)
+
+      get accounting_document_path(document)
+
+      expect(response.body).to include("Verified")
+      expect(response.body).not_to include("does not match")
+    end
+
+    it "warns loudly when the stored file no longer matches its checksum" do
+      tamper_with_stored_file(document)
+      Accounting::VerifyDocument.call(document: document)
+
+      get accounting_document_path(document)
+
+      expect(response.body).to include("does not match the checksum recorded")
+    end
+
+    it "warns when the stored file is gone" do
+      delete_stored_file(document)
+      Accounting::VerifyDocument.call(document: document)
+
+      get accounting_document_path(document)
+
+      expect(response.body).to include("file is missing")
+    end
+
+    it "says nothing alarming for a document not verified yet" do
+      get accounting_document_path(document)
+
+      expect(response.body).to include("Not verified yet")
+    end
+  end
+
+  describe "what an external auditor is shown" do
+    before { skip "ghostscript and ImageMagick are not installed here" unless %w[gs convert identify].all? { |tool| system("which", tool, out: File::NULL, err: File::NULL) } }
+
+    let(:content) { sample_multipage_pdf("Invoice A 100,00", "Invoice B 200,00") }
+    let!(:document) { create(:document, name: "bill.pdf", content: content) }
+
+    def subject_of(bytes) = PDF::Reader.new(StringIO.new(bytes)).info[:Subject].to_s
+
+    it "is the PDF with their name on it, in the viewer as well as in the download" do
+      sign_out accountant
+      sign_in auditor
+
+      get file_accounting_document_path(document)
+      expect(response).to have_http_status(:ok)
+      expect(response.body.b).not_to eq(content.b)
+      expect(subject_of(response.body)).to include(auditor.full_name.unicode_normalize(:nfd).gsub(/\p{Mn}/, "").split.first)
+
+      get download_accounting_document_path(document)
+      expect(response.body.b).not_to eq(content.b)
+      expect(subject_of(response.body)).to include("Viewed by")
+    end
+
+    it "is the original for everyone else" do
+      [ accountant, owner, assistant, reader ].each do |user|
+        sign_out accountant
+        sign_in user
+        get file_accounting_document_path(document)
+        expect(response.body.b).to eq(content.b)
+      end
+    end
+
+    it "is an image with their name on it, for a picture" do
+      png = create(:document, name: "scan.png", content_type: "image/png", content: sample_png)
+      sign_out accountant
+      sign_in auditor
+
+      get file_accounting_document_path(png)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq("image/png")
+      expect(response.body.b).not_to eq(sample_png.b)
+    end
+
+    it "is refused, rather than given unmarked, when the file cannot be marked (a spreadsheet, an XML)" do
+      xml = create(:document, name: "i.xml", content_type: "application/xml", content: sample_ubl)
+      sign_out accountant
+      sign_in auditor
+
+      get download_accounting_document_path(xml)
+
+      expect(response).to redirect_to(accounting_document_path(xml))
+      expect(flash[:alert]).to match(/cannot be shown/i)
+    end
+
+    it "is given as it is when the owner allows read-only exports, and only then" do
+      xml = create(:document, name: "i.xml", content_type: "application/xml", content: sample_ubl)
+      entity.update!(read_only_export: true)
+      sign_out accountant
+      sign_in auditor
+
+      get download_accounting_document_path(xml)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body.b).to eq(sample_ubl.b)
+    end
+
+    it "is never the unmarked file when marking fails" do
+      allow(Accounting::ExternalCommand).to receive(:run).and_raise(Accounting::ExternalCommand::Failed, "gs is not installed")
+      sign_out accountant
+      sign_in auditor
+
+      get file_accounting_document_path(document)
+
+      expect(response).not_to have_http_status(:ok)
+      expect(response.body.b).not_to eq(content.b)
+    end
+
+    it "still audits a download, with who downloaded it" do
+      sign_out accountant
+      sign_in auditor
+
+      get download_accounting_document_path(document)
+
+      expect(Accounting::AuditLog.where(action: "document_download", auditable_id: document.id).sole.user_id).to eq(auditor.id)
+    end
+
+    it "does not offer the auditor a download link that leads nowhere for a document that cannot be marked" do
+      xml = create(:document, name: "i.xml", content_type: "application/xml", content: sample_ubl)
+      sign_out accountant
+      sign_in auditor
+
+      get accounting_document_path(xml)
+
+      expect(response.body).not_to include(download_accounting_document_path(xml))
+      expect(response.body).to include("cannot be shown")
+    end
+  end
+
+  describe "legal hold" do
+    let!(:document) { create(:document, name: "held.pdf") }
+
+    it "is placed by the owner, with a reason that everyone who sees the document can read" do
+      sign_out accountant
+      sign_in owner
+
+      post legal_hold_accounting_document_path(document), params: { hold: "1", reason: "Tax audit 2026" }
+
+      expect(document.reload).to have_attributes(legal_hold: true, legal_hold_reason: "Tax audit 2026")
+      sign_out owner
+      sign_in reader
+      get accounting_document_path(document)
+      expect(response.body).to include("Legal hold", "Tax audit 2026")
+    end
+
+    it "needs a reason" do
+      sign_out accountant
+      sign_in owner
+
+      post legal_hold_accounting_document_path(document), params: { hold: "1", reason: "" }
+
+      expect(document.reload.legal_hold).to be false
+      expect(flash[:alert]).to match(/reason/i)
+    end
+
+    it "is released by the owner, who gives a reason" do
+      sign_out accountant
+      sign_in owner
+      Accounting::SetLegalHold.call(document: document, hold: true, reason: "Dispute", user: owner)
+
+      post legal_hold_accounting_document_path(document), params: { hold: "0", reason: "Settled" }
+
+      expect(document.reload.legal_hold).to be false
+    end
+
+    it "is the owner's alone: refused to an accountant and an assistant" do
+      [ accountant, assistant ].each do |user|
+        sign_out accountant
+        sign_in user
+        post legal_hold_accounting_document_path(document), params: { hold: "1", reason: "Nope" }
+        expect(document.reload.legal_hold).to be false
+      end
+    end
+
+    it "offers the form to the owner only" do
+      get accounting_document_path(document)
+      expect(response.body).not_to include(legal_hold_accounting_document_path(document))
+
+      sign_out accountant
+      sign_in owner
+      get accounting_document_path(document)
+      expect(response.body).to include(legal_hold_accounting_document_path(document))
+    end
+
+    it "works on a document that justifies a validated entry" do
+      Accounting::LinkDocument.call(document: document, target: create(:journal_entry, :posted, fiscal_year: fiscal_year), user: accountant)
+      sign_out accountant
+      sign_in owner
+
+      post legal_hold_accounting_document_path(document), params: { hold: "1", reason: "Audit" }
+
+      expect(document.reload.legal_hold).to be true
     end
   end
 end

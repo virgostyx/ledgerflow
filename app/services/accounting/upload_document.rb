@@ -8,14 +8,16 @@ class Accounting::UploadDocument
   TYPES = { pdf: "application/pdf", png: "image/png", jpeg: "image/jpeg", tiff: "image/tiff", xml: "application/xml", csv: "text/csv", xlsx: XLSX }.freeze
 
   # `io` anything with #read; `filename` as the person knows it.
-  def self.call(io:, filename:, user:, origin: :manual_upload, kind: nil) = new(io, filename, user, origin, kind).call
+  def self.call(io:, filename:, user:, origin: :manual_upload, kind: nil, parent: nil, details: {}) = new(io, filename, user, origin, kind, parent, details).call
 
-  def initialize(io, filename, user, origin, kind)
+  def initialize(io, filename, user, origin, kind, parent = nil, details = {})
     @bytes    = io.read.to_s.b
     @filename = filename.to_s
     @user     = user
     @origin   = origin
     @kind     = kind
+    @parent   = parent
+    @details  = details
   end
 
   def call
@@ -26,7 +28,12 @@ class Accounting::UploadDocument
     return refuse(:unsupported_type) unless type
     return refuse(:unsafe_xml) if type == :xml && unsafe_xml?
 
-    extracted = {}
+    case Accounting::VirusScan.call(@bytes)
+    when :infected    then return refuse(:infected)
+    when :unavailable then return refuse(:scan_unavailable)
+    end
+
+    extracted = @details.deep_stringify_keys
     problem = check_integrity(type, extracted)
     return refuse(problem) if problem
 
@@ -43,7 +50,7 @@ class Accounting::UploadDocument
     status = extraction_status(type, extracted)
     extracted["extraction"] = { "status" => status }
     document = Accounting::Document.new(name: @filename, content_type: TYPES.fetch(type), byte_size: @bytes.bytesize, sha256: sha256,
-                                        origin: @origin, kind: @kind || :other, uploaded_by: @user, extracted_data: extracted)
+                                        origin: @origin, kind: @kind || :other, uploaded_by: @user, parent: @parent, extracted_data: extracted)
     document.file.attach(io: StringIO.new(@bytes), filename: storage_filename, content_type: TYPES.fetch(type))
     ApplicationRecord.transaction do
       document.save!
@@ -112,7 +119,7 @@ class Accounting::UploadDocument
   end
 
   def check_pdf(extracted)
-    PDF::Reader.new(StringIO.new(@bytes)).page_count
+    extracted["pages"] = PDF::Reader.new(StringIO.new(@bytes)).page_count
     nil
   rescue PDF::Reader::EncryptedPDFError, PDF::Reader::UnsupportedFeatureError
     extracted["unreadable"] = "password_protected" # kept as evidence, nothing to read from it

@@ -9,3 +9,7 @@ production:
     class: Accounting::ConsistencyCheckJob
     queue: default
     schedule: every day at 2am
+  verify_documents:
+    class: Accounting::VerifyDocumentsJob
+    queue: default
+    schedule: every sunday at 3am

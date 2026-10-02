@@ -41,4 +41,10 @@ Décisions prises par prudence pendant l'implémentation (règle du §17.1 de `d
 - **OCR** : seuil de confiance de 60 (moyenne des mots) en dessous duquel rien n'est gardé ; langues fra, nld, eng quand elles sont installées. Seuil et langues à régler à l'usage sur de vrais scans.
 - **Devise du brouillon** : EUR, ou la devise lue si son taux est connu dans la table des taux de la société ; jamais de taux deviné.
 - **Résultats de lecture sur un document figé** : écrits (données dérivées) même si le document est lié à une écriture validée ; le fichier et ses détails restent figés, la confirmation d'un champ est refusée.
-
+- **Recherche** : trigramme sur `search_blob` plutôt que `tsvector` (écart à la spec §6) ; suffisant pour noms, numéros et montants.
+- **Rétention par nature** : `RETENTION_YEARS_BY_KIND` (défaut 10 ans) ; une nature plus longue prolonge, jamais ne raccourcit. **À valider par un comptable.**
+- **Suspension légale** : motif obligatoire, réservée au propriétaire ; un document suspendu ne peut pas être supprimé même après son terme.
+- **Antivirus** : fermé par défaut dès qu'un scanner est configuré (panne = refus). Choisir le scanner (ClamAV ?) et `FAIL_OPEN` selon l'hébergement.
+- **ZIP** : limites 50 fichiers / 100 Mo / ratio 100, à ajuster à l'usage.
+- **Adresse e-mail** : le jeton fait l'authentification ; quiconque le connaît peut déposer des documents (jamais lire). Domaine et relais à configurer par l'hébergement ; pas de réponse à l'expéditeur (ni accusé ni refus) pour ne rien révéler.
+- **Dépendances système** de production : `tesseract-ocr` (+fra, nld), `poppler-utils`, `ghostscript`, `imagemagick` ; clés `active_record_encryption` (secret TOTP, identifiants Peppol).

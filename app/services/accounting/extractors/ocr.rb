@@ -65,17 +65,8 @@ class Accounting::Extractors::Ocr
   end
 
   def run(*command)
-    Open3.popen3(*command) do |stdin, stdout, stderr, waiter|
-      stdin.close
-      out = Thread.new { stdout.read }
-      err = Thread.new { stderr.read }
-      unless waiter.join(TIMEOUT)
-        Process.kill("KILL", waiter.pid)
-        raise Accounting::Extractors::Unreadable, "OCR took too long"
-      end
-      raise Accounting::Extractors::Unreadable, "#{command.first} failed: #{err.value.to_s.lines.first&.strip}" unless waiter.value.success?
-
-      out.value
-    end
+    Accounting::ExternalCommand.run(*command, timeout: TIMEOUT)
+  rescue Accounting::ExternalCommand::Failed => e
+    raise Accounting::Extractors::Unreadable, e.message
   end
 end

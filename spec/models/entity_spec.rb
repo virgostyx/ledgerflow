@@ -255,4 +255,29 @@ RSpec.describe Entity, type: :model do
       expect { Entity.new.feature?(:f99) }.to raise_error(ArgumentError)
     end
   end
+
+  describe "the address that receives documents (F03)" do
+    it "has a secret of its own from the start, different for every entity" do
+      a = create(:entity)
+      b = create(:entity)
+
+      expect(a.documents_mail_token).to be_present
+      expect(a.documents_mail_token).not_to eq(b.documents_mail_token)
+    end
+
+    it "is documents+<secret>@<domain>" do
+      entity = create(:entity)
+
+      expect(entity.documents_email).to eq("documents+#{entity.documents_mail_token}@#{Rails.configuration.x.documents_mail_domain}")
+    end
+
+    it "can be replaced, which gives another secret" do
+      entity = create(:entity)
+      before = entity.documents_mail_token
+
+      entity.regenerate_documents_mail_token
+
+      expect(entity.reload.documents_mail_token).not_to eq(before)
+    end
+  end
 end

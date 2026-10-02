@@ -51,6 +51,43 @@ RSpec.describe Accounting::Document, type: :model do
     end
   end
 
+  describe "retention depends on the kind of document" do
+    it "keeps each kind for the years set for it (ten by default), counted from the day of upload" do
+      stub_const("Accounting::Document::RETENTION_YEARS_BY_KIND", Hash.new(10).merge("contract" => 30, "statement" => 7))
+
+      expect(create(:document, kind: :other).retention_until).to eq(Date.current + 10.years)
+      expect(create(:document, kind: :contract).retention_until).to eq(Date.current + 30.years)
+      expect(create(:document, kind: :statement).retention_until).to eq(Date.current + 7.years)
+    end
+
+    it "follows a change of kind" do
+      stub_const("Accounting::Document::RETENTION_YEARS_BY_KIND", Hash.new(10).merge("contract" => 30))
+      document = create(:document, kind: :other)
+
+      document.update!(kind: :contract)
+
+      expect(document.retention_until).to eq(document.created_at.to_date + 30.years)
+    end
+
+    it "does not shorten a term on a legal hold" do
+      stub_const("Accounting::Document::RETENTION_YEARS_BY_KIND", Hash.new(10).merge("statement" => 7))
+      document = create(:document, kind: :other, legal_hold: true, legal_hold_reason: "Dispute")
+
+      document.update!(kind: :statement)
+
+      expect(document.retention_until).to eq(Date.current + 10.years)
+    end
+
+    it "never shortens a term that was already running longer" do
+      stub_const("Accounting::Document::RETENTION_YEARS_BY_KIND", Hash.new(10).merge("statement" => 7))
+      document = create(:document, kind: :other)
+
+      document.update!(kind: :statement)
+
+      expect(document.retention_until).to eq(Date.current + 10.years)
+    end
+  end
+
   describe "a file never changes" do
     let(:document) { create(:document) }
 
@@ -147,7 +184,7 @@ RSpec.describe Accounting::Document, type: :model do
     end
 
     it "is refused under a legal hold, even after the term" do
-      document.update!(legal_hold: true)
+      document.update!(legal_hold: true, legal_hold_reason: "Dispute")
 
       travel_to(document.retention_until + 1) { expect(document.destroy).to be false }
     end

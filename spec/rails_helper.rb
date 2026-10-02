@@ -30,6 +30,7 @@ RSpec.configure do |config|
   config.before(:suite) { Faker::Config.locale = :en }
 
   config.include ActiveSupport::Testing::TimeHelpers
+  config.include ActionMailbox::TestHelper,     type: :mailbox
   config.include ViewComponent::TestHelpers,    type: :component
   config.include Capybara::RSpecMatchers,       type: :component
   config.include FactoryBot::Syntax::Methods

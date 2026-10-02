@@ -146,6 +146,17 @@ $$;
 
 
 --
+-- Name: f_unaccent(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_unaccent(text) RETURNS text
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+    AS $_$
+  SELECT public.unaccent('public.unaccent', $1)
+$_$;
+
+
+--
 -- Name: prevent_audit_log_modification(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -775,7 +786,12 @@ CREATE TABLE public.accounting_documents (
     legal_hold boolean DEFAULT false NOT NULL,
     replaces_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    search_blob text GENERATED ALWAYS AS (lower(public.f_unaccent((((((COALESCE(name, ''::character varying))::text || ' '::text) || COALESCE(search_text, ''::text)) || ' '::text) || COALESCE((jsonb_path_query_array(extracted_data, '$."extraction"."fields".*."value"'::jsonpath))::text, ''::text))))) STORED,
+    parent_id bigint,
+    integrity_status character varying,
+    integrity_checked_at timestamp(6) without time zone,
+    legal_hold_reason text
 );
 
 
@@ -1861,6 +1877,39 @@ ALTER SEQUENCE public.accounting_vat_grid_mappings_id_seq OWNED BY public.accoun
 
 
 --
+-- Name: action_mailbox_inbound_emails; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.action_mailbox_inbound_emails (
+    id bigint NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    message_id character varying NOT NULL,
+    message_checksum character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: action_mailbox_inbound_emails_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.action_mailbox_inbound_emails_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: action_mailbox_inbound_emails_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.action_mailbox_inbound_emails_id_seq OWNED BY public.action_mailbox_inbound_emails.id;
+
+
+--
 -- Name: active_storage_attachments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2075,7 +2124,8 @@ CREATE TABLE public.entities (
     four_eyes boolean DEFAULT false NOT NULL,
     four_eyes_threshold numeric(15,2),
     features jsonb DEFAULT '{}'::jsonb NOT NULL,
-    read_only_export boolean DEFAULT false NOT NULL
+    read_only_export boolean DEFAULT false NOT NULL,
+    documents_mail_token character varying NOT NULL
 );
 
 
@@ -2626,6 +2676,13 @@ ALTER TABLE ONLY public.accounting_vat_grid_mappings ALTER COLUMN id SET DEFAULT
 
 
 --
+-- Name: action_mailbox_inbound_emails id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_mailbox_inbound_emails ALTER COLUMN id SET DEFAULT nextval('public.action_mailbox_inbound_emails_id_seq'::regclass);
+
+
+--
 -- Name: active_storage_attachments id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3047,6 +3104,14 @@ ALTER TABLE ONLY public.accounting_vat_grid_mappings
 
 
 --
+-- Name: action_mailbox_inbound_emails action_mailbox_inbound_emails_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_mailbox_inbound_emails
+    ADD CONSTRAINT action_mailbox_inbound_emails_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: active_storage_attachments active_storage_attachments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3197,6 +3262,20 @@ CREATE UNIQUE INDEX idx_documents_entity_sha256 ON public.accounting_documents U
 --
 
 CREATE INDEX idx_documents_entity_status ON public.accounting_documents USING btree (entity_id, status, created_at);
+
+
+--
+-- Name: idx_documents_integrity_failed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_documents_integrity_failed ON public.accounting_documents USING btree (integrity_status) WHERE ((integrity_status)::text = ANY (ARRAY[('mismatch'::character varying)::text, ('missing'::character varying)::text]));
+
+
+--
+-- Name: idx_documents_search_blob; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_documents_search_blob ON public.accounting_documents USING gin (search_blob public.gin_trgm_ops);
 
 
 --
@@ -3582,6 +3661,13 @@ CREATE INDEX index_accounting_document_links_on_document_id ON public.accounting
 --
 
 CREATE INDEX index_accounting_documents_on_entity_id ON public.accounting_documents USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_documents_on_parent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_documents_on_parent_id ON public.accounting_documents USING btree (parent_id);
 
 
 --
@@ -4243,6 +4329,13 @@ CREATE INDEX index_accounting_vat_grid_mappings_on_vat_code_id ON public.account
 
 
 --
+-- Name: index_action_mailbox_inbound_emails_uniqueness; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_action_mailbox_inbound_emails_uniqueness ON public.action_mailbox_inbound_emails USING btree (message_id, message_checksum);
+
+
+--
 -- Name: index_active_storage_attachments_on_blob_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4331,6 +4424,13 @@ CREATE UNIQUE INDEX index_depreciation_entries_on_asset_and_fiscal_year ON publi
 --
 
 CREATE INDEX index_entities_on_created_by_id ON public.entities USING btree (created_by_id);
+
+
+--
+-- Name: index_entities_on_documents_mail_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_entities_on_documents_mail_token ON public.entities USING btree (documents_mail_token);
 
 
 --
@@ -4598,6 +4698,14 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 
 ALTER TABLE ONLY public.accounting_invoice_emails
     ADD CONSTRAINT fk_rails_310b9a27ad FOREIGN KEY (sent_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: accounting_documents fk_rails_32af54cabb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_documents
+    ADD CONSTRAINT fk_rails_32af54cabb FOREIGN KEY (parent_id) REFERENCES public.accounting_documents(id) ON DELETE SET NULL;
 
 
 --
@@ -5311,6 +5419,12 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003140000'),
+('20261003130001'),
+('20261003130000'),
+('20261003120000'),
+('20261003110000'),
+('20261003100000'),
 ('20261003090000'),
 ('20261002160000'),
 ('20261002150000'),

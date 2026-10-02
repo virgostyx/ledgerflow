@@ -130,4 +130,40 @@ RSpec.describe "Accounting::Settings::Entities", type: :request do
       expect(entity.reload.four_eyes).to be false
     end
   end
+
+  describe "the address of the documents (F03)" do
+    it "shows the owner the secret address" do
+      get edit_accounting_settings_entity_path
+
+      expect(response.body).to include(entity.documents_email)
+    end
+
+    it "shows nothing while the document store is off" do
+      entity.update!(features: entity.features.merge("f03" => false))
+
+      get edit_accounting_settings_entity_path
+
+      expect(response.body).not_to include(entity.documents_email)
+    end
+
+    it "lets the owner replace it, which audits the change without writing either address" do
+      old = entity.documents_email
+
+      post regenerate_documents_address_accounting_settings_entity_path
+
+      expect(response).to redirect_to(edit_accounting_settings_entity_path)
+      expect(entity.reload.documents_email).not_to eq(old)
+      row = Accounting::AuditLog.where(action: "documents_address_regenerated").sole
+      expect(row.payload.to_s).not_to include(entity.documents_mail_token)
+    end
+
+    it "refuses anyone but the owner" do
+      sign_in manager
+      old = entity.documents_email
+
+      post regenerate_documents_address_accounting_settings_entity_path
+
+      expect(entity.reload.documents_email).to eq(old)
+    end
+  end
 end

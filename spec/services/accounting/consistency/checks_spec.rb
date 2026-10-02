@@ -170,6 +170,30 @@ RSpec.describe "Accounting::Consistency checks", type: :service do
     include_examples "detects then clears", :C17AccrualWithoutReversal
   end
 
+  describe "C18 a stored document no longer matches its checksum" do
+    let(:document) { Accounting::UploadDocument.call(io: StringIO.new(sample_pdf("c18")), filename: "c18.pdf", user: create(:user))[:document] }
+    let(:original) { File.binread(stored_path(document)) }
+
+    def create_anomaly
+      original
+      tamper_with_stored_file(document)
+      Accounting::VerifyDocument.call(document: document)
+    end
+
+    def correct_anomaly
+      restore_stored_file(document, original)
+      Accounting::VerifyDocument.call(document: document)
+    end
+    include_examples "detects then clears", :C18DocumentIntegrity
+
+    it "also catches a file that is gone, and names it" do
+      delete_stored_file(document)
+      Accounting::VerifyDocument.call(document: document)
+
+      expect(found(Checks::C18DocumentIntegrity).map(&:message).join).to include("c18.pdf", "missing")
+    end
+  end
+
   describe "a clean dataset" do
     it "raises nothing at all" do
       post([ bank, 5000, 0 ], [ create(:account, code: "100000", label_fr: "Capital", account_class: 1, account_type: :equity, normal_balance: :credit), 0, 5000 ])

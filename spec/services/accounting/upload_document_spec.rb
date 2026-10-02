@@ -171,6 +171,58 @@ RSpec.describe Accounting::UploadDocument do
     end
   end
 
+  describe "the antivirus" do
+    around do |example|
+      previous = Rails.configuration.x.document_virus_scan
+      Dir.mktmpdir do |dir|
+        @dir = dir
+        example.run
+      end
+    ensure
+      Rails.configuration.x.document_virus_scan = previous
+    end
+
+    def scanner(exit_otherwise: 0)
+      path = File.join(@dir, "scan.sh")
+      File.write(path, "#!/bin/sh\nif grep -q EICAR-STANDARD; then exit 1; fi\nexit #{exit_otherwise}\n")
+      File.chmod(0o755, path)
+      Rails.configuration.x.document_virus_scan = { command: [ path ], fail_open: false }
+    end
+
+    it "lets a clean file in when a scanner is configured" do
+      scanner
+
+      expect(upload(sample_pdf("clean"), "clean.pdf")).to be_success
+    end
+
+    it "refuses an infected file, whatever it claims to be, and keeps nothing of it" do
+      scanner
+      infected = sample_pdf("looks fine") + "\n%" + 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' + "\n" # a valid PDF carrying the test string as a comment
+
+      result = upload(infected, "invoice.pdf")
+
+      expect(failure_reason(result)).to eq(:infected)
+      expect(result.message).to match(/virus/i)
+      expect(Accounting::Document.count).to eq(0)
+      expect(Accounting::AuditLog.where(action: "document_upload")).to be_empty
+    end
+
+    it "refuses everything while the scanner is down, rather than let unchecked files in" do
+      scanner(exit_otherwise: 2)
+
+      result = upload(sample_pdf("unchecked"), "u.pdf")
+
+      expect(failure_reason(result)).to eq(:scan_unavailable)
+      expect(Accounting::Document.count).to eq(0)
+    end
+
+    it "does not scan what it already refuses for another reason" do
+      scanner(exit_otherwise: 2)
+
+      expect(failure_reason(upload(sample_exe, "x.pdf"))).to eq(:unsupported_type)
+    end
+  end
+
   describe "duplicates" do
     it "refuses the same content twice, pointing to the first document" do
       first = upload(sample_pdf("dup"), "first.pdf")[:document]

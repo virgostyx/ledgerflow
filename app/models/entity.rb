@@ -12,6 +12,8 @@ class Entity < ApplicationRecord
   serialize :peppol_credentials, type: Hash, coder: JSON
   encrypts  :peppol_credentials
   has_secure_token :peppol_webhook_token
+  # The secret part of the address that receives this entity's documents by e-mail (F03).
+  has_secure_token :documents_mail_token
   normalizes :peppol_participant_id, with: ->(id) { id.strip.presence }
 
   # A blank number must be NULL: the unique index on vat_number only skips NULLs.
@@ -26,6 +28,8 @@ class Entity < ApplicationRecord
   validate  :peppol_participant_id_format, :simulator_allowed, :peppol_credentials_complete
 
   scope :active, -> { where(active: true) }
+
+  def documents_email = "documents+#{documents_mail_token}@#{Rails.configuration.x.documents_mail_domain}"
 
   # The features of docs/dev/features/spec.md that are built, each shipped behind a per-entity flag. A function adds its
   # key here when it ships.

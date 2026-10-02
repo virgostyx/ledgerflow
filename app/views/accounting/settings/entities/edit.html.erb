@@ -121,4 +121,15 @@
       </div>
     <% end %>
   </div>
+
+  <% if @entity.feature?(:f03) && Accounting::Settings::BasePolicy.new(current_user, :settings).destroy? %>
+    <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
+      <h2 class="text-sm font-semibold text-gray-900">Documents by e-mail</h2>
+      <p class="mt-1 text-xs text-gray-500">Attachments sent to this address land in the document inbox. Keep it private: anyone who knows it can add documents.</p>
+      <p class="mt-3 font-mono text-sm text-gray-800 break-all"><%= @entity.documents_email %></p>
+      <%= button_to "Replace the address", regenerate_documents_address_accounting_settings_entity_path, method: :post,
+            data: { turbo_confirm: "The current address will stop working. Replace it?" },
+            class: "mt-3 px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 text-sm hover:bg-gray-50 cursor-pointer" %>
+    </div>
+  <% end %>
 </div>

@@ -71,3 +71,6 @@ application.register("report-table", ReportTableController)
 
 import ChartController from "controllers/chart_controller"
 application.register("chart", ChartController)
+
+import DropzoneController from "controllers/dropzone_controller"
+application.register("dropzone", DropzoneController)

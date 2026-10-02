@@ -5,9 +5,10 @@
 <%= render Ui::PageHeaderComponent.new(title: "Documents", description: "Supporting documents: invoices, statements, contracts. Link each to the entry it justifies.") %>
 
 <% if policy(Accounting::Document).create? %>
-  <%= form_with url: accounting_documents_path, method: :post, multipart: true, class: "mb-6 rounded-lg border border-dashed border-gray-300 bg-white p-4 flex flex-wrap items-end gap-4" do %>
+  <%= form_with url: accounting_documents_path, method: :post, multipart: true, data: { controller: "dropzone", action: "dragover->dropzone#over dragleave->dropzone#leave drop->dropzone#drop submit->dropzone#submit" },
+        class: "mb-6 rounded-lg border border-dashed border-gray-300 bg-white p-4 flex flex-wrap items-end gap-4" do %>
     <div class="flex-1 min-w-64">
-      <%= label_tag :files, "Files (PDF, PNG, JPEG, TIFF, XML, CSV, XLSX — 25 MB at most)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= label_tag :files, "Files (PDF, PNG, JPEG, TIFF, XML, CSV, XLSX — 25 MB at most; a ZIP is unpacked)", class: "block text-sm font-medium text-gray-700 mb-1" %>
       <%= file_field_tag "files[]", id: "files", multiple: true, required: true, class: "block w-full text-sm text-gray-600" %>
     </div>
     <div>
@@ -15,17 +16,34 @@
       <%= select_tag :kind, options_for_select(Accounting::Document.kinds.keys.map { |k| [ k.humanize, k ] }), class: "rounded-md border border-gray-300 px-3 py-2 text-sm" %>
     </div>
     <%= submit_tag "Upload", class: "btn-primary" %>
+    <p class="w-full text-xs text-gray-500">Or drop files anywhere on this box.</p>
+    <div class="w-full" data-dropzone-target="status" hidden>
+      <div class="h-2 rounded bg-gray-100 overflow-hidden"><div class="h-2 bg-primary-600" style="width:0%" data-dropzone-target="bar"></div></div>
+      <p class="mt-1 text-xs text-gray-600" data-dropzone-target="label"></p>
+    </div>
   <% end %>
 <% end %>
 
 <%= form_with url: accounting_documents_path, method: :get, class: "mb-4 flex flex-wrap items-end gap-3 text-sm" do %>
-  <div><%= label_tag :q, "Name", class: "block font-medium text-gray-700" %>
-    <%= text_field_tag :q, params[:q], class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <div><%= label_tag :q, "Search", class: "block font-medium text-gray-700" %>
+    <%= text_field_tag :q, params[:q], placeholder: "name, number, amount, supplier…", class: "mt-1 w-56 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <div><%= label_tag :partner_id, "Supplier", class: "block font-medium text-gray-700" %>
+    <%= select_tag :partner_id, options_from_collection_for_select(@suppliers, :id, :name, params[:partner_id]), include_blank: "Any", class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <div><%= label_tag :from, "From", class: "block font-medium text-gray-700" %>
+    <%= date_field_tag :from, params[:from], class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <div><%= label_tag :to, "To", class: "block font-medium text-gray-700" %>
+    <%= date_field_tag :to, params[:to], class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <div><%= label_tag :min_amount, "Total from", class: "block font-medium text-gray-700" %>
+    <%= text_field_tag :min_amount, params[:min_amount], class: "mt-1 w-28 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <div><%= label_tag :max_amount, "to", class: "block font-medium text-gray-700" %>
+    <%= text_field_tag :max_amount, params[:max_amount], class: "mt-1 w-28 rounded-md border border-gray-300 px-3 py-2" %></div>
   <div><%= label_tag :status, "Status", class: "block font-medium text-gray-700" %>
     <%= select_tag :status, options_for_select([ [ "Inbox and linked", "" ], %w[Inbox inbox], %w[Linked linked], %w[Archived archived] ], params[:status]), class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
   <div><%= label_tag :kind_filter, "Kind", class: "block font-medium text-gray-700" %>
     <%= select_tag :kind, options_for_select(Accounting::Document.kinds.keys.map { |k| [ k.humanize, k ] }, params[:kind]), include_blank: "Any", id: "kind_filter", class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
-  <%= submit_tag "Filter", class: "btn-primary" %>
+  <div><%= label_tag :origin, "Origin", class: "block font-medium text-gray-700" %>
+    <%= select_tag :origin, options_for_select(Accounting::Document.origins.keys.map { |o| [ o.humanize, o ] }, params[:origin]), include_blank: "Any", class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <%= submit_tag "Search", class: "btn-primary" %>
 <% end %>
 
 <% if @documents.empty? %>
