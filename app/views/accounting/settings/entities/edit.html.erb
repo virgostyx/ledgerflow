@@ -81,14 +81,16 @@
             <span class="block text-xs text-gray-400">Turns on the BudgetFlow connection: API clients, the invoices received from BudgetFlow and the payment feed.</span>
           <% end %>
         </div>
-        <div class="flex items-start gap-2 pt-2">
-          <%= hidden_field_tag "entity[features][f01]", "0", id: nil %>
-          <%= check_box_tag "entity[features][f01]", "1", @entity.feature?(:f01), id: "entity_features_f01", class: "mt-1 rounded border-gray-300" %>
-          <%= label_tag "entity_features_f01", class: "text-sm text-gray-700" do %>
-            Roles, period locks and users
-            <span class="block text-xs text-gray-400">Turns on the Periods and Users and roles screens and the four-eyes option. The safeguards (a locked period refuses entries, the last owner stays) stay active either way.</span>
-          <% end %>
-        </div>
+        <% Entity::FEATURE_LABELS.each do |key, (title, help)| %>
+          <div class="flex items-start gap-2 pt-2">
+            <%= hidden_field_tag "entity[features][#{key}]", "0", id: nil %>
+            <%= check_box_tag "entity[features][#{key}]", "1", @entity.feature?(key), id: "entity_features_#{key}", class: "mt-1 rounded border-gray-300" %>
+            <%= label_tag "entity_features_#{key}", class: "text-sm text-gray-700" do %>
+              <%= title %>
+              <span class="block text-xs text-gray-400"><%= help %></span>
+            <% end %>
+          </div>
+        <% end %>
         <% if @entity.feature?(:f01) %>
         <div class="flex items-start gap-2 pt-2">
           <%= f.check_box :four_eyes, class: "mt-1 rounded border-gray-300" %>

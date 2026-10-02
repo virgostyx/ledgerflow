@@ -1,0 +1,25 @@
+<%# The documents of an entry (F03): each leads to its viewer; an accountant or assistant may attach one from the inbox. %>
+<% documents = Accounting::Document.where(id: Accounting::DocumentLink.where(target: entry).select(:document_id)).order(:name) %>
+<section class="mt-6 rounded-lg border border-gray-200 bg-white p-4" id="entry-documents">
+  <h2 class="mb-2 text-sm font-semibold text-gray-900">Documents</h2>
+  <% if documents.empty? %>
+    <p class="text-sm text-gray-500">No document attached.</p>
+  <% else %>
+    <ul class="space-y-1 text-sm">
+      <% documents.each do |document| %>
+        <li><%= link_to document.name, accounting_document_path(document), class: "text-primary-700 hover:underline" %> <span class="text-xs text-gray-500">(<%= document.kind.humanize %>)</span></li>
+      <% end %>
+    </ul>
+  <% end %>
+  <% if policy(Accounting::Document).link? %>
+    <% waiting = Accounting::Document.inbox.order(created_at: :desc).limit(50) %>
+    <% if waiting.any? %>
+      <%= form_with url: accounting_document_links_path, method: :post, class: "mt-3 flex gap-2" do %>
+        <%= hidden_field_tag :target_type, "entry" %>
+        <%= hidden_field_tag :target_id, entry.id %>
+        <%= select_tag :document_id, options_from_collection_for_select(waiting, :id, :name), class: "flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm" %>
+        <%= submit_tag "Attach", class: "btn-primary text-sm" %>
+      <% end %>
+    <% end %>
+  <% end %>
+</section>

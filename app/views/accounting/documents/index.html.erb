@@ -1,0 +1,52 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Documents" } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Documents", description: "Supporting documents: invoices, statements, contracts. Link each to the entry it justifies.") %>
+
+<% if policy(Accounting::Document).create? %>
+  <%= form_with url: accounting_documents_path, method: :post, multipart: true, class: "mb-6 rounded-lg border border-dashed border-gray-300 bg-white p-4 flex flex-wrap items-end gap-4" do %>
+    <div class="flex-1 min-w-64">
+      <%= label_tag :files, "Files (PDF, PNG, JPEG, TIFF, XML, CSV, XLSX — 25 MB at most)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= file_field_tag "files[]", id: "files", multiple: true, required: true, class: "block w-full text-sm text-gray-600" %>
+    </div>
+    <div>
+      <%= label_tag :kind, "Kind", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= select_tag :kind, options_for_select(Accounting::Document.kinds.keys.map { |k| [ k.humanize, k ] }), class: "rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+    </div>
+    <%= submit_tag "Upload", class: "btn-primary" %>
+  <% end %>
+<% end %>
+
+<%= form_with url: accounting_documents_path, method: :get, class: "mb-4 flex flex-wrap items-end gap-3 text-sm" do %>
+  <div><%= label_tag :q, "Name", class: "block font-medium text-gray-700" %>
+    <%= text_field_tag :q, params[:q], class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <div><%= label_tag :status, "Status", class: "block font-medium text-gray-700" %>
+    <%= select_tag :status, options_for_select([ [ "Inbox and linked", "" ], %w[Inbox inbox], %w[Linked linked], %w[Archived archived] ], params[:status]), class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <div><%= label_tag :kind_filter, "Kind", class: "block font-medium text-gray-700" %>
+    <%= select_tag :kind, options_for_select(Accounting::Document.kinds.keys.map { |k| [ k.humanize, k ] }, params[:kind]), include_blank: "Any", id: "kind_filter", class: "mt-1 rounded-md border border-gray-300 px-3 py-2" %></div>
+  <%= submit_tag "Filter", class: "btn-primary" %>
+<% end %>
+
+<% if @documents.empty? %>
+  <p class="text-sm text-gray-500">No documents.</p>
+<% else %>
+  <table class="min-w-full divide-y divide-gray-200 text-sm" id="documents">
+    <thead class="text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+      <tr><th class="py-2 pr-4">Name</th><th class="pr-4">Kind</th><th class="pr-4">Status</th><th class="pr-4">Origin</th><th class="pr-4">Size</th><th class="pr-4">Uploaded</th></tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      <% @documents.each do |document| %>
+        <tr>
+          <td class="py-2 pr-4 font-medium"><%= link_to document.name, accounting_document_path(document), class: "text-primary-700 hover:underline" %></td>
+          <td class="pr-4"><%= document.kind.humanize %></td>
+          <td class="pr-4"><%= document.status.humanize %></td>
+          <td class="pr-4"><%= document.origin.humanize %></td>
+          <td class="pr-4"><%= number_to_human_size(document.byte_size) %></td>
+          <td class="pr-4 text-gray-600"><%= l(document.created_at, format: :short) %><% if document.uploaded_by %> · <%= document.uploaded_by.full_name %><% end %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <%= render "shared/pagination", pagy: @pagy %>
+<% end %>

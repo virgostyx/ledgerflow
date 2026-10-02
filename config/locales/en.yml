@@ -27,6 +27,29 @@ en:
       wrong_code:        "That code is not valid. Check the clock of your device and try the current code."
       required_for_role: "Your role requires two-factor authentication: it cannot be switched off."
 
+  documents:
+    choose_file: "Choose at least one file."
+    uploaded:
+      one:   "%{count} document uploaded."
+      other: "%{count} documents uploaded."
+    updated:  "Document updated."
+    archived: "Document archived."
+    deleted:  "Document deleted."
+    linked:   "Document attached."
+    unlinked: "Document detached."
+    errors:
+      no_such_target:   "No entry matches that reference."
+      empty:            "This file is empty."
+      too_large:        "This file is larger than 25 MB."
+      unsupported_type: "This type of file is not accepted (PDF, PNG, JPEG, TIFF, XML, CSV and XLSX only)."
+      corrupted:        "This file is damaged and cannot be read."
+      unsafe_xml:       "This XML declares entities (DOCTYPE) and is refused for safety."
+      duplicate:        "Already in the documents as %{name}."
+      archived:         "An archived document cannot be linked."
+      bad_target:       "This document cannot be linked to that."
+      already_linked:   "This document is already linked to that."
+      evidence:         "This document justifies a validated entry: it stays attached (it can only be archived)."
+
   entities:
     create_first_entity: "Please create your first entity to get started."
     provisioned:         "Entity created and provisioned successfully. Welcome!"

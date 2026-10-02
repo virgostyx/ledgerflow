@@ -22,6 +22,11 @@ module Permissions
     "settings.manage"        => %i[admin accountant],
     "closing.adjust"         => %i[admin accountant],
     "fiscal_years.manage"    => %i[admin],
+    "documents.view"         => EVERYONE,
+    "documents.upload"       => %i[admin accountant assistant],
+    "documents.link"         => %i[admin accountant assistant],
+    "documents.archive"      => %i[admin accountant],
+    "documents.delete_expired" => %i[admin],
     "reports.view"           => EVERYONE,
     "reports.export"         => %i[admin accountant assistant],
     # the read-only roles export only when the entity allows it (Entity#read_only_export), see ApplicationPolicy#can_export?

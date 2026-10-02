@@ -1,0 +1,87 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Documents", path: accounting_documents_path }, { label: @document.name } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: @document.name, description: "#{@document.kind.humanize} · #{@document.status.humanize} · #{number_to_human_size(@document.byte_size)}",
+                                      back_path: accounting_documents_path, back_text: "Documents") do |header| %>
+  <% header.with_actions do %>
+    <%= link_to "Download", download_accounting_document_path(@document), class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50" %>
+    <% if policy(@document).archive? && !@document.archived? %>
+      <%= button_to "Archive", archive_accounting_document_path(@document), method: :post, class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50",
+            form: { data: { turbo_confirm: "Archive this document? It stays in the store, but leaves the inbox." } } %>
+    <% end %>
+    <% if policy(@document).destroy? && @document.deletable? %>
+      <%= button_to "Delete", accounting_document_path(@document), method: :delete, class: "px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50",
+            form: { data: { turbo_confirm: "Delete this document for good? Its retention term is over." } } %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% if @document.locked? %>
+  <p class="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">This document justifies a validated entry: it cannot be changed or detached, only archived.</p>
+<% end %>
+<% if @document.extracted_data["unreadable"] %>
+  <p class="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">This PDF asks for a password: it is kept as evidence, but nothing can be read from it.</p>
+<% end %>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="lg:col-span-2 rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <% case @document.content_type %>
+    <% when "application/pdf" %>
+      <iframe src="<%= file_accounting_document_path(@document) %>" title="<%= @document.name %>" class="w-full h-[75vh]"></iframe>
+    <% when "image/png", "image/jpeg" %>
+      <img src="<%= file_accounting_document_path(@document) %>" alt="<%= @document.name %>" class="max-w-full mx-auto">
+    <% else %>
+      <p class="p-6 text-sm text-gray-600">This type of file cannot be shown in the page. <%= link_to "Download it", download_accounting_document_path(@document), class: "text-primary-700 underline" %> to open it.</p>
+    <% end %>
+  </div>
+
+  <div class="space-y-6">
+    <section class="rounded-lg border border-gray-200 bg-white p-4">
+      <h2 class="mb-2 text-sm font-semibold text-gray-900">Linked to</h2>
+      <% if @links.empty? %>
+        <p class="text-sm text-gray-500">Nothing yet.</p>
+      <% else %>
+        <ul class="space-y-1 text-sm">
+          <% @links.each do |link| %>
+            <li class="flex items-center justify-between gap-2">
+              <% target = link.target %>
+              <% if target.is_a?(Accounting::JournalEntry) %>
+                <%= link_to "Entry #{target.reference || "##{target.id}"}", accounting_journal_entry_path(target), class: "text-primary-700 hover:underline" %>
+              <% else %>
+                <span><%= link.target_type.demodulize.titleize %> #<%= link.target_id %></span>
+              <% end %>
+              <% if policy(@document).unlink? %>
+                <%= button_to "Detach", accounting_document_link_path(link), method: :delete, class: "text-xs text-gray-500 hover:text-red-600" %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+      <% if policy(@document).link? && !@document.archived? %>
+        <%= form_with url: accounting_document_links_path, method: :post, class: "mt-3 flex flex-wrap gap-2" do %>
+          <%= hidden_field_tag :document_id, @document.id %>
+          <%= text_field_tag :entry_reference, nil, placeholder: "Entry reference", required: true, class: "min-w-0 flex-1 basis-32 rounded-md border border-gray-300 px-2 py-1 text-sm" %>
+          <%= submit_tag "Attach", class: "btn-primary text-sm" %>
+        <% end %>
+      <% end %>
+    </section>
+
+    <section class="rounded-lg border border-gray-200 bg-white p-4 text-sm">
+      <h2 class="mb-2 font-semibold text-gray-900">Details</h2>
+      <dl class="space-y-1 text-gray-600">
+        <div><dt class="inline font-medium">Kind:</dt>
+          <% if policy(@document).update? && !@document.locked? %>
+            <%= form_with url: accounting_document_path(@document), method: :patch, class: "inline-flex gap-1" do %>
+              <%= select_tag :kind, options_for_select(Accounting::Document.kinds.keys.map { |k| [ k.humanize, k ] }, @document.kind), class: "rounded border border-gray-300 text-xs" %>
+              <%= submit_tag "Save", class: "text-xs text-primary-700" %>
+            <% end %>
+          <% else %><dd class="inline"><%= @document.kind.humanize %></dd><% end %></div>
+        <div><dt class="inline font-medium">Origin:</dt> <dd class="inline"><%= @document.origin.humanize %></dd></div>
+        <div><dt class="inline font-medium">Uploaded:</dt> <dd class="inline"><%= l(@document.created_at, format: :short) %><% if @document.uploaded_by %> by <%= @document.uploaded_by.full_name %><% end %></dd></div>
+        <div><dt class="inline font-medium">Kept until:</dt> <dd class="inline"><%= @document.retention_until %><%= " (legal hold)" if @document.legal_hold %></dd></div>
+        <div><dt class="inline font-medium">SHA-256:</dt> <dd class="block break-all font-mono text-xs"><%= @document.sha256 %></dd></div>
+      </dl>
+    </section>
+  </div>
+</div>

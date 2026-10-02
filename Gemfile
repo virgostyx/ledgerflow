@@ -90,7 +90,6 @@ group :development do
 end
 
 group :test do
-  gem "pdf-reader" # reads back generated invoice PDFs in specs
   gem "capybara"
   gem "selenium-webdriver"
   gem "webmock"
@@ -100,3 +99,6 @@ end
 gem "pagy", "~> 9.4"
 
 gem "rqrcode", "~> 3.2"
+
+# F03: checks that an uploaded PDF is readable (and reads back generated PDFs in specs)
+gem "pdf-reader"

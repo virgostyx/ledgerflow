@@ -118,7 +118,8 @@ RSpec.describe "Feature flag f01", type: :request do
     it "ignores a feature that does not exist" do
       patch accounting_settings_entity_path, params: { entity: { features: { f99: "1" } } }
 
-      expect(entity.reload.features).to eq("f01" => false)
+      expect(entity.reload.features).not_to have_key("f99")
+      expect(entity.feature?(:f01)).to be false
     end
   end
 end

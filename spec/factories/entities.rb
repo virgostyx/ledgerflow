@@ -5,7 +5,7 @@ FactoryBot.define do
     legal_form  { "ASBL" }
     country     { "BE" }
     active      { true }
-    features    { { "f01" => true } } # specs exercise the features; the column default is everything off
+    features    { Entity::FEATURES.index_with { true } } # specs exercise the features; the column default is everything off
     vat_number  { nil }
     association :created_by, factory: :user
   end

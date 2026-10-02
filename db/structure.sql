@@ -11,6 +11,34 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
+
+
+--
+-- Name: unaccent; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION unaccent; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION unaccent IS 'text search dictionary that removes accents';
+
+
+--
 -- Name: date_in_locked_period(bigint, date); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -690,6 +718,84 @@ CREATE SEQUENCE public.accounting_depreciation_entries_id_seq
 --
 
 ALTER SEQUENCE public.accounting_depreciation_entries_id_seq OWNED BY public.accounting_depreciation_entries.id;
+
+
+--
+-- Name: accounting_document_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_document_links (
+    id bigint NOT NULL,
+    document_id bigint NOT NULL,
+    target_type character varying NOT NULL,
+    target_id bigint NOT NULL,
+    created_by_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_document_links_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_document_links_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_document_links_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_document_links_id_seq OWNED BY public.accounting_document_links.id;
+
+
+--
+-- Name: accounting_documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_documents (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    name character varying NOT NULL,
+    content_type character varying,
+    byte_size bigint NOT NULL,
+    sha256 character varying(64) NOT NULL,
+    origin integer DEFAULT 0 NOT NULL,
+    kind integer DEFAULT 0 NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    search_text text,
+    extracted_data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    uploaded_by_id bigint,
+    retention_until date,
+    legal_hold boolean DEFAULT false NOT NULL,
+    replaces_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_documents_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_documents_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_documents_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_documents_id_seq OWNED BY public.accounting_documents.id;
 
 
 --
@@ -2317,6 +2423,20 @@ ALTER TABLE ONLY public.accounting_depreciation_entries ALTER COLUMN id SET DEFA
 
 
 --
+-- Name: accounting_document_links id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_document_links ALTER COLUMN id SET DEFAULT nextval('public.accounting_document_links_id_seq'::regclass);
+
+
+--
+-- Name: accounting_documents id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_documents ALTER COLUMN id SET DEFAULT nextval('public.accounting_documents_id_seq'::regclass);
+
+
+--
 -- Name: accounting_exchange_rates id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2695,6 +2815,22 @@ ALTER TABLE ONLY public.accounting_depreciation_entries
 
 
 --
+-- Name: accounting_document_links accounting_document_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_document_links
+    ADD CONSTRAINT accounting_document_links_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_documents accounting_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_documents
+    ADD CONSTRAINT accounting_documents_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_exchange_rates accounting_exchange_rates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3033,6 +3169,34 @@ CREATE INDEX idx_audit_object ON public.accounting_audit_logs USING btree (audit
 --
 
 CREATE UNIQUE INDEX idx_bank_transactions_on_account_and_ref ON public.accounting_bank_transactions USING btree (bank_account_id, reference) WHERE (reference IS NOT NULL);
+
+
+--
+-- Name: idx_document_links_target; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_document_links_target ON public.accounting_document_links USING btree (target_type, target_id);
+
+
+--
+-- Name: idx_document_links_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_document_links_unique ON public.accounting_document_links USING btree (document_id, target_type, target_id);
+
+
+--
+-- Name: idx_documents_entity_sha256; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_documents_entity_sha256 ON public.accounting_documents USING btree (entity_id, sha256);
+
+
+--
+-- Name: idx_documents_entity_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_documents_entity_status ON public.accounting_documents USING btree (entity_id, status, created_at);
 
 
 --
@@ -3397,6 +3561,41 @@ CREATE INDEX index_accounting_depreciation_entries_on_fixed_asset_id ON public.a
 --
 
 CREATE INDEX index_accounting_depreciation_entries_on_journal_entry_id ON public.accounting_depreciation_entries USING btree (journal_entry_id);
+
+
+--
+-- Name: index_accounting_document_links_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_document_links_on_created_by_id ON public.accounting_document_links USING btree (created_by_id);
+
+
+--
+-- Name: index_accounting_document_links_on_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_document_links_on_document_id ON public.accounting_document_links USING btree (document_id);
+
+
+--
+-- Name: index_accounting_documents_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_documents_on_entity_id ON public.accounting_documents USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_documents_on_replaces_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_documents_on_replaces_id ON public.accounting_documents USING btree (replaces_id);
+
+
+--
+-- Name: index_accounting_documents_on_uploaded_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_documents_on_uploaded_by_id ON public.accounting_documents USING btree (uploaded_by_id);
 
 
 --
@@ -4426,6 +4625,14 @@ ALTER TABLE ONLY public.accounting_accounts
 
 
 --
+-- Name: accounting_document_links fk_rails_3df36a68ba; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_document_links
+    ADD CONSTRAINT fk_rails_3df36a68ba FOREIGN KEY (document_id) REFERENCES public.accounting_documents(id);
+
+
+--
 -- Name: accounting_invoice_line_annotations fk_rails_3f22d8b430; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4506,6 +4713,14 @@ ALTER TABLE ONLY public.accounting_analytical_accounts
 
 
 --
+-- Name: accounting_documents fk_rails_5ad0383653; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_documents
+    ADD CONSTRAINT fk_rails_5ad0383653 FOREIGN KEY (replaces_id) REFERENCES public.accounting_documents(id);
+
+
+--
 -- Name: user_entities fk_rails_5adfb6b489; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4519,6 +4734,14 @@ ALTER TABLE ONLY public.user_entities
 
 ALTER TABLE ONLY public.accounting_bank_transactions
     ADD CONSTRAINT fk_rails_5c6e43e656 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_documents fk_rails_5f348b6a57; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_documents
+    ADD CONSTRAINT fk_rails_5f348b6a57 FOREIGN KEY (uploaded_by_id) REFERENCES public.users(id);
 
 
 --
@@ -4898,6 +5121,14 @@ ALTER TABLE ONLY public.accounting_invoice_lines
 
 
 --
+-- Name: accounting_documents fk_rails_d1eb99157d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_documents
+    ADD CONSTRAINT fk_rails_d1eb99157d FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoice_line_annotations fk_rails_d3bee1dc29; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5026,6 +5257,14 @@ ALTER TABLE ONLY public.accounting_period_locks
 
 
 --
+-- Name: accounting_document_links fk_rails_f4edfdbfdf; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_document_links
+    ADD CONSTRAINT fk_rails_f4edfdbfdf FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_bank_transactions fk_rails_f5872c5e07; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5072,6 +5311,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003090000'),
 ('20261002160000'),
 ('20261002150000'),
 ('20261002140000'),

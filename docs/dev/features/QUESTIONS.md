@@ -26,3 +26,13 @@ Décisions prises par prudence pendant l'implémentation (règle du §17.1 de `d
 - **Perte de l'application d'authentification** : pas de procédure en libre-service. À décider : codes de secours TOTP, ou réinitialisation par un propriétaire (écran).
 - **Clés d'API sans propriétaire** (émises avant F01) : elles gardent leur comportement jusqu'à la prochaine rotation. À décider : les migrer en attribuant un propriétaire, ou refuser les clés sans propriétaire après une date.
 - **Défaut `post` de l'API** : l'API valide si `post` est absent. Un propriétaire sans droit de valider reçoit 403 plutôt qu'un brouillon silencieux (choix prudent : l'intégration saurait sinon moins ce qui s'est passé).
+
+## F03 — Documents
+- **Durée de conservation** : 10 ans à partir du dépôt, pour tous les types (la spec dit « calculé par type, défaut 10 ans, à confirmer avec la réglementation »). **À valider par un comptable** : durée, point de départ (dépôt ou clôture de l'exercice de l'écriture liée) et durée par type.
+- **Aucune suppression avant le terme**, même d'un document déposé par erreur : on l'archive. Strict, conformément à la spec ; à confirmer si une correction de dépôt (suppression dans les N minutes, tant que rien n'est lié) est souhaitée.
+- **Type CSV** : accepté si le nom finit par `.csv` et que le contenu est du texte. **Texte brut** (`.txt`) refusé.
+- **XML avec `<!DOCTYPE`** : refusé en bloc plutôt que nettoyé. Un UBL BIS 3.0 n'en contient pas.
+- **Service de fichiers par l'application** plutôt que par des adresses signées d'Active Storage : plus simple à rendre étanche par société et par droit. Les « liens signés à durée limitée » dont parle la spec (réponse d'un tiers, F08) restent à construire.
+- **Chiffrement au repos / S3 / sauvegarde** : le volume `ledgerflow_storage` doit être sauvegardé et chiffré par l'hébergement ; rien dans le code ne chiffre les fichiers.
+- **Dépendances système** pour l'extraction à venir : `tesseract-ocr` (avec les langues fr, nl, en) et `poppler-utils` (`pdftotext`, `pdftoppm`) dans l'image Docker.
+
