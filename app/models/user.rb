@@ -12,6 +12,8 @@ class User < ApplicationRecord
 
   has_many :user_entities, dependent: :destroy
   has_many :entities, through: :user_entities
+  # The entities the user may work in today (active membership inside its validity window).
+  has_many :current_entities, -> { merge(UserEntity.current) }, through: :user_entities, source: :entity
   has_many :webauthn_credentials, dependent: :destroy
   has_many :recovery_codes, dependent: :destroy
 

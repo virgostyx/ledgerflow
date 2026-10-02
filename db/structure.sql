@@ -2065,7 +2065,9 @@ CREATE TABLE public.user_entities (
     role integer DEFAULT 0 NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    valid_from date,
+    valid_until date
 );
 
 
@@ -5031,6 +5033,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002110000'),
 ('20261002100000'),
 ('20261002090000'),
 ('20261001080000'),

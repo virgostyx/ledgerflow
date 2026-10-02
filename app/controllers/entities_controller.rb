@@ -2,7 +2,7 @@ class EntitiesController < ApplicationController
   skip_before_action :require_entity!, only: %i[index new create]
 
   def index
-    @entities = current_user.entities.active.order(:name)
+    @entities = current_user.current_entities.active.order(:name)
   end
 
   def new
@@ -28,7 +28,7 @@ class EntitiesController < ApplicationController
   end
 
   def switch
-    entity = current_user.entities.find_by(id: params[:id])
+    entity = current_user.current_entities.find_by(id: params[:id])
     if entity
       session[:current_entity_id] = entity.id
       redirect_to accounting_root_path, notice: t("entities.switched", name: entity.name)

@@ -42,4 +42,24 @@ RSpec.describe "Policies use the role held in the current entity" do
       end
     end
   end
+
+  describe "an access that is no longer valid" do
+    let(:policy) { Accounting::JournalEntryPolicy }
+
+    it "denies an expired membership, even for an admin" do
+      user = create(:user)
+      create(:user_entity, :admin, user: user, entity: entity, valid_until: Date.current - 1)
+      create(:user_entity, :admin, entity: entity) # another owner keeps the entity valid
+
+      expect(policy.new(user, :entry).post?).to be false
+    end
+
+    it "denies a deactivated membership" do
+      user = create(:user)
+      create(:user_entity, :admin, entity: entity)
+      create(:user_entity, :admin, user: user, entity: entity, active: false)
+
+      expect(policy.new(user, :entry).post?).to be false
+    end
+  end
 end

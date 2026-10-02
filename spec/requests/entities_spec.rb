@@ -84,4 +84,41 @@ RSpec.describe 'Entities', type: :request do
       expect(response).to redirect_to(entities_path)
     end
   end
+
+  describe 'an access that is no longer valid (F01)' do
+    let(:other_entity) { create(:entity) }
+
+    def expire!(entity)
+      create(:user_entity, :admin, entity: entity) # keeps an owner on the entity
+      create(:user_entity, :accountant, user: user, entity: entity, valid_until: Date.current - 1)
+    end
+
+    it 'does not let the user switch to an entity whose access expired' do
+      expire!(other_entity)
+
+      post switch_entity_path(other_entity)
+
+      expect(response).to redirect_to(entities_path)
+      expect(session[:current_entity_id]).not_to eq(other_entity.id)
+    end
+
+    it 'does not list the entity either' do
+      expire!(other_entity)
+
+      get entities_path
+
+      expect(response.body).not_to include(other_entity.name)
+    end
+
+    it 'drops the entity from the session on the very next request' do
+      expire!(other_entity)
+      get accounting_root_path # current entity = the one with a valid access
+      membership.update_columns(valid_until: Date.current - 1) # access removed while connected
+      create(:user_entity, :admin, entity: entity)
+
+      get accounting_root_path
+
+      expect(response).to redirect_to('/onboarding/entity/new')
+    end
+  end
 end

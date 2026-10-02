@@ -34,7 +34,7 @@ class ApplicationPolicy
   end
 
   def membership
-    @membership ||= UserEntity.find_by(user: user, entity: current_entity, active: true)
+    @membership ||= UserEntity.current.find_by(user: user, entity: current_entity)
   end
 
   def can?(permission) = Permissions.allowed?(membership&.role, permission)

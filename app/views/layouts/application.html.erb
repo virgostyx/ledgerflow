@@ -303,7 +303,7 @@
             <span class="text-xs font-medium text-indigo-700 truncate"><%= ActsAsTenant.current_tenant.name %></span>
           </div>
           <div class="flex gap-2 px-2">
-            <% if current_user.entities.count > 1 %>
+            <% if current_user.current_entities.count > 1 %>
               <%= link_to "Switch", entities_path, class: "text-xs text-gray-400 hover:text-indigo-600" %>
               <span class="text-gray-200">·</span>
             <% end %>

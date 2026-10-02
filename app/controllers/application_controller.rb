@@ -54,8 +54,8 @@ class ApplicationController < ActionController::Base
   def set_current_entity
     return unless current_user
     entity_id = session[:current_entity_id]
-    entity = entity_id ? current_user.entities.find_by(id: entity_id) : nil
-    entity ||= current_user.entities.active.first
+    entity = entity_id ? current_user.current_entities.find_by(id: entity_id) : nil
+    entity ||= current_user.current_entities.active.first
     set_current_tenant(entity)
     session[:current_entity_id] = entity&.id
   end

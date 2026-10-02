@@ -444,6 +444,10 @@ en:
         must_belong_to_axis:          "must belong to the selected axis"
         split_exceeds_100:            "split on this axis would exceed 100 %"
       models:
+        user_entity:
+          attributes:
+            base:
+              last_owner: "The last owner of an entity cannot be removed, demoted, deactivated or given an expiry date."
         accounting/partner:
           attributes:
             vat_number:
