@@ -386,6 +386,26 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
       expect(response.body).to include('January closed')
     end
 
+    it 'does not offer to post a draft of a locked period, but still lets it be edited' do
+      create(:period_lock, starts_on: month.first, ends_on: month.last)
+
+      get accounting_journal_entry_path(entry)
+
+      expect(response.body).not_to include(post_entry_accounting_journal_entry_path(entry))
+      expect(response.body).to include(edit_accounting_journal_entry_path(entry))
+      expect(response.body).to include('cannot be posted')
+      expect(response.body).not_to include('cannot be changed')
+    end
+
+    it 'says a posted entry of a locked period cannot be changed' do
+      Accounting::PostJournalEntry.call(entry: entry)
+      create(:period_lock, starts_on: month.first, ends_on: month.last)
+
+      get accounting_journal_entry_path(entry)
+
+      expect(response.body).to include('cannot be changed')
+    end
+
     it 'shows no banner outside a locked period' do
       get accounting_journal_entry_path(entry)
 

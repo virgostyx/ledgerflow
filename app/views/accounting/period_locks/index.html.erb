@@ -21,16 +21,16 @@
   <% else %>
     <table class="min-w-full divide-y divide-gray-200 text-sm" id="period-locks">
       <thead class="text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-        <tr><th class="py-2">Period</th><th>Kind</th><th>Status</th><th>Locked</th><th>Unlocked</th><th></th></tr>
+        <tr><th class="py-2 pr-4">Period</th><th class="pr-4">Kind</th><th class="pr-4">Status</th><th class="pr-4">Locked</th><th class="pr-4">Unlocked</th><th></th></tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
         <% @locks.each do |lock| %>
           <tr>
-            <td class="py-2 font-medium text-gray-900"><%= lock.starts_on %> → <%= lock.ends_on %></td>
-            <td><%= lock.kind.humanize %></td>
-            <td><span class="<%= lock.locked? ? 'text-red-700' : 'text-gray-500' %>"><%= lock.status.humanize %></span></td>
-            <td class="text-gray-600"><%= lock.locked_by.full_name %>, <%= l(lock.locked_at, format: :short) %><% if lock.lock_reason.present? %><br><span class="text-xs"><%= lock.lock_reason %></span><% end %></td>
-            <td class="text-gray-600"><% if lock.unlocked? %><%= lock.unlocked_by&.full_name %>, <%= l(lock.unlocked_at, format: :short) %><br><span class="text-xs"><%= lock.unlock_reason %></span><% end %></td>
+            <td class="py-2 pr-4 font-medium text-gray-900 whitespace-nowrap"><%= lock.starts_on %> → <%= lock.ends_on %></td>
+            <td class="pr-4"><%= lock.kind.humanize %></td>
+            <td class="pr-4"><span class="<%= lock.locked? ? 'text-red-700' : 'text-gray-500' %>"><%= lock.status.humanize %></span></td>
+            <td class="pr-4 text-gray-600"><%= lock.locked_by.full_name %>, <%= l(lock.locked_at, format: :short) %><% if lock.lock_reason.present? %><br><span class="text-xs"><%= lock.lock_reason %></span><% end %></td>
+            <td class="pr-4 text-gray-600"><% if lock.unlocked? %><%= lock.unlocked_by&.full_name %>, <%= l(lock.unlocked_at, format: :short) %><br><span class="text-xs"><%= lock.unlock_reason %></span><% end %></td>
             <td>
               <% if lock.locked? && policy(lock).unlock? %>
                 <%= form_with url: unlock_accounting_period_lock_path(lock), method: :post, class: "flex gap-2" do |f| %>

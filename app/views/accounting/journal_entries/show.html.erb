@@ -14,7 +14,7 @@
     ) do |header| %>
   <% header.with_actions do %>
     <%= render Accounting::StatusBadgeComponent.new(status: @entry.status.to_sym) %>
-    <% if @entry.draft? && policy(@entry).post? %>
+    <% if @entry.draft? && policy(@entry).post? && @period_lock.nil? %>
       <%= button_to 'Post', post_entry_accounting_journal_entry_path(@entry), method: :post,
             class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
     <% end %>
@@ -35,7 +35,7 @@
 <% if @period_lock %>
   <div class="mb-6 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">
     This entry is dated in a locked period (<%= @period_lock.starts_on %> to <%= @period_lock.ends_on %>)<% if @period_lock.lock_reason.present? %>: <%= @period_lock.lock_reason %><% end %>.
-    It cannot be changed<%= " or posted" if @entry.draft? %>.
+    <%= @entry.draft? ? "It cannot be posted until the period is unlocked." : "It cannot be changed." %>
     <%= link_to "See the periods", accounting_period_locks_path, class: "font-medium underline" %>
   </div>
 <% end %>
