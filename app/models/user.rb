@@ -56,6 +56,13 @@ class User < ApplicationRecord
     match ? match.update!(used_at: Time.current) : false
   end
 
+  # Every failed password attempt is audited (with the count, and whether it locked the account).
+  def valid_for_authentication?
+    super.tap do |valid|
+      Accounting::AuditLogin.call(user: self, action: "login_failed", method: "password", failed_attempts: failed_attempts, locked: access_locked?) unless valid
+    end
+  end
+
   def can_post_entries?
     admin? || accountant?
   end

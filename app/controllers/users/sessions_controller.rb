@@ -10,7 +10,7 @@ class Users::SessionsController < Devise::SessionsController
       self.resource = resource_class.new(sign_in_params)
       return render :new, status: :unprocessable_content
     end
-    super
+    super { |resource| Accounting::AuditLogin.call(user: resource, action: "login", method: "password") }
   end
 
   protected

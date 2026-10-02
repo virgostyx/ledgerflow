@@ -50,4 +50,39 @@ RSpec.describe 'Users::Sessions', type: :request do
       expect(response).to redirect_to(root_path)
     end
   end
+
+  describe 'audit trail (F01)' do
+    let(:entity) { create(:entity) }
+    let!(:membership) { create(:user_entity, :accountant, user: user, entity: entity) }
+
+    def audit(action) = Accounting::AuditLog.where(action: action, auditable_id: user.id, entity_id: entity.id)
+
+    it 'records a successful sign-in' do
+      post user_session_path, params: { user: { email: user.email, password: password } }
+
+      expect(audit('login').count).to eq(1)
+      expect(audit('login').first.payload).to include('method' => 'password')
+    end
+
+    it 'records a failed sign-in with the number of failed attempts' do
+      post user_session_path, params: { user: { email: user.email, password: 'wrong' } }
+
+      row = audit('login_failed').first
+      expect(row.payload).to include('method' => 'password', 'failed_attempts' => 1, 'locked' => false)
+      expect(audit('login').count).to eq(0)
+    end
+
+    it 'records the lock after five failures' do
+      5.times { post user_session_path, params: { user: { email: user.email, password: 'wrong' } } }
+
+      expect(audit('login_failed').count).to eq(5)
+      expect(audit('login_failed').order(:id).last.payload).to include('failed_attempts' => 5, 'locked' => true)
+      expect(user.reload).to be_access_locked
+    end
+
+    it 'does not write anything for an unknown email' do
+      expect { post user_session_path, params: { user: { email: 'nobody@example.com', password: 'x' } } }
+        .not_to change(Accounting::AuditLog, :count)
+    end
+  end
 end

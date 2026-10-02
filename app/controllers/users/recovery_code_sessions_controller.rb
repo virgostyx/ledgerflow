@@ -11,8 +11,10 @@ module Users
 
       if user&.passwordless? && user.active_for_authentication? && user.use_recovery_code!(params[:recovery_code])
         sign_in(user)
+        Accounting::AuditLogin.call(user: user, action: "login", method: "recovery_code")
         redirect_to passkeys_path, notice: "Signed in with a recovery code. Please remove the lost passkey and register a new one."
       else
+        Accounting::AuditLogin.call(user: user, action: "login_failed", method: "recovery_code") if user
         flash.now[:alert] = "Invalid email or recovery code."
         render :new, status: :unprocessable_content
       end

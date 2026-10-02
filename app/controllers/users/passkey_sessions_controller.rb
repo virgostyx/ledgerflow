@@ -17,8 +17,8 @@ module Users
 
       user = stored.user
       handle = webauthn_credential.user_handle
-      return invalid_credential! unless handle && ActiveSupport::SecurityUtils.secure_compare(handle, user.webauthn_id)
-      return invalid_credential! unless user.active_for_authentication?
+      return invalid_credential!(user) unless handle && ActiveSupport::SecurityUtils.secure_compare(handle, user.webauthn_id)
+      return invalid_credential!(user) unless user.active_for_authentication?
 
       webauthn_credential.verify(
         session.delete(:webauthn_authentication_challenge),
@@ -26,16 +26,19 @@ module Users
       )
       stored.update!(sign_count: webauthn_credential.sign_count, last_used_at: Time.current)
       sign_in(user)
+      Accounting::AuditLogin.call(user: user, action: "login", method: "passkey")
       render json: { redirect_to: accounting_root_path }
     rescue WebAuthn::SignCountVerificationError
       render json: { error: "This passkey failed a security check and can't be used. Please contact support." }, status: :unprocessable_content
     rescue WebAuthn::Error
-      invalid_credential!
+      invalid_credential!(stored&.user)
     end
 
     private
 
-    def invalid_credential!
+    # `user` is the account the assertion claimed to belong to, when it is known.
+    def invalid_credential!(user = nil)
+      Accounting::AuditLogin.call(user: user, action: "login_failed", method: "passkey") if user
       render json: { error: "Passkey sign-in failed. Please try again or use a recovery code." }, status: :unprocessable_content
     end
   end

@@ -53,6 +53,23 @@ RSpec.describe "Users::PasskeySessions", type: :request do
     post passkey_session_path, params: { credential: assertion(challenge: WebAuthn.generate_user_id) }, as: :json
     expect(response).to have_http_status(:unprocessable_content)
   end
+
+  describe "audit trail (F01)" do
+    def audit(action) = Accounting::AuditLog.where(action: action, auditable_id: user.id)
+
+    it "records a passkey sign-in" do
+      sign_in_with_passkey
+
+      expect(audit("login").count).to eq(1)
+      expect(audit("login").first.payload).to include("method" => "passkey")
+    end
+
+    it "records a failed passkey attempt of a known user" do
+      sign_in_with_passkey(user_handle: SecureRandom.random_bytes(64))
+
+      expect(audit("login_failed").first.payload).to include("method" => "passkey")
+    end
+  end
 end
 
 RSpec.describe "Users::RecoveryCodeSessions", type: :request do
@@ -84,6 +101,24 @@ RSpec.describe "Users::RecoveryCodeSessions", type: :request do
     user.update!(active: false)
     post recovery_code_session_path, params: { email: user.email, recovery_code: codes.first }
     expect(response).to have_http_status(:unprocessable_content)
+  end
+
+  describe "audit trail (F01)" do
+    before { create(:user_entity, :accountant, user: user) }
+
+    def audit(action) = Accounting::AuditLog.where(action: action, auditable_id: user.id)
+
+    it "records a sign-in with a recovery code" do
+      post recovery_code_session_path, params: { email: user.email, recovery_code: codes.first }
+
+      expect(audit("login").first.payload).to include("method" => "recovery_code")
+    end
+
+    it "records a wrong recovery code of a known user" do
+      post recovery_code_session_path, params: { email: user.email, recovery_code: "nope" }
+
+      expect(audit("login_failed").first.payload).to include("method" => "recovery_code")
+    end
   end
 end
 

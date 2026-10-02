@@ -372,4 +372,32 @@ RSpec.describe 'Accounting::JournalEntries', type: :request do
       expect(Accounting::JournalEntry.last).to be_posted
     end
   end
+
+  describe 'locked period banner (F01)' do
+    let(:month) { fiscal_year.start_date.beginning_of_month..fiscal_year.start_date.end_of_month }
+    let(:entry) { create(:journal_entry, :with_balanced_lines, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 3) }
+
+    it 'warns that the entry sits in a locked period and says why' do
+      create(:period_lock, starts_on: month.first, ends_on: month.last, lock_reason: 'January closed')
+
+      get accounting_journal_entry_path(entry)
+
+      expect(response.body).to include('locked period')
+      expect(response.body).to include('January closed')
+    end
+
+    it 'shows no banner outside a locked period' do
+      get accounting_journal_entry_path(entry)
+
+      expect(response.body).not_to include('locked period')
+    end
+
+    it 'shows no banner once the period was unlocked' do
+      create(:period_lock, starts_on: month.first, ends_on: month.last, status: :unlocked)
+
+      get accounting_journal_entry_path(entry)
+
+      expect(response.body).not_to include('locked period')
+    end
+  end
 end

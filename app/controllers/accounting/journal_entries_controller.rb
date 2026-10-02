@@ -7,6 +7,7 @@ class Accounting::JournalEntriesController < ApplicationController
 
   def show
     authorize @entry
+    @period_lock = Accounting::PeriodLock.covering(@entry.entry_date).first
   end
 
   def new

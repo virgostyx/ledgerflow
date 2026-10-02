@@ -32,6 +32,14 @@
   <% end %>
 <% end %>
 
+<% if @period_lock %>
+  <div class="mb-6 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+    This entry is dated in a locked period (<%= @period_lock.starts_on %> to <%= @period_lock.ends_on %>)<% if @period_lock.lock_reason.present? %>: <%= @period_lock.lock_reason %><% end %>.
+    It cannot be changed<%= " or posted" if @entry.draft? %>.
+    <%= link_to "See the periods", accounting_period_locks_path, class: "font-medium underline" %>
+  </div>
+<% end %>
+
 <% if @entry.description.present? %>
   <p class="text-sm text-gray-600 mb-6"><%= @entry.description %></p>
 <% end %>
