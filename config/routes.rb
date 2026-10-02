@@ -85,6 +85,9 @@ Rails.application.routes.draw do
 
       resources :recurring_invoices, except: [ :show ]
       resources :payment_reminders, only: [ :index, :create ]
+      resources :period_locks, path: "periods", only: %i[index create] do
+        post :unlock, on: :member
+      end
       resources :consistency_runs, path: "consistency", only: [ :index, :create ] do
         post :acknowledge, on: :collection
       end

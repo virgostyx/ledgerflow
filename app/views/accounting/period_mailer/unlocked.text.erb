@@ -1,0 +1,5 @@
+The period <%= @lock.starts_on %> to <%= @lock.ends_on %> of <%= @entity.legal_name %> was unlocked by <%= @lock.unlocked_by.full_name %>.
+
+Reason: <%= @lock.unlock_reason %>
+
+The period list is at /accounting/periods

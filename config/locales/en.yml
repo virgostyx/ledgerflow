@@ -41,6 +41,10 @@ en:
       four_eyes: "Another person must validate this entry: its author cannot."
       period_locked: "The period %{starts_on} to %{ends_on} is locked: nothing can be posted in it."
 
+    period_locks:
+      locked:   "Period locked."
+      unlocked: "Period unlocked. The owners have been told."
+
     partners:
       created: "Partner created successfully."
       updated: "Partner updated."

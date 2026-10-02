@@ -1,0 +1,47 @@
+<div class="mx-auto max-w-5xl px-4 py-8">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900">Periods</h1>
+  <p class="mb-6 text-sm text-gray-500">Nothing can be posted with an entry date inside a locked period. Only an owner can unlock one, with a reason.</p>
+
+  <% if policy(Accounting::PeriodLock).create? %>
+    <%= form_with model: @lock, url: accounting_period_locks_path, class: "mb-8 grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-5 items-end" do |f| %>
+      <div><%= f.label :starts_on, "From", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.date_field :starts_on, required: true, class: "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %></div>
+      <div><%= f.label :ends_on, "To", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.date_field :ends_on, required: true, class: "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %></div>
+      <div><%= f.label :kind, "Kind", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.select :kind, Accounting::PeriodLock.kinds.keys.map { |k| [ k.humanize, k ] }, {}, class: "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %></div>
+      <div><%= f.label :lock_reason, "Note (optional)", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.text_field :lock_reason, class: "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %></div>
+      <div><%= f.submit "Lock period", class: "btn-primary" %></div>
+    <% end %>
+  <% end %>
+
+  <% if @locks.empty? %>
+    <p class="text-sm text-gray-500">No period has been locked yet.</p>
+  <% else %>
+    <table class="min-w-full divide-y divide-gray-200 text-sm" id="period-locks">
+      <thead class="text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+        <tr><th class="py-2">Period</th><th>Kind</th><th>Status</th><th>Locked</th><th>Unlocked</th><th></th></tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @locks.each do |lock| %>
+          <tr>
+            <td class="py-2 font-medium text-gray-900"><%= lock.starts_on %> → <%= lock.ends_on %></td>
+            <td><%= lock.kind.humanize %></td>
+            <td><span class="<%= lock.locked? ? 'text-red-700' : 'text-gray-500' %>"><%= lock.status.humanize %></span></td>
+            <td class="text-gray-600"><%= lock.locked_by.full_name %>, <%= l(lock.locked_at, format: :short) %><% if lock.lock_reason.present? %><br><span class="text-xs"><%= lock.lock_reason %></span><% end %></td>
+            <td class="text-gray-600"><% if lock.unlocked? %><%= lock.unlocked_by&.full_name %>, <%= l(lock.unlocked_at, format: :short) %><br><span class="text-xs"><%= lock.unlock_reason %></span><% end %></td>
+            <td>
+              <% if lock.locked? && policy(lock).unlock? %>
+                <%= form_with url: unlock_accounting_period_lock_path(lock), method: :post, class: "flex gap-2" do |f| %>
+                  <%= f.text_field :reason, placeholder: "Reason (required)", required: true, class: "rounded-md border border-gray-300 px-2 py-1 text-xs" %>
+                  <%= f.submit "Unlock", class: "text-xs font-medium text-red-700 hover:underline cursor-pointer", data: { turbo_confirm: "Unlock #{lock.starts_on} to #{lock.ends_on}? Entries can be posted again in this period and the owners are told." } %>
+                <% end %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>

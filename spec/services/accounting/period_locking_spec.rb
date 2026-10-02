@@ -49,6 +49,21 @@ RSpec.describe "Locking and unlocking a period" do
       expect(Accounting::AuditLog.find_by(action: "unlock_period").reason).to eq("Late supplier invoice")
     end
 
+    it "tells the owners of the entity, and only them" do
+      owner = create(:user_entity, :admin, entity: entity).user
+      create(:user_entity, :accountant, entity: entity)
+      create(:user_entity, :admin) # an owner of another entity
+
+      expect { described_class.call(lock: lock, reason: "Late supplier invoice", user: user) }
+        .to have_enqueued_mail(Accounting::PeriodMailer, :unlocked).with(owner, lock).once
+    end
+
+    it "sends nothing when it refuses" do
+      create(:user_entity, :admin, entity: entity)
+
+      expect { described_class.call(lock: lock, reason: "", user: user) }.not_to have_enqueued_mail(Accounting::PeriodMailer, :unlocked)
+    end
+
     it "refuses to unlock a period that is already unlocked" do
       lock.update!(status: :unlocked)
 

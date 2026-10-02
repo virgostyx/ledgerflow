@@ -13,6 +13,8 @@ module Permissions
     "vat.file"               => %i[admin accountant],
     "payments.manage"        => %i[admin accountant],
     "dunning.send"           => %i[admin accountant],
+    "periods.lock"           => %i[admin accountant],
+    "periods.unlock"         => %i[admin],
     "settings.manage"        => %i[admin accountant],
     "closing.adjust"         => %i[admin accountant],
     "fiscal_years.manage"    => %i[admin],

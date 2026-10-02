@@ -19,6 +19,8 @@ RSpec.describe Permissions do
     "vat.file"               => [ [ Accounting::VatDeclarationPolicy, :submit? ], [ Accounting::VatDeclarationPolicy, :accept? ], [ Accounting::FiscalYearPolicy, :vat_regularization? ] ],
     "payments.manage"        => [ [ Accounting::PaymentBatchPolicy, :generate? ], [ Accounting::PaymentBatchPolicy, :execute? ] ],
     "dunning.send"           => [ [ Accounting::PaymentReminderPolicy, :index? ] ],
+    "periods.lock"           => [ [ Accounting::PeriodLockPolicy, :create? ], [ Accounting::PeriodLockPolicy, :new? ] ],
+    "periods.unlock"         => [ [ Accounting::PeriodLockPolicy, :unlock? ] ],
     "settings.manage"        => [ [ Accounting::Settings::BasePolicy, :index? ], [ Accounting::Settings::BasePolicy, :update? ] ],
     "closing.adjust"         => [ [ Accounting::FiscalYearPolicy, :propose_revaluation? ], [ Accounting::AccrualPolicy, :index? ], [ Accounting::ConsistencyRunPolicy, :acknowledge? ] ],
     "fiscal_years.manage"    => [ [ Accounting::FiscalYearPolicy, :close? ], [ Accounting::FiscalYearPolicy, :create? ], [ Accounting::FiscalYearPolicy, :update? ] ],
