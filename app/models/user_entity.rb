@@ -1,4 +1,6 @@
 class UserEntity < ApplicationRecord
+  include Accounting::AuditTrailed # who gave or took which right, when (F01)
+
   belongs_to :user
   belongs_to :entity
 

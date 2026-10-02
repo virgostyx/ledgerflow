@@ -90,6 +90,19 @@ RSpec.describe "Accounting::Settings::Entities", type: :request do
       get accounting_settings_root_path
       expect(response.body).to include(edit_accounting_settings_entity_path)
     end
+
+    it "links the owner to users and roles" do
+      get accounting_settings_root_path
+      expect(response.body).to include(accounting_settings_memberships_path)
+    end
+
+    it "does not offer users and roles to an accountant" do
+      sign_in create(:user, role: :accountant).tap { |u| create(:user_entity, :accountant, user: u, entity: entity) }
+
+      get accounting_settings_root_path
+
+      expect(response.body).not_to include(accounting_settings_memberships_path)
+    end
   end
 
   describe "four-eyes option (F01)" do

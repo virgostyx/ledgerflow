@@ -23,6 +23,11 @@ en:
     provisioned:         "Entity created and provisioned successfully. Welcome!"
     provision_failed:    "Entity provisioning failed. Please try again."
     switched:            "Switched to %{name}."
+    invite:
+      bad_role:  "Unknown role."
+      bad_email: "This does not look like an email address."
+      done:      "Access given. A new person receives an email to choose a password."
+      updated:   "Access updated."
     not_found:           "Entity not found."
 
   accounting:

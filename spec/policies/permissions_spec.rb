@@ -21,6 +21,7 @@ RSpec.describe Permissions do
     "dunning.send"           => [ [ Accounting::PaymentReminderPolicy, :index? ] ],
     "periods.lock"           => [ [ Accounting::PeriodLockPolicy, :create? ], [ Accounting::PeriodLockPolicy, :new? ] ],
     "periods.unlock"         => [ [ Accounting::PeriodLockPolicy, :unlock? ] ],
+    "users.manage"           => [ [ UserEntityPolicy, :index? ], [ UserEntityPolicy, :create? ], [ UserEntityPolicy, :update? ] ],
     "settings.manage"        => [ [ Accounting::Settings::BasePolicy, :index? ], [ Accounting::Settings::BasePolicy, :update? ] ],
     "closing.adjust"         => [ [ Accounting::FiscalYearPolicy, :propose_revaluation? ], [ Accounting::AccrualPolicy, :index? ], [ Accounting::ConsistencyRunPolicy, :acknowledge? ] ],
     "fiscal_years.manage"    => [ [ Accounting::FiscalYearPolicy, :close? ], [ Accounting::FiscalYearPolicy, :create? ], [ Accounting::FiscalYearPolicy, :update? ] ],

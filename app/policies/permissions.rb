@@ -15,6 +15,7 @@ module Permissions
     "dunning.send"           => %i[admin accountant],
     "periods.lock"           => %i[admin accountant],
     "periods.unlock"         => %i[admin],
+    "users.manage"           => %i[admin],
     "settings.manage"        => %i[admin accountant],
     "closing.adjust"         => %i[admin accountant],
     "fiscal_years.manage"    => %i[admin],
