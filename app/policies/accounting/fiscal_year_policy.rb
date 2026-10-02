@@ -1,10 +1,10 @@
 class Accounting::FiscalYearPolicy < ApplicationPolicy
   def close?
-    entity_admin?
+    can?("fiscal_years.manage")
   end
 
   def create?
-    entity_admin?
+    can?("fiscal_years.manage")
   end
 
   def new?
@@ -12,7 +12,7 @@ class Accounting::FiscalYearPolicy < ApplicationPolicy
   end
 
   def update?
-    entity_admin?
+    can?("fiscal_years.manage")
   end
 
   def edit?
@@ -24,10 +24,10 @@ class Accounting::FiscalYearPolicy < ApplicationPolicy
   end
 
   def propose_revaluation?
-    entity_accountant?
+    can?("closing.adjust")
   end
 
   def vat_regularization?
-    entity_accountant?
+    can?("vat.file")
   end
 end

@@ -1,5 +1,5 @@
 class Accounting::ConsistencyRunPolicy < ApplicationPolicy
-  def index? = entity_auditor?
-  def create? = entity_accountant?
-  def acknowledge? = entity_accountant?
+  def index? = can?("audit.view")
+  def create? = can?("closing.adjust")
+  def acknowledge? = can?("closing.adjust")
 end

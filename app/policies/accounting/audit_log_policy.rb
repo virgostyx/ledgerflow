@@ -1,4 +1,4 @@
 class Accounting::AuditLogPolicy < ApplicationPolicy
-  def index? = entity_auditor?
-  def show? = entity_auditor?
+  def index? = can?("audit.view")
+  def show? = can?("audit.view")
 end

@@ -1,5 +1,5 @@
 class Accounting::ReportPolicy < ApplicationPolicy
-  def trial_balance?    = entity_manager?
+  def trial_balance?    = can?("reports.view")
   def balance_sheet?    = trial_balance?
   def income_statement? = trial_balance?
   def annual_accounts?  = trial_balance?

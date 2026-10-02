@@ -1,4 +1,4 @@
 class Accounting::BankReconciliationsPolicy < ApplicationPolicy
-  def show?   = entity_accountant?
-  def update? = entity_accountant?
+  def show?   = can?("reconciliations.manage")
+  def update? = can?("reconciliations.manage")
 end

@@ -1,10 +1,10 @@
 class Accounting::VatDeclarationPolicy < ApplicationPolicy
   def submit?
-    entity_accountant?
+    can?("vat.file")
   end
 
   def accept?
-    entity_accountant?
+    can?("vat.file")
   end
 
   def intervat_xml?

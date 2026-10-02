@@ -6,13 +6,13 @@ class ApplicationPolicy
     @record = record
   end
 
-  def index?   = entity_manager?
-  def show?    = entity_any_member?
-  def create?  = entity_accountant?
+  def index?   = can?("records.list")
+  def show?    = can?("records.view")
+  def create?  = can?("records.write")
   def new?     = create?
-  def update?  = entity_accountant?
+  def update?  = can?("records.write")
   def edit?    = update?
-  def destroy? = entity_admin?
+  def destroy? = can?("records.delete")
 
   class Scope
     def initialize(user, scope)
@@ -37,9 +37,5 @@ class ApplicationPolicy
     @membership ||= UserEntity.find_by(user: user, entity: current_entity, active: true)
   end
 
-  def entity_admin?      = membership&.admin? == true
-  def entity_accountant? = entity_admin? || membership&.accountant? == true
-  def entity_manager?    = entity_accountant? || membership&.manager? == true
-  def entity_auditor?    = entity_manager? || membership&.auditor? == true
-  def entity_any_member? = membership.present?
+  def can?(permission) = Permissions.allowed?(membership&.role, permission)
 end

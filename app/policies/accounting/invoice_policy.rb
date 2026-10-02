@@ -1,20 +1,20 @@
 class Accounting::InvoicePolicy < ApplicationPolicy
   def destroy?
-    entity_accountant?
+    can?("invoices.issue")
   end
 
   def post?
-    entity_accountant?
+    can?("invoices.issue")
   end
 
   # An invoice received from BudgetFlow is undone by returning it (reverse + tell BudgetFlow), never by cancelling alone.
   def cancel?
-    (entity_accountant?) && !from_budgetflow?
+    (can?("invoices.issue")) && !from_budgetflow?
   end
 
   # A draft or posted invoice received from BudgetFlow, for an entity that uses it: the accountant sends it back with a reason.
   def return_to_sender?
-    (entity_accountant?) && (record.draft? || record.posted?) && from_budgetflow?
+    (can?("invoices.issue")) && (record.draft? || record.posted?) && from_budgetflow?
   end
 
   def duplicate?
@@ -22,7 +22,7 @@ class Accounting::InvoicePolicy < ApplicationPolicy
   end
 
   def send_email?
-    entity_accountant?
+    can?("invoices.issue")
   end
 
   def pdf?
@@ -30,15 +30,15 @@ class Accounting::InvoicePolicy < ApplicationPolicy
   end
 
   def create_credit_note?
-    entity_accountant?
+    can?("invoices.issue")
   end
 
   def apply_credit_note?
-    entity_accountant?
+    can?("invoices.issue")
   end
 
   def send_peppol?
-    entity_accountant?
+    can?("invoices.issue")
   end
 
   private

@@ -1,17 +1,17 @@
 class Accounting::PaymentBatchPolicy < ApplicationPolicy
   def generate?
-    entity_accountant?
+    can?("payments.manage")
   end
 
   def execute?
-    entity_accountant?
+    can?("payments.manage")
   end
 
   def download?
-    entity_accountant?
+    can?("payments.manage")
   end
 
   def destroy?
-    entity_accountant?
+    can?("payments.manage")
   end
 end

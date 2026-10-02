@@ -1,9 +1,9 @@
 class Accounting::JournalEntryPolicy < ApplicationPolicy
   def post?
-    entity_accountant?
+    can?("entries.post")
   end
 
   def reverse?
-    entity_accountant?
+    can?("entries.reverse")
   end
 end
