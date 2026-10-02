@@ -1450,6 +1450,48 @@ ALTER SEQUENCE public.accounting_peppol_events_id_seq OWNED BY public.accounting
 
 
 --
+-- Name: accounting_period_locks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_period_locks (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    kind integer DEFAULT 0 NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    starts_on date NOT NULL,
+    ends_on date NOT NULL,
+    locked_by_id bigint NOT NULL,
+    locked_at timestamp(6) without time zone NOT NULL,
+    lock_reason character varying,
+    unlocked_by_id bigint,
+    unlocked_at timestamp(6) without time zone,
+    unlock_reason character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_period_lock_range CHECK ((ends_on >= starts_on))
+);
+
+
+--
+-- Name: accounting_period_locks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_period_locks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_period_locks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_period_locks_id_seq OWNED BY public.accounting_period_locks.id;
+
+
+--
 -- Name: accounting_recurring_invoices; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2330,6 +2372,13 @@ ALTER TABLE ONLY public.accounting_peppol_events ALTER COLUMN id SET DEFAULT nex
 
 
 --
+-- Name: accounting_period_locks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_period_locks ALTER COLUMN id SET DEFAULT nextval('public.accounting_period_locks_id_seq'::regclass);
+
+
+--
 -- Name: accounting_recurring_invoices id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2722,6 +2771,14 @@ ALTER TABLE ONLY public.accounting_peppol_events
 
 
 --
+-- Name: accounting_period_locks accounting_period_locks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_period_locks
+    ADD CONSTRAINT accounting_period_locks_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_recurring_invoices accounting_recurring_invoices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2996,6 +3053,13 @@ CREATE INDEX idx_on_entity_id_fingerprint_49aa41669e ON public.accounting_consis
 --
 
 CREATE INDEX idx_on_journal_entry_line_id_307850d4ba ON public.accounting_analytical_annotations USING btree (journal_entry_line_id);
+
+
+--
+-- Name: idx_period_locks_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_period_locks_active ON public.accounting_period_locks USING btree (entity_id, starts_on, ends_on) WHERE (status = 0);
 
 
 --
@@ -3818,6 +3882,27 @@ CREATE INDEX index_accounting_peppol_events_on_invoice_id_and_occurred_at ON pub
 
 
 --
+-- Name: index_accounting_period_locks_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_period_locks_on_entity_id ON public.accounting_period_locks USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_period_locks_on_locked_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_period_locks_on_locked_by_id ON public.accounting_period_locks USING btree (locked_by_id);
+
+
+--
+-- Name: index_accounting_period_locks_on_unlocked_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_period_locks_on_unlocked_by_id ON public.accounting_period_locks USING btree (unlocked_by_id);
+
+
+--
 -- Name: index_accounting_recurring_invoices_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4154,6 +4239,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 ALTER TABLE ONLY public.accounting_bank_accounts
     ADD CONSTRAINT fk_rails_215e10200e FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: accounting_period_locks fk_rails_216c0a1533; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_period_locks
+    ADD CONSTRAINT fk_rails_216c0a1533 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -4501,6 +4594,14 @@ ALTER TABLE ONLY public.webauthn_credentials
 
 
 --
+-- Name: accounting_period_locks fk_rails_a58d738482; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_period_locks
+    ADD CONSTRAINT fk_rails_a58d738482 FOREIGN KEY (unlocked_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: api_clients fk_rails_aadf4d1f14; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4789,6 +4890,14 @@ ALTER TABLE ONLY public.accounting_payment_batches
 
 
 --
+-- Name: accounting_period_locks fk_rails_f44208b691; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_period_locks
+    ADD CONSTRAINT fk_rails_f44208b691 FOREIGN KEY (locked_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_bank_transactions fk_rails_f5872c5e07; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4827,6 +4936,7 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002090000'),
 ('20261001080000'),
 ('20261001070000'),
 ('20261001060000'),

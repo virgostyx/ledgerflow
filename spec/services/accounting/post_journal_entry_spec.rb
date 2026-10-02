@@ -57,4 +57,41 @@ RSpec.describe Accounting::PostJournalEntry, type: :service do
       expect(result2).to be_failure
     end
   end
+
+  describe '.call — période verrouillée (F01)' do
+    let(:month_start) { fiscal_year.start_date }
+    let(:month_end)   { fiscal_year.start_date.end_of_month }
+    let!(:lock)       { create(:period_lock, starts_on: month_start, ends_on: month_end) }
+
+    def post_dated(date)
+      described_class.call(entry: create(:journal_entry, :with_balanced_lines, fiscal_year: fiscal_year, entry_date: date))
+    end
+
+    it 'refuse une écriture datée le premier jour de la période verrouillée' do
+      expect(post_dated(month_start)).to be_failure
+    end
+
+    it 'refuse une écriture datée le dernier jour de la période verrouillée' do
+      result = post_dated(month_end)
+
+      expect(result).to be_failure
+      expect(result.message).to include('is locked')
+    end
+
+    it 'accepte une écriture datée le premier jour qui suit la période' do
+      expect(post_dated(month_end + 1)).to be_success
+    end
+
+    it 'ne valide pas le brouillon refusé' do
+      entry = create(:journal_entry, :with_balanced_lines, fiscal_year: fiscal_year, entry_date: month_start)
+
+      expect { described_class.call(entry: entry) }.not_to change { entry.reload.status }
+    end
+
+    it 'accepte de nouveau après le déverrouillage' do
+      lock.update!(status: :unlocked)
+
+      expect(post_dated(month_start)).to be_success
+    end
+  end
 end
