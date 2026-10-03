@@ -1,7 +1,8 @@
 # Two ways in:
 # - API key ("lf_..."): an ApiClient fixes the entity and limits what the caller may do (action_scopes).
 #   An action without a declared scope is refused (fail closed); `:any` means any active client. Every call is logged in api_requests.
-# - Legacy JWT (deprecated): entity from the payload, full access, not logged.
+# - Legacy JWT (deprecated, closed unless LEGACY_JWT_ENABLED=1): entity from the payload, no owner and no scope of its own;
+#   only the routes that declare a scope are served, and each call is recorded in the entity's audit trail.
 class Api::V1::BaseController < ActionController::API
   NOT_ENABLED = { error: "The BudgetFlow integration is not enabled for this entity" }.freeze
 
@@ -18,6 +19,7 @@ class Api::V1::BaseController < ActionController::API
     token.to_s.start_with?("lf_") ? run_as_client(token) { yield } : run_as_jwt(token) { yield }
   ensure
     log_request(started) if @api_client
+    log_legacy_request if @legacy_entity
   end
 
   # Request context read by the audit trail (R18); the API client, when there is one, is added by run_as_client.
@@ -41,13 +43,25 @@ class Api::V1::BaseController < ActionController::API
   end
 
   def run_as_jwt(token)
+    return render(json: { error: "Unauthorized" }, status: :unauthorized) unless Rails.configuration.x.legacy_jwt_enabled
+
     payload = Api::JwtService.decode(token)
     ActsAsTenant.current_tenant = Entity.find_by(id: payload["entity_id"])
     return render(json: NOT_ENABLED, status: :forbidden) unless ActsAsTenant.current_tenant&.budgetflow?
 
+    @legacy_entity = ActsAsTenant.current_tenant
+    # fail closed, like a key: a route that declares no scope is not served
+    return render(json: { error: "Forbidden" }, status: :forbidden) unless action_scopes[action_name.to_sym]
+
     yield
   rescue Api::AuthenticationError
     render json: { error: "Unauthorized" }, status: :unauthorized
+  end
+
+  # The JWT has no api_requests row (no client): the entity's audit trail keeps the trace instead.
+  def log_legacy_request
+    Accounting::AuditLog.record!(auditable: @legacy_entity, action: "api_legacy_jwt",
+                                 payload: { http_method: request.method, path: request.path, status: response.status, ip: request.remote_ip })
   end
 
   def log_request(started)

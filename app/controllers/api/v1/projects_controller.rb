@@ -1,4 +1,6 @@
 class Api::V1::ProjectsController < Api::V1::BaseController
+  self.action_scopes = { accounting_summary: "invoices:read" }
+
   def accounting_summary
     project_id = params[:id].to_i
     lines = Accounting::JournalEntryLine

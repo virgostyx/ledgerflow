@@ -1,5 +1,7 @@
 # Read-only. Accounting data enters through /invoices (docs/dev/api/inbound-api.md), never as ad-hoc entries.
 class Api::V1::JournalEntriesController < Api::V1::BaseController
+  self.action_scopes = { index: "invoices:read", show: "invoices:read" }
+
   def index
     entries = Accounting::JournalEntry.all
     entries = entries.where(project_id: params[:project_id]) if params[:project_id].present?

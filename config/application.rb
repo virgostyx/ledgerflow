@@ -20,6 +20,8 @@ module Ledgerflow
     config.x.document_archive_limits = { files: 50, bytes: 100.megabytes, ratio: 100 }
     # F03: the domain of the addresses that receive documents by e-mail (documents+<secret>@<domain>); mail to it must reach
     # Action Mailbox (config.action_mailbox.ingress, see docs/dev/features/F03.md).
+    # The historic shared-secret JWT of BudgetFlow: closed unless the operator asks for it (see docs/dev/api/inbound-api.md).
+    config.x.legacy_jwt_enabled = ENV["LEGACY_JWT_ENABLED"] == "1"
     config.x.documents_mail_domain = ENV.fetch("DOCUMENTS_MAIL_DOMAIN", "documents.ledgerflow.example")
     # F03: an antivirus for uploaded documents, off unless a command is given (it reads the file on its standard input).
     config.x.document_virus_scan = ENV["DOCUMENT_VIRUS_SCAN_COMMAND"].presence&.then do |command|

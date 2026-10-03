@@ -45,7 +45,7 @@ Retry-After: 23
 
 `Retry-After` donne les secondes restantes avant la fin de la fenêtre. Une requête refusée n'atteint pas l'application (ni authentification, ni journal `api_requests`). Une synchronisation en masse doit rester sous 5 requêtes par seconde ou respecter `Retry-After`.
 
-Le JWT historique (secret partagé) reste accepté, avec accès complet et sans journal `api_requests`. Il est **déprécié** : ne pas l'utiliser pour de nouvelles intégrations.
+Le JWT historique (secret partagé) est **déprécié et fermé par défaut** : il n'est accepté que si l'exploitant définit `LEGACY_JWT_ENABLED=1`, sinon 401. Activé, il n'a ni propriétaire ni portée propre ; il ne sert que les routes qui déclarent une portée (comme une clé, une route sans portée répond 403), et chaque appel est inscrit dans la piste d'audit de la société (`api_legacy_jwt` : méthode, chemin, statut, adresse IP), faute de ligne `api_requests` sans client. `GET /api/v1/journal_entries` et `GET /api/v1/projects/:id/accounting_summary` exigent la portée `invoices:read` (donc `records.view` du propriétaire de la clé). Prévoir la migration vers des clés `lf_…`, puis supprimer le JWT. Le secret par défaut est `secret_key_base` : définir `BUDGETFLOW_JWT_SECRET` et `LEDGERFLOW_JWT_SECRET` distincts tant que le JWT est actif.
 
 ### Contrôle de connexion : `GET /api/v1/ping`
 
