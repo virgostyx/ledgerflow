@@ -13,7 +13,7 @@ class Accounting::VatDeclarationsController < ApplicationController
   def submit
     authorize @declaration
 
-    if @declaration.submit!
+    if Accounting::SubmitVatDeclaration.call(declaration: @declaration, user: current_user).success?
       redirect_to accounting_vat_declaration_path(@declaration), notice: t("accounting.vat_declarations.submitted")
     else
       redirect_to accounting_vat_declaration_path(@declaration), alert: t("accounting.vat_declarations.errors.invalid_transition")

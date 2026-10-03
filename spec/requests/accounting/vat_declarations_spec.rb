@@ -149,6 +149,13 @@ RSpec.describe 'Accounting::VatDeclarations', type: :request do
       expect(response).to redirect_to(accounting_vat_declaration_path(declaration))
     end
 
+    it 'verrouille la période déposée (verrou de type TVA)' do
+      expect { post submit_accounting_vat_declaration_path(declaration) }.to change(Accounting::PeriodLock.vat, :count).by(1)
+
+      lock = Accounting::PeriodLock.vat.last
+      expect([ lock.starts_on, lock.ends_on ]).to eq([ declaration.period_start, declaration.period_end ])
+    end
+
     it 'refuse si la déclaration n est pas en draft' do
       declaration.update!(status: :submitted)
       post submit_accounting_vat_declaration_path(declaration)
