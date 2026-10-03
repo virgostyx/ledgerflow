@@ -30,11 +30,12 @@
             <td class="pr-4"><%= lock.kind.humanize %></td>
             <td class="pr-4"><span class="<%= lock.locked? ? 'text-red-700' : 'text-gray-500' %>"><%= lock.status.humanize %></span></td>
             <td class="pr-4 text-gray-600"><%= lock.locked_by.full_name %>, <%= l(lock.locked_at, format: :short) %><% if lock.lock_reason.present? %><br><span class="text-xs"><%= lock.lock_reason %></span><% end %></td>
-            <td class="pr-4 text-gray-600"><% if lock.unlocked? %><%= lock.unlocked_by&.full_name %>, <%= l(lock.unlocked_at, format: :short) %><br><span class="text-xs"><%= lock.unlock_reason %></span><% end %></td>
+            <td class="pr-4 text-gray-600"><% if lock.unlocked? %><%= lock.unlocked_by&.full_name %>, <%= l(lock.unlocked_at, format: :short) %><br><span class="text-xs"><%= lock.unlock_reason %></span><% if lock.relock_at %><br><span class="text-xs text-amber-700">Locks again <%= l(lock.relock_at, format: :short) %></span><% end %><% end %></td>
             <td>
               <% if lock.locked? && policy(lock).unlock? %>
                 <%= form_with url: unlock_accounting_period_lock_path(lock), method: :post, class: "flex gap-2" do |f| %>
                   <%= f.text_field :reason, placeholder: "Reason (required)", required: true, class: "rounded-md border border-gray-300 px-2 py-1 text-xs" %>
+                  <%= f.select :hours, [ [ "Until locked again", "" ], [ "For 1 hour", 1 ], [ "For 4 hours", 4 ], [ "For 24 hours", 24 ], [ "For 72 hours", 72 ] ], {}, class: "rounded-md border border-gray-300 px-2 py-1 text-xs" %>
                   <%= f.submit "Unlock", class: "text-xs font-medium text-red-700 hover:underline cursor-pointer", data: { turbo_confirm: "Unlock #{lock.starts_on} to #{lock.ends_on}? Entries can be posted again in this period and the owners are told." } %>
                 <% end %>
               <% end %>

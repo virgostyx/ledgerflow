@@ -79,6 +79,18 @@ RSpec.describe "Accounting::PeriodLocks", type: :request do
       expect(response).to redirect_to(accounting_period_locks_path)
     end
 
+    it "unlocks for a number of hours, after which the period closes again by itself" do
+      sign_out accountant
+      sign_in owner
+
+      post unlock_accounting_period_lock_path(lock), params: { reason: "Late supplier invoice", hours: "4" }
+
+      expect(lock.reload).to be_unlocked
+      expect(lock.relock_at).to be_within(1.minute).of(4.hours.from_now)
+      expect(Accounting::PeriodLock.covering(lock.starts_on)).to be_empty
+      travel_to(5.hours.from_now) { expect(Accounting::PeriodLock.covering(lock.starts_on)).to contain_exactly(lock) }
+    end
+
     it "keeps the period locked and says why when the reason is missing" do
       sign_out accountant
       sign_in owner

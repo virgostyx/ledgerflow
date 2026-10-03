@@ -125,6 +125,7 @@ en:
       reverse_lettered:    "Some lines are lettered or partly allocated, undo that before reversing."
       already_reconciled: "This transaction has already been reconciled."
       unlock_reason_required: "A reason is required to unlock a period."
+      unlock_deadline_invalid: "The period can be reopened for at most %{hours} hours, ending in the future."
       period_not_locked: "This period is not locked."
       four_eyes: "Another person must validate this entry: its author cannot."
       period_locked: "The period %{starts_on} to %{ends_on} is locked: nothing can be posted in it."

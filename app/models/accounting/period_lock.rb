@@ -14,8 +14,12 @@ class Accounting::PeriodLock < ApplicationRecord
   validates :starts_on, :ends_on, presence: true
   validate  :ends_on_not_before_starts_on
 
+  # A temporary unlock closes again at relock_at, even before the job that flips the status has run.
+  scope :in_force, -> { where("status = :locked OR (relock_at IS NOT NULL AND relock_at <= :now)", locked: statuses[:locked], now: Time.current) }
+  scope :due_for_relock, -> { unlocked.where("relock_at <= ?", Time.current) }
+
   # The locks that forbid an entry dated `date` (first and last day included).
-  scope :covering, ->(date) { locked.where("starts_on <= :d AND ends_on >= :d", d: date) }
+  scope :covering, ->(date) { in_force.where("starts_on <= :d AND ends_on >= :d", d: date) }
 
   private
 

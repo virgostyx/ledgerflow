@@ -47,7 +47,7 @@ CREATE FUNCTION public.date_in_locked_period(p_entity_id bigint, p_date date) RE
     AS $$
   SELECT EXISTS (
     SELECT 1 FROM accounting_period_locks l
-    WHERE l.entity_id = p_entity_id AND l.status = 0 AND p_date BETWEEN l.starts_on AND l.ends_on
+    WHERE l.entity_id = p_entity_id AND (l.status = 0 OR (l.relock_at IS NOT NULL AND l.relock_at <= now())) AND p_date BETWEEN l.starts_on AND l.ends_on
   )
 $$;
 
@@ -138,7 +138,7 @@ CREATE FUNCTION public.entry_in_locked_period(p_entry_id bigint) RETURNS boolean
   SELECT EXISTS (
     SELECT 1
     FROM accounting_journal_entries e
-    JOIN accounting_period_locks l ON l.entity_id = e.entity_id AND l.status = 0
+    JOIN accounting_period_locks l ON l.entity_id = e.entity_id AND (l.status = 0 OR (l.relock_at IS NOT NULL AND l.relock_at <= now()))
                                   AND e.entry_date BETWEEN l.starts_on AND l.ends_on
     WHERE e.id = p_entry_id AND e.status <> 0
   )
@@ -1672,6 +1672,7 @@ CREATE TABLE public.accounting_period_locks (
     unlock_reason character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    relock_at timestamp(6) without time zone,
     CONSTRAINT chk_period_lock_range CHECK ((ends_on >= starts_on))
 );
 
@@ -5419,6 +5420,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003150000'),
 ('20261003140000'),
 ('20261003130001'),
 ('20261003130000'),

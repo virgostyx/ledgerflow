@@ -9,6 +9,10 @@ production:
     class: Accounting::ConsistencyCheckJob
     queue: default
     schedule: every day at 2am
+  relock_periods:
+    class: Accounting::RelockPeriodsJob
+    queue: default
+    schedule: every 10 minutes
   verify_documents:
     class: Accounting::VerifyDocumentsJob
     queue: default

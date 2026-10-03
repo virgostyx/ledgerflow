@@ -64,6 +64,31 @@ RSpec.describe "Locking and unlocking a period" do
       expect { described_class.call(lock: lock, reason: "", user: user) }.not_to have_enqueued_mail(Accounting::PeriodMailer, :unlocked)
     end
 
+    describe "for a limited time" do
+      it "records when the period closes again, in the lock and in the audit trail" do
+        deadline = 4.hours.from_now.change(usec: 0)
+
+        result = described_class.call(lock: lock, reason: "Late invoice", user: user, relock_at: deadline)
+
+        expect(result).to be_success
+        expect(lock.reload).to be_unlocked
+        expect(lock.relock_at).to eq(deadline)
+        expect(Accounting::AuditLog.find_by(action: "unlock_period").payload["relock_at"]).to eq(deadline.utc.iso8601)
+      end
+
+      it "refuses a deadline in the past, or more than 72 hours away" do
+        expect(described_class.call(lock: lock, reason: "x", user: user, relock_at: 1.minute.ago)).to be_failure
+        expect(described_class.call(lock: lock, reason: "x", user: user, relock_at: 73.hours.from_now)).to be_failure
+        expect(lock.reload).to be_locked
+      end
+
+      it "leaves no deadline when none is given (the period stays open until someone locks it)" do
+        described_class.call(lock: lock, reason: "Late invoice", user: user)
+
+        expect(lock.reload.relock_at).to be_nil
+      end
+    end
+
     it "refuses to unlock a period that is already unlocked" do
       lock.update!(status: :unlocked)
 

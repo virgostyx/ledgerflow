@@ -14,9 +14,7 @@ RSpec.describe "Period lock trigger", type: :model do
   end
   let(:line) { entry.lines.first }
 
-  def lock_month!
-    create(:period_lock, starts_on: fiscal_year.start_date, ends_on: fiscal_year.start_date.end_of_month)
-  end
+  def lock_month! = create(:period_lock, starts_on: fiscal_year.start_date, ends_on: fiscal_year.start_date.end_of_month)
 
   def refused(&block) = expect(&block).to raise_error(ActiveRecord::StatementInvalid, /locked period/)
 
@@ -75,6 +73,18 @@ RSpec.describe "Period lock trigger", type: :model do
     lock_month!
 
     expect { conn.execute("UPDATE accounting_journal_entries SET description = 'x' WHERE id = #{after.id}") }.not_to raise_error
+  end
+
+  it "treats a temporary unlock as locked again the moment its deadline passes, without waiting for any job" do
+    entry
+    lock = lock_month!
+    lock.update_columns(status: Accounting::PeriodLock.statuses[:unlocked], relock_at: 1.hour.from_now)
+
+    expect { conn.execute("UPDATE accounting_journal_entries SET description = 'open' WHERE id = #{entry.id}") }.not_to raise_error
+
+    lock.update_columns(relock_at: 1.second.ago)
+
+    refused { conn.execute("UPDATE accounting_journal_entries SET description = 'closed' WHERE id = #{entry.id}") }
   end
 
   it "does not touch a period that was unlocked" do

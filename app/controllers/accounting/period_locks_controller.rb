@@ -24,7 +24,8 @@ class Accounting::PeriodLocksController < ApplicationController
   def unlock
     lock = Accounting::PeriodLock.find(params[:id])
     authorize lock, :unlock?
-    result = Accounting::UnlockPeriod.call(lock: lock, reason: params[:reason], user: current_user)
+    hours = params[:hours].to_i
+    result = Accounting::UnlockPeriod.call(lock: lock, reason: params[:reason], user: current_user, relock_at: (hours.hours.from_now if hours.positive?))
     if result.success?
       redirect_to accounting_period_locks_path, notice: t("accounting.period_locks.unlocked")
     else
