@@ -1,10 +1,18 @@
 class Accounting::InvoicePolicy < ApplicationPolicy
+  class Scope < ApplicationPolicy::Scope
+    def resolve = in_allowed_journals
+  end
+
+  def show?   = super && journal_allowed?
+  def create? = super && journal_allowed?
+  def update? = super && journal_allowed?
+
   def destroy?
-    can?("invoices.issue")
+    can?("invoices.issue") && journal_allowed?
   end
 
   def post?
-    can?("invoices.issue")
+    can?("invoices.issue") && journal_allowed?
   end
 
   # An invoice received from BudgetFlow is undone by returning it (reverse + tell BudgetFlow), never by cancelling alone.

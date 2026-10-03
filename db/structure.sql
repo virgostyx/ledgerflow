@@ -2268,7 +2268,8 @@ CREATE TABLE public.user_entities (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     valid_from date,
-    valid_until date
+    valid_until date,
+    journal_ids bigint[]
 );
 
 
@@ -5525,6 +5526,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003170000'),
 ('20261003160000'),
 ('20261003150000'),
 ('20261003140000'),

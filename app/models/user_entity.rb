@@ -17,6 +17,7 @@ class UserEntity < ApplicationRecord
   validate  :window_not_inverted
   validate  :auditor_access_ends, if: -> { new_record? || will_save_change_to_role? || will_save_change_to_valid_until? }
   validate  :keep_an_owner, on: :update
+  validate  :journals_of_the_entity
 
   # Deleting the whole entity takes its memberships with it; deleting a user account must not take the last owner.
   before_destroy :keep_an_owner_before_destroy, unless: -> { destroyed_by_association&.active_record == Entity }
@@ -31,12 +32,27 @@ class UserEntity < ApplicationRecord
 
   def owner? = admin? && active? && valid_until.nil?
 
+  # journal_ids: the journals this access is limited to; nil (or an empty selection) means every journal.
+  def journal_ids=(ids)
+    whole = Array(ids).filter_map { |id| Integer(id.to_s, exception: false) }.uniq
+    super(whole.presence)
+  end
+
+  def allows_journal?(journal_id) = journal_ids.nil? || journal_ids.include?(journal_id)
+
   private
 
   # An external auditor's access is limited in time (spec §4). Only checked when the role or the end date changes, so an
   # access granted before this rule is never rewritten behind anyone's back.
   def auditor_access_ends
     errors.add(:valid_until, :auditor_needs_end) if auditor? && valid_until.nil?
+  end
+
+  def journals_of_the_entity
+    return if journal_ids.blank?
+
+    known = ActsAsTenant.with_tenant(entity) { Accounting::Journal.where(id: journal_ids).pluck(:id) }
+    errors.add(:journal_ids, :invalid) unless known.sort == journal_ids.sort
   end
 
   def window_not_inverted

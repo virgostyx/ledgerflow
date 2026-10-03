@@ -70,6 +70,24 @@ RSpec.describe "Accounting::Settings::Memberships", type: :request do
       expect(flash[:alert]).to match(/until|end/i)
     end
 
+    it "limits an access to some journals, and lifts the limit when none is ticked" do
+      journal = create(:journal, :sale)
+
+      patch accounting_settings_membership_path(accountant_membership), params: { membership: { journal_ids: [ "", journal.id.to_s ] } }
+      expect(accountant_membership.reload.journal_ids).to eq([ journal.id ])
+
+      patch accounting_settings_membership_path(accountant_membership), params: { membership: { journal_ids: [ "" ] } }
+      expect(accountant_membership.reload.journal_ids).to be_nil
+    end
+
+    it "shows the journals on the screen" do
+      create(:journal, :sale, label_fr: "Ventes SPECIAL")
+
+      get accounting_settings_memberships_path
+
+      expect(response.body).to include("Ventes SPECIAL")
+    end
+
     it "changes a role, deactivates and sets an expiry date" do
       patch accounting_settings_membership_path(accountant_membership), params: { membership: { role: "auditor", valid_until: (Date.current + 10).to_s } }
 

@@ -5,6 +5,7 @@ class Accounting::Settings::MembershipsController < Accounting::Settings::BaseCo
 
   def index
     @memberships = UserEntity.where(entity: current_entity).includes(:user).order(:id)
+    @journals = Accounting::Journal.order(:code)
   end
 
   def create
@@ -19,7 +20,7 @@ class Accounting::Settings::MembershipsController < Accounting::Settings::BaseCo
 
   def update
     membership = UserEntity.where(entity: current_entity).find(params[:id])
-    if membership.update(params.require(:membership).permit(:role, :active, :valid_until))
+    if membership.update(params.require(:membership).permit(:role, :active, :valid_until, journal_ids: []))
       redirect_to accounting_settings_memberships_path, notice: t("entities.invite.updated")
     else
       redirect_to accounting_settings_memberships_path, alert: membership.errors.full_messages.to_sentence
