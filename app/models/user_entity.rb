@@ -15,6 +15,7 @@ class UserEntity < ApplicationRecord
   validates :role, presence: true
   validates :user_id, uniqueness: { scope: :entity_id, message: :taken }
   validate  :window_not_inverted
+  validate  :auditor_access_ends, if: -> { new_record? || will_save_change_to_role? || will_save_change_to_valid_until? }
   validate  :keep_an_owner, on: :update
 
   # Deleting the whole entity takes its memberships with it; deleting a user account must not take the last owner.
@@ -31,6 +32,12 @@ class UserEntity < ApplicationRecord
   def owner? = admin? && active? && valid_until.nil?
 
   private
+
+  # An external auditor's access is limited in time (spec §4). Only checked when the role or the end date changes, so an
+  # access granted before this rule is never rewritten behind anyone's back.
+  def auditor_access_ends
+    errors.add(:valid_until, :auditor_needs_end) if auditor? && valid_until.nil?
+  end
 
   def window_not_inverted
     errors.add(:valid_until, :invalid) if valid_from && valid_until && valid_until < valid_from

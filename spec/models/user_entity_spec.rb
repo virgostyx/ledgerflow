@@ -118,4 +118,36 @@ RSpec.describe UserEntity, type: :model do
       expect(owner.update(role: :accountant)).to be false
     end
   end
+
+  describe "an external auditor's access is limited in time (spec §4)" do
+    it "needs an end date" do
+      membership = build(:user_entity, role: :auditor, valid_until: nil)
+
+      expect(membership).not_to be_valid
+      expect(membership.errors[:valid_until]).to be_present
+    end
+
+    it "is valid with an end date" do
+      expect(build(:user_entity, role: :auditor, valid_until: Date.current + 30)).to be_valid
+    end
+
+    it "asks nothing of the other roles" do
+      %i[accountant assistant manager].each { |role| expect(build(:user_entity, role: role, valid_until: nil)).to be_valid }
+    end
+
+    it "refuses to turn someone into an auditor without an end date, or to remove the end date of an auditor" do
+      accountant = create(:user_entity, :accountant)
+      expect(accountant.update(role: :auditor)).to be false
+
+      auditor = create(:user_entity, :auditor)
+      expect(auditor.update(valid_until: nil)).to be false
+    end
+
+    it "leaves an auditor who already had no end date alone until his access is changed (nothing is rewritten)" do
+      legacy = create(:user_entity, :auditor)
+      legacy.update_columns(valid_until: nil)
+
+      expect(legacy.reload.update(active: false)).to be true
+    end
+  end
 end

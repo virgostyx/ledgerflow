@@ -51,6 +51,18 @@ RSpec.describe Entities::InviteMember do
     end
   end
 
+  it "refuses to invite an external auditor without an end date, and creates neither account nor access" do
+    inviter # created before the count
+    expect { @result = invite(role: "auditor", valid_until: nil) }.not_to change { [ User.count, UserEntity.count ] }
+
+    expect(@result).to be_failure
+    expect(@result.message).to match(/until|valid/i)
+  end
+
+  it "invites an external auditor with an end date" do
+    expect(invite(role: "auditor", valid_until: (Date.current + 30).to_s)).to be_success
+  end
+
   it "refuses an unknown role" do
     expect(invite(role: "superuser")).to be_failure
     expect(User.find_by(email: "new.person@example.com")).to be_nil

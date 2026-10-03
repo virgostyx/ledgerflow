@@ -13,7 +13,7 @@
       <%= f.text_field :full_name, class: "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %></div>
     <div><%= f.label :role, "Role", class: "block text-sm font-medium text-gray-700" %>
       <%= f.select :role, UserEntity.options_for_select, { selected: "accountant" }, class: "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %></div>
-    <div><%= f.label :valid_until, "Access until (optional)", class: "block text-sm font-medium text-gray-700" %>
+    <div><%= f.label :valid_until, "Access until (required for an external auditor)", class: "block text-sm font-medium text-gray-700" %>
       <%= f.date_field :valid_until, class: "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %></div>
     <div><%= f.submit "Invite", class: "btn-primary" %></div>
   <% end %>

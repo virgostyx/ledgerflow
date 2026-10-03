@@ -4,6 +4,7 @@ FactoryBot.define do
     association :entity
     role   { :admin }
     active { true }
+    valid_until { Date.current + 365 if role.to_s == "auditor" } # an external auditor's access always ends (spec §4)
 
     trait :admin      do role { :admin }      end
     trait :accountant do role { :accountant } end

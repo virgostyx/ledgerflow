@@ -63,6 +63,13 @@ RSpec.describe "Accounting::Settings::Memberships", type: :request do
   end
 
   describe "PATCH /accounting/settings/memberships/:id" do
+    it "refuses to make someone an external auditor without an end date, and says so" do
+      patch accounting_settings_membership_path(accountant_membership), params: { membership: { role: "auditor" } }
+
+      expect(accountant_membership.reload).to be_accountant
+      expect(flash[:alert]).to match(/until|end/i)
+    end
+
     it "changes a role, deactivates and sets an expiry date" do
       patch accounting_settings_membership_path(accountant_membership), params: { membership: { role: "auditor", valid_until: (Date.current + 10).to_s } }
 

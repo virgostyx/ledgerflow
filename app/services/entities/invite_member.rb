@@ -9,7 +9,7 @@ class Entities::InviteMember
     return ctx.tap { |c| c.fail!(I18n.t("entities.invite.bad_email")) } unless email.match?(URI::MailTo::EMAIL_REGEXP)
 
     new_user = nil
-    ApplicationRecord.transaction do
+    ApplicationRecord.transaction(requires_new: true) do # a refused access takes the account created for it back
       user = User.find_by(email: email)
       new_user = user.nil?
       user ||= User.create!(email: email, full_name: full_name.presence || email, role: :auditor, password: SecureRandom.hex(24))

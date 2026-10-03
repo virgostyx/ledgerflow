@@ -542,6 +542,8 @@ en:
       models:
         user_entity:
           attributes:
+            valid_until:
+              auditor_needs_end: "is required for an external auditor: their access must end"
             base:
               last_owner: "The last owner of an entity cannot be removed, demoted, deactivated or given an expiry date."
         accounting/partner:
