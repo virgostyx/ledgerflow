@@ -48,3 +48,6 @@ Décisions prises par prudence pendant l'implémentation (règle du §17.1 de `d
 - **ZIP** : limites 50 fichiers / 100 Mo / ratio 100, à ajuster à l'usage.
 - **Adresse e-mail** : le jeton fait l'authentification ; quiconque le connaît peut déposer des documents (jamais lire). Domaine et relais à configurer par l'hébergement ; pas de réponse à l'expéditeur (ni accusé ni refus) pour ne rien révéler.
 - **Dépendances système** de production : `tesseract-ocr` (+fra, nld), `poppler-utils`, `ghostscript`, `imagemagick` ; clés `active_record_encryption` (secret TOTP, identifiants Peppol).
+- **Assistant et rapprochement bancaire (F01)** : la spec le laisse rapprocher mais pas valider ; comptabiliser un mouvement valide l'écriture de paiement. Comportement prudent retenu : refus tant que F02 ne produit pas de brouillons pour ce rôle. **À valider** : faut-il plutôt laisser l'assistant « proposer » (brouillon + mouvement en attente de validation) ?
+- **Report à nouveau sur un exercice non clôturé (F01)** : l'écriture d'ouverture ne reprend que les comptes de bilan ; si les comptes de résultat n'ont pas été soldés par la clôture, elle est déséquilibrée et désormais refusée (message « Unbalanced entry »). Clôturer l'exercice d'abord. Reporter le résultat non soldé sur 130000 reste une règle à faire valider.
+

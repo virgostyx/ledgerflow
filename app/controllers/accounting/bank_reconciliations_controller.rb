@@ -25,6 +25,8 @@ class Accounting::BankReconciliationsController < ApplicationController
 
   def update
     authorize :bank_reconciliation, policy_class: Accounting::BankReconciliationsPolicy
+    # importing, keying in and ignoring a movement book nothing; every other action validates a payment entry
+    authorize :bank_reconciliation, :post?, policy_class: Accounting::BankReconciliationsPolicy unless bank_params[:camt_file].present? || bank_params[:manual].present? || bank_params[:ignore].present?
 
     if bank_params[:camt_file].present?
       handle_camt_import

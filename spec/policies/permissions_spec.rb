@@ -12,7 +12,7 @@ RSpec.describe Permissions do
     "records.list"           => [ [ Accounting::PartnerPolicy, :index? ] ],
     "records.write"          => [ [ Accounting::PartnerPolicy, :create? ], [ Accounting::PartnerPolicy, :update? ] ],
     "records.delete"         => [ [ Accounting::PartnerPolicy, :destroy? ], [ Accounting::Settings::BasePolicy, :destroy? ] ],
-    "entries.post"           => [ [ Accounting::JournalEntryPolicy, :post? ] ],
+    "entries.post"           => [ [ Accounting::JournalEntryPolicy, :post? ], [ Accounting::BankReconciliationsPolicy, :post? ] ],
     "entries.reverse"        => [ [ Accounting::JournalEntryPolicy, :reverse? ] ],
     "invoices.issue"         => [ [ Accounting::InvoicePolicy, :post? ], [ Accounting::InvoicePolicy, :send_peppol? ], [ Accounting::InvoicePolicy, :send_email? ] ],
     "reconciliations.manage" => [ [ Accounting::BankReconciliationsPolicy, :show? ], [ Accounting::BankReconciliationsPolicy, :update? ] ],
