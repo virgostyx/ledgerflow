@@ -82,10 +82,12 @@ class Accounting::BankReconciliationQuery
   # compared line by line. A ledger that opened differently from the bank shows as the gap.
   def opening_date = statements.last&.old_balance_date
 
-  # On the statement as of `as_of`, but not linked to a booked entry.
+  # On the statement as of `as_of`, but not linked to a booked entry: no entry yet, or only a draft (F02: a matched line whose
+  # payment entry waits to be validated is still not in the ledger).
   def on_statement_not_booked
-    transactions = @bank_account.transactions.where("transaction_date <= ?", @as_of).where(journal_entry_id: nil)
-    transactions = transactions.where("transaction_date > ?", opening_date) if opening_date
+    transactions = @bank_account.transactions.left_joins(:journal_entry).where("accounting_bank_transactions.transaction_date <= ?", @as_of)
+                                .where("accounting_bank_transactions.journal_entry_id IS NULL OR accounting_journal_entries.status <> ?", Accounting::JournalEntry.statuses[:posted])
+    transactions = transactions.where("accounting_bank_transactions.transaction_date > ?", opening_date) if opening_date
     transactions.map { |tx| Item.new(date: tx.transaction_date, label: tx.description, reference: tx.reference, amount: tx.amount) }
   end
 end

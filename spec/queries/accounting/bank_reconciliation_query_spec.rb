@@ -120,4 +120,25 @@ RSpec.describe Accounting::BankReconciliationQuery, type: :query do
       expect([ ok ]).not_to include(*result.chain_breaks)
     end
   end
+
+  describe "a line whose payment entry is still a draft (F02, matched)" do
+    it "counts as on the statement and not yet booked, so the gap stays zero until the entry is validated" do
+      draft = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: as_of)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: draft, account: gl_account, debit: 50, credit: 0)
+      create(:journal_entry_line, journal_entry: draft, account: other_account, debit: 0, credit: 50)
+      create(:bank_transaction, bank_account: bank_account, amount: 50, transaction_date: as_of, journal_entry: draft, status: :matched)
+
+      result = described_class.new(bank_account: bank_account, as_of: as_of).call
+
+      expect(result.sn.map(&:amount)).to eq([ BigDecimal("50") ])
+      expect(result.gap).to eq(0)
+
+      Accounting::PostJournalEntry.call(entry: draft)
+      after = described_class.new(bank_account: bank_account, as_of: as_of).call
+
+      expect(after.sn).to be_empty
+      expect(after.gap).to eq(0)
+    end
+  end
 end
