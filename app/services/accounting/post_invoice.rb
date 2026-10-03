@@ -8,6 +8,7 @@ class Accounting::PostInvoice
         Accounting::Actions::ValidateInvoice,
         Accounting::Actions::ValidateInvoiceCoding,
         Accounting::Actions::ComputeInvoiceTotals,
+        Accounting::Actions::ValidateInvoiceFourEyes,
         Accounting::Actions::ValidateCreditNoteAmount,
         Accounting::Actions::AssignInvoiceNumber,
         Accounting::Actions::GenerateInvoiceJournalEntry,

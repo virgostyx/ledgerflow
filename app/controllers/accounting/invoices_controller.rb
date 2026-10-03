@@ -33,7 +33,7 @@ class Accounting::InvoicesController < ApplicationController
   end
 
   def create
-    @invoice = Accounting::Invoice.new(invoice_params.merge(invoice_type: @invoice_type))
+    @invoice = Accounting::Invoice.new(invoice_params.merge(invoice_type: @invoice_type, created_by: current_user))
     authorize @invoice
 
     if @invoice.save
@@ -118,7 +118,7 @@ class Accounting::InvoicesController < ApplicationController
       return redirect_to accounting_invoice_path(@invoice), alert: t("accounting.invoices.errors.credit_note_needs_posted")
     end
 
-    note = @invoice.build_credit_note
+    note = @invoice.build_credit_note(created_by: current_user)
     if note.save
       redirect_to edit_accounting_invoice_path(note), notice: t("accounting.invoices.credit_note_created")
     else
@@ -140,7 +140,7 @@ class Accounting::InvoicesController < ApplicationController
   def duplicate
     authorize @invoice
 
-    result = Accounting::DuplicateInvoice.call(invoice: @invoice)
+    result = Accounting::DuplicateInvoice.call(invoice: @invoice, created_by: current_user)
     if result.success?
       redirect_to edit_accounting_invoice_path(result[:invoice]), notice: t("accounting.invoices.duplicated")
     else

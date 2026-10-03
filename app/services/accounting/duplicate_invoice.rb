@@ -4,7 +4,7 @@
 # What belongs to the original document (number, entry, Peppol data, external reference, cash journal, credited
 # invoice) is not copied. A credit note is not duplicated. All or nothing.
 class Accounting::DuplicateInvoice
-  def self.call(invoice:, invoice_date: nil)
+  def self.call(invoice:, invoice_date: nil, created_by: nil)
     ctx = LightService::Context.make(invoice: nil)
     return ctx.tap { |c| c.fail!(I18n.t("accounting.invoices.errors.duplicate_credit_note")) } unless invoice.invoice?
 
@@ -15,7 +15,7 @@ class Accounting::DuplicateInvoice
     ApplicationRecord.transaction do
       copy = Accounting::Invoice.create!(
         invoice.slice(:partner_id, :invoice_type, :journal_id, :currency, :exchange_rate, :vat_treatment, :description, :notes)
-               .merge(fiscal_year: fiscal_year, invoice_date: date, due_date: due_date_like(invoice, date))
+               .merge(fiscal_year: fiscal_year, invoice_date: date, due_date: due_date_like(invoice, date), created_by: created_by)
       )
       invoice.lines.each { |line| copy_line(line, copy) }
       ctx[:invoice] = copy

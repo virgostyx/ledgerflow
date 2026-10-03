@@ -1233,7 +1233,8 @@ CREATE TABLE public.accounting_invoices (
     external_state_digest character varying,
     order_reference character varying,
     buyer_reference character varying,
-    supplier_reference character varying
+    supplier_reference character varying,
+    created_by_id bigint
 );
 
 
@@ -3992,6 +3993,13 @@ CREATE INDEX index_accounting_invoices_on_cash_journal_id ON public.accounting_i
 
 
 --
+-- Name: index_accounting_invoices_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoices_on_created_by_id ON public.accounting_invoices USING btree (created_by_id);
+
+
+--
 -- Name: index_accounting_invoices_on_credited_invoice_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5582,6 +5590,14 @@ ALTER TABLE ONLY public.accounting_vat_grid_mappings
 
 
 --
+-- Name: accounting_invoices fk_rails_f89f08860c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_invoices
+    ADD CONSTRAINT fk_rails_f89f08860c FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_depreciation_entries fk_rails_f91c2bc427; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5612,6 +5628,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003190000'),
 ('20261003180000'),
 ('20261003170000'),
 ('20261003160000'),

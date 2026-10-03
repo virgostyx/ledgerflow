@@ -21,6 +21,8 @@ class Accounting::Invoice < ApplicationRecord
 
   belongs_to :partner,       class_name: "Accounting::Partner"
   belongs_to :credited_invoice, class_name: "Accounting::Invoice", optional: true
+  # Who wrote the draft in the interface; nil for what the system generates (API, Peppol, recurring): never blocked.
+  belongs_to :created_by,    class_name: "User", optional: true
   belongs_to :recurring_invoice, class_name: "Accounting::RecurringInvoice", optional: true
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
   belongs_to :journal,       class_name: "Accounting::Journal", optional: true
@@ -103,9 +105,18 @@ class Accounting::Invoice < ApplicationRecord
     end
   end
 
+  # Four-eyes (F01): the author of an invoice may not post it when the entity requires a second person, from the entity's
+  # threshold upward (no threshold: always). The amount is the total including VAT.
+  def four_eyes_blocks?(user)
+    return false unless user && created_by_id == user.id && entity.four_eyes?
+
+    entity.four_eyes_threshold.nil? || total_incl_vat.to_d >= entity.four_eyes_threshold
+  end
+
   # A draft credit note mirroring this invoice (lines included); edit the lines for a partial credit.
-  def build_credit_note
+  def build_credit_note(created_by: nil)
     credit_notes.build(
+      created_by: created_by,
       document_type: :credit_note, partner: partner, invoice_type: invoice_type, vat_treatment: vat_treatment,
       currency: currency, exchange_rate: exchange_rate, journal: journal, fiscal_year: fiscal_year,
       invoice_date: Date.current
