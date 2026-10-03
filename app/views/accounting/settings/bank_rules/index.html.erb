@@ -1,0 +1,36 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Settings", path: accounting_settings_root_path }, { label: "Bank rules" } ]) %>
+<% end %>
+
+<div class="max-w-5xl">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900">Bank rules</h1>
+  <p class="mb-6 text-sm text-gray-500">When a bank line says this, book it there. A rule that proposes only suggests; a rule that books a draft has the engine create the draft entry as the file comes in. Rules are made from a line of the bank reconciliation screen; the lowest priority number is tried first.</p>
+
+  <% if @rules.any? %>
+    <table class="min-w-full divide-y divide-gray-200 text-sm" id="bank-rules">
+      <thead class="text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+        <tr><th class="py-2">Priority</th><th>Rule</th><th>When the line</th><th>Account</th><th>Action</th><th>Score</th><th>On</th><th></th></tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @rules.each do |rule| %>
+          <% form_id = "rule-form-#{rule.id}" %>
+          <tr>
+            <td class="py-2"><%= number_field_tag "bank_rule[priority]", rule.priority, min: 0, form: form_id, class: "w-16 rounded-md border border-gray-300 px-2 py-1 text-sm" %></td>
+            <td class="font-medium text-gray-900"><%= rule.name %></td>
+            <td class="text-gray-600"><%= { "contains" => "contains", "iban" => "comes from", "amount" => "has the amount" }.fetch(rule.condition_type) %> <span class="font-mono text-xs"><%= rule.condition_value %></span></td>
+            <td class="text-gray-600"><%= rule.account.code %> <%= rule.account.label_fr %></td>
+            <td><%= select_tag "bank_rule[action]", options_for_select([ [ "Propose", "propose" ], [ "Book a draft", "book_draft" ] ], rule.action), form: form_id, class: "rounded-md border border-gray-300 px-2 py-1 text-sm" %></td>
+            <td><%= number_field_tag "bank_rule[score]", rule.score, min: 1, max: 99, form: form_id, class: "w-16 rounded-md border border-gray-300 px-2 py-1 text-sm" %></td>
+            <td><%= hidden_field_tag "bank_rule[active]", "0", id: nil, form: form_id %><%= check_box_tag "bank_rule[active]", "1", rule.active, id: "rule_active_#{rule.id}", form: form_id, class: "rounded border-gray-300" %></td>
+            <td class="whitespace-nowrap">
+              <%= form_with url: accounting_settings_bank_rule_path(rule), method: :patch, id: form_id, class: "inline" do %><%= submit_tag "Save", class: "text-xs font-medium text-primary-700 hover:underline cursor-pointer" %><% end %>
+              <%= button_to "Delete", accounting_settings_bank_rule_path(rule), method: :delete, form: { class: "inline", data: { turbo_confirm: "Delete this rule?" } }, class: "ml-2 text-xs text-red-700 underline cursor-pointer" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="text-sm text-gray-500">No rule yet. Make one from a line of the <%= link_to "bank reconciliation", accounting_bank_reconciliation_path, class: "text-primary-700 hover:underline" %> screen.</p>
+  <% end %>
+</div>

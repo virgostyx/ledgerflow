@@ -1,8 +1,8 @@
 class Accounting::ReconcileBankTransaction
   extend LightService::Organizer
 
-  def self.call(transaction:, account_id:, fiscal_year:, label: nil, allocations: nil, eur_amount: nil)
-    return already_reconciled_failure if transaction.reconciled?
+  def self.call(transaction:, account_id:, fiscal_year:, label: nil, allocations: nil, eur_amount: nil, draft: false, partner: nil)
+    return already_reconciled_failure if transaction.reconciled? || transaction.matched?
 
     result = nil
     ApplicationRecord.transaction do
@@ -12,7 +12,9 @@ class Accounting::ReconcileBankTransaction
         fiscal_year: fiscal_year,
         label:       label,
         allocations: allocations,
-        eur_amount:  eur_amount
+        eur_amount:  eur_amount,
+        draft:       draft,
+        partner:     partner
       ).reduce(
         Accounting::Actions::CreateBankJournalEntry,
         Accounting::Actions::MarkTransactionReconciled

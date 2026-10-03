@@ -1,0 +1,54 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Bank statements" } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Bank statements") do |header| %>
+  <% header.with_actions do %>
+    <% if policy(Accounting::BankStatement).import? %>
+      <%= link_to "Import a CODA file", new_accounting_bank_statement_path, class: "px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors" %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% if @statements.any? %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+        <tr><th class="px-4 py-3">Statement</th><th class="px-4 py-3">Account</th><th class="px-4 py-3">Date</th><th class="px-4 py-3 text-right">Opening</th><th class="px-4 py-3 text-right">Closing</th><th class="px-4 py-3">Checks</th></tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @statements.each do |statement| %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3"><%= link_to "##{statement.sequence || statement.id}", accounting_bank_statement_path(statement), class: "font-medium text-primary-700 hover:underline" %></td>
+            <td class="px-4 py-3 text-gray-700"><%= statement.bank_account.label_fr %></td>
+            <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(statement.new_balance_date || statement.old_balance_date).format %></td>
+            <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(statement.old_balance).format %></td>
+            <td class="px-4 py-3 text-right font-mono"><%= statement.new_balance ? Accounting::MoneyPresenter.new(statement.new_balance).format : "—" %></td>
+            <td class="px-4 py-3 space-x-1">
+              <% if statement.to_review? %>
+                <span class="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800" title="The closing balance differs by <%= Accounting::MoneyPresenter.new(statement.integrity_gap).format %> from the opening balance plus the movements">To review</span>
+              <% end %>
+              <% if statement.chain_broken? %>
+                <span class="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800" title="The opening balance does not follow the previous statement">Chain broken by <%= Accounting::MoneyPresenter.new(statement.chain_gap).format %></span>
+              <% end %>
+              <% unless statement.to_review? || statement.chain_broken? %><span class="text-xs text-emerald-700">OK</span><% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <div class="mt-4"><%= render "shared/pagination", pagy: @pagy %></div>
+<% else %>
+  <p class="text-sm text-gray-500">No statement imported yet.</p>
+<% end %>
+
+<% if @refused.any? %>
+  <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">Files that were refused</h2>
+  <ul class="space-y-1 text-sm text-gray-600">
+    <% @refused.each do |batch| %>
+      <li><span class="font-mono text-xs"><%= batch.source_name %></span>, <%= l(batch.created_at, format: :short) %>:
+        <%= batch.errors_list.first(2).map { |e| e["line"] ? "line #{e['line']}: #{e['text']}" : e["text"] }.join(" | ") %></li>
+    <% end %>
+  </ul>
+<% end %>

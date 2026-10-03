@@ -82,7 +82,13 @@ module CodaBuilder
   def self.old_balance(statement)
     balance = statement[:old_balance]
     "1" + "2" + format("%03d", statement[:sequence]) + account37(statement) + sign(balance) + amount15(balance) +
-      date6(statement[:date] - 1) + pad(statement[:holder], 26) + pad(statement[:description], 35) + format("%03d", statement[:sequence])
+      date6(opening_date(statement)) + pad(statement[:holder], 26) + pad(statement[:description], 35) + format("%03d", statement[:sequence])
+  end
+
+  # The old balance is dated the day before the first movement (the statement's own date when it has none).
+  def self.opening_date(statement)
+    first = statement[:movements].filter_map { |m| m[:entry_date] || m[:value_date] }.min
+    (first || statement[:date]) - 1
   end
 
   def self.new_balance(statement, messages_follow)

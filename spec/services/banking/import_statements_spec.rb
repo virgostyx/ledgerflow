@@ -55,7 +55,7 @@ RSpec.describe Banking::ImportStatements do
       statement = Accounting::BankStatement.sole
 
       expect(statement).to have_attributes(bank_account: account, sequence: 12, old_balance: BigDecimal("1000.00"), new_balance: BigDecimal("1842.50"),
-                                           old_balance_date: Date.new(2026, 3, 30), new_balance_date: Date.new(2026, 3, 31), status: "ok", integrity_gap: 0, chain_gap: nil)
+                                           old_balance_date: Date.new(2026, 3, 1), new_balance_date: Date.new(2026, 3, 31), status: "ok", integrity_gap: 0, chain_gap: nil)
       expect(statement.transactions.count).to eq(4)
     end
 
@@ -81,6 +81,47 @@ RSpec.describe Banking::ImportStatements do
 
       expect(document).to have_attributes(kind: "statement", origin: "bank_import", sha256: Digest::SHA256.hexdigest(bytes("simple")))
       expect(document.file.download).to eq(bytes("simple"))
+    end
+  end
+
+  describe "the matching engine on what comes in" do
+    let!(:bank_gl)    { create(:account, code: "550000", label_fr: "Banque", account_class: 5, account_type: :asset, normal_balance: :debit) }
+    let!(:receivable) { create(:account, code: "400000", label_fr: "Clients", account_type: :asset, normal_balance: :debit) }
+    let(:fiscal_year) { create(:fiscal_year, status: :open) }
+    let(:partner)     { create(:partner, name: "DUPONT ET FILS SPRL", iban: CodaBuilder.iban("091012345678")) }
+    let(:invoice)     { create(:invoice, :customer, :posted, fiscal_year: fiscal_year, partner: partner).tap { |i| i.update_columns(total_incl_vat: BigDecimal("1210")) } }
+
+    def file_with(movement) = CodaBuilder.file(statements: [ { iban: acme, sequence: 1, date: Date.new(2026, 3, 31), movements: [ movement ] } ])
+
+    it "books a draft payment for an exact match, and tells it" do
+      account.journal.update!(default_account: bank_gl)
+
+      result = import(file_with(amount: "1210.00", structured: CodaBuilder.structured(invoice.id), bank_reference: "EXACT0000000000000001", counterparty_name: "X"))
+
+      expect(result).to be_success
+      expect(result[:drafted]).to eq(1)
+      expect(transactions.sole).to be_matched
+      expect(transactions.sole.journal_entry).to be_draft
+    end
+
+    it "keeps a suggestion for a good but not exact match, and tells it" do
+      invoice
+
+      result = import(file_with(amount: "1210.00", free: "PAYMENT", bank_reference: "GOOD00000000000000001", counterparty_iban: partner.iban, counterparty_name: "X"))
+
+      expect(result[:suggested]).to eq(1)
+      expect(transactions.sole).to be_pending
+      expect(transactions.sole.match_data).to include("score" => 90)
+    end
+
+    it "never fails the import because of the engine" do
+      allow(Banking::AutoMatch).to receive(:call).and_raise("engine down")
+
+      result = import("simple")
+
+      expect(result).to be_success
+      expect(transactions.count).to eq(4)
+      expect(result[:warnings].join).to include("engine down")
     end
   end
 

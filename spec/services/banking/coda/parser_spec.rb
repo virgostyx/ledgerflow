@@ -22,7 +22,7 @@ RSpec.describe Banking::Coda::Parser do
     end
 
     it "reads the balances and their dates" do
-      expect(statement).to have_attributes(old_balance: BigDecimal("1000.00"), old_balance_date: Date.new(2026, 3, 30),
+      expect(statement).to have_attributes(old_balance: BigDecimal("1000.00"), old_balance_date: Date.new(2026, 3, 1),
                                            new_balance: BigDecimal("1842.50"), new_balance_date: Date.new(2026, 3, 31))
     end
 

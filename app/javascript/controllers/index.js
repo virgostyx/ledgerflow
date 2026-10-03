@@ -74,3 +74,6 @@ application.register("chart", ChartController)
 
 import DropzoneController from "controllers/dropzone_controller"
 application.register("dropzone", DropzoneController)
+
+import BankKeysController from "controllers/bank_keys_controller"
+application.register("bank-keys", BankKeysController)

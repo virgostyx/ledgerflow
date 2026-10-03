@@ -506,6 +506,47 @@ ALTER SEQUENCE public.accounting_bank_reconciliation_reports_id_seq OWNED BY pub
 
 
 --
+-- Name: accounting_bank_rules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_bank_rules (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    name character varying NOT NULL,
+    condition_type character varying NOT NULL,
+    condition_value character varying NOT NULL,
+    account_id bigint NOT NULL,
+    partner_id bigint,
+    vat_code character varying,
+    action character varying DEFAULT 'propose'::character varying NOT NULL,
+    priority integer DEFAULT 100 NOT NULL,
+    score integer DEFAULT 80 NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_bank_rules_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_bank_rules_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_bank_rules_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_bank_rules_id_seq OWNED BY public.accounting_bank_rules.id;
+
+
+--
 -- Name: accounting_bank_statements; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -573,7 +614,8 @@ CREATE TABLE public.accounting_bank_transactions (
     structured_communication character varying,
     bank_reference character varying,
     transaction_code character varying,
-    fingerprint character varying
+    fingerprint character varying,
+    match_data jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -2291,7 +2333,9 @@ CREATE TABLE public.entities (
     four_eyes_threshold numeric(15,2),
     features jsonb DEFAULT '{}'::jsonb NOT NULL,
     read_only_export boolean DEFAULT false NOT NULL,
-    documents_mail_token character varying NOT NULL
+    documents_mail_token character varying NOT NULL,
+    auto_post_exact_bank_matches boolean DEFAULT false NOT NULL,
+    bank_rounding_tolerance numeric(15,2) DEFAULT 0.05 NOT NULL
 );
 
 
@@ -2597,6 +2641,13 @@ ALTER TABLE ONLY public.accounting_bank_accounts ALTER COLUMN id SET DEFAULT nex
 --
 
 ALTER TABLE ONLY public.accounting_bank_reconciliation_reports ALTER COLUMN id SET DEFAULT nextval('public.accounting_bank_reconciliation_reports_id_seq'::regclass);
+
+
+--
+-- Name: accounting_bank_rules id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_rules ALTER COLUMN id SET DEFAULT nextval('public.accounting_bank_rules_id_seq'::regclass);
 
 
 --
@@ -3018,6 +3069,14 @@ ALTER TABLE ONLY public.accounting_bank_accounts
 
 ALTER TABLE ONLY public.accounting_bank_reconciliation_reports
     ADD CONSTRAINT accounting_bank_reconciliation_reports_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_bank_rules accounting_bank_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_rules
+    ADD CONSTRAINT accounting_bank_rules_pkey PRIMARY KEY (id);
 
 
 --
@@ -3620,6 +3679,13 @@ CREATE UNIQUE INDEX idx_on_entity_id_account_id_code_b0055f39aa ON public.accoun
 
 
 --
+-- Name: idx_on_entity_id_active_priority_e7ac68ff08; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_entity_id_active_priority_e7ac68ff08 ON public.accounting_bank_rules USING btree (entity_id, active, priority);
+
+
+--
 -- Name: idx_on_entity_id_expires_at_07ed8d110c; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3820,6 +3886,27 @@ CREATE UNIQUE INDEX index_accounting_bank_accounts_on_journal_id ON public.accou
 --
 
 CREATE INDEX index_accounting_bank_reconciliation_reports_on_entity_id ON public.accounting_bank_reconciliation_reports USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_bank_rules_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_rules_on_account_id ON public.accounting_bank_rules USING btree (account_id);
+
+
+--
+-- Name: index_accounting_bank_rules_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_rules_on_entity_id ON public.accounting_bank_rules USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_bank_rules_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_rules_on_partner_id ON public.accounting_bank_rules USING btree (partner_id);
 
 
 --
@@ -5015,6 +5102,14 @@ ALTER TABLE ONLY public.accounting_partners
 
 
 --
+-- Name: accounting_bank_rules fk_rails_1c0ebe51cb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_rules
+    ADD CONSTRAINT fk_rails_1c0ebe51cb FOREIGN KEY (account_id) REFERENCES public.accounting_accounts(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_1e6c3311fa; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5215,6 +5310,14 @@ ALTER TABLE ONLY public.accounting_payment_reminders
 
 
 --
+-- Name: accounting_bank_rules fk_rails_56cc6f71fd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_rules
+    ADD CONSTRAINT fk_rails_56cc6f71fd FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
 -- Name: accounting_analytical_accounts fk_rails_59baa8ed4d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5316,6 +5419,14 @@ ALTER TABLE ONLY public.accounting_intracom_listings
 
 ALTER TABLE ONLY public.accounting_payment_batches
     ADD CONSTRAINT fk_rails_73ac73592a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_bank_rules fk_rails_77c6b626d4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_rules
+    ADD CONSTRAINT fk_rails_77c6b626d4 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -5885,6 +5996,9 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003240000'),
+('20261003230000'),
+('20261003220000'),
 ('20261003210000'),
 ('20261003200000'),
 ('20261003190000'),

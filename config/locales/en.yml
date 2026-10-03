@@ -32,8 +32,16 @@ en:
       cannot_reset_own:  "You cannot reset your own second factor here."
 
   banking:
+    match:
+      supplier_needs_validation: "A payment to a supplier is booked and validated by an accountant: it cannot be left as a draft."
+    undo:
+      nothing_to_undo: "There is no match to undo for this line."
+      reason_required: "A reason is required to cancel a validated payment."
     import:
+      done: "%{imported} lines imported (%{skipped} already known), %{drafted} drafted, %{suggested} suggestion(s) to confirm."
+      choose_file: "Choose a CODA file."
       failed: "The import failed and nothing was imported (%{detail})."
+      match_problem: "A line could not be matched automatically and stays to deal with (%{detail})."
       invalid_file:
         one: "The file is refused: 1 faulty line. Nothing was imported."
         other: "The file is refused: %{count} faulty lines. Nothing was imported."
@@ -176,6 +184,8 @@ en:
       reversal_description: "Reversal of %{reference}"
 
     bank_reconciliation:
+      undone: "The match was undone: the line is to deal with again."
+      rule_created: "Rule created. It applies to the next lines that match it."
       imported:   "Statement imported: %{count} transaction(s) created."
       pay_errors:
         not_pending_debit: "Only a pending outgoing movement can pay an invoice."
@@ -351,6 +361,9 @@ en:
       deleted: "Fixed asset deleted."
 
     settings:
+      bank_rules:
+        updated: "Rule updated."
+        deleted: "Rule deleted."
       custom_roles:
         created: "Role created."
         updated: "Role updated. The change applies to its holders on their next request."

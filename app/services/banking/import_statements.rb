@@ -11,6 +11,8 @@
 # Gaps never refuse a file: the statement that does not add up is marked "to review", a broken chain is shown with its amount.
 class Banking::ImportStatements
   PARSER = "coda".freeze
+  # What the screens show when no file was chosen.
+  NO_FILE = LightService::Context.make(reason: :no_file, errors: [], warnings: []).tap { |ctx| ctx.fail!(I18n.t("banking.import.choose_file")) }.freeze
 
   def self.call(bytes:, user:, source_name: nil, parser: Banking::Coda::Parser) = new(bytes, user, source_name, parser).call
 
@@ -20,7 +22,9 @@ class Banking::ImportStatements
     @source_name = source_name.to_s.presence || "statement.cod"
     @parser = parser
     @sha256 = Digest::SHA256.hexdigest(@bytes)
-    @ctx = LightService::Context.make(statements: [], imported: 0, skipped: 0, warnings: [], errors: [], batch: nil, reason: nil)
+    @created = []
+    @ctx = LightService::Context.make(statements: [], imported: 0, skipped: 0, warnings: [], errors: [], batch: nil, reason: nil,
+                                      drafted: 0, suggested: 0)
   end
 
   def call
@@ -30,6 +34,7 @@ class Banking::ImportStatements
       raise ActiveRecord::Rollback if @ctx.failure?
     end
     remember_refusal if @ctx.failure? && @ctx[:reason] != :already_imported
+    match_lines if @ctx.success?
     @ctx
   rescue ActiveRecord::ActiveRecordError => e
     refuse(:import_failed, I18n.t("banking.import.failed", detail: e.message.truncate(200)))
@@ -54,6 +59,16 @@ class Banking::ImportStatements
     batch.update!(statements_count: result.statements.size, lines_read: @ctx[:imported] + @ctx[:skipped], lines_imported: @ctx[:imported], lines_skipped: @ctx[:skipped],
                   warnings_list: @ctx[:warnings])
     audit(batch)
+  end
+
+  # The engine runs on what came in (F02). It never undoes the import: what it cannot book is reported as a warning.
+  def match_lines
+    matched = Banking::AutoMatch.call(transactions: @created)
+    @ctx[:drafted] = matched[:drafted]
+    @ctx[:suggested] = matched[:suggested]
+    @ctx[:warnings].concat(matched[:problems].map { |problem| I18n.t("banking.import.match_problem", detail: problem) })
+  rescue StandardError => e
+    @ctx[:warnings] << I18n.t("banking.import.match_problem", detail: e.message)
   end
 
   def refuse_known(batch)
@@ -128,7 +143,7 @@ class Banking::ImportStatements
       if known.include?(print)
         @ctx[:skipped] += 1
       else
-        Accounting::BankTransaction.create!(attributes_for(statement, account, line, print))
+        @created << Accounting::BankTransaction.create!(attributes_for(statement, account, line, print))
         @ctx[:imported] += 1
       end
     end

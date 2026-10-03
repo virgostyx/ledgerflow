@@ -44,15 +44,18 @@ class Accounting::Actions::CreateBankJournalEntry
     counterpart_lines.each do |invoice, amount|
       Accounting::JournalEntryLine.create!(
         journal_entry: entry, account: counterpart, label: label || tx.description,
-        partner: invoice&.partner, invoice: invoice,
+        partner: invoice&.partner || ctx[:partner], invoice: invoice,
         counterpart_side => amount, bank_side => zero
       )
     end
 
-    post_result = Accounting::PostJournalEntry.call(entry: entry)
-    unless post_result.success?
-      ctx.fail_with_rollback!(post_result.message)
-      next
+    # A draft stays a draft (F02: whoever cannot validate, and the exact automatic matches, produce drafts).
+    unless ctx[:draft]
+      post_result = Accounting::PostJournalEntry.call(entry: entry)
+      unless post_result.success?
+        ctx.fail_with_rollback!(post_result.message)
+        next
+      end
     end
 
     ctx.journal_entry = entry.reload

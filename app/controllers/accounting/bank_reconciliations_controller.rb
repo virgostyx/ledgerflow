@@ -11,6 +11,12 @@ class Accounting::BankReconciliationsController < ApplicationController
     @bank_accounts = Accounting::BankAccount.where(active: true).order(:label_fr)
     @accounts      = Accounting::Account.where(is_leaf: true).order(:code)
     @payable_invoices = Accounting::Invoice.supplier.where(status: %i[posted partially_paid], document_type: :invoice).includes(:partner).order(:due_date, :id)
+    return unless feature?(:f02)
+
+    @indicators = indicators
+    @matched = Accounting::BankTransaction.matched.where.not(journal_entry_id: nil).includes(:journal_entry, :bank_account).order(:transaction_date, :id).limit(50)
+    @recent = Accounting::BankTransaction.reconciled.where.not(journal_entry_id: nil).includes(:journal_entry, :bank_account).order(updated_at: :desc).limit(10)
+    @rule_accounts = @accounts
   end
 
   def allocate
@@ -25,17 +31,21 @@ class Accounting::BankReconciliationsController < ApplicationController
 
   def update
     authorize :bank_reconciliation, policy_class: Accounting::BankReconciliationsPolicy
-    # importing, keying in and ignoring a movement book nothing; every other action validates a payment entry
-    authorize :bank_reconciliation, :post?, policy_class: Accounting::BankReconciliationsPolicy unless bank_params[:camt_file].present? || bank_params[:manual].present? || bank_params[:ignore].present?
 
     if bank_params[:camt_file].present?
       handle_camt_import
     elsif bank_params[:manual].present?
       handle_manual_entry
     elsif bank_params[:pay_invoice_id].present?
+      # a supplier payment settles by lettering, which needs a validated entry: only for those who can validate
+      authorize :bank_reconciliation, :post?, policy_class: Accounting::BankReconciliationsPolicy
       handle_pay_invoice
     elsif bank_params[:ignore].present?
       handle_ignore
+    elsif bank_params[:undo].present?
+      handle_undo
+    elsif bank_params[:create_rule].present?
+      handle_create_rule
     elsif bank_params[:allocations].present?
       handle_allocations
     elsif bank_params[:accept_suggestion].present?
@@ -103,6 +113,7 @@ class Accounting::BankReconciliationsController < ApplicationController
       account_id:  bank_params[:account_id],
       fiscal_year: fiscal_year,
       label:       bank_params[:label],
+      draft:       draft?,
       eur_amount:  parse_amount(bank_params[:eur_amount])&.then { |a| a.positive? ? a : nil }
     )
 
@@ -130,7 +141,7 @@ class Accounting::BankReconciliationsController < ApplicationController
     return redirect_to back, alert: t("accounting.bank_reconciliation.invalid_invoice") if allocations.any? { |invoice, _| invoice.nil? }
 
     result = Accounting::BookInvoiceReceipt.call(transaction: transaction, allocations: allocations,
-                                                 fiscal_year: Accounting::FiscalYear.current)
+                                                 fiscal_year: Accounting::FiscalYear.current, draft: draft?)
     redirect_for(result, failure_path: back)
   end
 
@@ -150,10 +161,54 @@ class Accounting::BankReconciliationsController < ApplicationController
   # The suggestion is recomputed server-side; the client only says "accept".
   def handle_accept_suggestion
     transaction = Accounting::BankTransaction.pending.find(bank_params[:bank_transaction_id])
-    result = Accounting::AcceptBankSuggestion.call(transaction: transaction)
+    result = Accounting::AcceptBankSuggestion.call(transaction: transaction, draft: draft?)
     return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.no_suggestion") unless result
 
     redirect_for(result)
+  end
+
+  # Whoever cannot validate an entry (an assistant) books a DRAFT: the payment entry exists, an accountant validates it.
+  def draft? = !Accounting::BankReconciliationsPolicy.new(current_user, :bank_reconciliation).post?
+
+  # Undoes the match of a line: a draft is deleted by whoever may match, a validated entry is reversed by whoever may reverse
+  # entries, with a reason.
+  def handle_undo
+    transaction = Accounting::BankTransaction.find(bank_params[:bank_transaction_id])
+    entry = transaction.journal_entry
+    allowed = if transaction.matched? then Accounting::BankStatementPolicy.new(current_user, :statement).match?
+    else entry.present? && Accounting::JournalEntryPolicy.new(current_user, entry).reverse?
+    end
+    raise Pundit::NotAuthorizedError unless allowed
+
+    result = Banking::UndoMatch.call(transaction: transaction, user: current_user, reason: bank_params[:reason].to_s.strip)
+    if result.success?
+      redirect_to accounting_bank_reconciliation_path, notice: t("accounting.bank_reconciliation.undone")
+    else
+      redirect_to accounting_bank_reconciliation_path, alert: result.message
+    end
+  end
+
+  # A rule from what a line says (its counterparty's IBAN, else a piece of its text), on the account chosen.
+  def handle_create_rule
+    raise Pundit::NotAuthorizedError unless Accounting::Settings::BasePolicy.new(current_user, :settings).update?
+
+    transaction = Accounting::BankTransaction.find(bank_params[:bank_transaction_id])
+    rule = Accounting::BankRule.from_line(transaction, account: Accounting::Account.find_by(id: bank_params[:account_id]),
+                                          name: bank_params[:rule_name].to_s.strip, action: bank_params[:rule_action].presence || "propose")
+    if rule.save
+      redirect_to accounting_bank_reconciliation_path, notice: t("accounting.bank_reconciliation.rule_created")
+    else
+      redirect_to accounting_bank_reconciliation_path, alert: rule.errors.full_messages.to_sentence
+    end
+  end
+
+  # What the screen shows on top (F02): how much came in, how much the engine took by itself, what is left and for how long.
+  def indicators
+    imported = Accounting::BankTransaction.where.not(statement_id: nil)
+    pending = Accounting::BankTransaction.pending
+    automatic = imported.where("match_data ->> 'auto' = 'true'").count
+    { imported: imported.count, automatic: automatic, automatic_rate: imported.any? ? (100.0 * automatic / imported.count).round : 0,
+      pending: pending.count, oldest_days: pending.minimum(:transaction_date)&.then { |date| (Date.current - date).to_i } }
   end
 
   def redirect_for(result, failure_path: accounting_bank_reconciliation_path)

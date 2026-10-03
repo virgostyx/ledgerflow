@@ -9,7 +9,7 @@
 class Accounting::BookInvoiceReceipt
   extend LightService::Organizer
 
-  def self.call(transaction:, fiscal_year:, invoice: nil, invoices: nil, allocations: nil)
+  def self.call(transaction:, fiscal_year:, invoice: nil, invoices: nil, allocations: nil, draft: false)
     allocations = build_allocations(transaction, invoice, invoices, allocations)
     error = guard(transaction, allocations)
     return failure(transaction, error) if error
@@ -22,9 +22,11 @@ class Accounting::BookInvoiceReceipt
         account_id:  Accounting::Account.find_by!(code: Accounting::AccountCodes::CUSTOMERS).id,
         fiscal_year: fiscal_year,
         label:       "Receipt #{list.filter_map(&:invoice_number).join(', ')}".strip,
-        allocations: allocations
+        allocations: allocations,
+        draft:       draft
       )
-      list.each { |i| i.pay! if i.remaining_amount.zero? } if result.success?
+      # a draft pays nothing yet: the invoice is paid when the entry is validated (Actions::FinalizeBankMatch)
+      list.each { |i| i.pay! if i.remaining_amount.zero? } if result.success? && !draft
       raise ActiveRecord::Rollback if result.failure?
     end
     result
@@ -41,7 +43,7 @@ class Accounting::BookInvoiceReceipt
 
   def self.guard(tx, allocations)
     list = allocations.map(&:first)
-    if tx.reconciled? || !tx.credit?                                 then "Not a pending credit"
+    if !tx.pending? || !tx.credit?                                   then "Not a pending credit"
     elsif allocations.empty?                                         then "Nothing to allocate"
     elsif list.any? { |i| !i.customer? || !i.posted? }               then "Invoice is not an open customer invoice"
     elsif list.uniq.size != list.size                                then "An invoice can only be allocated once"

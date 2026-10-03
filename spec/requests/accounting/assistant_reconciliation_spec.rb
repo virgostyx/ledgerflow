@@ -22,18 +22,30 @@ RSpec.describe "Reconciliation by an assistant", type: :request do
   context "as an assistant" do
     before { sign_in assistant }
 
-    {
-      "booking the movement on an account" => -> { { account_id: counterpart.id, label: "Receipt" } },
-      "accepting the suggestion"           => -> { { accept_suggestion: "1" } },
-      "paying a supplier invoice"          => -> { { pay_invoice_id: 0 } },
-      "allocating a receipt to invoices"   => -> { { allocations: { "0" => "100" } } }
-    }.each do |label, params|
-      it "refuses #{label}: nothing is booked and the movement stays pending" do
-        expect { reconcile(instance_exec(&params)) }.not_to change(Accounting::JournalEntry, :count)
+    # Booking a line produces a DRAFT for someone who cannot validate (F02): the payment entry exists, the line is matched, and an
+    # accountant validates it. Paying a supplier invoice settles by lettering, which needs a validated entry: still refused.
+    it "books a line on an account as a draft, which an accountant validates" do
+      expect { reconcile(account_id: counterpart.id, label: "Receipt") }.to change(Accounting::JournalEntry.draft, :count).by(1)
 
-        expect(transaction.reload).to be_pending
-        expect(response).to redirect_to(accounting_root_path)
-      end
+      expect(transaction.reload).to be_matched
+      expect(Accounting::JournalEntry.posted.count).to eq(0)
+    end
+
+    it "allocates a receipt to invoices as a draft, the invoices staying unpaid until validation" do
+      invoice = create(:invoice, :customer, :posted, fiscal_year: fiscal_year).tap { |i| i.update_columns(total_incl_vat: BigDecimal("100")) }
+      create(:account, code: "400000", label_fr: "Clients", account_type: :asset, normal_balance: :debit) unless Accounting::Account.exists?(code: "400000")
+
+      reconcile(allocations: { invoice.id.to_s => "100" })
+
+      expect(transaction.reload).to be_matched
+      expect(invoice.reload).to be_posted
+    end
+
+    it "refuses to pay a supplier invoice: nothing is booked and the movement stays pending" do
+      expect { reconcile(pay_invoice_id: 0) }.not_to change(Accounting::JournalEntry, :count)
+
+      expect(transaction.reload).to be_pending
+      expect(response).to redirect_to(accounting_root_path)
     end
 
     it "still imports a statement" do

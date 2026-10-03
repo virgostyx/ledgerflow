@@ -91,6 +91,19 @@
             <% end %>
           </div>
         <% end %>
+        <% if @entity.feature?(:f02) %>
+        <div class="flex items-start gap-2 pt-2">
+          <%= f.check_box :auto_post_exact_bank_matches, class: "mt-1 rounded border-gray-300" %>
+          <%= f.label :auto_post_exact_bank_matches, class: "text-sm text-gray-700" do %>
+            Validate exact bank matches automatically
+            <span class="block text-xs text-gray-400">A bank line that matches a customer invoice with certainty (structured communication, same amount) is booked as a draft payment. Tick this to have it validated at once; left off, an accountant validates it.</span>
+          <% end %>
+        </div>
+        <div class="max-w-xs">
+          <%= f.label :bank_rounding_tolerance, "Rounding tolerance of a bank payment (EUR)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.number_field :bank_rounding_tolerance, step: "0.01", min: 0, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+        </div>
+        <% end %>
         <% if @entity.feature?(:f01) %>
         <div class="flex items-start gap-2 pt-2">
           <%= f.check_box :four_eyes, class: "mt-1 rounded border-gray-300" %>

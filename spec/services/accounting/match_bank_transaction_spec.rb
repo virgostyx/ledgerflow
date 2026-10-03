@@ -147,8 +147,12 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
       expect(described_class.call(transaction: tx)).to be_nil
     end
 
-    it 'does not match when only one invoice number is present' do
-      expect(described_class.call(transaction: tx(amount: 1000, description: 'Invoice 2026-0041'))).to be_nil
+    it 'does not match one invoice number as a group, and when its amount differs gives nothing' do
+      expect(described_class.call(transaction: tx(amount: 999, description: 'Invoice 2026-0041'))).to be_nil
+    end
+
+    it 'matches one invoice number with the identical amount (rule 2 of F02, score 95), not as a group' do
+      expect(described_class.call(transaction: tx(amount: 1000, description: 'Invoice 2026-0041'))).to have_attributes(kind: :invoice, target: first, score: 95, rule: 2)
     end
 
     it 'does not confuse a number with a longer one' do

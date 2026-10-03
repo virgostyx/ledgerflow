@@ -1,0 +1,29 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Bank statements", path: accounting_bank_statements_path }, { label: "Import" } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Import a CODA statement") %>
+
+<div class="max-w-2xl">
+  <% if @result %>
+    <div class="mb-6 rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-900" role="alert">
+      <p class="font-medium"><%= @result.message %></p>
+      <% if @result[:errors].present? %>
+        <ul class="mt-2 list-disc pl-5 space-y-0.5 font-mono text-xs">
+          <% @result[:errors].first(100).each do |error| %><li><%= error.message %></li><% end %>
+        </ul>
+        <% if @result[:errors].size > 100 %><p class="mt-2 text-xs"><%= @result[:errors].size - 100 %> more.</p><% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <p class="mb-4 text-sm text-gray-600">A CODA file (Febelfin standard) from your bank. The whole file is imported or nothing is: a faulty file is refused with the list of its faulty lines. A file already imported is refused, and a statement that overlaps an earlier one only brings its new lines.</p>
+
+  <%= form_with url: accounting_bank_statements_path, method: :post, multipart: true, class: "rounded-lg border border-gray-200 bg-white p-5 space-y-4" do %>
+    <div>
+      <%= label_tag :file, "CODA file", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= file_field_tag :file, required: true, accept: ".cod,.coda,.txt", class: "block w-full text-sm text-gray-600" %>
+    </div>
+    <%= submit_tag "Import", class: "btn-primary" %>
+  <% end %>
+</div>

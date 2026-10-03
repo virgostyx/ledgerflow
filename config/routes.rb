@@ -152,6 +152,7 @@ Rails.application.routes.draw do
       resource :bank_reconciliation, only: [ :show, :update ] do
         get :allocate
       end
+      resources :bank_statements, only: %i[index show new create]
 
       resources :payment_batches, only: [ :index, :new, :create, :show, :destroy ] do
         member do
@@ -207,6 +208,7 @@ Rails.application.routes.draw do
           post :reset_two_factor, on: :member
         end
         resources :custom_roles, only: %i[index create update destroy]
+        resources :bank_rules, only: %i[index update destroy]
         resources :api_clients, only: [ :index, :new, :create ] do
           member do
             post  :rotate

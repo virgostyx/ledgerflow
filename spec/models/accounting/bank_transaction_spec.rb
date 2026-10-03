@@ -19,7 +19,7 @@ RSpec.describe Accounting::BankTransaction, type: :model do
   end
 
   describe 'enums' do
-    it { should define_enum_for(:status).with_values(pending: 0, reconciled: 1, ignored: 2) }
+    it { should define_enum_for(:status).with_values(pending: 0, reconciled: 1, ignored: 2, matched: 3) }
   end
 
   describe 'scopes' do

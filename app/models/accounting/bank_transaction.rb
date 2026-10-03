@@ -7,7 +7,9 @@ class Accounting::BankTransaction < ApplicationRecord
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
   belongs_to :statement, class_name: "Accounting::BankStatement", optional: true # set by the statement imports (F02)
 
-  enum :status, { pending: 0, reconciled: 1, ignored: 2 }
+  # pending: to deal with (with a suggestion in match_data when the engine found one); matched: a draft payment entry exists,
+  # waiting to be validated; reconciled: booked and validated; ignored.
+  enum :status, { pending: 0, reconciled: 1, ignored: 2, matched: 3 }
 
   # The bank facts of a payment become known once its debit is reconciled: API invoices already marked paid (SEPA batch) get
   # a payment_confirmed event. Only entities that use BudgetFlow.

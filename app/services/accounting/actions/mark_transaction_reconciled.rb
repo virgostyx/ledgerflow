@@ -5,7 +5,7 @@ class Accounting::Actions::MarkTransactionReconciled
 
   executed do |ctx|
     ctx.transaction.update!(
-      status:        :reconciled,
+      status:        ctx[:draft] ? :matched : :reconciled,
       journal_entry: ctx.journal_entry
     )
   rescue ActiveRecord::RecordInvalid => e

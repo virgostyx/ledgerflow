@@ -34,6 +34,16 @@
       </div>
     </div>
 
+    <% if @result.chain_breaks.any? || @result.to_review.any? %>
+      <div class="mb-6 rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="status">
+        <p class="font-medium">Statements to check</p>
+        <ul class="mt-1 list-disc pl-5">
+          <% @result.chain_breaks.each do |s| %><li>Statement <%= s.sequence || s.id %>: its opening balance differs by <%= number_to_currency(s.chain_gap, unit: "€") %> from the closing balance of the previous one.</li><% end %>
+          <% @result.to_review.each do |s| %><li>Statement <%= s.sequence || s.id %>: its closing balance differs by <%= number_to_currency(s.integrity_gap, unit: "€") %> from its opening balance plus its movements.</li><% end %>
+        </ul>
+      </div>
+    <% end %>
+
     <% if @result.gap.zero? %>
       <%= button_to "Freeze this reconciliation", accounting_reports_freeze_bank_reconciliation_report_path,
             params: { bank_account_id: @bank_account.id, as_of: @as_of }, class: "btn-primary mb-6" %>

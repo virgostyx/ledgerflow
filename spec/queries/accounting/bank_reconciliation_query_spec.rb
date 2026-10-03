@@ -78,4 +78,46 @@ RSpec.describe Accounting::BankReconciliationQuery, type: :query do
   # takes a specific bank_account record rather than a bare id/date range, and
   # acts_as_tenant already makes a bank_account from another entity unreachable —
   # there's no shared foreign key to leak through.
+
+  describe "with imported statements (F02)" do
+    let(:batch) { Accounting::ImportBatch.create!(parser: "coda", file_sha256: "x", result: "imported") }
+
+    def statement(old:, new:, on:, **attrs)
+      Accounting::BankStatement.create!(bank_account: bank_account, import_batch: batch, old_balance: old, new_balance: new, new_balance_date: on, old_balance_date: on - 1, **attrs)
+    end
+
+    it "takes the closing balance of the last statement as the statement balance, the opening balance of the bank being known" do
+      statement(old: 1000, new: 1250, on: as_of - 5)
+      statement(old: 1250, new: 1100, on: as_of - 1)
+
+      expect(described_class.new(bank_account: bank_account, as_of: as_of).call.statement_balance).to eq(BigDecimal("1100"))
+    end
+
+    it "adds the lines that came without a statement after it, and ignores those before" do
+      statement(old: 1000, new: 1250, on: as_of - 5)
+      post_transaction(amount: 40, transaction_date: as_of - 9)  # before the statement: already in its opening balance
+      post_transaction(amount: 25, transaction_date: as_of - 2)  # after it
+
+      expect(described_class.new(bank_account: bank_account, as_of: as_of).call.statement_balance).to eq(BigDecimal("1275"))
+    end
+
+    it "keeps the flat sum of the lines when there is no statement up to the date" do
+      statement(old: 1000, new: 1250, on: as_of + 3)
+      post_transaction(amount: 40)
+
+      expect(described_class.new(bank_account: bank_account, as_of: as_of).call.statement_balance).to eq(BigDecimal("40"))
+    end
+
+    it "lists the statements whose chain is broken and those that do not add up" do
+      ok = statement(old: 1000, new: 1250, on: as_of - 5, chain_gap: nil)
+      broken = statement(old: 900, new: 1100, on: as_of - 1, chain_gap: BigDecimal("-350"))
+      unbalanced = statement(old: 1100, new: 1500, on: as_of, chain_gap: BigDecimal("0"), status: "to_review", integrity_gap: BigDecimal("400"))
+
+      result = described_class.new(bank_account: bank_account, as_of: as_of).call
+
+      expect(result.chain_breaks).to eq([ broken ])
+      expect(result.to_review).to eq([ unbalanced ])
+      expect([ ok ]).not_to include(*result.chain_breaks)
+    end
+  end
 end

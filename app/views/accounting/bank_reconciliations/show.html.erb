@@ -7,9 +7,21 @@
 
 <%= render Ui::PageHeaderComponent.new(title: 'Bank Reconciliation') %>
 
+<% if @indicators %>
+  <dl class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div class="rounded-lg border border-gray-200 bg-white p-4"><dt class="text-xs text-gray-500">Lines imported</dt><dd id="indicator-imported" class="mt-1 text-xl font-semibold text-gray-900"><%= @indicators[:imported] %></dd></div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4"><dt class="text-xs text-gray-500">Matched automatically</dt><dd id="indicator-automatic" class="mt-1 text-xl font-semibold text-gray-900"><%= @indicators[:automatic_rate] %> %<span class="ml-1 text-xs font-normal text-gray-500">(<%= @indicators[:automatic] %>)</span></dd></div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4"><dt class="text-xs text-gray-500">To deal with</dt><dd id="indicator-pending" class="mt-1 text-xl font-semibold text-gray-900"><%= @indicators[:pending] %></dd></div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4"><dt class="text-xs text-gray-500">Oldest line waiting</dt><dd id="indicator-oldest" class="mt-1 text-xl font-semibold text-gray-900"><%= @indicators[:oldest_days] ? "#{@indicators[:oldest_days]} days" : "—" %></dd></div>
+  </dl>
+<% end %>
+
 <%# Import CAMT.053 %>
 <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
   <h2 class="text-sm font-semibold text-gray-700 mb-3">Import a statement (CAMT.053)</h2>
+  <% if feature?(:f02) && policy(Accounting::BankStatement).import? %>
+    <p class="mb-3 text-xs text-gray-500">A CODA file from your bank: <%= link_to "import it here", new_accounting_bank_statement_path, class: "text-primary-600 hover:underline" %> (<%= link_to "all statements", accounting_bank_statements_path, class: "text-primary-600 hover:underline" %>).</p>
+  <% end %>
   <%= form_with url: accounting_bank_reconciliation_path, method: :patch,
                 multipart: true, class: 'flex flex-wrap gap-3 items-end' do |f| %>
     <div>
@@ -65,7 +77,7 @@
   </div>
 
   <% if @pending_transactions.any? || filters_active? %>
-    <table class="w-full text-sm">
+    <table class="w-full text-sm" data-controller="bank-keys">
       <thead class="bg-gray-50 border-b border-gray-200">
         <tr>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -76,7 +88,7 @@
       </thead>
       <tbody class="divide-y divide-gray-100">
         <% @pending_transactions.each do |tx| %>
-          <tr class="hover:bg-gray-50 transition-colors">
+          <tr class="hover:bg-gray-50 transition-colors" data-bank-keys-target="row">
             <td class="px-4 py-3 text-gray-500">
               <%= Accounting::DatePresenter.new(tx.transaction_date).format %>
             </td>
@@ -85,13 +97,16 @@
               <% if (suggestion = @suggestions[tx]) %>
                 <div class="mt-1 flex items-center gap-2 text-xs text-emerald-700">
                   <span>Suggested: <%= case suggestion.kind
-                        when :invoice  then "invoice #{suggestion.target.invoice_number}"
-                        when :expense  then "bank fees (#{suggestion.target.code})"
-                        when :invoices then "invoices #{suggestion.target.map(&:invoice_number).join(', ')}"
+                        when :invoice          then "invoice #{suggestion.target.invoice_number}"
+                        when :supplier_invoice then "supplier invoice #{suggestion.target.supplier_reference.presence || suggestion.target.invoice_number}"
+                        when :expense          then "bank fees (#{suggestion.target.code})"
+                        when :rule             then "rule “#{suggestion.target.name}” (#{suggestion.target.account.code})"
+                        when :invoices         then "invoices #{suggestion.target.map(&:invoice_number).join(', ')}"
                         else "payment batch #{suggestion.target.message_id}#{' — will be marked as executed' if suggestion.target.generated?}"
-                        end %> (<%= suggestion.confidence %> confidence<%= ", overpaid by #{Accounting::MoneyPresenter.new(suggestion.excess).format}" if suggestion.excess&.positive? %>)</span>
+                        end %> (<%= suggestion.confidence %> confidence, score <%= suggestion.score %><%= ", rule #{suggestion.rule}" if suggestion.rule %><%= ", overpaid by #{Accounting::MoneyPresenter.new(suggestion.excess).format}" if suggestion.excess&.positive? %>)</span>
                   <%= button_to 'Accept', accounting_bank_reconciliation_path, method: :patch,
                         params: { 'bank_reconciliation[bank_transaction_id]' => tx.id, 'bank_reconciliation[accept_suggestion]' => 1 },
+                        form: { data: { bank_keys_action: 'accept' } },
                         class: 'px-2 py-1 bg-primary-600 text-white rounded-md hover:bg-primary-700' %>
                 </div>
               <% end %>
@@ -147,7 +162,21 @@
               <%= button_to 'Ignore', accounting_bank_reconciliation_path, method: :patch,
                     params: { 'bank_reconciliation[bank_transaction_id]' => tx.id, 'bank_reconciliation[ignore]' => 1 },
                     data: { turbo_confirm: 'Ignore this transaction? It will be removed from the list without any accounting entry.' },
+                    form: { data: { bank_keys_action: 'ignore' } },
                     class: 'mt-1 text-xs text-gray-500 underline hover:text-gray-700' %>
+              <% if @indicators && policy(Accounting::BankStatement).match? && Accounting::Settings::BasePolicy.new(current_user, :settings).update? %>
+                <details class="mt-2">
+                  <summary class="text-xs text-primary-600 cursor-pointer">Make a rule from this line</summary>
+                  <%= form_with url: accounting_bank_reconciliation_path, method: :patch, class: 'mt-2 flex flex-wrap gap-2 items-center' do %>
+                    <%= hidden_field_tag 'bank_reconciliation[bank_transaction_id]', tx.id %>
+                    <%= hidden_field_tag 'bank_reconciliation[create_rule]', 1 %>
+                    <%= text_field_tag 'bank_reconciliation[rule_name]', nil, required: true, placeholder: 'Name of the rule', class: 'rounded-md border-gray-300 text-xs' %>
+                    <%= select_tag 'bank_reconciliation[account_id]', options_from_collection_for_select(@rule_accounts, :id, ->(a) { "#{a.code} — #{a.label_fr}" }), class: 'rounded-md border-gray-300 text-xs' %>
+                    <%= select_tag 'bank_reconciliation[rule_action]', options_for_select([ [ 'Propose it', 'propose' ], [ 'Book it as a draft', 'book_draft' ] ]), class: 'rounded-md border-gray-300 text-xs' %>
+                    <%= submit_tag 'Create the rule', class: 'px-3 py-1.5 bg-gray-700 text-white text-xs font-medium rounded-md hover:bg-gray-800' %>
+                  <% end %>
+                </details>
+              <% end %>
             </td>
           </tr>
         <% end %>
@@ -160,3 +189,32 @@
     </div>
   <% end %>
 </div>
+
+<% if @indicators %>
+  <% [ [ "Awaiting validation", @matched, "A draft payment entry exists: validate it to settle the line." ], [ "Recently reconciled", @recent, "Undoing a validated payment reverses its entry." ] ].each do |title, transactions, help| %>
+    <% next if transactions.blank? %>
+    <div class="mt-6 bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-200"><h2 class="text-sm font-semibold text-gray-700"><%= title %></h2><p class="text-xs text-gray-500"><%= help %></p></div>
+      <table class="w-full text-sm">
+        <tbody class="divide-y divide-gray-100">
+          <% transactions.each do |tx| %>
+            <tr>
+              <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(tx.transaction_date).format %></td>
+              <td class="px-4 py-3 text-gray-700"><%= tx.description %></td>
+              <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(tx.amount).format %></td>
+              <td class="px-4 py-3"><%= link_to (tx.journal_entry.reference.presence || "entry ##{tx.journal_entry.id}"), accounting_journal_entry_path(tx.journal_entry), class: "text-primary-600 hover:underline" %></td>
+              <td class="px-4 py-3">
+                <%= form_with url: accounting_bank_reconciliation_path, method: :patch, class: "flex gap-2 items-center" do %>
+                  <%= hidden_field_tag "bank_reconciliation[bank_transaction_id]", tx.id %>
+                  <%= hidden_field_tag "bank_reconciliation[undo]", 1 %>
+                  <% unless tx.matched? %><%= text_field_tag "bank_reconciliation[reason]", nil, required: true, placeholder: "Reason", class: "rounded-md border-gray-300 text-xs w-32" %><% end %>
+                  <%= submit_tag "Undo", class: "text-xs text-red-700 underline cursor-pointer", data: { turbo_confirm: "Undo this match?" } %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+<% end %>

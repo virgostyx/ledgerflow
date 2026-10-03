@@ -154,7 +154,8 @@ class Accounting::Invoice < ApplicationRecord
 
   # Customer receipts credit the receivable through lines linked to the invoice (journal_entry_lines.invoice_id).
   def paid_amount
-    Accounting::JournalEntryLine.where(invoice_id: id).sum(:credit)
+    # A reversed entry no longer counts: undoing a payment reopens the invoice.
+    Accounting::JournalEntryLine.joins(:journal_entry).where(invoice_id: id).where.not(accounting_journal_entries: { status: Accounting::JournalEntry.statuses[:reversed] }).sum(:credit)
   end
 
   # An invoice carried over from a previous accounting system: fixed total, no lines.
