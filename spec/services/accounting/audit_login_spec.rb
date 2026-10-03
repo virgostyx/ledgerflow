@@ -6,7 +6,9 @@ RSpec.describe Accounting::AuditLogin do
   let(:entity_a) { create(:entity) }
   let(:entity_b) { create(:entity) }
 
-  def rows(action) = Accounting::AuditLog.where(action: action, auditable_id: user.id)
+  # the sign-in belongs to several entities at once: read across them on purpose
+  def rows(action) = ActsAsTenant.without_tenant { Accounting::AuditLog.where(action: action, auditable_id: user.id).to_a }
+  def count_all = ActsAsTenant.without_tenant { Accounting::AuditLog.count }
 
   it "writes one entry per entity the user can currently work in" do
     create(:user_entity, :accountant, user: user, entity: entity_a)
@@ -37,7 +39,7 @@ RSpec.describe Accounting::AuditLogin do
   end
 
   it "writes nothing for a user who works in no entity" do
-    expect { described_class.call(user: user, action: "login", method: "password") }.not_to change(Accounting::AuditLog, :count)
+    expect { described_class.call(user: user, action: "login", method: "password") }.not_to change { count_all }
   end
 
   it "keeps the audit chain of each entity intact" do

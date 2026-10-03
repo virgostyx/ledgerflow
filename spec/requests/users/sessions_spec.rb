@@ -55,7 +55,7 @@ RSpec.describe 'Users::Sessions', type: :request do
     let(:entity) { create(:entity) }
     let!(:membership) { create(:user_entity, :accountant, user: user, entity: entity) }
 
-    def audit(action) = Accounting::AuditLog.where(action: action, auditable_id: user.id, entity_id: entity.id)
+    def audit(action) = ActsAsTenant.without_tenant { Accounting::AuditLog.where(action: action, auditable_id: user.id, entity_id: entity.id).to_a }
 
     it 'records a successful sign-in' do
       post user_session_path, params: { user: { email: user.email, password: password } }
@@ -76,13 +76,13 @@ RSpec.describe 'Users::Sessions', type: :request do
       5.times { post user_session_path, params: { user: { email: user.email, password: 'wrong' } } }
 
       expect(audit('login_failed').count).to eq(5)
-      expect(audit('login_failed').order(:id).last.payload).to include('failed_attempts' => 5, 'locked' => true)
+      expect(audit('login_failed').max_by(&:id).payload).to include('failed_attempts' => 5, 'locked' => true)
       expect(user.reload).to be_access_locked
     end
 
     it 'does not write anything for an unknown email' do
       expect { post user_session_path, params: { user: { email: 'nobody@example.com', password: 'x' } } }
-        .not_to change(Accounting::AuditLog, :count)
+        .not_to change { ActsAsTenant.without_tenant { Accounting::AuditLog.count } }
     end
   end
 end

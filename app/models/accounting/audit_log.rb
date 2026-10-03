@@ -1,6 +1,9 @@
 class Accounting::AuditLog < ApplicationRecord
   self.table_name = "accounting_audit_logs"
 
+  # Screens only ever see their own entity's rows. Rows of global reference data (VAT codes) have no entity: record!
+  # writes them outside any tenant, with the entity_id it computed itself.
+  acts_as_tenant :entity, optional: true
   belongs_to :user, optional: true
 
   validates :auditable_type, presence: true
@@ -21,14 +24,14 @@ class Accounting::AuditLog < ApplicationRecord
     connection.transaction do
       connection.execute("SELECT pg_advisory_xact_lock(hashtext('accounting_audit_logs'), #{entity_id.to_i})")
       previous = unscoped.where(entity_id: entity_id).where.not(content_hash: nil).order(id: :desc).pick(:content_hash)
-      entry = new(
+      entry = ActsAsTenant.without_tenant { new(
         auditable_type: auditable.class.name, auditable_id: auditable.id, action: action,
         user_id: user&.id, user_email: user&.email, payload: payload, entity_id: entity_id,
         ip_address: ip_address || Current.ip_address, user_agent: Current.user_agent, request_id: Current.request_id,
         reason: reason || Current.reason, previous_hash: previous, created_at: Time.current.utc.round(6)
-      )
+      ) }
       entry.content_hash = digest(entry)
-      entry.save!
+      ActsAsTenant.without_tenant { entry.save! }
       entry
     end
   end

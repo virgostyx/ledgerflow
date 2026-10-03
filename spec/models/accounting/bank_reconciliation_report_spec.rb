@@ -42,4 +42,15 @@ RSpec.describe Accounting::BankReconciliationReport, type: :model do
       expect { report.destroy }.to raise_error(ActiveRecord::StatementInvalid, /immutable/)
     end
   end
+
+  describe "tenancy" do
+    it "never shows another entity's frozen reconciliation" do
+      other = create(:entity)
+      ActsAsTenant.with_tenant(other) do
+        described_class.record!(bank_account: create(:bank_account, entity: other), as_of: Date.new(2026, 3, 31), result: result)
+      end
+
+      expect(described_class.count).to eq(0)
+    end
+  end
 end

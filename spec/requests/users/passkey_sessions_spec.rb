@@ -79,7 +79,7 @@ RSpec.describe "Users::PasskeySessions", type: :request do
   end
 
   describe "audit trail (F01)" do
-    def audit(action) = Accounting::AuditLog.where(action: action, auditable_id: user.id)
+    def audit(action) = ActsAsTenant.without_tenant { Accounting::AuditLog.where(action: action, auditable_id: user.id).to_a }
 
     it "records a passkey sign-in" do
       sign_in_with_passkey
@@ -151,7 +151,7 @@ RSpec.describe "Users::RecoveryCodeSessions", type: :request do
   describe "audit trail (F01)" do
     before { create(:user_entity, :accountant, user: user) }
 
-    def audit(action) = Accounting::AuditLog.where(action: action, auditable_id: user.id)
+    def audit(action) = ActsAsTenant.without_tenant { Accounting::AuditLog.where(action: action, auditable_id: user.id).to_a }
 
     it "records a sign-in with a recovery code" do
       post recovery_code_session_path, params: { email: user.email, recovery_code: codes.first }

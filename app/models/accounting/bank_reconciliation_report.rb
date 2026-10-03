@@ -4,6 +4,7 @@
 class Accounting::BankReconciliationReport < ApplicationRecord
   self.table_name = "accounting_bank_reconciliation_reports"
 
+  acts_as_tenant :entity
   belongs_to :bank_account, class_name: "Accounting::BankAccount"
   belongs_to :user, optional: true
 

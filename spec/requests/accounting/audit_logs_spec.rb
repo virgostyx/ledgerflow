@@ -119,4 +119,36 @@ RSpec.describe "Accounting::AuditLogs", type: :request do
     expect(log.ip_address).to be_present
     expect(log.request_id).to be_present
   end
+
+  describe "another entity's trail never shows" do
+    let(:other) { create(:entity) }
+    let!(:foreign) do
+      ActsAsTenant.with_tenant(other) do
+        Accounting::AuditLog.record!(auditable: create(:partner), action: "foreign_action", user: create(:user, email: "stranger@elsewhere.example"), reason: "foreign reason")
+      end
+    end
+
+    it "keeps its rows out of the list, whatever the filters" do
+      get accounting_audit_logs_path
+
+      expect(response.body).not_to include("foreign_action", "stranger@elsewhere.example", "foreign reason")
+    end
+
+    it "keeps its actions, types and users out of the filter menus" do
+      options = Accounting::AuditLogsQuery.filter_options
+
+      expect(options[:actions]).not_to include("foreign_action")
+      expect(options[:users].map(&:first)).not_to include("stranger@elsewhere.example")
+    end
+
+    it "answers 404 for a row of another entity opened by its id" do
+      get accounting_audit_log_path(foreign)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "does not count them in the chain" do
+      expect(Accounting::AuditLog.where(action: "foreign_action")).to be_empty
+    end
+  end
 end
