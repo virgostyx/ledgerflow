@@ -2133,6 +2133,39 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: custom_roles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.custom_roles (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    name character varying NOT NULL,
+    permissions text[] DEFAULT '{}'::text[] NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: custom_roles_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.custom_roles_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: custom_roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.custom_roles_id_seq OWNED BY public.custom_roles.id;
+
+
+--
 -- Name: entities; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2269,7 +2302,8 @@ CREATE TABLE public.user_entities (
     updated_at timestamp(6) without time zone NOT NULL,
     valid_from date,
     valid_until date,
-    journal_ids bigint[]
+    journal_ids bigint[],
+    custom_role_id bigint
 );
 
 
@@ -2765,6 +2799,13 @@ ALTER TABLE ONLY public.api_requests ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: custom_roles id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.custom_roles ALTER COLUMN id SET DEFAULT nextval('public.custom_roles_id_seq'::regclass);
+
+
+--
 -- Name: entities id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3212,6 +3253,14 @@ ALTER TABLE ONLY public.api_requests
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: custom_roles custom_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.custom_roles
+    ADD CONSTRAINT custom_roles_pkey PRIMARY KEY (id);
 
 
 --
@@ -4496,6 +4545,20 @@ CREATE UNIQUE INDEX index_consistency_acks_on_entity_and_fingerprint ON public.a
 
 
 --
+-- Name: index_custom_roles_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_custom_roles_on_entity_id ON public.custom_roles USING btree (entity_id);
+
+
+--
+-- Name: index_custom_roles_on_entity_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_custom_roles_on_entity_id_and_name ON public.custom_roles USING btree (entity_id, name);
+
+
+--
 -- Name: index_depreciation_entries_on_asset_and_fiscal_year; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4542,6 +4605,13 @@ CREATE UNIQUE INDEX index_entities_on_vat_number_unique ON public.entities USING
 --
 
 CREATE INDEX index_recovery_codes_on_user_id ON public.recovery_codes USING btree (user_id);
+
+
+--
+-- Name: index_user_entities_on_custom_role_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_user_entities_on_custom_role_id ON public.user_entities USING btree (custom_role_id);
 
 
 --
@@ -4741,6 +4811,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 ALTER TABLE ONLY public.accounting_bank_accounts
     ADD CONSTRAINT fk_rails_215e10200e FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: custom_roles fk_rails_2167468372; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.custom_roles
+    ADD CONSTRAINT fk_rails_2167468372 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -5069,6 +5147,14 @@ ALTER TABLE ONLY public.accounting_line_allocations
 
 ALTER TABLE ONLY public.accounting_journal_entries
     ADD CONSTRAINT fk_rails_8d8da34615 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: user_entities fk_rails_8e87e2e2aa; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_entities
+    ADD CONSTRAINT fk_rails_8e87e2e2aa FOREIGN KEY (custom_role_id) REFERENCES public.custom_roles(id) ON DELETE RESTRICT;
 
 
 --
@@ -5526,6 +5612,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003180000'),
 ('20261003170000'),
 ('20261003160000'),
 ('20261003150000'),

@@ -64,7 +64,7 @@ class User < ApplicationRecord
 
   # Whoever can validate, unlock or administer in an entity where F01 is on must sign in with a second factor.
   def second_factor_required?
-    user_entities.current.includes(:entity).any? { |membership| Permissions.sensitive?(membership.role) && membership.entity.feature?(:f01) }
+    user_entities.current.includes(:entity).any? { |membership| membership.sensitive? && membership.entity.feature?(:f01) }
   end
 
   # A new secret to show (as text and QR code) until a code from the app confirms it; the same one on a revisit.

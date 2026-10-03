@@ -202,6 +202,7 @@ Rails.application.routes.draw do
           post :regenerate_documents_address
         end
         resources :memberships, only: %i[index create update]
+        resources :custom_roles, only: %i[index create update destroy]
         resources :api_clients, only: [ :index, :new, :create ] do
           member do
             post  :rotate

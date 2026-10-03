@@ -39,7 +39,7 @@ class ApiClient < ApplicationRecord
   # The owner's role in this entity today (an expired or deactivated access gives none).
   def owner_membership = owner && UserEntity.current.find_by(user_id: owner_id, entity_id: entity_id)
 
-  def owner_permits?(permission) = owner.nil? || Permissions.allowed?(owner_membership&.role, permission)
+  def owner_permits?(permission) = owner.nil? || (owner_membership ? owner_membership.allows?(permission) : Permissions.allowed?(nil, permission))
 
   # Posting an invoice validates entries: only a key whose owner may validate.
   def may_post? = owner_permits?("invoices.issue")

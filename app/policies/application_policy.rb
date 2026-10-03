@@ -43,7 +43,7 @@ class ApplicationPolicy
     @membership ||= UserEntity.current.find_by(user: user, entity: current_entity)
   end
 
-  def can?(permission) = Permissions.allowed?(membership&.role, permission)
+  def can?(permission) = membership ? membership.allows?(permission) : Permissions.allowed?(nil, permission)
 
   # F01: an access limited to some journals reaches only the records of those. A record without a journal (the empty
   # form, a class) is not concerned.

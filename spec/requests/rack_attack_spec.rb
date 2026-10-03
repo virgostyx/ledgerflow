@@ -40,7 +40,10 @@ RSpec.describe "Rack::Attack", type: :request do
 
     it "bloque la 301e requête d'une même IP avec un 429 JSON et Retry-After" do
       # A different bearer each time, so only the IP counter can trip.
-      301.times { |i| get "/api/v1/invoices", headers: { "Authorization" => "Bearer lf_k#{i}", "REMOTE_ADDR" => "1.2.3.7" } }
+      # frozen inside a minute: the counter must not roll over to a new window in the middle of the loop
+      travel_to(Time.utc(2026, 1, 1, 12, 0, 5)) do
+        301.times { |i| get "/api/v1/invoices", headers: { "Authorization" => "Bearer lf_k#{i}", "REMOTE_ADDR" => "1.2.3.7" } }
+      end
 
       expect(response).to have_http_status(:too_many_requests)
       expect(response.media_type).to eq("application/json")
@@ -53,16 +56,18 @@ RSpec.describe "Rack::Attack", type: :request do
     def call(key, ip) = get("/api/v1/invoices", headers: { "Authorization" => "Bearer #{key}", "REMOTE_ADDR" => ip })
 
     it "bloque une clé après 300 requêtes réparties sur des IP différentes, sans toucher aux autres clés" do
-      300.times { |i| call("lf_busy", "10.0.#{i / 250}.#{(i % 250) + 1}") }
-      expect(response).not_to have_http_status(:too_many_requests)
+      travel_to(Time.utc(2026, 1, 1, 12, 0, 5)) do # one window for the whole test
+        300.times { |i| call("lf_busy", "10.0.#{i / 250}.#{(i % 250) + 1}") }
+        expect(response).not_to have_http_status(:too_many_requests)
 
-      call("lf_busy", "10.9.9.9")
-      expect(response).to have_http_status(:too_many_requests)
-      expect(response.media_type).to eq("application/json")
-      expect(response.headers["Retry-After"].to_i).to be_between(1, 60)
+        call("lf_busy", "10.9.9.9")
+        expect(response).to have_http_status(:too_many_requests)
+        expect(response.media_type).to eq("application/json")
+        expect(response.headers["Retry-After"].to_i).to be_between(1, 60)
 
-      call("lf_other", "10.9.9.10")
-      expect(response).not_to have_http_status(:too_many_requests)
+        call("lf_other", "10.9.9.10")
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
     end
 
     it "ne compte pas les requêtes sans jeton dans le compteur par clé" do

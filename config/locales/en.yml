@@ -334,6 +334,11 @@ en:
       deleted: "Fixed asset deleted."
 
     settings:
+      custom_roles:
+        created: "Role created."
+        updated: "Role updated. The change applies to its holders on their next request."
+        deleted: "Role deleted."
+        unknown: "That role does not exist in this entity."
       peppol_settings:
         updated: "Peppol settings updated."
         simulated: "Simulated incoming invoice booked as a draft supplier invoice."

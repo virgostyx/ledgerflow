@@ -417,7 +417,7 @@ RSpec.describe "Accounting::Documents", type: :request do
 
       get accounting_document_path(document)
 
-      expect(response.body).to include("Confirmed by #{owner.full_name}")
+      expect(response.body).to include("Confirmed by #{ERB::Util.html_escape(owner.full_name)}") # a name may hold an apostrophe
     end
 
     describe "POST /accounting/documents/:id/confirm_field" do

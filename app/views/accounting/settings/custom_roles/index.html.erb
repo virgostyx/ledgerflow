@@ -1,0 +1,49 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Settings", path: accounting_settings_root_path }, { label: "Users and roles", path: accounting_settings_memberships_path }, { label: "Custom roles" } ]) %>
+<% end %>
+
+<div class="max-w-5xl">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900">Custom roles</h1>
+  <p class="mb-6 text-sm text-gray-500">Compose a role from the fine permissions, then give it to an access in Users and roles. Anyone holding it has exactly these permissions. Changes apply on their next request. Managing users stays with the owners; a role that can validate or unlock requires a second factor.</p>
+
+  <%# one form to create, one per role to change: the same ticked list of permissions %>
+  <% groups = CustomRole::ASSIGNABLE.group_by { |permission| permission.split(".").first } %>
+  <% form_for = lambda do |role, url, method, label| %>
+    <%= form_with scope: :custom_role, url: url, method: method, class: "rounded-lg border border-gray-200 bg-white p-4" do |f| %>
+      <% if method == :post %>
+        <div class="mb-3 max-w-sm"><%= f.label :name, "Name", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.text_field :name, required: true, class: "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %></div>
+      <% else %>
+        <h2 class="mb-3 text-sm font-semibold text-gray-900"><%= role.name %></h2>
+      <% end %>
+      <%= hidden_field_tag "custom_role[permissions][]", "", id: nil %>
+      <div class="grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-3">
+        <% groups.each do |group, permissions| %>
+          <fieldset><legend class="text-xs font-medium uppercase tracking-wider text-gray-500"><%= group.tr("_", " ") %></legend>
+            <% permissions.each do |permission| %>
+              <label class="mt-1 flex items-center gap-2 text-sm text-gray-700">
+                <%= check_box_tag "custom_role[permissions][]", permission, role.permissions.include?(permission), id: "#{dom_id(role)}_#{permission.tr('.', '_')}", class: "rounded border-gray-300" %>
+                <span class="font-mono text-xs"><%= permission %></span>
+              </label>
+            <% end %>
+          </fieldset>
+        <% end %>
+      </div>
+      <div class="mt-3 flex items-center gap-4">
+        <%= f.submit label, class: "btn-primary" %>
+        <% if method == :patch %>
+          <%= link_to "Delete", accounting_settings_custom_role_path(role), data: { turbo_method: :delete, turbo_confirm: "Delete the role #{role.name}? It cannot be deleted while someone holds it." },
+                class: "text-xs font-medium text-red-700 hover:underline" %>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <div class="space-y-4">
+    <% @roles.each do |role| %>
+      <% form_for.call(role, accounting_settings_custom_role_path(role), :patch, "Save #{role.name}") %>
+    <% end %>
+    <h2 class="pt-2 text-sm font-semibold text-gray-900">New role</h2>
+    <% form_for.call(@role, accounting_settings_custom_roles_path, :post, "Create role") %>
+  </div>
+</div>

@@ -4,6 +4,7 @@
 
 <div class="max-w-5xl">
   <h1 class="mb-1 text-2xl font-bold text-gray-900">Users and roles</h1>
+  <p class="mb-2 text-sm"><%= link_to "Custom roles", accounting_settings_custom_roles_path, class: "font-medium text-primary-700 hover:underline" %></p>
   <p class="mb-6 text-sm text-gray-500">Who can work in this entity. Removing an access (deactivating it) or letting it expire applies on the person's next request. The entity always keeps at least one owner.</p>
 
   <%= form_with scope: :membership, url: accounting_settings_memberships_path, class: "mb-8 grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-5 items-end" do |f| %>
@@ -27,7 +28,7 @@
         <% form_id = "membership-form-#{m.id}" %>
         <tr>
           <td class="py-2"><span class="font-medium text-gray-900"><%= m.user.full_name %></span><br><span class="text-xs text-gray-500"><%= m.user.email %></span></td>
-          <td><%= select_tag "membership[role]", options_for_select(UserEntity.options_for_select, m.role), form: form_id, class: "rounded-md border border-gray-300 px-2 py-1 text-sm" %></td>
+          <td><%= select_tag "membership[role]", grouped_options_for_select({ "System roles" => UserEntity.options_for_select, "Custom roles" => @custom_roles.map { |r| [ r.name, "custom:#{r.id}" ] } }.reject { |_, v| v.empty? }, m.custom_role_id ? "custom:#{m.custom_role_id}" : m.role), form: form_id, class: "rounded-md border border-gray-300 px-2 py-1 text-sm" %></td>
           <td><%= date_field_tag "membership[valid_until]", m.valid_until, form: form_id, class: "rounded-md border border-gray-300 px-2 py-1 text-sm" %></td>
           <td>
             <%= select_tag "membership[journal_ids][]", options_for_select(@journals.map { |j| [ "#{j.code} #{j.label_fr}", j.id ] }, m.journal_ids), multiple: true, include_hidden: true, form: form_id,
