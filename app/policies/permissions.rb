@@ -27,6 +27,8 @@ module Permissions
     "documents.link"         => %i[admin accountant assistant],
     "documents.archive"      => %i[admin accountant],
     "documents.delete_expired" => %i[admin],
+    "bank.import"            => %i[admin accountant],
+    "bank.match"             => %i[admin accountant assistant],
     "reports.view"           => EVERYONE,
     "reports.export"         => %i[admin accountant assistant],
     # the read-only roles export only when the entity allows it (Entity#read_only_export), see ApplicationPolicy#can_export?

@@ -17,6 +17,8 @@ RSpec.describe "Permissions::MATRIX against the F01 capability table" do
     "Manage users and roles"            => { roles: [ OWNER ], permissions: %w[users.manage] },
     "Export"                            => { roles: [ OWNER, ACCOUNTANT, ASSISTANT ], permissions: %w[reports.export] },
     "Export, when the entity allows it" => { roles: [ READER, EXTERNAL_AUDITOR ], permissions: %w[reports.export_readonly] },
+    "Import a bank statement (F02)"     => { roles: [ OWNER, ACCOUNTANT ], permissions: %w[bank.import] },
+    "Match bank lines (F02)"            => { roles: [ OWNER, ACCOUNTANT, ASSISTANT ], permissions: %w[bank.match] },
     "Consult the audit trail"           => { roles: [ OWNER, ACCOUNTANT, EXTERNAL_AUDITOR ], permissions: %w[audit.view] }
   }.freeze
 

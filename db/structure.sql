@@ -506,6 +506,49 @@ ALTER SEQUENCE public.accounting_bank_reconciliation_reports_id_seq OWNED BY pub
 
 
 --
+-- Name: accounting_bank_statements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_bank_statements (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    bank_account_id bigint NOT NULL,
+    import_batch_id bigint NOT NULL,
+    sequence integer,
+    old_balance_date date,
+    old_balance numeric(15,2) NOT NULL,
+    new_balance_date date,
+    new_balance numeric(15,2),
+    integrity_gap numeric(15,2) DEFAULT 0.0 NOT NULL,
+    chain_gap numeric(15,2),
+    status character varying DEFAULT 'ok'::character varying NOT NULL,
+    messages jsonb DEFAULT '[]'::jsonb NOT NULL,
+    header jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_bank_statements_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_bank_statements_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_bank_statements_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_bank_statements_id_seq OWNED BY public.accounting_bank_statements.id;
+
+
+--
 -- Name: accounting_bank_transactions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -523,7 +566,14 @@ CREATE TABLE public.accounting_bank_transactions (
     raw_data jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    entity_id bigint NOT NULL
+    entity_id bigint NOT NULL,
+    statement_id bigint,
+    counterparty_name character varying,
+    counterparty_iban character varying,
+    structured_communication character varying,
+    bank_reference character varying,
+    transaction_code character varying,
+    fingerprint character varying
 );
 
 
@@ -969,6 +1019,49 @@ CREATE SEQUENCE public.accounting_fixed_assets_id_seq
 --
 
 ALTER SEQUENCE public.accounting_fixed_assets_id_seq OWNED BY public.accounting_fixed_assets.id;
+
+
+--
+-- Name: accounting_import_batches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_import_batches (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint,
+    document_id bigint,
+    parser character varying NOT NULL,
+    source_name character varying,
+    file_sha256 character varying NOT NULL,
+    result character varying NOT NULL,
+    statements_count integer DEFAULT 0 NOT NULL,
+    lines_read integer DEFAULT 0 NOT NULL,
+    lines_imported integer DEFAULT 0 NOT NULL,
+    lines_skipped integer DEFAULT 0 NOT NULL,
+    errors_list jsonb DEFAULT '[]'::jsonb NOT NULL,
+    warnings_list jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_import_batches_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_import_batches_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_import_batches_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_import_batches_id_seq OWNED BY public.accounting_import_batches.id;
 
 
 --
@@ -2507,6 +2600,13 @@ ALTER TABLE ONLY public.accounting_bank_reconciliation_reports ALTER COLUMN id S
 
 
 --
+-- Name: accounting_bank_statements id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_statements ALTER COLUMN id SET DEFAULT nextval('public.accounting_bank_statements_id_seq'::regclass);
+
+
+--
 -- Name: accounting_bank_transactions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2588,6 +2688,13 @@ ALTER TABLE ONLY public.accounting_fiscal_years ALTER COLUMN id SET DEFAULT next
 --
 
 ALTER TABLE ONLY public.accounting_fixed_assets ALTER COLUMN id SET DEFAULT nextval('public.accounting_fixed_assets_id_seq'::regclass);
+
+
+--
+-- Name: accounting_import_batches id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_import_batches ALTER COLUMN id SET DEFAULT nextval('public.accounting_import_batches_id_seq'::regclass);
 
 
 --
@@ -2914,6 +3021,14 @@ ALTER TABLE ONLY public.accounting_bank_reconciliation_reports
 
 
 --
+-- Name: accounting_bank_statements accounting_bank_statements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_statements
+    ADD CONSTRAINT accounting_bank_statements_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_bank_transactions accounting_bank_transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3007,6 +3122,14 @@ ALTER TABLE ONLY public.accounting_fiscal_years
 
 ALTER TABLE ONLY public.accounting_fixed_assets
     ADD CONSTRAINT accounting_fixed_assets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_import_batches accounting_import_batches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_import_batches
+    ADD CONSTRAINT accounting_import_batches_pkey PRIMARY KEY (id);
 
 
 --
@@ -3336,6 +3459,13 @@ CREATE INDEX idx_audit_object ON public.accounting_audit_logs USING btree (audit
 
 
 --
+-- Name: idx_bank_transactions_fingerprint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_bank_transactions_fingerprint ON public.accounting_bank_transactions USING btree (bank_account_id, fingerprint) WHERE (fingerprint IS NOT NULL);
+
+
+--
 -- Name: idx_bank_transactions_on_account_and_ref; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3466,6 +3596,13 @@ CREATE INDEX idx_on_bank_account_id_as_of_1bbd9c6237 ON public.accounting_bank_r
 --
 
 CREATE INDEX idx_on_bank_account_id_ef8d5b8375 ON public.accounting_bank_reconciliation_reports USING btree (bank_account_id);
+
+
+--
+-- Name: idx_on_bank_account_id_new_balance_date_4441da131d; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_bank_account_id_new_balance_date_4441da131d ON public.accounting_bank_statements USING btree (bank_account_id, new_balance_date);
 
 
 --
@@ -3686,6 +3823,27 @@ CREATE INDEX index_accounting_bank_reconciliation_reports_on_entity_id ON public
 
 
 --
+-- Name: index_accounting_bank_statements_on_bank_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_statements_on_bank_account_id ON public.accounting_bank_statements USING btree (bank_account_id);
+
+
+--
+-- Name: index_accounting_bank_statements_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_statements_on_entity_id ON public.accounting_bank_statements USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_bank_statements_on_import_batch_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_statements_on_import_batch_id ON public.accounting_bank_statements USING btree (import_batch_id);
+
+
+--
 -- Name: index_accounting_bank_transactions_on_bank_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3704,6 +3862,13 @@ CREATE INDEX index_accounting_bank_transactions_on_entity_id ON public.accountin
 --
 
 CREATE INDEX index_accounting_bank_transactions_on_journal_entry_id ON public.accounting_bank_transactions USING btree (journal_entry_id);
+
+
+--
+-- Name: index_accounting_bank_transactions_on_statement_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_bank_transactions_on_statement_id ON public.accounting_bank_transactions USING btree (statement_id);
 
 
 --
@@ -3872,6 +4037,34 @@ CREATE INDEX index_accounting_fixed_assets_on_invoice_line_id ON public.accounti
 --
 
 CREATE UNIQUE INDEX index_accounting_fixed_assets_on_invoice_line_id_unique ON public.accounting_fixed_assets USING btree (invoice_line_id) WHERE (invoice_line_id IS NOT NULL);
+
+
+--
+-- Name: index_accounting_import_batches_on_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_import_batches_on_document_id ON public.accounting_import_batches USING btree (document_id);
+
+
+--
+-- Name: index_accounting_import_batches_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_import_batches_on_entity_id ON public.accounting_import_batches USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_import_batches_on_entity_id_and_file_sha256; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_import_batches_on_entity_id_and_file_sha256 ON public.accounting_import_batches USING btree (entity_id, file_sha256);
+
+
+--
+-- Name: index_accounting_import_batches_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_import_batches_on_user_id ON public.accounting_import_batches USING btree (user_id);
 
 
 --
@@ -4766,6 +4959,14 @@ ALTER TABLE ONLY public.accounting_invoice_emails
 
 
 --
+-- Name: accounting_bank_statements fk_rails_04d068db3c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_statements
+    ADD CONSTRAINT fk_rails_04d068db3c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_payment_batches fk_rails_0bc5bca68a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4854,6 +5055,14 @@ ALTER TABLE ONLY public.accounting_invoice_events
 
 
 --
+-- Name: accounting_import_batches fk_rails_2592d87f1d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_import_batches
+    ADD CONSTRAINT fk_rails_2592d87f1d FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoice_line_annotations fk_rails_2671676b6d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4875,6 +5084,22 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 
 ALTER TABLE ONLY public.accounting_invoice_emails
     ADD CONSTRAINT fk_rails_310b9a27ad FOREIGN KEY (sent_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: accounting_bank_statements fk_rails_31c90e7265; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_statements
+    ADD CONSTRAINT fk_rails_31c90e7265 FOREIGN KEY (bank_account_id) REFERENCES public.accounting_bank_accounts(id);
+
+
+--
+-- Name: accounting_import_batches fk_rails_32015dce50; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_import_batches
+    ADD CONSTRAINT fk_rails_32015dce50 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -5171,6 +5396,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 ALTER TABLE ONLY public.user_entities
     ADD CONSTRAINT fk_rails_8e87e2e2aa FOREIGN KEY (custom_role_id) REFERENCES public.custom_roles(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: accounting_import_batches fk_rails_8fab1a57a6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_import_batches
+    ADD CONSTRAINT fk_rails_8fab1a57a6 FOREIGN KEY (document_id) REFERENCES public.accounting_documents(id);
 
 
 --
@@ -5518,6 +5751,14 @@ ALTER TABLE ONLY public.user_entities
 
 
 --
+-- Name: accounting_bank_statements fk_rails_e8b9869d2b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_statements
+    ADD CONSTRAINT fk_rails_e8b9869d2b FOREIGN KEY (import_batch_id) REFERENCES public.accounting_import_batches(id);
+
+
+--
 -- Name: accounting_intracom_listing_lines fk_rails_ebb9da0d3a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5582,6 +5823,14 @@ ALTER TABLE ONLY public.accounting_document_links
 
 
 --
+-- Name: accounting_bank_transactions fk_rails_f51db8c122; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_bank_transactions
+    ADD CONSTRAINT fk_rails_f51db8c122 FOREIGN KEY (statement_id) REFERENCES public.accounting_bank_statements(id);
+
+
+--
 -- Name: accounting_bank_transactions fk_rails_f5872c5e07; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5636,6 +5885,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003210000'),
 ('20261003200000'),
 ('20261003190000'),
 ('20261003180000'),

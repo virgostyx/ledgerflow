@@ -31,6 +31,19 @@ RSpec.describe Accounting::UploadDocument do
       end
     end
 
+    it "accepts a CODA bank statement, told from the header record, whatever its extension and encoding" do
+      %w[simple accents_cp850 accents_latin1].each do |name|
+        result = upload(File.binread(Rails.root.join("spec/fixtures/files/coda/#{name}.cod")), "#{name}.txt")
+
+        expect(result).to be_success
+        expect(result[:document].content_type).to eq("text/x-coda")
+      end
+    end
+
+    it "does not take for a CODA file a text that merely starts with zeros" do
+      expect(failure_reason(upload("0000 this is only text\r\n", "notes.txt"))).to eq(:unsupported_type)
+    end
+
     it "keeps the real type when the extension lies (a PNG called .pdf)" do
       result = upload(sample_png, "invoice.pdf")
 

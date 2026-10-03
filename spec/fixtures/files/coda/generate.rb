@@ -17,7 +17,7 @@ main = {
       counterparty_iban: B.iban("091012345678"), counterparty_bic: "GKCCBEBB", customer_reference: "VIREMENT FACTURE 1" },
     { amount: "-605.00", value_date: d(5), bank_reference: "BKREF0000000000000002", free: "FACTURE F-2026-0042 BUREAU PLUS", counterparty_name: "BUREAU PLUS SA",
       counterparty_iban: B.iban("737000012345") },
-    { amount: "-12.50", value_date: d(9), bank_reference: "BKREF0000000000000003", free: "FRAIS DE TENUE DE COMPTE", code: "41010000" },
+    { amount: "-12.50", value_date: d(9), bank_reference: "BKREF0000000000000003", free: "FRAIS DE TENUE DE COMPTE", code: "08002000" },
     { amount: "250.00", value_date: d(15), bank_reference: "BKREF0000000000000004", structured: B.structured(2), counterparty_name: "MARTIN JEAN",
       counterparty_iban: B.iban("001234567890") }
   ]
@@ -39,12 +39,13 @@ accents = { iban: ACME, sequence: 13, date: d(31), old_balance: "0.00",
 write("accents_latin1.cod", B.file(statements: [ accents ], holder_name: "SOCIÉTÉ ACME", encoding: "ISO-8859-1"))
 write("accents_cp850.cod", B.file(statements: [ accents ], holder_name: "SOCIÉTÉ ACME", encoding: "CP850"))
 
-# a movement with every sub-record: 2.1, 2.2, 2.3, 3.1, 3.2 and a free message (4)
+# a movement with 2.1, 2.2, 2.3, two 3.1; free messages (4) after the new balance, as the specification requires
 write("detailed_movement.cod", B.file(statements: [
   { iban: ACME, sequence: 14, date: d(31), old_balance: "0.00",
     movements: [ { amount: "300.00", value_date: d(4), structured: B.structured(3), customer_reference: "CLIENT-REF-77", counterparty_bic: "KREDBEBB",
                    counterparty_name: "GLOBAL TRADING NV", counterparty_iban: B.iban("733012345678"), information: [ "DETAIL 1 ORDRE PERMANENT", "DETAIL 2 SUITE" ],
-                   message: "MESSAGE LIBRE DE LA BANQUE" } ] }
+                   r_type: "3", iso_reason: "MS03", category_purpose: "SUPP", purpose: "GDDS" } ],
+    messages: [ "MESSAGE LIBRE DE LA BANQUE", "SECOND MESSAGE" ] }
 ]))
 
 # statements that follow each other: the second opens on the balance the first closed on (a), or not (b)
@@ -70,6 +71,9 @@ write("invalid_structured.cod", B.file(statements: [
   { iban: ACME, sequence: 40, date: d(31), old_balance: "0.00",
     movements: [ { amount: "10.00", value_date: d(3), structured: B.structured(9, valid: false), counterparty_name: "X" } ] }
 ]))
+
+# an account without any movement: an empty file is 0, 1 and 9 only (spec §2)
+write("empty_account.cod", B.file(statements: [ { iban: ACME, sequence: 60, date: d(31), old_balance: "1234.56", movements: [] } ]))
 
 # a foreign currency account
 write("usd_account.cod", B.file(statements: [

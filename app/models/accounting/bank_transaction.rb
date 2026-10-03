@@ -5,6 +5,7 @@ class Accounting::BankTransaction < ApplicationRecord
 
   belongs_to :bank_account,  class_name: "Accounting::BankAccount"
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
+  belongs_to :statement, class_name: "Accounting::BankStatement", optional: true # set by the statement imports (F02)
 
   enum :status, { pending: 0, reconciled: 1, ignored: 2 }
 

@@ -31,6 +31,18 @@ en:
       reset_reason_required: "Say why the second factor is reset."
       cannot_reset_own:  "You cannot reset your own second factor here."
 
+  banking:
+    import:
+      failed: "The import failed and nothing was imported (%{detail})."
+      invalid_file:
+        one: "The file is refused: 1 faulty line. Nothing was imported."
+        other: "The file is refused: %{count} faulty lines. Nothing was imported."
+      already_imported: "This file was already imported on %{date} by %{who}."
+      unknown_account: "The file holds statements of accounts that are not bank accounts of this entity: %{accounts}. Nothing was imported."
+      currency_mismatch: "The statement of %{account} is in %{statement}, the bank account in %{bank_account}. Nothing was imported."
+      does_not_add_up: "Statement %{sequence} of %{account} does not add up: its closing balance differs by %{gap} from its opening balance plus its movements. To review."
+      chain_broken: "Statement %{sequence} of %{account} does not follow the previous one: its opening balance differs by %{gap} from the previous closing balance (%{previous})."
+
   documents:
     choose_file: "Choose at least one file."
     uploaded:

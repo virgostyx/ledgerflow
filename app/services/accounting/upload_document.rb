@@ -5,7 +5,8 @@
 class Accounting::UploadDocument
   MAX_BYTES = 25.megabytes
   XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".freeze
-  TYPES = { pdf: "application/pdf", png: "image/png", jpeg: "image/jpeg", tiff: "image/tiff", xml: "application/xml", csv: "text/csv", xlsx: XLSX }.freeze
+  CODA_HEADER = /\A00000\d{6}\d{3}05[ D]/n
+  TYPES = { pdf: "application/pdf", png: "image/png", jpeg: "image/jpeg", tiff: "image/tiff", xml: "application/xml", csv: "text/csv", xlsx: XLSX, coda: "text/x-coda" }.freeze
 
   # `io` anything with #read; `filename` as the person knows it.
   def self.call(io:, filename:, user:, origin: :manual_upload, kind: nil, parent: nil, details: {}) = new(io, filename, user, origin, kind, parent, details).call
@@ -101,8 +102,16 @@ class Accounting::UploadDocument
   def text_type
     stripped = @bytes.sub(/\A\xEF\xBB\xBF/n, "").lstrip
     if stripped.start_with?("<") then :xml
+    elsif coda? then :coda
     elsif File.extname(@filename).casecmp?(".csv") then :csv
     end
+  end
+
+  # A CODA bank statement (F02): a first record of 128 characters that is the header (record 0, application code 05). The
+  # parser (Banking::Coda::Parser) does the real reading; here it is only told apart from other text.
+  def coda?
+    first = @bytes.byteslice(0, 300).to_s.split(/\r\n|\n|\r/, 2).first.to_s
+    first.bytesize == 128 && first.match?(CODA_HEADER)
   end
 
   def unsafe_xml? = @bytes.match?(/<!DOCTYPE|<!ENTITY/i)

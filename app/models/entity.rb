@@ -33,9 +33,10 @@ class Entity < ApplicationRecord
 
   # The features of docs/dev/features/spec.md that are built, each shipped behind a per-entity flag. A function adds its
   # key here when it ships.
-  FEATURES = %w[f01 f03].freeze
+  FEATURES = %w[f01 f02 f03].freeze
   FEATURE_LABELS = {
     "f01" => [ "Roles, period locks and users", "Turns on the Periods and Users and roles screens and the four-eyes option. The safeguards (a locked period refuses entries, the last owner stays) stay active either way." ],
+    "f02" => [ "Bank statements (CODA)", "Turns on the import of CODA bank statements and the automatic reconciliation of their lines." ],
     "f03" => [ "Documents", "Turns on the document inbox: upload, view, link to entries and archive supporting documents." ]
   }.freeze
 
