@@ -62,7 +62,7 @@ class Accounting::DisposeFixedAsset
     line.call(Accounting::Account.find_by!(code: accounts[:accumulated]), debit: accumulated) if accumulated.positive?
     line.call(Accounting::Account.find_by!(code: Accounting::AccountCodes::ASSET_DISPOSAL), debit: book_value) if book_value.positive?
     line.call(asset.asset_account, credit: asset.acquisition_value)
-    entry.post!
+    Accounting::PostJournalEntry.call!(entry: entry, keep_reference: true)
     entry
   end
 

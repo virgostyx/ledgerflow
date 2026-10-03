@@ -53,9 +53,9 @@ class Accounting::Actions::PostFxAdjustment
       label:  "FX adjustment"
     )
 
-    entry.post!
+    Accounting::PostJournalEntry.call!(entry: entry, keep_reference: true)
     ctx.lines = lines + [ trade_line ]
-  rescue ActiveRecord::RecordInvalid => e
+  rescue ActiveRecord::RecordInvalid, Accounting::PostRefused => e
     ctx.fail_with_rollback!("FX adjustment error: #{e.message}")
   end
 end

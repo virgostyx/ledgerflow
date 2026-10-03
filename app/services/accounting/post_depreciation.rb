@@ -46,7 +46,7 @@ class Accounting::PostDepreciation
     line = { journal_entry: entry, label: "Depreciation #{asset.description}" }
     Accounting::JournalEntryLine.create!(**line, account: expense, debit: amount, credit: 0)
     Accounting::JournalEntryLine.create!(**line, account: contra, debit: 0, credit: amount)
-    entry.post!
+    Accounting::PostJournalEntry.call!(entry: entry, keep_reference: true)
 
     Accounting::DepreciationEntry.create!(fixed_asset: asset, fiscal_year: fiscal_year, journal_entry: entry, amount: amount)
   end

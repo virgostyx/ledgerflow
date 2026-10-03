@@ -62,7 +62,7 @@ class Accounting::Actions::ReviewFixedAssetVat
         create_line(entry, deductible_account, debit: 0, credit: amount, vat_code: 61, vat_amount: amount)
       end
 
-      entry.post!
+      Accounting::PostJournalEntry.call!(entry: entry, keep_reference: true)
     end
 
     entry

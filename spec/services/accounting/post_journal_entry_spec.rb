@@ -153,3 +153,57 @@ RSpec.describe Accounting::PostJournalEntry, type: :service do
     end
   end
 end
+
+# F01 review: entries the system generates (depreciation, disposal, invoices, opening balances...) are validated by the
+# same service as the others: period guard, balance check, audit row. They only differ by keeping the reference they carry.
+RSpec.describe Accounting::PostJournalEntry, ".call!" do
+  include_context "with_open_fiscal_year"
+
+  let(:entry) { create(:journal_entry, :with_balanced_lines, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 14, reference: "DEP-ASSET-1-2026") }
+
+  it "posts, keeps the reference it was given and writes the audit row" do
+    described_class.call!(entry: entry, keep_reference: true)
+
+    expect(entry.reload).to be_posted
+    expect(entry.reference).to eq("DEP-ASSET-1-2026")
+    expect(Accounting::AuditLog.where(action: "post_entry", auditable_id: entry.id).sole.payload).to include("reference" => "DEP-ASSET-1-2026")
+  end
+
+  it "gives a number to an entry that has none, even when asked to keep the reference" do
+    entry.update_columns(reference: nil)
+
+    described_class.call!(entry: entry, keep_reference: true)
+
+    expect(entry.reload.reference).to be_present
+  end
+
+  it "renumbers by default, as a manual entry is" do
+    described_class.call!(entry: entry)
+
+    expect(entry.reload.reference).not_to eq("DEP-ASSET-1-2026")
+  end
+
+  it "refuses a locked period with a readable error, and leaves a draft" do
+    create(:period_lock, starts_on: fiscal_year.start_date, ends_on: fiscal_year.start_date.end_of_month)
+
+    expect { described_class.call!(entry: entry, keep_reference: true) }.to raise_error(Accounting::PostRefused, /locked/i)
+    expect(entry.reload).to be_draft
+  end
+
+  it "refuses an unbalanced entry" do
+    ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+    entry.lines.first.update_columns(debit: 999)
+
+    expect { described_class.call!(entry: entry, keep_reference: true) }.to raise_error(Accounting::PostRefused)
+    expect(entry.reload).to be_draft
+  end
+end
+
+# The guard that keeps this from coming back: no service validates an entry with a bare AASM transition.
+RSpec.describe "services that validate entries" do
+  it "never call entry.post! directly (it skips the period guard, the balance check and the audit row)" do
+    offenders = Dir["app/services/**/*.rb"].select { |file| File.read(file).lines.any? { |line| line =~ /\bentry\.post!/ && line !~ /^\s*#/ } }
+
+    expect(offenders).to eq([ "app/services/accounting/actions/lock_entry.rb" ]) # the transition itself, inside the service
+  end
+end

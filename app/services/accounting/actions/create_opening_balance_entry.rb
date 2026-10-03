@@ -54,9 +54,9 @@ class Accounting::Actions::CreateOpeningBalanceEntry
       )
     end
 
-    entry.post!
+    Accounting::PostJournalEntry.call!(entry: entry, keep_reference: true)
     ctx[:opening_entry] = entry
-  rescue ActiveRecord::RecordInvalid => e
+  rescue ActiveRecord::RecordInvalid, Accounting::PostRefused => e
     ctx.fail_with_rollback!("Opening balance error: #{e.message}")
   end
 end

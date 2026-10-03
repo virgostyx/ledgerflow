@@ -22,7 +22,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
 
     build_entry_lines(invoice, entry)
 
-    entry.post!
+    Accounting::PostJournalEntry.call!(entry: entry, keep_reference: true)
     invoice.journal_entry = entry
     invoice.save!
 

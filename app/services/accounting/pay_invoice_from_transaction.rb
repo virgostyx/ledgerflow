@@ -123,7 +123,7 @@ class Accounting::PayInvoiceFromTransaction
                                                       debit: loss ? zero : amount, credit: loss ? amount : zero, label: "FX adjustment")
     Accounting::JournalEntryLine.create!(journal_entry: entry, account: Accounting::Account.find_by!(code: loss ? Accounting::AccountCodes::FX_LOSS : Accounting::AccountCodes::FX_GAIN),
                                          debit: loss ? amount : zero, credit: loss ? zero : amount, label: "FX adjustment")
-    entry.post!
+    Accounting::PostJournalEntry.call!(entry: entry, keep_reference: true)
     trade_line
   end
   private_class_method :post_fx

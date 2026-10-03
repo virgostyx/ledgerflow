@@ -177,7 +177,7 @@ RSpec.describe Accounting::CarryForwardBalances do
     end
   end
 
-  context "when the previous year has no balance sheet entries (all P&L)" do
+  context "when the previous year has only P&L entries and a liability, and was not closed" do
     # Only P&L entries — no balance sheet carry-forward needed
     before do
       entry = create(:journal_entry, :draft, journal: purchase_journal, fiscal_year: prev_year,
@@ -192,9 +192,13 @@ RSpec.describe Accounting::CarryForwardBalances do
       # account_604 is expense — will NOT be carried forward
     end
 
-    it "succeeds and only carries forward the liability account" do
-      result
-      expect(result).to be_success
+    # Only the liability would be carried: the opening entry would not balance (F01 review: the balance check now
+    # applies to generated entries too). The year must be closed first, which settles the P&L accounts.
+    it "refuses to carry forward an entry that would not balance, and creates nothing" do
+      expect { result }.not_to change(Accounting::JournalEntry, :count)
+
+      expect(result).to be_failure
+      expect(result.message).to match(/unbalanced/i)
     end
   end
 

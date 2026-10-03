@@ -168,7 +168,7 @@ class Accounting::ImportOpeningBalances
     lines.each do |account, debit, credit, extra|
       Accounting::JournalEntryLine.create!(journal_entry: entry, account:, debit:, credit:, label: "Opening balance", **extra)
     end
-    entry.post!
+    Accounting::PostJournalEntry.call!(entry: entry, keep_reference: true)
     entry
   end
 
