@@ -15,7 +15,9 @@ module Users
       if current_user.confirm_totp!(params[:code])
         second_factor_passed!
         Accounting::AuditLogin.call(user: current_user, action: "two_factor_enabled", method: "totp")
-        redirect_to(session.delete(:after_second_factor_path) || accounting_root_path, notice: t("users.two_factor.enabled"))
+        @continue_path = session.delete(:after_second_factor_path) || accounting_root_path
+        @codes = current_user.generate_totp_backup_codes!
+        render :backup_codes
       else
         prepare_enrolment
         flash.now[:alert] = t("users.two_factor.wrong_code")
@@ -35,6 +37,15 @@ module Users
       end
     end
 
+    # New backup codes, the old ones stop working; the person proves it with a current code.
+    def backup_codes
+      return redirect_to(two_factor_path, alert: t("users.two_factor.wrong_code")) unless current_user.verify_totp!(params[:code])
+
+      @continue_path = accounting_root_path
+      @codes = current_user.generate_totp_backup_codes!
+      render :backup_codes
+    end
+
     def challenge
       redirect_to(two_factor_path) unless current_user.totp_enabled?
     end
@@ -43,6 +54,10 @@ module Users
       if current_user.verify_totp!(params[:code])
         second_factor_passed!
         redirect_to session.delete(:after_second_factor_path) || accounting_root_path
+      elsif current_user.use_totp_backup_code!(params[:code])
+        second_factor_passed!
+        Accounting::AuditLogin.call(user: current_user, action: "two_factor_backup_code_used", method: "totp")
+        redirect_to session.delete(:after_second_factor_path) || accounting_root_path, alert: t("users.two_factor.backup_code_used")
       else
         Accounting::AuditLogin.call(user: current_user, action: "login_failed", method: "totp")
         flash.now[:alert] = t("users.two_factor.wrong_code")

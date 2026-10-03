@@ -26,6 +26,10 @@ en:
       disabled:          "Two-factor authentication is off."
       wrong_code:        "That code is not valid. Check the clock of your device and try the current code."
       required_for_role: "Your role requires two-factor authentication: it cannot be switched off."
+      backup_code_used:  "You signed in with a backup code. It cannot be used again: generate new ones in your two-factor settings."
+      reset:             "Two-factor authentication was reset. The person will set it up again at their next sign-in."
+      reset_reason_required: "Say why the second factor is reset."
+      cannot_reset_own:  "You cannot reset your own second factor here."
 
   documents:
     choose_file: "Choose at least one file."

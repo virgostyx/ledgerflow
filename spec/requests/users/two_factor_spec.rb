@@ -70,7 +70,8 @@ RSpec.describe "Two-factor authentication", type: :request do
 
       post two_factor_path, params: { code: Totp.code(owner.reload.totp_secret) }
 
-      expect(response).to redirect_to(accounting_root_path)
+      expect(response).to have_http_status(:ok) # the backup codes are shown once, then the person goes on
+      expect(response.body).to include(accounting_root_path)
       expect(owner.reload).to be_totp_enabled
       get accounting_journal_entries_path
       expect(response).to have_http_status(:ok)
@@ -251,6 +252,94 @@ RSpec.describe "Two-factor authentication", type: :request do
       expect(secret).to be_present
     ensure
       Rack::Attack.enabled = false
+    end
+  end
+
+  describe "backup codes of the second factor" do
+    def codes_in(body) = body.scan(/\b[0-9a-f]{10}\b/).uniq
+
+    it "shows ten one-time codes when the second factor is switched on, and keeps only their digests" do
+      sign_in owner
+      get two_factor_path
+
+      post two_factor_path, params: { code: Totp.code(owner.reload.totp_secret) }
+
+      codes = codes_in(response.body)
+      expect(codes.size).to eq(User::RECOVERY_CODE_COUNT)
+      expect(owner.recovery_codes.totp.unused.count).to eq(User::RECOVERY_CODE_COUNT)
+      expect(RecoveryCode.pluck(:code_digest).join).not_to include(codes.first)
+    end
+
+    context "at the challenge" do
+      let!(:secret) { enroll!(owner) }
+      let!(:codes)  { owner.generate_totp_backup_codes! }
+
+      it "lets the person in with a backup code, once, and audits it" do
+        sign_in_with_password(owner)
+
+        post two_factor_challenge_path, params: { code: codes.first }
+
+        expect(response).to redirect_to(accounting_root_path)
+        expect(audit("two_factor_backup_code_used", owner).count).to eq(1)
+
+        delete destroy_user_session_path
+        sign_in_with_password(owner)
+        post two_factor_challenge_path, params: { code: codes.first }
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it "refuses a wrong backup code" do
+        sign_in_with_password(owner)
+
+        post two_factor_challenge_path, params: { code: "0123456789" }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(audit("login_failed", owner).last.payload).to include("method" => "totp")
+      end
+
+      it "is not the recovery code of a passkey: the two sets never open each other's door" do
+        passwordless = create(:user)
+        passkey_codes = passwordless.generate_recovery_codes!
+
+        expect(passwordless.use_recovery_code!(codes.first)).to be false
+        expect(owner.use_totp_backup_code!(passkey_codes.first)).to be false
+      end
+    end
+
+    context "regenerating" do
+      let!(:secret) { enroll!(owner) }
+      let!(:old)    { owner.generate_totp_backup_codes! }
+
+      before do
+        sign_in_with_password(owner)
+        post two_factor_challenge_path, params: { code: Totp.code(secret) }
+      end
+
+      it "replaces the codes when the person proves it with a current code" do
+        post backup_codes_two_factor_path, params: { code: Totp.code(secret, Time.current + 30) }
+
+        fresh = codes_in(response.body)
+        expect(fresh.size).to eq(User::RECOVERY_CODE_COUNT)
+        expect(owner.use_totp_backup_code!(old.first)).to be false
+        expect(owner.use_totp_backup_code!(fresh.first)).to be_truthy
+      end
+
+      it "keeps the old codes when the code is wrong" do
+        post backup_codes_two_factor_path, params: { code: "000000" }
+
+        expect(owner.use_totp_backup_code!(old.first)).to be_truthy
+      end
+    end
+
+    it "switching the second factor off takes its backup codes with it" do
+      user = create(:user, role: :manager, password: password)
+      create(:user_entity, :manager, user: user, entity: entity)
+      enroll!(user)
+      user.generate_totp_backup_codes!
+
+      user.disable_totp!
+
+      expect(user.recovery_codes.totp.count).to eq(0)
     end
   end
 end

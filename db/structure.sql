@@ -2257,7 +2257,8 @@ CREATE TABLE public.recovery_codes (
     code_digest character varying NOT NULL,
     used_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    kind character varying DEFAULT 'passkey'::character varying NOT NULL
 );
 
 
@@ -4616,6 +4617,13 @@ CREATE INDEX index_recovery_codes_on_user_id ON public.recovery_codes USING btre
 
 
 --
+-- Name: index_recovery_codes_on_user_id_and_kind; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_recovery_codes_on_user_id_and_kind ON public.recovery_codes USING btree (user_id, kind);
+
+
+--
 -- Name: index_user_entities_on_custom_role_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5628,6 +5636,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003200000'),
 ('20261003190000'),
 ('20261003180000'),
 ('20261003170000'),

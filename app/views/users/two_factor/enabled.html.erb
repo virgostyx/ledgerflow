@@ -1,6 +1,13 @@
 <h2 class="text-xl font-semibold text-gray-900 mb-2">Two-factor authentication is on</h2>
 <p class="text-sm text-gray-500 mb-6">You enter a code from your authenticator app after your password.</p>
 
+<%= form_with url: backup_codes_two_factor_path, method: :post, html: { class: "mb-6 space-y-3" }, data: { turbo_confirm: "New backup codes cancel the current ones. Continue?" } do %>
+  <%= label_tag :code, "Current code, to get new backup codes", class: "block text-sm font-medium text-gray-700" %>
+  <%= text_field_tag :code, nil, required: true, inputmode: "numeric", autocomplete: "one-time-code", maxlength: 7,
+        class: "block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500" %>
+  <%= submit_tag "New backup codes", class: "w-full border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-lg text-sm transition-colors cursor-pointer" %>
+<% end %>
+
 <% if current_user.second_factor_required? %>
   <p class="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Your role requires it: it cannot be switched off.</p>
 <% else %>

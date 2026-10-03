@@ -44,19 +44,24 @@ class User < ApplicationRecord
   end
 
   # Returns the plain codes (shown once); only BCrypt digests are stored.
-  def generate_recovery_codes!
+  def generate_recovery_codes!(kind: :passkey)
     codes = Array.new(RECOVERY_CODE_COUNT) { SecureRandom.hex(5) }
     transaction do
-      recovery_codes.destroy_all
-      codes.each { |c| recovery_codes.create!(code_digest: BCrypt::Password.create(c)) }
+      recovery_codes.where(kind: kind).destroy_all
+      codes.each { |c| recovery_codes.create!(kind: kind, code_digest: BCrypt::Password.create(c)) }
     end
     codes
   end
 
-  def use_recovery_code!(code)
-    match = recovery_codes.unused.find { |rc| BCrypt::Password.new(rc.code_digest) == code.to_s.strip.downcase }
+  def use_recovery_code!(code, kind: :passkey)
+    match = recovery_codes.where(kind: kind).unused.find { |rc| BCrypt::Password.new(rc.code_digest) == code.to_s.strip.downcase }
     match ? match.update!(used_at: Time.current) : false
   end
+
+  # Backup codes of the second factor: shown once, each usable once at the challenge instead of an app code.
+  def generate_totp_backup_codes! = generate_recovery_codes!(kind: :totp)
+
+  def use_totp_backup_code!(code) = use_recovery_code!(code, kind: :totp)
 
   # --- Second factor (F01) ----------------------------------------------------------------------------------
 
@@ -95,7 +100,12 @@ class User < ApplicationRecord
     User.where(id: id).where("totp_last_step IS NULL OR totp_last_step < ?", step).update_all(totp_last_step: step) == 1
   end
 
-  def disable_totp! = update!(totp_secret: nil, totp_enabled_at: nil, totp_last_step: nil)
+  def disable_totp!
+    transaction do
+      recovery_codes.totp.destroy_all
+      update!(totp_secret: nil, totp_enabled_at: nil, totp_last_step: nil)
+    end
+  end
 
   # Every failed password attempt is audited (with the count, and whether it locked the account).
   def valid_for_authentication?

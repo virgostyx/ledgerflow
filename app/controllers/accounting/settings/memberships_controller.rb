@@ -35,6 +35,21 @@ class Accounting::Settings::MembershipsController < Accounting::Settings::BaseCo
     end
   end
 
+  # An owner resets someone else's second factor (lost phone): switched off, backup codes removed, reason kept in the audit.
+  # A role that requires it makes the person enrol again at their next request.
+  def reset_two_factor
+    membership = UserEntity.where(entity: current_entity).find(params[:id])
+    reason = params[:reason].to_s.strip
+    return redirect_to(accounting_settings_memberships_path, alert: t("users.two_factor.cannot_reset_own")) if membership.user_id == current_user.id
+    return redirect_to(accounting_settings_memberships_path, alert: t("users.two_factor.reset_reason_required")) if reason.blank?
+
+    ApplicationRecord.transaction do
+      membership.user.disable_totp!
+      Accounting::AuditLog.record!(auditable: membership.user, action: "two_factor_reset", user: current_user, reason: reason, payload: { email: membership.user.email })
+    end
+    redirect_to accounting_settings_memberships_path, notice: t("users.two_factor.reset")
+  end
+
   private
 
   # The role select carries a system role ("accountant") or a custom role ("custom:12"). A custom role sits on top of the

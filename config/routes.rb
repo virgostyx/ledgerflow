@@ -17,7 +17,9 @@ Rails.application.routes.draw do
     post "recovery_code_session",     to: "users/recovery_code_sessions#create", as: :recovery_code_session
   end
 
-  resource :two_factor, only: %i[show create destroy], controller: "users/two_factor"
+  resource :two_factor, only: %i[show create destroy], controller: "users/two_factor" do
+    post :backup_codes
+  end
   get  "two_factor/challenge", to: "users/two_factor#challenge", as: :two_factor_challenge
   post "two_factor/challenge", to: "users/two_factor#verify"
 
@@ -201,7 +203,9 @@ Rails.application.routes.draw do
         resource :entity, only: [ :edit, :update ] do
           post :regenerate_documents_address
         end
-        resources :memberships, only: %i[index create update]
+        resources :memberships, only: %i[index create update] do
+          post :reset_two_factor, on: :member
+        end
         resources :custom_roles, only: %i[index create update destroy]
         resources :api_clients, only: [ :index, :new, :create ] do
           member do

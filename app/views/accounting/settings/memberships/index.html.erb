@@ -40,6 +40,12 @@
             <%= form_with url: accounting_settings_membership_path(m), method: :patch, id: form_id do %>
               <%= submit_tag "Save", class: "text-xs font-medium text-primary-700 hover:underline cursor-pointer" %>
             <% end %>
+            <% if m.user.totp_enabled? && m.user_id != current_user.id %>
+              <%= form_with url: reset_two_factor_accounting_settings_membership_path(m), method: :post, class: "mt-1 flex gap-1" do %>
+                <%= text_field_tag :reason, nil, placeholder: "Reason", required: true, class: "w-24 rounded-md border border-gray-300 px-1 py-0.5 text-xs" %>
+                <%= submit_tag "Reset 2FA", class: "text-xs font-medium text-red-700 hover:underline cursor-pointer", data: { turbo_confirm: "Reset the second factor of #{m.user.full_name}?" } %>
+              <% end %>
+            <% end %>
           </td>
         </tr>
       <% end %>
