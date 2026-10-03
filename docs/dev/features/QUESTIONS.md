@@ -69,3 +69,11 @@ Décisions prises par prudence pendant l'implémentation (règle du §17.1 de `d
 - **Rupture de chaînage** : calculée avec le relevé précédent connu à l'import ; pas recalculée quand un relevé intermédiaire arrive plus tard.
 - **Jeu de référence de 200 lignes** : construit dans le spec, pas fourni par un cabinet. Le taux de 87,5 % ne dit rien du taux sur de vrais dossiers.
 
+
+## F04 — Lettrage assisté
+- **« Même référence » (règles 1 et 2)** : une ligne porte, au plus, la référence de son écriture, le numéro et la référence fournisseur de sa facture, et la communication structurée du relevé bancaire qui l'a créée. Comparaison sans casse, sans ponctuation, 4 caractères au minimum. À valider avec un comptable : d'autres sources (libellé de ligne) ne sont pas lues.
+- **Score 100 = jamais une devinette.** La règle 1 exige un paiement (facture contre note de crédit = règle 2) et refuse toute paire dont une ligne pourrait s'apparier à une autre : les cas ambigus tombent à 90. Le job nocturne n'appliquera que ces suggestions.
+- **Lignes partiellement imputées** : exclues des suggestions (la spec dit « seul son résiduel est proposé », mais `LetterLines` refuse de lettrer une ligne partielle hors de son groupe d'imputation). Le résiduel se règle par l'imputation manuelle existante.
+- **Règle 4** : lignes ouvertes d'un tiers sur un compte, au moins 3 (les paires sont déjà couvertes), somme nulle. **Règle 5** : recherche bornée à 8 lignes et aux 16 lignes de signe contraire les plus proches en date.
+- **Règle 6** : proposée dès maintenant, mais l'acceptation échoue tant que l'écriture d'écart (tranche d) n'existe pas : le lettrage reste refusé s'il ne se solde pas.
+- **Suggestions en euros uniquement** : les montants sont ceux du grand livre ; le multi-devise relève de F11.

@@ -1563,6 +1563,46 @@ ALTER SEQUENCE public.accounting_lettering_events_id_seq OWNED BY public.account
 
 
 --
+-- Name: accounting_lettering_suggestions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_lettering_suggestions (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    partner_id bigint,
+    line_ids bigint[] NOT NULL,
+    score integer NOT NULL,
+    rule integer NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    fingerprint character varying NOT NULL,
+    decided_by_id bigint,
+    decided_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_lettering_suggestions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_lettering_suggestions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_lettering_suggestions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_lettering_suggestions_id_seq OWNED BY public.accounting_lettering_suggestions.id;
+
+
+--
 -- Name: accounting_letterings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2866,6 +2906,13 @@ ALTER TABLE ONLY public.accounting_lettering_events ALTER COLUMN id SET DEFAULT 
 
 
 --
+-- Name: accounting_lettering_suggestions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_suggestions ALTER COLUMN id SET DEFAULT nextval('public.accounting_lettering_suggestions_id_seq'::regclass);
+
+
+--
 -- Name: accounting_letterings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3327,6 +3374,14 @@ ALTER TABLE ONLY public.accounting_lettering_events
 
 
 --
+-- Name: accounting_lettering_suggestions accounting_lettering_suggestions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_suggestions
+    ADD CONSTRAINT accounting_lettering_suggestions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_letterings accounting_letterings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3752,6 +3807,20 @@ CREATE INDEX idx_on_entity_id_expires_at_07ed8d110c ON public.accounting_control
 --
 
 CREATE INDEX idx_on_entity_id_fingerprint_49aa41669e ON public.accounting_consistency_findings USING btree (entity_id, fingerprint);
+
+
+--
+-- Name: idx_on_entity_id_fingerprint_e37fdec9cd; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_entity_id_fingerprint_e37fdec9cd ON public.accounting_lettering_suggestions USING btree (entity_id, fingerprint);
+
+
+--
+-- Name: idx_on_entity_id_status_score_3232f53987; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_entity_id_status_score_3232f53987 ON public.accounting_lettering_suggestions USING btree (entity_id, status, score);
 
 
 --
@@ -4574,6 +4643,34 @@ CREATE INDEX index_accounting_lettering_events_on_user_id ON public.accounting_l
 
 
 --
+-- Name: index_accounting_lettering_suggestions_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_lettering_suggestions_on_account_id ON public.accounting_lettering_suggestions USING btree (account_id);
+
+
+--
+-- Name: index_accounting_lettering_suggestions_on_decided_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_lettering_suggestions_on_decided_by_id ON public.accounting_lettering_suggestions USING btree (decided_by_id);
+
+
+--
+-- Name: index_accounting_lettering_suggestions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_lettering_suggestions_on_entity_id ON public.accounting_lettering_suggestions USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_lettering_suggestions_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_lettering_suggestions_on_partner_id ON public.accounting_lettering_suggestions USING btree (partner_id);
+
+
+--
 -- Name: index_accounting_letterings_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5241,6 +5338,14 @@ ALTER TABLE ONLY public.accounting_invoice_events
 
 
 --
+-- Name: accounting_lettering_suggestions fk_rails_252f372366; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_suggestions
+    ADD CONSTRAINT fk_rails_252f372366 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_import_batches fk_rails_2592d87f1d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5318,6 +5423,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 ALTER TABLE ONLY public.accounting_accounts
     ADD CONSTRAINT fk_rails_3656d9eddb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_lettering_suggestions fk_rails_3b7eb4f554; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_suggestions
+    ADD CONSTRAINT fk_rails_3b7eb4f554 FOREIGN KEY (decided_by_id) REFERENCES public.users(id);
 
 
 --
@@ -5753,6 +5866,14 @@ ALTER TABLE ONLY public.accounting_bank_accounts
 
 
 --
+-- Name: accounting_lettering_suggestions fk_rails_beefef422f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_suggestions
+    ADD CONSTRAINT fk_rails_beefef422f FOREIGN KEY (account_id) REFERENCES public.accounting_accounts(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_bf2911afa6; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5822,6 +5943,14 @@ ALTER TABLE ONLY public.accounting_fixed_assets
 
 ALTER TABLE ONLY public.accounting_payment_reminders
     ADD CONSTRAINT fk_rails_c7d51f3532 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
+-- Name: accounting_lettering_suggestions fk_rails_c7e1bb19c6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_suggestions
+    ADD CONSTRAINT fk_rails_c7e1bb19c6 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
 
 
 --
@@ -6103,6 +6232,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003270000'),
 ('20261003260000'),
 ('20261003250000'),
 ('20261003240000'),

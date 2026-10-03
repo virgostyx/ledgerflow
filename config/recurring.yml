@@ -9,6 +9,10 @@ production:
     class: Accounting::ConsistencyCheckJob
     queue: default
     schedule: every day at 2am
+  suggest_letterings:
+    class: Accounting::SuggestLetteringsJob
+    queue: default
+    schedule: every day at 1am
   relock_periods:
     class: Accounting::RelockPeriodsJob
     queue: default

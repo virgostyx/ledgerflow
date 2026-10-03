@@ -142,6 +142,7 @@ en:
 
   accounting:
     lettering:
+      suggestion_decided: This suggestion has already been decided
       reason_required: "A reason is required to undo a lettering."
       locked_period: "This lettering is in a locked period: only someone with the right to undo it there can."
     errors:
