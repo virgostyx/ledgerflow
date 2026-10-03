@@ -1603,6 +1603,41 @@ ALTER SEQUENCE public.accounting_lettering_suggestions_id_seq OWNED BY public.ac
 
 
 --
+-- Name: accounting_lettering_write_offs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_lettering_write_offs (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    journal_entry_id bigint NOT NULL,
+    line_ids bigint[] NOT NULL,
+    created_by_id bigint,
+    completed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_lettering_write_offs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_lettering_write_offs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_lettering_write_offs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_lettering_write_offs_id_seq OWNED BY public.accounting_lettering_write_offs.id;
+
+
+--
 -- Name: accounting_letterings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2914,6 +2949,13 @@ ALTER TABLE ONLY public.accounting_lettering_suggestions ALTER COLUMN id SET DEF
 
 
 --
+-- Name: accounting_lettering_write_offs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_write_offs ALTER COLUMN id SET DEFAULT nextval('public.accounting_lettering_write_offs_id_seq'::regclass);
+
+
+--
 -- Name: accounting_letterings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3380,6 +3422,14 @@ ALTER TABLE ONLY public.accounting_lettering_events
 
 ALTER TABLE ONLY public.accounting_lettering_suggestions
     ADD CONSTRAINT accounting_lettering_suggestions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_lettering_write_offs accounting_lettering_write_offs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_write_offs
+    ADD CONSTRAINT accounting_lettering_write_offs_pkey PRIMARY KEY (id);
 
 
 --
@@ -4672,6 +4722,27 @@ CREATE INDEX index_accounting_lettering_suggestions_on_partner_id ON public.acco
 
 
 --
+-- Name: index_accounting_lettering_write_offs_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_lettering_write_offs_on_created_by_id ON public.accounting_lettering_write_offs USING btree (created_by_id);
+
+
+--
+-- Name: index_accounting_lettering_write_offs_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_lettering_write_offs_on_entity_id ON public.accounting_lettering_write_offs USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_lettering_write_offs_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_lettering_write_offs_on_journal_entry_id ON public.accounting_lettering_write_offs USING btree (journal_entry_id);
+
+
+--
 -- Name: index_accounting_letterings_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5371,6 +5442,14 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 
 
 --
+-- Name: accounting_lettering_write_offs fk_rails_2f86761346; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_write_offs
+    ADD CONSTRAINT fk_rails_2f86761346 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoice_emails fk_rails_310b9a27ad; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5859,6 +5938,14 @@ ALTER TABLE ONLY public.accounting_payment_reminders
 
 
 --
+-- Name: accounting_lettering_write_offs fk_rails_b803c3de6f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_write_offs
+    ADD CONSTRAINT fk_rails_b803c3de6f FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id) ON DELETE CASCADE;
+
+
+--
 -- Name: accounting_bank_accounts fk_rails_bd15e59b6a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6091,6 +6178,14 @@ ALTER TABLE ONLY public.user_entities
 
 
 --
+-- Name: accounting_lettering_write_offs fk_rails_e7c80d2bdd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_lettering_write_offs
+    ADD CONSTRAINT fk_rails_e7c80d2bdd FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_bank_statements fk_rails_e8b9869d2b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6233,6 +6328,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003290000'),
 ('20261003280000'),
 ('20261003270000'),
 ('20261003260000'),

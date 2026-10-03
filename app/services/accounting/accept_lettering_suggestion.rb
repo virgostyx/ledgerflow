@@ -6,11 +6,14 @@ class Accounting::AcceptLetteringSuggestion
     return ctx.tap { |c| c.fail!(I18n.t("accounting.lettering.suggestion_decided")) } unless suggestion.proposed?
 
     Accounting::LetteringSuggestion.transaction do
-      result = Accounting::LetterLines.call(lines: suggestion.lines.to_a, user: user, auto: auto)
+      lines = suggestion.lines.to_a
+      # a rounding difference is booked by a draft entry first: the lines are lettered when it is validated
+      result = suggestion.rule == 6 ? Accounting::WriteOffLettering.call(lines: lines, user: user) : Accounting::LetterLines.call(lines: lines, user: user, auto: auto)
       next ctx.fail!(result.message) if result.failure?
 
       suggestion.update!(status: :accepted, decided_by: user, decided_at: Time.current)
       ctx[:lettering] = result[:lettering]
+      ctx[:entry] = result[:entry]
     end
     ctx
   end

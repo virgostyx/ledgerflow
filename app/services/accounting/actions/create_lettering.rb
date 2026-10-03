@@ -12,7 +12,7 @@ class Accounting::Actions::CreateLettering
       partner_id:  (first.partner_id unless cross),
       code:        Accounting::Lettering.next_code_for(first.account),
       lettered_on: Date.current,
-      kind:        "full",
+      kind:        ctx[:kind] || "full",
       auto:        ctx[:auto] || false,
       reason:      (ctx[:reason] if cross),
       lettered_by: ctx[:user]

@@ -147,6 +147,8 @@ class Accounting::SuggestLetterings
       known.each_value { |s| s.destroy if s.proposed? && !current.include?(s.fingerprint) }
       found.each do |s|
         existing = known[s[:fingerprint]]
+        # accepted, yet its lines are open and no rounding entry waits for them: the draft was deleted, so it can be proposed again
+        existing = nil if existing&.accepted? && !Accounting::LetteringWriteOff.pending_for?(existing.line_ids) && existing.destroy
         attrs = s.slice(:rule, :score, :account_id, :partner_id, :line_ids)
         if existing.nil? then Accounting::LetteringSuggestion.create!(**attrs, fingerprint: s[:fingerprint])
         elsif existing.proposed? then existing.update!(attrs)

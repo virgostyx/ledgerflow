@@ -7,11 +7,11 @@
 class Accounting::LetterLines
   extend LightService::Organizer
 
-  def self.call(lines:, user: nil, reason: nil, cross_partner: false, auto: false)
+  def self.call(lines:, user: nil, reason: nil, cross_partner: false, auto: false, kind: "full")
     result = nil
     ApplicationRecord.transaction do
       locked = Accounting::JournalEntryLine.where(id: Array(lines).map(&:id)).order(:id).lock.includes(:journal_entry, :account).to_a
-      result = with(lines: locked, user: user, reason: reason.to_s.strip.presence, cross_partner: cross_partner, auto: auto).reduce(
+      result = with(lines: locked, user: user, reason: reason.to_s.strip.presence, cross_partner: cross_partner, auto: auto, kind: kind).reduce(
         Accounting::Actions::PostFxAdjustment,
         Accounting::Actions::ValidateLettering,
         Accounting::Actions::CreateLettering,
