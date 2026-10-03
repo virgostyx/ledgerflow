@@ -21,6 +21,12 @@ class Accounting::PeriodLock < ApplicationRecord
   # The locks that forbid an entry dated `date` (first and last day included).
   scope :covering, ->(date) { in_force.where("starts_on <= :d AND ends_on >= :d", d: date) }
 
+  # Serialises whoever locks, unlocks or opens a window for one entity, so a check-then-write (is it already locked?
+  # is a window open?) cannot be raced by a second request. Held until the end of the current transaction.
+  def self.serialize_for_entity!(entity_id = ActsAsTenant.current_tenant&.id)
+    connection.execute("SELECT pg_advisory_xact_lock(hashtext('accounting_period_locks'), #{entity_id.to_i})")
+  end
+
   private
 
   def ends_on_not_before_starts_on

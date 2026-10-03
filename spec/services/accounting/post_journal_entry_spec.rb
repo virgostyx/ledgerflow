@@ -117,6 +117,12 @@ RSpec.describe Accounting::PostJournalEntry, type: :service do
         expect(post_as(reviewer)).to be_success
       end
 
+      it 'ne bloque pas un traitement sans utilisateur (un job): la règle vise les personnes, et c est voulu' do
+        Current.set(user: nil) do
+          expect(described_class.call(entry: entry)).to be_success
+        end
+      end
+
       it 'ne bloque pas une écriture sans auteur (générée par le système)' do
         entry.update_columns(created_by_id: nil)
 

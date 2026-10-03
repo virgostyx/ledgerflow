@@ -54,6 +54,11 @@ RSpec.configure do |config|
     DatabaseCleaner.strategy = :truncation, { except: VAT_REFERENCE_TABLES }
   end
 
+  # Concurrency specs use real threads and connections: nothing can stay inside an uncommitted transaction.
+  config.before(:each, :concurrency) do
+    DatabaseCleaner.strategy = :truncation, { except: VAT_REFERENCE_TABLES }
+  end
+
   config.before(:each) do
     DatabaseCleaner.start
   end

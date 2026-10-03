@@ -148,6 +148,7 @@ en:
         one:   "1 month locked."
         other: "%{count} months locked."
       no_month: "Tick at least one month (and nothing else than months)."
+      already_locked: "That period is already locked."
 
     partners:
       created: "Partner created successfully."

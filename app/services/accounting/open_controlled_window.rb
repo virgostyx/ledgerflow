@@ -9,9 +9,14 @@ class Accounting::OpenControlledWindow
     unless hours.to_i.between?(1, Accounting::ControlledWindow::MAX_HOURS)
       return ctx.tap { |c| c.fail!(I18n.t("accounting.controlled_window.bad_hours", max: Accounting::ControlledWindow::MAX_HOURS)) }
     end
-    return ctx.tap { |c| c.fail!(I18n.t("accounting.controlled_window.already_open")) } if Accounting::ControlledWindow.open_now.exists?
 
     ApplicationRecord.transaction do
+      Accounting::PeriodLock.serialize_for_entity!
+      if Accounting::ControlledWindow.open_now.exists?
+        ctx.fail!(I18n.t("accounting.controlled_window.already_open"))
+        raise ActiveRecord::Rollback
+      end
+
       window = Accounting::ControlledWindow.create!(opened_by: user, purpose: purpose, reason: reason, opens_at: Time.current, expires_at: hours.to_i.hours.from_now)
       Accounting::AuditLog.record!(auditable: window, action: "controlled_window_opened", user: user, reason: reason,
                                    payload: { purpose: purpose, reason: reason, expires_at: window.expires_at.utc.iso8601 })

@@ -1,3 +1,5 @@
+# No policy of its own, on purpose: the indicators are covered by `reports.view`, which every role holds (F01 review,
+# spec/requests/accounting/dashboard_roles_spec.rb). Entity membership is checked by ApplicationController.
 class Accounting::DashboardController < ApplicationController
   def index
     draft_invoices   = Accounting::Invoice.draft.count

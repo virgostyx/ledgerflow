@@ -7,6 +7,7 @@ class Accounting::LockMonths
     return ctx.tap { |c| c.fail!(I18n.t("accounting.period_locks.no_month")) } if firsts.empty? || firsts.size != Array(months).uniq.size
 
     ApplicationRecord.transaction do
+      Accounting::PeriodLock.serialize_for_entity!
       firsts.each do |first|
         next if Accounting::PeriodLock.in_force.where(kind: kind).where("starts_on <= ? AND ends_on >= ?", first, first.end_of_month).exists?
 
