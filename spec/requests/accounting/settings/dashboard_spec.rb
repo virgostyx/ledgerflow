@@ -17,6 +17,15 @@ RSpec.describe "Accounting::Settings::Dashboard", type: :request do
     context "as admin" do
       before { sign_in admin }
 
+      it "links to the bank rules while F02 is on, and not otherwise" do
+        get accounting_settings_root_path
+        expect(response.body).to include(accounting_settings_bank_rules_path)
+
+        entity.update!(features: entity.features.merge("f02" => false))
+        get accounting_settings_root_path
+        expect(response.body).not_to include(accounting_settings_bank_rules_path)
+      end
+
       it "returns 200" do
         get accounting_settings_root_path
         expect(response).to have_http_status(:ok)

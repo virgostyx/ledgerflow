@@ -17,7 +17,7 @@ class Accounting::Actions::CreateBankJournalEntry
       ctx.fail_with_rollback!(I18n.t("accounting.bank_reconciliation.foreign_needs_eur_amount", currency: tx.currency))
       next
     end
-    label       = ctx.respond_to?(:label) ? ctx[:label].presence : tx.description
+    label       = ctx[:label].presence || tx.description
 
     entry = nil
     ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")

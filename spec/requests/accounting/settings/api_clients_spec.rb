@@ -103,7 +103,7 @@ RSpec.describe "Accounting::Settings::ApiClients", type: :request do
 
       get accounting_settings_api_clients_path
 
-      expect(response.body).to include("Owned app", admin.full_name)
+      expect(response.body).to include("Owned app", ERB::Util.html_escape(admin.full_name)) # a name may hold an apostrophe
       expect(owned.owner).to eq(admin)
     end
 

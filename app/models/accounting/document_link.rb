@@ -2,7 +2,7 @@
 class Accounting::DocumentLink < ApplicationRecord
   self.table_name = "accounting_document_links"
 
-  TARGET_TYPES = %w[Accounting::JournalEntry Accounting::Partner Accounting::FixedAsset Accounting::Invoice Accounting::BankTransaction].freeze
+  TARGET_TYPES = %w[Accounting::JournalEntry Accounting::Partner Accounting::FixedAsset Accounting::Invoice Accounting::BankTransaction Accounting::BankStatement].freeze
 
   belongs_to :document, class_name: "Accounting::Document", inverse_of: :links
   belongs_to :target, polymorphic: true

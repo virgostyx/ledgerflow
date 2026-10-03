@@ -34,7 +34,7 @@ class Banking::ImportStatements
       raise ActiveRecord::Rollback if @ctx.failure?
     end
     remember_refusal if @ctx.failure? && @ctx[:reason] != :already_imported
-    match_lines if @ctx.success?
+    link_source_file && match_lines if @ctx.success?
     @ctx
   rescue ActiveRecord::ActiveRecordError => e
     refuse(:import_failed, I18n.t("banking.import.failed", detail: e.message.truncate(200)))
@@ -59,6 +59,16 @@ class Banking::ImportStatements
     batch.update!(statements_count: result.statements.size, lines_read: @ctx[:imported] + @ctx[:skipped], lines_imported: @ctx[:imported], lines_skipped: @ctx[:skipped],
                   warnings_list: @ctx[:warnings])
     audit(batch)
+  end
+
+  # The source file belongs to the statements it brought: it leaves the document inbox. After the commit, on a fresh instance: Rails
+  # runs the after-commit of only the last instance of a record saved in a transaction, and the file is uploaded by the first.
+  def link_source_file
+    @ctx[:statements].each do |statement|
+      linked = Accounting::LinkDocument.call(document: Accounting::Document.find(@ctx[:batch].document_id), target: statement, user: @user)
+      @ctx[:warnings] << linked.message if linked.failure?
+    end
+    true
   end
 
   # The engine runs on what came in (F02). It never undoes the import: what it cannot book is reported as a warning.

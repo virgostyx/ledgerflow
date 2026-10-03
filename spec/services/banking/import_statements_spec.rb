@@ -82,6 +82,13 @@ RSpec.describe Banking::ImportStatements do
       expect(document).to have_attributes(kind: "statement", origin: "bank_import", sha256: Digest::SHA256.hexdigest(bytes("simple")))
       expect(document.file.download).to eq(bytes("simple"))
     end
+
+    it "links the file to the statement it brought, so that it does not wait in the document inbox" do
+      document = Accounting::ImportBatch.sole.document
+
+      expect(document.reload).to be_linked
+      expect(document.links.sole.target).to eq(Accounting::BankStatement.sole)
+    end
   end
 
   describe "the matching engine on what comes in" do
