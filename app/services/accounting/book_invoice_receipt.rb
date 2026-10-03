@@ -9,9 +9,9 @@
 class Accounting::BookInvoiceReceipt
   extend LightService::Organizer
 
-  def self.call(transaction:, fiscal_year:, invoice: nil, invoices: nil, allocations: nil, draft: false)
-    allocations = build_allocations(transaction, invoice, invoices, allocations)
-    error = guard(transaction, allocations)
+  def self.call(transaction:, fiscal_year:, invoice: nil, invoices: nil, allocations: nil, draft: false, rounding: BigDecimal("0"))
+    allocations = build_allocations(transaction, invoice, invoices, allocations, rounding)
+    error = guard(transaction, allocations, rounding)
     return failure(transaction, error) if error
 
     list   = allocations.map(&:first)
@@ -23,7 +23,8 @@ class Accounting::BookInvoiceReceipt
         fiscal_year: fiscal_year,
         label:       "Receipt #{list.filter_map(&:invoice_number).join(', ')}".strip,
         allocations: allocations,
-        draft:       draft
+        draft:       draft,
+        rounding:    rounding
       )
       # a draft pays nothing yet: the invoice is paid when the entry is validated (Actions::FinalizeBankMatch)
       list.each { |i| i.pay! if i.remaining_amount.zero? } if result.success? && !draft
@@ -34,14 +35,14 @@ class Accounting::BookInvoiceReceipt
     failure(transaction, "Error: #{e.message}")
   end
 
-  def self.build_allocations(tx, invoice, invoices, allocations)
+  def self.build_allocations(tx, invoice, invoices, allocations, rounding)
     return allocations if allocations
     return invoices.uniq.map { |i| [ i, i.remaining_amount ] } if invoices
 
-    [ [ invoice, tx.amount ] ]
+    [ [ invoice, tx.amount + rounding ] ] # within the tolerance the invoice is settled for what it asked, the difference goes to a rounding account
   end
 
-  def self.guard(tx, allocations)
+  def self.guard(tx, allocations, rounding)
     list = allocations.map(&:first)
     if !tx.pending? || !tx.credit?                                   then "Not a pending credit"
     elsif allocations.empty?                                         then "Nothing to allocate"
@@ -49,7 +50,7 @@ class Accounting::BookInvoiceReceipt
     elsif list.uniq.size != list.size                                then "An invoice can only be allocated once"
     elsif list.map(&:partner_id).uniq.size > 1                       then "Invoices must belong to the same partner"
     elsif allocations.any? { |_, amount| amount <= 0 }               then "Allocated amounts must be positive"
-    elsif allocations.sum { |_, amount| amount } != tx.amount        then "Allocated amounts must add up to the transaction amount"
+    elsif allocations.sum { |_, amount| amount } - tx.amount != rounding then "Allocated amounts must add up to the transaction amount"
     end
   end
 

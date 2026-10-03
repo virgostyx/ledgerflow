@@ -18,6 +18,7 @@ class Accounting::BankRule < ApplicationRecord
   validates :score, numericality: { only_integer: true, in: 1..99 } # 100 is for an exact invoice match
   validates :priority, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validate :amount_is_a_number, if: -> { condition_type == "amount" }
+  validate :not_a_duplicate
 
   scope :active, -> { where(active: true) }
   scope :by_priority, -> { order(:priority, :id) }
@@ -48,6 +49,22 @@ class Accounting::BankRule < ApplicationRecord
   def plain(text) = I18n.transliterate(text.to_s).downcase.squish
   def normalize_iban(text) = text.to_s.delete(" ").upcase
   def number(text) = BigDecimal(text.to_s.tr(",", "."), exception: false)
+
+  # The same condition twice (whatever the case, accents or spacing) would make the engine's choice depend on the priority alone.
+  def not_a_duplicate
+    return if condition_type.blank? || condition_value.blank?
+
+    twin = self.class.where(condition_type: condition_type).where.not(id: id).find { |other| same_condition?(other) }
+    errors.add(:base, "A rule with the same condition already exists (#{twin.name})") if twin
+  end
+
+  def same_condition?(other)
+    case condition_type
+    when "iban" then normalize_iban(other.condition_value) == normalize_iban(condition_value)
+    when "amount" then number(other.condition_value) == number(condition_value)
+    else plain(other.condition_value) == plain(condition_value)
+    end
+  end
 
   def amount_is_a_number
     errors.add(:condition_value, :not_a_number) unless number(condition_value)

@@ -86,6 +86,61 @@ RSpec.describe "Accounting::BankStatements", type: :request do
     end
   end
 
+  describe "a big file, imported in the background" do
+    let(:memory) { ActiveSupport::Cache::MemoryStore.new }
+
+    around do |example|
+      previous = Rails.configuration.x.bank_import_background_lines
+      Rails.configuration.x.bank_import_background_lines = 5 # records: the sample file has more
+      example.run
+    ensure
+      Rails.configuration.x.bank_import_background_lines = previous
+    end
+
+    before { allow(Rails).to receive(:cache).and_return(memory) }
+
+    it "is queued, not imported, and the list says that it is in progress" do
+      expect { upload("simple") }.to have_enqueued_job(Banking::ImportStatementsJob)
+
+      expect(Accounting::BankTransaction.count).to eq(0)
+      expect(flash[:notice]).to match(/background/i)
+      follow_redirect!
+      expect(response.body).to include("Import in progress", "simple.cod", 'http-equiv="refresh"')
+    end
+
+    it "shows how far it is" do
+      upload("simple")
+      batch = Accounting::ImportBatch.sole
+      memory.write(Banking::ImportStatements.progress_key(batch), { done: 50, total: 200 })
+
+      get accounting_bank_statements_path
+
+      expect(response.body).to include("25 %", "50 of 200 lines")
+    end
+
+    it "is gone from the list, and the statements are there, once the job has run" do
+      upload("simple")
+      batch = Accounting::ImportBatch.sole
+      Banking::ImportStatementsJob.perform_now(batch.id, entity.id)
+
+      get accounting_bank_statements_path
+
+      expect(response.body).not_to include("Import in progress")
+      expect(response.body).not_to include('http-equiv="refresh"')
+      expect(Accounting::BankStatement.count).to eq(1)
+    end
+
+    it "shows a background import that was refused among the refused files, with its lines" do
+      broken = CODA_FILES.join("broken_length.cod")
+      post accounting_bank_statements_path, params: { file: Rack::Test::UploadedFile.new(broken, "text/plain", true) }
+      Banking::ImportStatementsJob.perform_now(Accounting::ImportBatch.sole.id, entity.id)
+
+      get accounting_bank_statements_path
+
+      expect(response.body).to include("Files that were refused", "line 4")
+    end
+  end
+
   describe "the statements" do
     it "lists them with the account, the balances and the file's date" do
       upload("simple")

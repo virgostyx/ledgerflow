@@ -33,11 +33,13 @@ en:
 
   banking:
     match:
+      internal_transfer: "Transfer between own accounts"
       supplier_needs_validation: "A payment to a supplier is booked and validated by an accountant: it cannot be left as a draft."
     undo:
       nothing_to_undo: "There is no match to undo for this line."
       reason_required: "A reason is required to cancel a validated payment."
     import:
+      queued: "The file is big: it is being imported in the background. The list shows how far it is."
       done: "%{imported} lines imported (%{skipped} already known), %{drafted} drafted, %{suggested} suggestion(s) to confirm."
       choose_file: "Choose a CODA file."
       failed: "The import failed and nothing was imported (%{detail})."
@@ -184,10 +186,13 @@ en:
       reversal_description: "Reversal of %{reference}"
 
     bank_reconciliation:
+      splits_do_not_add_up: "The amounts of the split must add up to the movement (%{total})."
       undone: "The match was undone: the line is to deal with again."
       rule_created: "Rule created. It applies to the next lines that match it."
       imported:   "Statement imported: %{count} transaction(s) created."
       pay_errors:
+        draft_unsupported: "A draft payment is for a whole invoice in euros: a deposit or a foreign payment is booked and validated by an accountant."
+        draft_waiting: "A draft payment is already waiting for this invoice."
         not_pending_debit: "Only a pending outgoing movement can pay an invoice."
         not_open_supplier_invoice: "Only a posted supplier invoice can be paid this way."
         eur_amount_required: "The EUR amount actually debited is required."
@@ -382,6 +387,10 @@ en:
           prorata: "Prorata: the percentage of purchase VAT you can deduct. The provisional rate is applied to every purchase invoice; at year-end the final rate is calculated on the year's figures and the difference is regularized (Fiscal Years, VAT regularization). The non-deductible share is booked as a cost (account 640400). Leave it empty for full deduction."
       entity:
         updated: "Entity updated."
+        rounding_accounts_created:
+          zero: "The rounding accounts already exist."
+          one: "1 rounding account created."
+          other: "%{count} rounding accounts created."
         documents_address_regenerated: "The documents address was replaced. The previous one no longer works."
       journals:
         created:          "Journal created successfully."

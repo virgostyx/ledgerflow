@@ -14,13 +14,30 @@ class Banking::ImportStatements
   # What the screens show when no file was chosen.
   NO_FILE = LightService::Context.make(reason: :no_file, errors: [], warnings: []).tap { |ctx| ctx.fail!(I18n.t("banking.import.choose_file")) }.freeze
 
-  def self.call(bytes:, user:, source_name: nil, parser: Banking::Coda::Parser) = new(bytes, user, source_name, parser).call
+  def self.call(bytes:, user:, source_name: nil, parser: Banking::Coda::Parser, batch: nil) = new(bytes, user, source_name, parser, batch).call
 
-  def initialize(bytes, user, source_name, parser)
+  # A file with more records than the setting allows (10 000) is imported in the background: judged on its size, 128 characters a record.
+  def self.background?(bytes) = bytes.to_s.bytesize / 128 > Rails.configuration.x.bank_import_background_lines
+
+  # The batch is created now (processing), the file kept for the job (it is stored as a document only if the import succeeds).
+  def self.enqueue(bytes:, user:, source_name: nil)
+    bytes = bytes.to_s.b
+    batch = Accounting::ImportBatch.create!(user: user, parser: PARSER, source_name: source_name.to_s.presence || "statement.cod", file_sha256: Digest::SHA256.hexdigest(bytes), result: "processing")
+    batch.queued_file.attach(io: StringIO.new(bytes), filename: "#{batch.source_name}.queued", content_type: "application/octet-stream")
+    Banking::ImportStatementsJob.perform_later(batch.id, ActsAsTenant.current_tenant.id)
+    batch
+  end
+
+  # How far a background import is: { done:, total: } while it runs (nil when unknown).
+  def self.progress(batch) = Rails.cache.read(progress_key(batch))
+  def self.progress_key(batch) = "bank_import_progress:#{batch.id}"
+
+  def initialize(bytes, user, source_name, parser, batch = nil)
     @bytes = bytes.to_s.b
     @user = user
     @source_name = source_name.to_s.presence || "statement.cod"
     @parser = parser
+    @queued = batch
     @sha256 = Digest::SHA256.hexdigest(@bytes)
     @created = []
     @ctx = LightService::Context.make(statements: [], imported: 0, skipped: 0, warnings: [], errors: [], batch: nil, reason: nil,
@@ -33,7 +50,7 @@ class Banking::ImportStatements
       import
       raise ActiveRecord::Rollback if @ctx.failure?
     end
-    remember_refusal if @ctx.failure? && @ctx[:reason] != :already_imported
+    remember_refusal if @ctx.failure? && (@ctx[:reason] != :already_imported || @queued) # a queued batch must leave "processing"
     link_source_file && match_lines if @ctx.success?
     @ctx
   rescue ActiveRecord::ActiveRecordError => e
@@ -51,14 +68,30 @@ class Banking::ImportStatements
     return refuse(:invalid_file, I18n.t("banking.import.invalid_file", count: result.errors.size), errors: result.errors) unless result.success?
 
     accounts = resolve_accounts(result.statements) or return
-    batch = Accounting::ImportBatch.create!(user: @user, parser: PARSER, source_name: @source_name, file_sha256: @sha256, result: "imported", document: store_file || (return))
+    document = store_file or return
+    batch = if @queued
+      @queued.tap { |queued| queued.update!(result: "imported", document: document) }
+    else
+      Accounting::ImportBatch.create!(user: @user, parser: PARSER, source_name: @source_name, file_sha256: @sha256, result: "imported", document: document)
+    end
     @ctx[:batch] = batch
     @ctx[:warnings].concat(result.warnings)
     seen = Hash.new(0)
+    @total = result.statements.sum { |statement| statement.lines.size }
+    @done = 0
     result.statements.each_with_index { |parsed, i| import_statement(batch, parsed, accounts[i], seen) }
+    accounts.uniq.each { |account| Banking::RechainStatements.call(bank_account: account).each { |message| @ctx[:warnings] << message } }
     batch.update!(statements_count: result.statements.size, lines_read: @ctx[:imported] + @ctx[:skipped], lines_imported: @ctx[:imported], lines_skipped: @ctx[:skipped],
                   warnings_list: @ctx[:warnings])
     audit(batch)
+  end
+
+  # In the background, how far the lines are (every 100, and at the end), for the screen. The cache is outside the import's transaction.
+  def report_progress
+    @done += 1
+    return unless @queued && (@done % 100).zero? || @queued && @done == @total
+
+    Rails.cache.write(self.class.progress_key(@queued), { done: @done, total: @total }, expires_in: 1.day)
   end
 
   # The source file belongs to the statements it brought: it leaves the document inbox. After the commit, on a fresh instance: Rails
@@ -124,7 +157,6 @@ class Banking::ImportStatements
       status: parsed.integrity_ok? ? "ok" : "to_review", messages: parsed.messages, header: parsed.header.transform_values { |v| v.is_a?(Date) ? v.iso8601 : v }
     )
     warn_integrity(parsed, account)
-    chain(statement, parsed, account)
     import_lines(statement, parsed, account, seen)
   end
 
@@ -132,18 +164,6 @@ class Banking::ImportStatements
     return if parsed.integrity_ok?
 
     @ctx[:warnings] << I18n.t("banking.import.does_not_add_up", account: mask(account.iban), sequence: parsed.sequence, gap: parsed.integrity_gap.to_s("F"))
-  end
-
-  # The opening balance must be the closing balance of the statement before (spec F02); the first statement has nothing to chain to.
-  def chain(statement, parsed, account)
-    date = parsed.new_balance_date || parsed.old_balance_date
-    previous = Accounting::BankStatement.where(bank_account: account).where.not(id: statement.id)
-                                        .where("COALESCE(new_balance_date, old_balance_date) < ?", date).order(Arel.sql("COALESCE(new_balance_date, old_balance_date) DESC"), id: :desc).first
-    return unless previous
-
-    gap = parsed.old_balance - (previous.new_balance || previous.old_balance)
-    statement.update!(chain_gap: gap)
-    @ctx[:warnings] << I18n.t("banking.import.chain_broken", account: mask(account.iban), sequence: parsed.sequence, gap: gap.to_s("F"), previous: (previous.new_balance || previous.old_balance).to_s("F")) unless gap.zero?
   end
 
   def import_lines(statement, parsed, account, seen)
@@ -156,6 +176,7 @@ class Banking::ImportStatements
         @created << Accounting::BankTransaction.create!(attributes_for(statement, account, line, print))
         @ctx[:imported] += 1
       end
+      report_progress
     end
     @ctx[:statements] << statement
   end
@@ -196,6 +217,8 @@ class Banking::ImportStatements
   def remember_refusal
     list = Array(@ctx[:errors]).map { |e| e.respond_to?(:line) ? { line: e.line, text: e.text } : e.to_s }
     list = [ { text: @ctx.message } ] if list.empty?
+    return @queued.update!(result: "rejected", errors_list: list) if @queued
+
     Accounting::ImportBatch.create!(user: @user, parser: PARSER, source_name: @source_name, file_sha256: @sha256, result: "rejected", errors_list: list)
   end
 

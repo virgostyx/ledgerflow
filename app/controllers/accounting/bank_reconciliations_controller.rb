@@ -37,8 +37,6 @@ class Accounting::BankReconciliationsController < ApplicationController
     elsif bank_params[:manual].present?
       handle_manual_entry
     elsif bank_params[:pay_invoice_id].present?
-      # a supplier payment settles by lettering, which needs a validated entry: only for those who can validate
-      authorize :bank_reconciliation, :post?, policy_class: Accounting::BankReconciliationsPolicy
       handle_pay_invoice
     elsif bank_params[:ignore].present?
       handle_ignore
@@ -100,7 +98,8 @@ class Accounting::BankReconciliationsController < ApplicationController
 
     result = Accounting::PayInvoiceFromTransaction.call(transaction: transaction, invoice: invoice,
                                                         fiscal_year: Accounting::FiscalYear.current, eur_amount: eur_amount,
-                                                        invoice_amount: parse_amount(bank_params[:invoice_amount])&.then { |a| a.positive? ? a : nil })
+                                                        invoice_amount: parse_amount(bank_params[:invoice_amount])&.then { |a| a.positive? ? a : nil },
+                                                        draft: draft?)
     redirect_for(result)
   end
 
@@ -108,9 +107,13 @@ class Accounting::BankReconciliationsController < ApplicationController
     transaction = Accounting::BankTransaction.find(bank_params[:bank_transaction_id])
     fiscal_year = Accounting::FiscalYear.current
 
+    splits = parse_splits
+    return redirect_to(accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.invalid_amount")) if splits == :invalid
+
     result = Accounting::ReconcileBankTransaction.call(
       transaction: transaction,
       account_id:  bank_params[:account_id],
+      splits:      splits,
       fiscal_year: fiscal_year,
       label:       bank_params[:label],
       draft:       draft?,
@@ -118,6 +121,16 @@ class Accounting::BankReconciliationsController < ApplicationController
     )
 
     redirect_for(result)
+  end
+
+  # [[account_id, amount], ...] from the rows filled in, nil when none; :invalid when an amount cannot be read.
+  def parse_splits
+    rows = bank_params[:splits].respond_to?(:to_unsafe_h) ? bank_params[:splits].to_unsafe_h.values : []
+    rows = rows.reject { |row| row["account_id"].blank? && row["amount"].blank? }
+    return if rows.empty?
+
+    parsed = rows.map { |row| [ row["account_id"].to_i, parse_amount(row["amount"]) ] }
+    parsed.any? { |account_id, amount| account_id.zero? || amount.nil? || !amount.finite? || amount <= 0 } ? :invalid : parsed
   end
 
   def handle_ignore

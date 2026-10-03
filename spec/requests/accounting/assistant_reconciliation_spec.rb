@@ -41,11 +41,15 @@ RSpec.describe "Reconciliation by an assistant", type: :request do
       expect(invoice.reload).to be_posted
     end
 
-    it "refuses to pay a supplier invoice: nothing is booked and the movement stays pending" do
-      expect { reconcile(pay_invoice_id: 0) }.not_to change(Accounting::JournalEntry, :count)
+    it "pays a supplier invoice as a draft only when it is the whole invoice (a deposit settles by allocation: refused)" do
+      supplier_invoice = create(:invoice, :supplier, :posted, fiscal_year: fiscal_year).tap { |i| i.update_columns(total_incl_vat: BigDecimal("100")) }
+      create(:account, code: "440000", label_fr: "Fournisseurs", account_type: :liability, normal_balance: :credit) unless Accounting::Account.exists?(code: "440000")
+      debit = create(:bank_transaction, bank_account: bank_account, amount: -40)
 
-      expect(transaction.reload).to be_pending
-      expect(response).to redirect_to(accounting_root_path)
+      expect { patch accounting_bank_reconciliation_path, params: { bank_reconciliation: { bank_transaction_id: debit.id, pay_invoice_id: supplier_invoice.id, invoice_amount: "40" } } }
+        .not_to change(Accounting::JournalEntry, :count)
+
+      expect(debit.reload).to be_pending
     end
 
     it "still imports a statement" do

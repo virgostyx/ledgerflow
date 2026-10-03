@@ -280,6 +280,34 @@ RSpec.describe Banking::ImportStatements do
     end
   end
 
+  describe "statements imported out of order" do
+    it "recomputes the chain: the later statement is checked against the earlier one when it arrives" do
+      import("chain_b_break")
+      expect(Accounting::BankStatement.sole.chain_gap).to be_nil # nothing before it, yet
+
+      result = import("chain_a")
+
+      later = Accounting::BankStatement.order(:new_balance_date).last
+      expect(later.chain_gap).to eq(BigDecimal("849.00"))
+      expect(Accounting::BankStatement.order(:new_balance_date).first.chain_gap).to be_nil
+      expect(result[:warnings].join).to match(/849/)
+    end
+
+    it "clears a break that an intermediate statement repairs" do
+      first = CodaBuilder.file(statements: [ { iban: acme, sequence: 1, date: Date.new(2026, 3, 5), old_balance: "100.00", movements: [ { amount: "10.00", value_date: Date.new(2026, 3, 4), bank_reference: "OOO0000000000000001", free: "A" } ] } ])
+      last  = CodaBuilder.file(statements: [ { iban: acme, sequence: 3, date: Date.new(2026, 3, 25), old_balance: "130.00", movements: [ { amount: "5.00", value_date: Date.new(2026, 3, 24), bank_reference: "OOO0000000000000003", free: "C" } ] } ])
+      middle = CodaBuilder.file(statements: [ { iban: acme, sequence: 2, date: Date.new(2026, 3, 15), old_balance: "110.00", movements: [ { amount: "20.00", value_date: Date.new(2026, 3, 14), bank_reference: "OOO0000000000000002", free: "B" } ] } ])
+
+      import(first)
+      import(last)
+      expect(Accounting::BankStatement.order(:new_balance_date).last.chain_gap).to eq(BigDecimal("20.00")) # 130 against 110: a statement is missing
+
+      import(middle)
+
+      expect(Accounting::BankStatement.order(:new_balance_date).map(&:chain_gap)).to eq([ nil, BigDecimal("0"), BigDecimal("0") ])
+    end
+  end
+
   describe "checking a statement against its movements" do
     it "marks a statement that does not add up as to review, with the gap, and imports its lines all the same" do
       result = import("integrity_mismatch")

@@ -25,6 +25,31 @@ RSpec.describe Accounting::BankRule do
     end
   end
 
+  describe "a rule that already exists" do
+    before { described_class.create!(name: "Bank fees", condition_type: "contains", condition_value: "Frais de tenue", account: account) }
+
+    it "is refused, the same condition written another way included" do
+      twin = rule(name: "Again", condition_value: "  FRAIS de  tenue ")
+
+      expect(twin).not_to be_valid
+      expect(twin.errors.full_messages.join).to include("Bank fees")
+    end
+
+    it "is accepted for another kind of condition or another text, and when it is the rule itself that is saved" do
+      expect(rule(condition_type: "iban", condition_value: "frais de tenue")).to be_valid
+      expect(rule(condition_value: "assurance")).to be_valid
+      expect(described_class.first.tap { |existing| existing.priority = 7 }).to be_valid
+    end
+
+    it "compares IBANs by their digits and amounts by their value" do
+      described_class.create!(name: "Iban", condition_type: "iban", condition_value: "BE68 5390 0754 7034", account: account)
+      described_class.create!(name: "Amount", condition_type: "amount", condition_value: "12.50", account: account)
+
+      expect(rule(condition_type: "iban", condition_value: "be68539007547034")).not_to be_valid
+      expect(rule(condition_type: "amount", condition_value: "12,5")).not_to be_valid
+    end
+  end
+
   describe "#matches?" do
     it "finds a text in the counterparty or the communication, ignoring case and accents" do
       expect(rule(condition_value: "société").matches?(line(counterparty_name: "SOCIETE GENERALE"))).to be true
@@ -60,9 +85,9 @@ RSpec.describe Accounting::BankRule do
   describe ".first_match_for" do
     it "returns the first active rule by priority that matches, or nil" do
       later = described_class.create!(name: "later", condition_type: "contains", condition_value: "x", account: account, priority: 50)
-      sooner = described_class.create!(name: "sooner", condition_type: "contains", condition_value: "x", account: account, priority: 5)
+      sooner = described_class.create!(name: "sooner", condition_type: "contains", condition_value: "xy", account: account, priority: 5)
 
-      expect(described_class.first_match_for(line(description: "x"))).to eq(sooner)
+      expect(described_class.first_match_for(line(description: "xy"))).to eq(sooner) # both match: the lowest priority number wins
       expect(later).to be_persisted
       expect(described_class.first_match_for(line(description: "nothing"))).to be_nil
     end

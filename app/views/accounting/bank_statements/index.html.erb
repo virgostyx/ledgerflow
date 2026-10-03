@@ -10,6 +10,27 @@
   <% end %>
 <% end %>
 
+<% if @processing.any? %>
+  <%# a background import is running: the page reloads itself until it is done %>
+  <meta http-equiv="refresh" content="3">
+  <div class="mb-6 rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm" id="imports-in-progress" role="status">
+    <p class="font-medium text-gray-900">Import in progress</p>
+    <ul class="mt-2 space-y-2">
+      <% @processing.each do |batch| %>
+        <% progress = @progress[batch] %>
+        <li><span class="font-mono text-xs"><%= batch.source_name %></span>
+          <% if progress && progress[:total].to_i.positive? %>
+            <span class="ml-2"><%= (100 * progress[:done] / progress[:total]) %> % (<%= progress[:done] %> of <%= progress[:total] %> lines)</span>
+            <div class="mt-1 h-2 rounded bg-white"><div class="h-2 rounded bg-primary-600" style="width: <%= 100 * progress[:done] / progress[:total] %>%"></div></div>
+          <% else %>
+            <span class="ml-2 text-gray-600">waiting to start…</span>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+
 <% if @statements.any? %>
   <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto">
     <table class="w-full text-sm">

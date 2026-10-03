@@ -183,6 +183,22 @@ RSpec.describe "Accounting::Settings::Entities", type: :request do
       expect(response.body).not_to include("Validate exact bank matches automatically")
     end
 
+    it "offers the owner to create the rounding accounts, and the tolerance has an effect only once they exist" do
+      get edit_accounting_settings_entity_path
+      expect(response.body).to include("Create the rounding accounts")
+
+      expect { post create_rounding_accounts_accounting_settings_entity_path }.to change { Accounting::Account.where(code: %w[658100 758100]).count }.from(0).to(2)
+
+      get edit_accounting_settings_entity_path
+      expect(response.body).not_to include("Create the rounding accounts")
+    end
+
+    it "does not let an accountant create the rounding accounts" do
+      sign_in create(:user, role: :accountant).tap { |u| create(:user_entity, :accountant, user: u, entity: entity) }
+
+      expect { post create_rounding_accounts_accounting_settings_entity_path }.not_to change(Accounting::Account, :count)
+    end
+
     it "is the owner's call: an accountant cannot change them" do
       sign_in create(:user, role: :accountant).tap { |u| create(:user_entity, :accountant, user: u, entity: entity) }
 

@@ -13,5 +13,8 @@ module Accounting::AccountCodes
   ASSET_DISPOSAL  = "660100" # net book value of the fixed assets disposed of
   FX_LOSS         = "651200"
   FX_GAIN         = "751100"
+  INTERNAL_TRANSFERS = "580000" # transit account of the transfers between two bank accounts of the entity (F02)
+  ROUNDING_LOSS   = "658100" # rounding differences of the bank payments (F02), created by the owner on existing entities
+  ROUNDING_GAIN   = "758100"
   FX_UNREALIZED   = "499100" # balance-sheet counterpart of the unrealized exchange losses booked at closing
 end

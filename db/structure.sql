@@ -517,7 +517,6 @@ CREATE TABLE public.accounting_bank_rules (
     condition_value character varying NOT NULL,
     account_id bigint NOT NULL,
     partner_id bigint,
-    vat_code character varying,
     action character varying DEFAULT 'propose'::character varying NOT NULL,
     priority integer DEFAULT 100 NOT NULL,
     score integer DEFAULT 80 NOT NULL,
@@ -5996,6 +5995,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003250000'),
 ('20261003240000'),
 ('20261003230000'),
 ('20261003220000'),

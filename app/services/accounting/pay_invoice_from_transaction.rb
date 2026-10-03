@@ -9,7 +9,7 @@
 class Accounting::PayInvoiceFromTransaction
   SUPPLIERS = Accounting::AccountCodes::SUPPLIERS
 
-  def self.call(transaction:, invoice:, fiscal_year:, eur_amount: nil, invoice_amount: nil)
+  def self.call(transaction:, invoice:, fiscal_year:, eur_amount: nil, invoice_amount: nil, draft: false)
     ctx = LightService::Context.make(transaction: transaction, invoice: invoice)
     eur_amount ||= transaction.amount.abs if transaction.bank_account.currency == "EUR"
     trade     = invoice.journal_entry&.lines&.find_by(account: Accounting::Account.find_by(code: SUPPLIERS))
@@ -17,11 +17,11 @@ class Accounting::PayInvoiceFromTransaction
     partial   = trade&.allocations&.exists? || (invoice_amount.present? && invoice_amount < remaining)
     invoice_amount = partial ? (invoice_amount || remaining) : nil
 
-    error = guard(transaction, invoice, eur_amount, invoice_amount, remaining, partial)
+    error = guard(transaction, invoice, eur_amount, invoice_amount, remaining, partial) || (draft_error(transaction, invoice, partial) if draft)
     return ctx.tap { |c| c.fail!(I18n.t("accounting.bank_reconciliation.pay_errors.#{error}")) } if error
 
     ApplicationRecord.transaction do
-      pay(ctx, transaction, invoice, trade, fiscal_year, eur_amount, invoice_amount, remaining)
+      pay(ctx, transaction, invoice, trade, fiscal_year, eur_amount, invoice_amount, remaining, draft)
       raise ActiveRecord::Rollback if ctx.failure?
     end
     ctx
@@ -47,9 +47,16 @@ class Accounting::PayInvoiceFromTransaction
     elsif tx.currency == invoice.currency && tx.amount.abs != expected              then "amount_mismatch"
     end
   end
-  private_class_method :remaining_in_invoice_currency, :guard
+  # A draft payment (F02) is for a whole invoice in euros, with no other draft waiting: a deposit or a foreign payment settles by
+  # allocation and an exchange difference, which need a validated entry.
+  def self.draft_error(tx, invoice, partial)
+    if partial || tx.currency != "EUR" || invoice.currency != "EUR"   then "draft_unsupported"
+    elsif Accounting::MatchBankTransaction.draft_payment?(invoice)    then "draft_waiting"
+    end
+  end
+  private_class_method :remaining_in_invoice_currency, :guard, :draft_error
 
-  def self.pay(ctx, tx, invoice, invoice_line, fiscal_year, eur_amount, invoice_amount, remaining)
+  def self.pay(ctx, tx, invoice, invoice_line, fiscal_year, eur_amount, invoice_amount, remaining, draft = false)
     trade = invoice_line.account
     part  = invoice_amount || invoice.total_incl_vat
     label = tx.description.presence || invoice.partner.name
@@ -68,6 +75,11 @@ class Accounting::PayInvoiceFromTransaction
       journal_entry: entry, account: tx.bank_account.journal.default_account, label: label,
       debit: 0, credit: eur_amount, **foreign.(tx.currency, tx.amount.abs)
     )
+
+    if draft # validated later: Actions::FinalizeBankMatch settles the line and letters the payment with the invoice
+      tx.update!(status: :matched, journal_entry: entry)
+      return
+    end
 
     posted = Accounting::PostJournalEntry.call(entry: entry)
     return ctx.fail!(posted.message) if posted.failure?

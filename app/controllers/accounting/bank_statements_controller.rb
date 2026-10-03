@@ -6,6 +6,8 @@ class Accounting::BankStatementsController < ApplicationController
     authorize Accounting::BankStatement
     @pagy, @statements = pagy(Accounting::BankStatement.includes(:bank_account, :import_batch).order(Arel.sql("COALESCE(new_balance_date, old_balance_date) DESC"), id: :desc))
     @refused = Accounting::ImportBatch.where(result: "rejected").order(id: :desc).limit(5)
+    @processing = Accounting::ImportBatch.where(result: "processing").order(:id).to_a
+    @progress = @processing.index_with { |batch| Banking::ImportStatements.progress(batch) }
   end
 
   def show
@@ -23,7 +25,13 @@ class Accounting::BankStatementsController < ApplicationController
     file = params[:file]
     return render_new(Banking::ImportStatements::NO_FILE) unless file.respond_to?(:read)
 
-    result = Banking::ImportStatements.call(bytes: file.read, user: current_user, source_name: file.original_filename)
+    bytes = file.read
+    if Banking::ImportStatements.background?(bytes) # a big file: imported in the background, with a progress on the list
+      Banking::ImportStatements.enqueue(bytes: bytes, user: current_user, source_name: file.original_filename)
+      return redirect_to(accounting_bank_statements_path, notice: t("banking.import.queued"))
+    end
+
+    result = Banking::ImportStatements.call(bytes: bytes, user: current_user, source_name: file.original_filename)
     return render_new(result) if result.failure?
 
     flash[:notice] = t("banking.import.done", imported: result[:imported], skipped: result[:skipped], drafted: result[:drafted], suggested: result[:suggested])

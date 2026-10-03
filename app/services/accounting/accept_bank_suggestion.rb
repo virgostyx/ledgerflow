@@ -1,7 +1,7 @@
 # Books the suggestion MatchBankTransaction computes for a transaction.
 # Returns the service result, or nil when there is no suggestion.
 # `draft: true` (whoever cannot validate, and the automatic matches): the payment entry stays a draft and the line is "matched".
-# A supplier payment settles by lettering, which needs a validated entry: it has no draft form here.
+# A supplier payment as a draft is for a whole invoice in euros (see PayInvoiceFromTransaction); it is lettered when validated.
 class Accounting::AcceptBankSuggestion
   FEES_LABEL = "Bank fees"
 
@@ -24,11 +24,9 @@ class Accounting::AcceptBankSuggestion
     when :invoices
       Accounting::BookInvoiceReceipt.call(transaction: transaction, invoices: suggestion.target, fiscal_year: fiscal_year, draft: draft)
     when :invoice
-      Accounting::BookInvoiceReceipt.call(transaction: transaction, invoice: suggestion.target, fiscal_year: fiscal_year, draft: draft)
+      Accounting::BookInvoiceReceipt.call(transaction: transaction, invoice: suggestion.target, fiscal_year: fiscal_year, draft: draft, rounding: suggestion.rounding)
     when :supplier_invoice
-      return LightService::Context.make(transaction: transaction).tap { |ctx| ctx.fail!(I18n.t("banking.match.supplier_needs_validation")) } if draft
-
-      Accounting::PayInvoiceFromTransaction.call(transaction: transaction, invoice: suggestion.target, fiscal_year: fiscal_year)
+      Accounting::PayInvoiceFromTransaction.call(transaction: transaction, invoice: suggestion.target, fiscal_year: fiscal_year, draft: draft)
     end
   end
 end

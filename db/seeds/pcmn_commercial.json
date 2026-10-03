@@ -1827,6 +1827,15 @@
     "reconcilable": false
   },
   {
+    "code": "658100",
+    "label_fr": "Écarts d'arrondi (charge)",
+    "account_class": 6,
+    "account_type": "expense",
+    "normal_balance": "debit",
+    "is_leaf": true,
+    "reconcilable": false
+  },
+  {
     "code": "660000",
     "label_fr": "Charges exceptionnelles",
     "account_class": 6,
@@ -2180,6 +2189,15 @@
   {
     "code": "751100",
     "label_fr": "Gains de change",
+    "account_class": 7,
+    "account_type": "revenue",
+    "normal_balance": "credit",
+    "is_leaf": true,
+    "reconcilable": false
+  },
+  {
+    "code": "758100",
+    "label_fr": "Écarts d'arrondi (produit)",
     "account_class": 7,
     "account_type": "revenue",
     "normal_balance": "credit",

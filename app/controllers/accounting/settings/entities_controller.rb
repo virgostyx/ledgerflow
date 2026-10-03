@@ -23,6 +23,14 @@ class Accounting::Settings::EntitiesController < Accounting::Settings::BaseContr
     redirect_to edit_accounting_settings_entity_path, notice: t("accounting.settings.entity.documents_address_regenerated")
   end
 
+  # F02: the two accounts for the rounding differences of bank payments, on an entity that predates them (the owner's call).
+  def create_rounding_accounts
+    result = Accounting::CreateRoundingAccounts.call(user: current_user)
+    return redirect_to(accounting_root_path, alert: result.message) if result.failure?
+
+    redirect_to edit_accounting_settings_entity_path, notice: t("accounting.settings.entity.rounding_accounts_created", count: result[:created].size)
+  end
+
   private
 
   def entity_params

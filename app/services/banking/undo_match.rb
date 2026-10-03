@@ -2,28 +2,51 @@
 # - matched (a draft payment entry): the draft is deleted;
 # - reconciled (a validated entry): the entry is reversed (a reason is required, a locked period or a lettered entry refuses it)
 #   and the invoices it paid are reopened.
-# The line becomes pending again. Audited. All or nothing.
+# A transfer between the entity's own accounts is undone on both lines at once (and unlettered first when it was validated).
+# The lines become pending again. Audited. All or nothing.
 class Banking::UndoMatch
   def self.call(transaction:, user:, reason: nil)
     ctx = LightService::Context.make(transaction: transaction)
-    entry = transaction.journal_entry
-    return ctx.tap { |c| c.fail!(I18n.t("banking.undo.nothing_to_undo")) } unless entry && (transaction.matched? || transaction.reconciled?)
-    return ctx.tap { |c| c.fail!(I18n.t("banking.undo.reason_required")) } if transaction.reconciled? && reason.blank?
+    group = group_of(transaction)
+    return ctx.tap { |c| c.fail!(I18n.t("banking.undo.nothing_to_undo")) } unless group.all? { |t| t.journal_entry && (t.matched? || t.reconciled?) }
+    return ctx.tap { |c| c.fail!(I18n.t("banking.undo.reason_required")) } if group.any?(&:reconciled?) && reason.blank?
 
     ApplicationRecord.transaction do
-      invoices = entry.lines.where.not(invoice_id: nil).includes(:invoice).filter_map(&:invoice).uniq
-      kind = transaction.matched? ? "deleted_draft" : "reversed_entry"
-      refusal = transaction.matched? ? delete_draft(transaction, entry) : reverse(transaction, entry, reason)
-      if refusal
+      unletter(group)
+      group.each do |line|
+        refusal = undo_one(line, user, reason)
+        next unless refusal
+
         ctx.fail!(refusal)
         raise ActiveRecord::Rollback
       end
-
-      reopen(invoices)
-      Accounting::AuditLog.record!(auditable: transaction, action: "bank_match_undone", user: user, reason: reason.presence,
-                                   payload: { how: kind, amount: transaction.amount.to_s("F"), journal_entry_id: entry.id })
     end
     ctx
+  end
+
+  def self.group_of(transaction)
+    pair = Accounting::BankTransaction.find_by(id: transaction.match_data["pair_id"]) if transaction.match_data["kind"] == "transfer"
+    [ transaction, pair ].compact
+  end
+
+  # The transit lines of a validated transfer are lettered together: that goes first, or the reversal would be refused.
+  def self.unletter(group)
+    entry_ids = group.filter_map(&:journal_entry_id)
+    letterings = Accounting::Lettering.where(id: Accounting::JournalEntryLine.where(journal_entry_id: entry_ids).where.not(lettering_id: nil).select(:lettering_id))
+    letterings.each { |lettering| Accounting::UnletterLines.call(lettering: lettering) }
+  end
+
+  def self.undo_one(transaction, user, reason)
+    entry = transaction.journal_entry
+    invoices = entry.lines.where.not(invoice_id: nil).includes(:invoice).filter_map(&:invoice).uniq
+    kind = transaction.matched? ? "deleted_draft" : "reversed_entry"
+    refusal = transaction.matched? ? delete_draft(transaction, entry) : reverse(transaction, entry, reason)
+    return refusal if refusal
+
+    reopen(invoices)
+    Accounting::AuditLog.record!(auditable: transaction, action: "bank_match_undone", user: user, reason: reason.presence,
+                                 payload: { how: kind, amount: transaction.amount.to_s("F"), journal_entry_id: entry.id })
+    nil
   end
 
   def self.delete_draft(transaction, entry)
@@ -48,5 +71,5 @@ class Banking::UndoMatch
       invoice.release! if invoice.partially_paid? && invoice.paid_amount.zero?
     end
   end
-  private_class_method :delete_draft, :reverse, :reopen
+  private_class_method :group_of, :unletter, :undo_one, :delete_draft, :reverse, :reopen
 end

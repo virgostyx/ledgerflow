@@ -102,6 +102,11 @@
         <div class="max-w-xs">
           <%= f.label :bank_rounding_tolerance, "Rounding tolerance of a bank payment (EUR)", class: "block text-sm font-medium text-gray-700 mb-1" %>
           <%= f.number_field :bank_rounding_tolerance, step: "0.01", min: 0, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+          <% unless Accounting::CreateRoundingAccounts.ready? %>
+            <p class="mt-1 text-xs text-amber-700">The tolerance does nothing until the two rounding accounts (658100, 758100) exist in this entity's chart.</p>
+            <%= button_to "Create the rounding accounts", create_rounding_accounts_accounting_settings_entity_path, method: :post, form: { class: "mt-1" },
+                  class: "text-xs font-medium text-primary-700 underline cursor-pointer" %>
+          <% end %>
         </div>
         <% end %>
         <% if @entity.feature?(:f01) %>

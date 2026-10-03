@@ -103,7 +103,7 @@
                         when :rule             then "rule “#{suggestion.target.name}” (#{suggestion.target.account.code})"
                         when :invoices         then "invoices #{suggestion.target.map(&:invoice_number).join(', ')}"
                         else "payment batch #{suggestion.target.message_id}#{' — will be marked as executed' if suggestion.target.generated?}"
-                        end %> (<%= suggestion.confidence %> confidence, score <%= suggestion.score %><%= ", rule #{suggestion.rule}" if suggestion.rule %><%= ", overpaid by #{Accounting::MoneyPresenter.new(suggestion.excess).format}" if suggestion.excess&.positive? %>)</span>
+                        end %> (<%= suggestion.confidence %> confidence, score <%= suggestion.score %><%= ", rule #{suggestion.rule}" if suggestion.rule %><%= ", overpaid by #{Accounting::MoneyPresenter.new(suggestion.excess).format}" if suggestion.excess&.positive? %><%= ", rounding difference #{Accounting::MoneyPresenter.new(suggestion.rounding.abs).format} booked to #{suggestion.rounding.positive? ? Accounting::AccountCodes::ROUNDING_LOSS : Accounting::AccountCodes::ROUNDING_GAIN}" if suggestion.rounding&.nonzero? %>)</span>
                   <%= button_to 'Accept', accounting_bank_reconciliation_path, method: :patch,
                         params: { 'bank_reconciliation[bank_transaction_id]' => tx.id, 'bank_reconciliation[accept_suggestion]' => 1 },
                         form: { data: { bank_keys_action: 'accept' } },
@@ -129,6 +129,20 @@
                   <% end %>
                   <%= submit_tag 'Reconcile',
                         class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700 transition-colors' %>
+                  <% if tx.bank_account.currency == 'EUR' %>
+                    <details class="basis-full">
+                      <summary class="text-xs text-gray-500 cursor-pointer">Split across several accounts</summary>
+                      <div class="mt-1 space-y-1">
+                        <% 3.times do |i| %>
+                          <div class="flex gap-2">
+                            <%= select_tag "bank_reconciliation[splits][#{i}][account_id]", options_from_collection_for_select(@accounts, :id, ->(a) { "#{a.code} — #{a.label_fr}" }), include_blank: true, class: 'rounded-md border-gray-300 text-xs' %>
+                            <%= text_field_tag "bank_reconciliation[splits][#{i}][amount]", nil, placeholder: 'Amount', class: 'rounded-md border-gray-300 text-xs w-24' %>
+                          </div>
+                        <% end %>
+                        <p class="text-xs text-gray-400">The amounts must add up to <%= Accounting::MoneyPresenter.new(tx.amount.abs).format %>.</p>
+                      </div>
+                    </details>
+                  <% end %>
                 <% end %>
               <% end %>
               <% if @suggestions[tx] %>

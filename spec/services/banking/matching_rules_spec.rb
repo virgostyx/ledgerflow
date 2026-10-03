@@ -192,7 +192,7 @@ RSpec.describe Accounting::MatchBankTransaction, "rules and scores" do
     end
 
     it "takes the first rule by priority" do
-      rule(name: "second", priority: 20, account: create(:account, code: "613000"))
+      rule(name: "second", priority: 20, condition_value: "tenue de compte", account: create(:account, code: "613000"))
       first = rule(name: "first", priority: 10)
 
       expect(suggest(line(-12.5, description: "frais de tenue")).target).to eq(first)

@@ -12,7 +12,8 @@
 # A receipt is matched to customer invoices; a payment to supplier invoices (single invoice only: the payment service takes one).
 # `confidence` stays :high (90 and more) or :medium for the screens that already read it.
 class Accounting::MatchBankTransaction
-  Suggestion = Struct.new(:kind, :target, :confidence, :excess, :score, :rule, keyword_init: true)
+  # rounding: what the invoice still asked for minus what came in (positive: a few cents short), when within the tolerance.
+  Suggestion = Struct.new(:kind, :target, :confidence, :excess, :score, :rule, :rounding, keyword_init: true)
 
   SIMILARITY = 0.6
   GROUP_LIMIT = 10
@@ -27,8 +28,20 @@ class Accounting::MatchBankTransaction
       match_rule(transaction) || match_fees(transaction)
   end
 
-  def self.suggestion(kind, target, score, rule, excess: 0)
-    Suggestion.new(kind: kind, target: target, confidence: score >= 90 ? :high : :medium, excess: excess, score: score, rule: rule)
+  def self.suggestion(kind, target, score, rule, excess: 0, rounding: BigDecimal("0"))
+    Suggestion.new(kind: kind, target: target, confidence: score >= 90 ? :high : :medium, excess: excess, score: score, rule: rule, rounding: rounding)
+  end
+
+  # The rounding tolerance of the entity (0,05 EUR by default) applies to receipts only, and only once the owner has created the
+  # two rounding accounts. => the difference (invoice remaining - amount received) when the amount is the invoice's within the
+  # tolerance (0 when it is exactly the invoice's), nil otherwise.
+  def self.rounding_for(invoice, received, side)
+    remaining = invoice.remaining_amount
+    return BigDecimal("0") if remaining == received
+    return unless side == :customer && Accounting::CreateRoundingAccounts.ready?
+
+    difference = remaining - received
+    difference if difference.abs <= ActsAsTenant.current_tenant.bank_rounding_tolerance
   end
 
   def self.match_receipt(tx, open_invoices)
@@ -54,8 +67,9 @@ class Accounting::MatchBankTransaction
     invoice = Accounting::Invoice.customer.invoice.where(status: OPEN).find_by(id: Accounting::StructuredCommunication.id_from(digits))
     return unless invoice
 
-    excess = [ tx.amount - invoice.remaining_amount, 0 ].max
-    suggestion(:invoice, invoice, tx.amount == invoice.remaining_amount ? 100 : 80, 1, excess: excess)
+    rounding = rounding_for(invoice, tx.amount, :customer)
+    excess = rounding ? 0 : [ tx.amount - invoice.remaining_amount, 0 ].max
+    suggestion(:invoice, invoice, rounding ? 100 : 80, 1, excess: excess, rounding: rounding || BigDecimal("0"))
   end
 
   # Rule 2: the invoice number (customer) or the supplier's reference (supplier) in the communication, same amount, only one invoice.
@@ -68,9 +82,9 @@ class Accounting::MatchBankTransaction
 
       tx.description.match?(/(?<![\w-])#{Regexp.escape(invoice.public_send(field))}(?![\w-])/)
     end
-    return unless found.size == 1 && found.first.remaining_amount == tx.amount.abs
+    return unless found.size == 1 && (rounding = rounding_for(found.first, tx.amount.abs, side))
 
-    suggestion(side == :customer ? :invoice : :supplier_invoice, found.first, 95, 2)
+    suggestion(side == :customer ? :invoice : :supplier_invoice, found.first, 95, 2, rounding: rounding)
   end
 
   # Rules 3 and 4: the same amount, and the partner known by the counterparty's IBAN (90) or by a similar name (75); one candidate.
@@ -78,8 +92,8 @@ class Accounting::MatchBankTransaction
     [ [ partners_by_iban(tx), 90, 3 ], [ partners_by_name(tx), 75, 4 ] ].each do |partners, score, rule|
       next if partners.empty?
 
-      found = open_invoices_of(side).where(partner_id: partners).select { |invoice| invoice.remaining_amount == tx.amount.abs }
-      return suggestion(side == :customer ? :invoice : :supplier_invoice, found.first, score, rule) if found.size == 1
+      found = open_invoices_of(side).where(partner_id: partners).filter_map { |invoice| (rounding = rounding_for(invoice, tx.amount.abs, side)) && [ invoice, rounding ] }
+      return suggestion(side == :customer ? :invoice : :supplier_invoice, found.first.first, score, rule, rounding: found.first.last) if found.size == 1
     end
     nil
   end
@@ -97,8 +111,18 @@ class Accounting::MatchBankTransaction
 
   def self.open_invoices_of(side)
     scope = Accounting::Invoice.invoice.where(status: OPEN)
-    side == :customer ? scope.customer.where.not(invoice_number: nil).includes(:credit_notes) : scope.supplier.includes(:credit_notes)
+    return scope.customer.where.not(invoice_number: nil).includes(:credit_notes) if side == :customer
+
+    # a supplier invoice whose payment waits as a draft is not offered again (a draft receipt already lowers the customer balance)
+    scope.supplier.includes(:credit_notes).where.not(id: draft_payment_lines.select(:invoice_id))
   end
+
+  def self.draft_payment_lines
+    Accounting::JournalEntryLine.joins(:journal_entry).where(accounting_journal_entries: { status: Accounting::JournalEntry.statuses[:draft] })
+                                .where.not(invoice_id: nil).where("accounting_journal_entry_lines.debit > 0")
+  end
+
+  def self.draft_payment?(invoice) = draft_payment_lines.exists?(invoice_id: invoice.id)
 
   def self.partners_by_iban(tx)
     iban = tx.counterparty_iban.to_s.delete(" ").upcase
@@ -140,6 +164,6 @@ class Accounting::MatchBankTransaction
     account = Accounting::Account.find_by(code: FEES_ACCOUNT_CODE)
     suggestion(:expense, account, 75, nil) if account
   end
-  private_class_method :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_invoice_number, :match_by_partner,
+  private_class_method :rounding_for, :draft_payment_lines, :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_invoice_number, :match_by_partner,
                        :match_group, :open_invoices_of, :partners_by_iban, :partners_by_name, :match_rule
 end

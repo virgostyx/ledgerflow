@@ -12,10 +12,11 @@ class Banking::AutoMatch
 
   def initialize(transactions)
     @transactions = Array(transactions)
-    @ctx = LightService::Context.make(drafted: 0, suggested: 0, untouched: 0, problems: [])
+    @ctx = LightService::Context.make(drafted: 0, suggested: 0, untouched: 0, transfers: 0, problems: [])
   end
 
   def call
+    pair_transfers
     @transactions.each do |transaction|
       next unless transaction.pending?
 
@@ -27,6 +28,13 @@ class Banking::AutoMatch
   end
 
   private
+
+  # The two halves of a transfer between the entity's own accounts, before anything else looks at them.
+  def pair_transfers
+    @ctx[:transfers] = Banking::InternalTransfers.call(transactions: @transactions)
+  rescue StandardError => e
+    @ctx[:problems] << "transfers: #{e.message}"
+  end
 
   def handle(transaction)
     suggestion = Accounting::MatchBankTransaction.call(transaction: transaction)

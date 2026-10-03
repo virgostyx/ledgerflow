@@ -9,7 +9,8 @@ class Accounting::Actions::CreateBankJournalEntry
     bank_acct   = tx.bank_account
     bank_journal = bank_acct.journal
     bank_account_record = bank_journal.default_account
-    counterpart = Accounting::Account.find(ctx.account_id)
+    counterpart = Accounting::Account.find(ctx.account_id) if ctx.account_id.present?
+    splits      = ctx[:splits].presence # [[account_id, amount], ...]: one movement booked on several accounts
     foreign     = tx.currency != "EUR"
     abs_amount  = foreign ? ctx[:eur_amount] : tx.amount.abs
     # A foreign-currency movement is booked from the EUR amount the accountant gives; allocations stay EUR-only.
@@ -30,8 +31,13 @@ class Accounting::Actions::CreateBankJournalEntry
       status:      :draft
     )
 
-    # One bank line for the whole transaction; the counterpart side is split per invoice when allocations are given.
-    counterpart_lines = ctx[:allocations].presence || [ [ nil, abs_amount ] ]
+    if splits && splits.sum { |_, amount| amount } != abs_amount
+      ctx.fail_with_rollback!(I18n.t("accounting.bank_reconciliation.splits_do_not_add_up", total: abs_amount.to_s("F")))
+      next
+    end
+
+    # One bank line for the whole transaction; the counterpart side is split per invoice when allocations are given, per account when split.
+    counterpart_lines = splits&.map { |account_id, amount| [ nil, amount, Accounting::Account.find(account_id) ] } || ctx[:allocations].presence || [ [ nil, abs_amount ] ]
     bank_side         = tx.credit? ? :debit : :credit
     counterpart_side  = tx.credit? ? :credit : :debit
     zero              = BigDecimal("0")
@@ -41,12 +47,19 @@ class Accounting::Actions::CreateBankJournalEntry
       journal_entry: entry, account: bank_account_record, label: label || tx.description,
       bank_side => abs_amount, counterpart_side => zero, **foreign_attrs
     )
-    counterpart_lines.each do |invoice, amount|
+    counterpart_lines.each do |invoice, amount, account|
       Accounting::JournalEntryLine.create!(
-        journal_entry: entry, account: counterpart, label: label || tx.description,
+        journal_entry: entry, account: account || counterpart, label: label || tx.description,
         partner: invoice&.partner || ctx[:partner], invoice: invoice,
         counterpart_side => amount, bank_side => zero
       )
+    end
+    # A receipt within the rounding tolerance: the invoice is settled whole, the few cents go to the rounding account.
+    rounding = ctx[:rounding] || zero
+    if rounding.nonzero?
+      account = Accounting::Account.find_by(code: rounding.positive? ? Accounting::AccountCodes::ROUNDING_LOSS : Accounting::AccountCodes::ROUNDING_GAIN)
+      Accounting::JournalEntryLine.create!(journal_entry: entry, account: account, label: label || tx.description,
+                                           (rounding.positive? ? :debit : :credit) => rounding.abs, (rounding.positive? ? :credit : :debit) => zero)
     end
 
     # A draft stays a draft (F02: whoever cannot validate, and the exact automatic matches, produce drafts).

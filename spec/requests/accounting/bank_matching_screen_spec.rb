@@ -103,15 +103,17 @@ RSpec.describe "Bank reconciliation screen (F02)", type: :request do
       expect(tx.journal_entry).to be_draft
     end
 
-    it "still refuses an assistant to pay a supplier invoice, which settles by lettering and so needs a validated entry" do
+    it "no longer sends an assistant away from the supplier payment form: a whole invoice becomes a draft (see supplier_draft_spec), a deposit is refused with its reason" do
       sign_out accountant
       sign_in assistant
-      debit = line(-100)
+      payable = create(:invoice, :supplier, :posted, fiscal_year: fiscal_year, partner: create(:partner, :supplier)).tap { |i| i.update_columns(total_incl_vat: BigDecimal("100")) }
+      deposit = line(-40)
 
-      patch_bank(bank_transaction_id: debit.id, pay_invoice_id: 0)
+      patch_bank(bank_transaction_id: deposit.id, pay_invoice_id: payable.id, invoice_amount: "40")
 
-      expect(debit.reload).to be_pending
-      expect(response).to redirect_to(accounting_root_path)
+      expect(deposit.reload).to be_pending
+      expect(response).to redirect_to(accounting_bank_reconciliation_path)
+      expect(flash[:alert]).to match(/whole invoice|euros/i)
     end
   end
 
@@ -189,6 +191,41 @@ RSpec.describe "Bank reconciliation screen (F02)", type: :request do
       patch_bank(bank_transaction_id: tx.id, create_rule: 1, account_id: fees.id, rule_name: "")
 
       expect(flash[:alert]).to be_present
+    end
+  end
+
+  describe "splitting a line across several accounts" do
+    let!(:rent) { create(:account, code: "610000", label_fr: "Loyer") }
+    let!(:tx) { line(-1000, description: "LOYER ET CHARGES") }
+
+    it "books each row on its account, the screen offering the rows" do
+      get accounting_bank_reconciliation_path
+      expect(response.body).to include("Split across several accounts")
+
+      patch_bank(bank_transaction_id: tx.id, label: "Rent", splits: { "0" => { account_id: rent.id, amount: "850" }, "1" => { account_id: fees.id, amount: "150,00" }, "2" => { account_id: "", amount: "" } })
+
+      expect(tx.reload).to be_reconciled
+      expect(tx.journal_entry.lines.find_by(account: rent).debit).to eq(850)
+      expect(tx.journal_entry.lines.find_by(account: fees).debit).to eq(150)
+    end
+
+    it "says so when the rows do not add up, or an amount is unreadable, and books nothing" do
+      patch_bank(bank_transaction_id: tx.id, splits: { "0" => { account_id: rent.id, amount: "850" } })
+      expect(tx.reload).to be_pending
+      expect(flash[:alert]).to match(/add up/i)
+
+      patch_bank(bank_transaction_id: tx.id, splits: { "0" => { account_id: rent.id, amount: "abc" } })
+      expect(tx.reload).to be_pending
+      expect(flash[:alert]).to be_present
+    end
+
+    it "gives an assistant a draft" do
+      sign_out accountant
+      sign_in assistant
+
+      patch_bank(bank_transaction_id: tx.id, splits: { "0" => { account_id: rent.id, amount: "700" }, "1" => { account_id: fees.id, amount: "300" } })
+
+      expect(tx.reload).to be_matched
     end
   end
 

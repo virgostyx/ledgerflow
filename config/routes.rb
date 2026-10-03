@@ -203,6 +203,7 @@ Rails.application.routes.draw do
         end
         resource :entity, only: [ :edit, :update ] do
           post :regenerate_documents_address
+          post :create_rounding_accounts
         end
         resources :memberships, only: %i[index create update] do
           post :reset_two_factor, on: :member
