@@ -7,7 +7,7 @@ class Accounting::LetteringsController < ApplicationController
   def create
     authorize Accounting::Lettering
     lines  = Accounting::JournalEntryLine.where(id: Array(params[:line_ids])).includes(:journal_entry, :account).to_a
-    result = Accounting::LetterLines.call(lines: lines)
+    result = Accounting::LetterLines.call(lines: lines, user: current_user, reason: params[:reason], cross_partner: params[:cross_partner] == "1")
 
     if result.success?
       redirect_to new_accounting_lettering_path(account_id: result.lettering.account_id),
@@ -22,7 +22,7 @@ class Accounting::LetteringsController < ApplicationController
   def destroy
     lettering = Accounting::Lettering.find(params[:id])
     authorize lettering
-    result = Accounting::UnletterLines.call(lettering: lettering)
+    result = Accounting::UnletterLines.call(lettering: lettering, user: current_user, reason: params[:reason])
 
     redirect_to new_accounting_lettering_path(account_id: lettering.account_id),
                 result.success? ? { notice: "Lettering #{lettering.code} removed" } : { alert: result.message }

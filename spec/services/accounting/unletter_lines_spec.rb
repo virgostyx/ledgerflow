@@ -26,7 +26,7 @@ RSpec.describe Accounting::UnletterLines, type: :service do
 
   it 'removes the lettering and frees its lines' do
     lettering
-    expect { described_class.call(lettering: lettering) }.to change(Accounting::Lettering, :count).by(-1)
+    expect { described_class.call(lettering: lettering, reason: "test") }.to change(Accounting::Lettering, :count).by(-1)
     expect([ payable_line, cash_line ].map { |l| l.reload.lettering_id }).to all(be_nil)
   end
 
@@ -34,7 +34,7 @@ RSpec.describe Accounting::UnletterLines, type: :service do
     lettering
     expect(invoice.reload).to be_paid
 
-    expect(described_class.call(lettering: lettering)).to be_success
+    expect(described_class.call(lettering: lettering, reason: "test")).to be_success
     expect(invoice.reload).to be_posted
   end
 
@@ -44,7 +44,7 @@ RSpec.describe Accounting::UnletterLines, type: :service do
     batch = create(:payment_batch, :executed, journal_entry: settlement)
     create(:payment_batch_line, payment_batch: batch, invoice: invoice, amount: payable_line.credit)
 
-    expect(described_class.call(lettering: lettering)).to be_success
+    expect(described_class.call(lettering: lettering, reason: "test")).to be_success
     expect(invoice.reload).to be_paid
   end
 
@@ -58,7 +58,7 @@ RSpec.describe Accounting::UnletterLines, type: :service do
       closing = Accounting::AllocateLines.call(lines: [ payable_line.reload, second ])
       expect(invoice.reload).to be_paid
 
-      expect(described_class.call(lettering: closing.lettering)).to be_success
+      expect(described_class.call(lettering: closing.lettering, reason: 'test')).to be_success
       expect(Accounting::LineAllocation.count).to eq(0)
       expect(payable_line.reload.open_amount).to eq(payable_line.credit)
       expect(invoice.reload).to be_posted

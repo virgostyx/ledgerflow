@@ -30,6 +30,8 @@ RSpec.describe Permissions do
     "documents.link"         => [ [ Accounting::DocumentPolicy, :link? ], [ Accounting::DocumentPolicy, :unlink? ], [ Accounting::DocumentPolicy, :update? ], [ Accounting::DocumentPolicy, :confirm_field? ], [ Accounting::DocumentPolicy, :create_invoice? ] ],
     "documents.archive"      => [ [ Accounting::DocumentPolicy, :archive? ] ],
     "documents.delete_expired" => [ [ Accounting::DocumentPolicy, :destroy? ], [ Accounting::DocumentPolicy, :legal_hold? ] ],
+    "reconciliations.cross_partner" => [ [ Accounting::LetteringPolicy, :cross_partner? ] ],
+    "reconciliations.unreconcile_locked" => [ [ Accounting::LetteringPolicy, :unreconcile_locked? ] ],
     "bank.import"            => [ [ Accounting::BankStatementPolicy, :import? ] ],
     "bank.match"             => [ [ Accounting::BankStatementPolicy, :match? ] ],
     "reports.view"           => [ [ Accounting::ReportPolicy, :trial_balance? ] ],

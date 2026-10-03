@@ -86,7 +86,10 @@
       <% @letterings.each do |lettering| %>
         <li class="px-4 py-2 flex items-center justify-between">
           <span><strong><%= lettering.code %></strong> — <%= lettering.partner&.name || 'no partner' %> — <%= l lettering.lettered_on %></span>
-          <%= button_to 'Remove', accounting_lettering_path(lettering), method: :delete, class: 'text-red-600 hover:underline' %>
+          <%= form_with url: accounting_lettering_path(lettering), method: :delete, class: 'flex gap-2 items-center' do %>
+            <%= text_field_tag :reason, nil, placeholder: 'Reason (required)', required: true, class: 'border rounded px-2 py-1 text-sm' %>
+            <%= submit_tag 'Remove', class: 'text-red-600 hover:underline' %>
+          <% end %>
         </li>
       <% end %>
     </ul>

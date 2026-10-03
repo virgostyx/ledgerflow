@@ -111,9 +111,18 @@ RSpec.describe 'Accounting::Letterings', type: :request do
       b = line(debit: 5)
       lettering = Accounting::LetterLines.call(lines: [ a, b ]).lettering
 
-      expect { delete accounting_lettering_path(lettering) }.to change(Accounting::Lettering, :count).by(-1)
+      expect { delete accounting_lettering_path(lettering), params: { reason: 'wrong invoice' } }
+        .to change(Accounting::Lettering, :count).by(-1)
       expect(response).to redirect_to(new_accounting_lettering_path(account_id: account_440.id))
       expect(a.reload.lettering_id).to be_nil
+    end
+
+    it 'refuses to remove a lettering without a reason' do
+      a = line(credit: 5)
+      b = line(debit: 5)
+      lettering = Accounting::LetterLines.call(lines: [ a, b ]).lettering
+
+      expect { delete accounting_lettering_path(lettering) }.not_to change(Accounting::Lettering, :count)
     end
   end
 end

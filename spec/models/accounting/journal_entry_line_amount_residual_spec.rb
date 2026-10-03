@@ -56,7 +56,7 @@ RSpec.describe "amount_residual maintenance", type: :model do
     debit_line  = line(debit: 121)
     lettering = Accounting::LetterLines.call(lines: [ credit_line, debit_line ]).lettering
 
-    Accounting::UnletterLines.call(lettering: lettering)
+    Accounting::UnletterLines.call(lettering: lettering, reason: "test")
 
     expect(credit_line.reload.amount_residual).to eq(BigDecimal("121"))
     expect(debit_line.reload.amount_residual).to eq(BigDecimal("121"))

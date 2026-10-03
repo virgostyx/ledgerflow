@@ -12,7 +12,7 @@ class Banking::UndoMatch
     return ctx.tap { |c| c.fail!(I18n.t("banking.undo.reason_required")) } if group.any?(&:reconciled?) && reason.blank?
 
     ApplicationRecord.transaction do
-      unletter(group)
+      unletter(group, user, reason)
       group.each do |line|
         refusal = undo_one(line, user, reason)
         next unless refusal
@@ -30,10 +30,10 @@ class Banking::UndoMatch
   end
 
   # The transit lines of a validated transfer are lettered together: that goes first, or the reversal would be refused.
-  def self.unletter(group)
+  def self.unletter(group, user, reason)
     entry_ids = group.filter_map(&:journal_entry_id)
     letterings = Accounting::Lettering.where(id: Accounting::JournalEntryLine.where(journal_entry_id: entry_ids).where.not(lettering_id: nil).select(:lettering_id))
-    letterings.each { |lettering| Accounting::UnletterLines.call(lettering: lettering) }
+    letterings.each { |lettering| Accounting::UnletterLines.call(lettering: lettering, user: user, reason: reason.presence || I18n.t("banking.undo.unletter_reason")) }
   end
 
   def self.undo_one(transaction, user, reason)

@@ -8,6 +8,7 @@ class Accounting::Lettering < ApplicationRecord
 
   belongs_to :account, class_name: "Accounting::Account"
   belongs_to :partner, class_name: "Accounting::Partner", optional: true
+  belongs_to :lettered_by, class_name: "User", optional: true
   has_many   :lines, class_name: "Accounting::JournalEntryLine",
              foreign_key: :lettering_id, inverse_of: :lettering, dependent: :nullify
 

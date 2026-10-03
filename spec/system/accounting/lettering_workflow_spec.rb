@@ -105,6 +105,7 @@ RSpec.describe 'Lettering workflow', type: :system, js: true do
 
     # 3. Removing the supplier lettering reopens the invoice.
     pick_account(account_440)
+    fill_in 'reason', with: 'entered on the wrong invoice'
     click_button 'Remove'
 
     expect(page).to have_content('Lettering AA removed')

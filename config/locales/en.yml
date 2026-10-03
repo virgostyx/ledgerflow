@@ -36,6 +36,7 @@ en:
       internal_transfer: "Transfer between own accounts"
       supplier_needs_validation: "A payment to a supplier is booked and validated by an accountant: it cannot be left as a draft."
     undo:
+      unletter_reason: "Undoing the bank match this lettering came from"
       nothing_to_undo: "There is no match to undo for this line."
       reason_required: "A reason is required to cancel a validated payment."
     import:
@@ -140,6 +141,9 @@ en:
     not_found:           "Entity not found."
 
   accounting:
+    lettering:
+      reason_required: "A reason is required to undo a lettering."
+      locked_period: "This lettering is in a locked period: only someone with the right to undo it there can."
     errors:
       dual_side:          "Cannot have both debit AND credit positive at the same time."
       zero_side:          "The entry must have an amount in either debit or credit."

@@ -13,6 +13,8 @@ module Permissions
     "entries.reverse"        => %i[admin accountant],
     "invoices.issue"         => %i[admin accountant],
     "reconciliations.manage" => %i[admin accountant assistant],
+    "reconciliations.cross_partner"      => %i[admin accountant], # letter lines of different partners (a correction), with a reason
+    "reconciliations.unreconcile_locked" => %i[admin],           # undo a lettering whose lines are in a locked period
     "vat.file"               => %i[admin accountant],
     "payments.manage"        => %i[admin accountant],
     "dunning.send"           => %i[admin accountant],

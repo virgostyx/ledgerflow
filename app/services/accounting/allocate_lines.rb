@@ -7,7 +7,9 @@ class Accounting::AllocateLines
   def self.call(lines:)
     result = nil
     ApplicationRecord.transaction do
-      result = with(lines: Array(lines)).reduce(
+      # locked first: two people settling the same line at the same moment cannot both succeed
+      locked = Accounting::JournalEntryLine.where(id: Array(lines).map(&:id)).order(:id).lock.includes(:journal_entry, :account, :invoice).to_a
+      result = with(lines: locked).reduce(
         Accounting::Actions::ValidateAllocation,
         Accounting::Actions::CreateAllocations,
         Accounting::Actions::CloseSettledGroup
