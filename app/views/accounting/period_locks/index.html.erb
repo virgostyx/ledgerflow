@@ -2,6 +2,10 @@
   <h1 class="mb-1 text-2xl font-bold text-gray-900">Periods</h1>
   <p class="mb-6 text-sm text-gray-500">Nothing can be posted with an entry date inside a locked period. Only an owner can unlock one, with a reason.</p>
 
+  <% if @timeline %>
+    <%= render "timeline", timeline: @timeline %>
+  <% end %>
+
   <% if policy(Accounting::PeriodLock).create? %>
     <%= form_with model: @lock, url: accounting_period_locks_path, class: "mb-8 grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-5 items-end" do |f| %>
       <div><%= f.label :starts_on, "From", class: "block text-sm font-medium text-gray-700" %>

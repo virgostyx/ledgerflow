@@ -1,0 +1,6 @@
+<%# F01: shown on a document dated inside a locked period. locals: lock, subject ("entry"/"invoice"), draft %>
+<div class="mb-6 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+  This <%= subject %> is dated in a locked period (<%= lock.starts_on %> to <%= lock.ends_on %>)<% if lock.lock_reason.present? %>: <%= lock.lock_reason %><% end %>.
+  <%= draft ? "It cannot be posted until the period is unlocked." : "It cannot be changed." %>
+  <%= link_to "See the periods", accounting_period_locks_path, class: "font-medium underline" %>
+</div>

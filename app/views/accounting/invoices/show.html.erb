@@ -17,7 +17,7 @@
     ) do |header| %>
   <% header.with_actions do %>
     <%= render Accounting::StatusBadgeComponent.new(status: @invoice.status.to_sym) %>
-    <% if @invoice.draft? && policy(@invoice).post? %>
+    <% if @invoice.draft? && policy(@invoice).post? && @period_lock.nil? %>
       <%= button_to 'Post invoice', validate_invoice_accounting_invoice_path(@invoice), method: :post,
             class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
     <% end %>
@@ -55,6 +55,10 @@
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
   <% end %>
+<% end %>
+
+<% if @period_lock %>
+  <%= render "accounting/period_locks/banner", lock: @period_lock, subject: "invoice", draft: @invoice.draft? %>
 <% end %>
 
 <% if @invoice.recurring_invoice %>

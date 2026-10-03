@@ -16,6 +16,7 @@ class Accounting::InvoicesController < ApplicationController
 
   def show
     authorize @invoice
+    @period_lock = Accounting::PeriodLock.covering(@invoice.invoice_date).first if feature?(:f01) && @invoice.invoice_date
   end
 
   def new

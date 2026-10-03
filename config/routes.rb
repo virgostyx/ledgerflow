@@ -103,6 +103,7 @@ Rails.application.routes.draw do
       end
       resources :document_links, only: %i[create destroy]
       resources :period_locks, path: "periods", only: %i[index create] do
+      post :lock_months, on: :collection
         post :unlock, on: :member
       end
       resources :consistency_runs, path: "consistency", only: [ :index, :create ] do
