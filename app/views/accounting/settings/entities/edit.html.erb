@@ -109,6 +109,13 @@
           <% end %>
         </div>
         <% end %>
+        <div class="flex items-start gap-2 pt-2">
+          <%= f.check_box :auto_reconcile_exact, class: "mt-1 rounded border-gray-300" %>
+          <%= f.label :auto_reconcile_exact, class: "text-sm text-gray-700" do %>
+            Letter exact matches automatically, every night
+            <span class="block text-xs text-gray-400">Only the suggestions of score 100 (same amount, same reference, no other candidate) are lettered, marked as automatic and audited. Everything else waits for a person. Any lettering can be undone with a reason.</span>
+          <% end %>
+        </div>
         <% if @entity.feature?(:f01) %>
         <div class="flex items-start gap-2 pt-2">
           <%= f.check_box :four_eyes, class: "mt-1 rounded border-gray-300" %>

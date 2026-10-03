@@ -2415,7 +2415,8 @@ CREATE TABLE public.entities (
     read_only_export boolean DEFAULT false NOT NULL,
     documents_mail_token character varying NOT NULL,
     auto_post_exact_bank_matches boolean DEFAULT false NOT NULL,
-    bank_rounding_tolerance numeric(15,2) DEFAULT 0.05 NOT NULL
+    bank_rounding_tolerance numeric(15,2) DEFAULT 0.05 NOT NULL,
+    auto_reconcile_exact boolean DEFAULT false NOT NULL
 );
 
 
@@ -6232,6 +6233,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003280000'),
 ('20261003270000'),
 ('20261003260000'),
 ('20261003250000'),

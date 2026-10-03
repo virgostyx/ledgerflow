@@ -167,6 +167,21 @@ RSpec.describe "Accounting::Settings::Entities", type: :request do
     end
   end
 
+  describe "the option of automatic lettering (F04)" do
+    it "lets the owner turn it on" do
+      patch accounting_settings_entity_path, params: { entity: { auto_reconcile_exact: "1" } }
+
+      expect(entity.reload.auto_reconcile_exact).to be true
+    end
+
+    it "is refused to anyone but the owner" do
+      sign_in create(:user, role: :accountant).tap { |u| create(:user_entity, :accountant, user: u, entity: entity) }
+      patch accounting_settings_entity_path, params: { entity: { auto_reconcile_exact: "1" } }
+
+      expect(entity.reload.auto_reconcile_exact).to be false
+    end
+  end
+
   describe "the options of the bank matching (F02)" do
     it "lets the owner ask for exact matches to be validated and set the rounding tolerance" do
       patch accounting_settings_entity_path, params: { entity: { auto_post_exact_bank_matches: "1", bank_rounding_tolerance: "0.10" } }
