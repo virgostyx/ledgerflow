@@ -130,6 +130,12 @@ en:
       four_eyes: "Another person must validate this entry: its author cannot."
       period_locked: "The period %{starts_on} to %{ends_on} is locked: nothing can be posted in it."
 
+    controlled_window:
+      owner_only: "Only an owner can open or close a controlled window."
+      reason_required: "A reason is required to open a controlled window."
+      bad_purpose: "A controlled window is for a migration or a closing."
+      bad_hours: "A controlled window lasts from 1 to %{max} hours."
+      already_open: "A controlled window is already open."
     period_locks:
       locked:   "Period locked."
       unlocked: "Period unlocked. The owners have been told."

@@ -697,6 +697,44 @@ ALTER SEQUENCE public.accounting_consistency_runs_id_seq OWNED BY public.account
 
 
 --
+-- Name: accounting_controlled_windows; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_controlled_windows (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    opened_by_id bigint NOT NULL,
+    closed_by_id bigint,
+    purpose character varying NOT NULL,
+    reason character varying NOT NULL,
+    opens_at timestamp(6) without time zone NOT NULL,
+    expires_at timestamp(6) without time zone NOT NULL,
+    closed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_controlled_windows_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_controlled_windows_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_controlled_windows_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_controlled_windows_id_seq OWNED BY public.accounting_controlled_windows.id;
+
+
+--
 -- Name: accounting_depreciation_entries; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2467,6 +2505,13 @@ ALTER TABLE ONLY public.accounting_consistency_runs ALTER COLUMN id SET DEFAULT 
 
 
 --
+-- Name: accounting_controlled_windows id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_controlled_windows ALTER COLUMN id SET DEFAULT nextval('public.accounting_controlled_windows_id_seq'::regclass);
+
+
+--
 -- Name: accounting_depreciation_entries id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2862,6 +2907,14 @@ ALTER TABLE ONLY public.accounting_consistency_findings
 
 ALTER TABLE ONLY public.accounting_consistency_runs
     ADD CONSTRAINT accounting_consistency_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_controlled_windows accounting_controlled_windows_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_controlled_windows
+    ADD CONSTRAINT accounting_controlled_windows_pkey PRIMARY KEY (id);
 
 
 --
@@ -3378,6 +3431,13 @@ CREATE UNIQUE INDEX idx_on_entity_id_account_id_code_b0055f39aa ON public.accoun
 
 
 --
+-- Name: idx_on_entity_id_expires_at_07ed8d110c; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_entity_id_expires_at_07ed8d110c ON public.accounting_controlled_windows USING btree (entity_id, expires_at);
+
+
+--
 -- Name: idx_on_entity_id_fingerprint_49aa41669e; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3613,6 +3673,27 @@ CREATE INDEX index_accounting_consistency_findings_on_run_id ON public.accountin
 --
 
 CREATE INDEX index_accounting_consistency_runs_on_entity_id_and_started_at ON public.accounting_consistency_runs USING btree (entity_id, started_at);
+
+
+--
+-- Name: index_accounting_controlled_windows_on_closed_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_controlled_windows_on_closed_by_id ON public.accounting_controlled_windows USING btree (closed_by_id);
+
+
+--
+-- Name: index_accounting_controlled_windows_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_controlled_windows_on_entity_id ON public.accounting_controlled_windows USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_controlled_windows_on_opened_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_controlled_windows_on_opened_by_id ON public.accounting_controlled_windows USING btree (opened_by_id);
 
 
 --
@@ -4846,6 +4927,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 
 --
+-- Name: accounting_controlled_windows fk_rails_5d9749f6a8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_controlled_windows
+    ADD CONSTRAINT fk_rails_5d9749f6a8 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_documents fk_rails_5f348b6a57; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5238,11 +5327,27 @@ ALTER TABLE ONLY public.accounting_documents
 
 
 --
+-- Name: accounting_controlled_windows fk_rails_d2b0779305; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_controlled_windows
+    ADD CONSTRAINT fk_rails_d2b0779305 FOREIGN KEY (opened_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoice_line_annotations fk_rails_d3bee1dc29; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_invoice_line_annotations
     ADD CONSTRAINT fk_rails_d3bee1dc29 FOREIGN KEY (analytical_account_id) REFERENCES public.accounting_analytical_accounts(id);
+
+
+--
+-- Name: accounting_controlled_windows fk_rails_d41f0525a4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_controlled_windows
+    ADD CONSTRAINT fk_rails_d41f0525a4 FOREIGN KEY (closed_by_id) REFERENCES public.users(id);
 
 
 --
@@ -5420,6 +5525,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003160000'),
 ('20261003150000'),
 ('20261003140000'),
 ('20261003130001'),
