@@ -9,6 +9,7 @@ class Accounting::Actions::ValidateAllocation
     elsif lines.none? { |l| l.debit > 0 } || lines.none? { |l| l.credit > 0 } then "Select at least one debit and one credit line"
     elsif lines.any? { |l| !l.journal_entry.in_ledger? }                   then "Only lines of posted entries can be allocated"
     elsif lines.any?(&:lettering_id)                                       then "A line is already lettered"
+    elsif Accounting::JournalEntryLine.carried_forward.where(id: lines.map(&:id)).exists? then "A line was carried into the next fiscal year: allocate the carried line instead."
     elsif lines.map(&:account_id).uniq.size > 1                            then "Lines must be on the same account"
     elsif lines.map(&:partner_id).uniq.size > 1                            then "Lines must have the same partner"
     elsif lines.any? { |l| l.open_amount <= 0 }                            then "A line has nothing left to allocate"

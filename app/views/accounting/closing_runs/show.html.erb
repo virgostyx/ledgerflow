@@ -1,0 +1,145 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Closing assistant', path: accounting_closing_runs_path },
+    { label: @run.fiscal_year.year.to_s }
+  ]) %>
+<% end %>
+
+<% can_prepare = policy(@run).update? %>
+<% can_approve = policy(@run).approve? %>
+<% open_run = @run.draft? || @run.in_progress? || @run.ready? %>
+<% field = 'rounded-md border border-gray-300 px-2 py-1 text-sm' %>
+<% small_button = 'px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer' %>
+<% main_button = 'px-3 py-1.5 text-sm rounded-md bg-primary-600 text-white hover:bg-primary-700 cursor-pointer' %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Closing of #{@run.fiscal_year.year}",
+      description: "#{@run.closed? ? 'Closed' : (@run.reopened? ? 'Reopened' : 'In progress')} · #{Accounting::DatePresenter.new(@run.fiscal_year.start_date).format} – #{Accounting::DatePresenter.new(@run.fiscal_year.end_date).format}",
+      back_path: accounting_closing_runs_path, back_text: 'Closing assistant') %>
+
+<% if @run.reopened? %>
+  <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" data-section="reopened">
+    This closing was reopened on <%= Accounting::DatePresenter.new(@run.reopened_at.to_date).format %> by <%= @run.reopened_by&.full_name.presence || @run.reopened_by&.email %>. Reason: <%= @run.reopen_reason %>
+    The year is open again; close it with a new run.
+    <% if policy(Accounting::ClosingRun).create? %>
+      <%= button_to 'Start a new closing', accounting_closing_runs_path, method: :post, params: { fiscal_year_id: @run.fiscal_year_id }, class: "mt-2 #{small_button}" %>
+    <% end %>
+  </div>
+<% end %>
+
+<div class="mb-6">
+  <div class="flex items-center justify-between text-sm mb-1"><span class="font-medium text-gray-700">Progress</span><span><%= @run.progress %> %</span></div>
+  <div class="h-2 rounded bg-gray-200"><div class="h-2 rounded bg-primary-600" style="width: <%= @run.progress %>%"></div></div>
+</div>
+
+<% if @drafts.any? %>
+  <div class="mb-6 bg-white rounded-lg border border-amber-200 p-4" data-section="entries-to-validate">
+    <h2 class="text-sm font-semibold text-gray-900">Entries to validate</h2>
+    <p class="text-xs text-gray-500 mb-3">The steps drafted these entries; nothing is posted until you validate them. When a lock covers their date, an owner must first open a controlled window for the closing (Settings > Periods).</p>
+    <% @drafts.each do |entry| %>
+      <div class="mb-3">
+        <p class="text-sm font-medium text-gray-800"><%= entry.description %> <span class="text-gray-500 font-normal">dated <%= Accounting::DatePresenter.new(entry.entry_date).format %></span></p>
+        <table class="w-full text-xs mt-1">
+          <% entry.lines.sort_by { |l| [ l.account.code, l.id ] }.first(40).each do |line| %>
+            <tr>
+              <td class="py-0.5 font-mono"><%= line.account.code %></td><td class="py-0.5 text-gray-600"><%= line.account.label_fr %></td><td class="py-0.5 text-gray-600"><%= line.partner&.name %></td>
+              <td class="py-0.5 text-right font-mono"><%= line.debit.positive? ? Accounting::MoneyPresenter.new(line.debit).format : '' %></td>
+              <td class="py-0.5 text-right font-mono"><%= line.credit.positive? ? Accounting::MoneyPresenter.new(line.credit).format : '' %></td>
+            </tr>
+          <% end %>
+          <% if entry.lines.size > 40 %><tr><td colspan="5" class="py-1 text-gray-400">… and <%= entry.lines.size - 40 %> more lines</td></tr><% end %>
+        </table>
+      </div>
+    <% end %>
+    <% if can_prepare %>
+      <%= button_to 'Validate these entries', validate_entries_accounting_closing_run_path(@run), method: :post, class: main_button,
+            form: { data: { turbo_confirm: 'Post these entries now? They enter the ledger.' } } %>
+    <% end %>
+  </div>
+<% end %>
+
+<ol class="space-y-3">
+  <% @steps.each do |step| %>
+    <li id="step-<%= step.code %>" class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold text-gray-900"><%= step.position %>. <%= step.title %>
+          <span class="ml-2 text-xs font-normal text-gray-400"><%= step.kind.humanize.downcase %><%= step.blocking ? '' : ', does not block' %></span></h2>
+        <%= closing_status_badge(step) %>
+      </div>
+
+      <% lines = closing_step_lines(step).reject(&:blank?) %>
+      <% if lines.any? %>
+        <ul class="mt-2 text-sm text-gray-700 list-disc pl-5"><% lines.each do |line| %><li><%= line %></li><% end %></ul>
+      <% end %>
+      <% if step.comment.present? %><p class="mt-2 text-xs text-gray-500">Comment: <%= step.comment %></p><% end %>
+      <% if (link = closing_step_link(step)) %><p class="mt-1 text-xs"><%= link_to link.first, link.last, class: 'text-primary-700 hover:underline' %></p><% end %>
+
+      <% if open_run && can_prepare %>
+        <div class="mt-3 flex flex-wrap gap-3 items-end">
+          <% if step.kind_action? && !step.done? && step.code != 'lock_and_bundle' || (step.code == 'lock_and_bundle' && !step.done?) %>
+            <%= button_to (step.code == 'lock_and_bundle' ? 'Do it: lock and make the file' : 'Do it'), perform_accounting_closing_run_step_path(@run, step.code), method: :post, class: main_button,
+                  form: { data: { turbo_confirm: (step.code == 'preparation' ? 'Create the next fiscal year?' : 'Do this step now?') } } %>
+          <% end %>
+
+          <% if step.warning? && step.acknowledged_at.blank? %>
+            <%= form_with url: acknowledge_accounting_closing_run_step_path(@run, step.code), method: :post, class: 'flex gap-2 items-end' do %>
+              <%= text_field_tag :comment, nil, placeholder: 'Comment (required) to go on', class: "#{field} w-72", 'aria-label': 'Comment' %>
+              <%= submit_tag 'Acknowledge', class: small_button %>
+            <% end %>
+          <% end %>
+
+          <% if step.kind_manual? && step.code != 'approval' && !step.done? && !step.skipped? %>
+            <%= form_with url: confirm_accounting_closing_run_step_path(@run, step.code), method: :post, class: 'flex gap-2 items-end' do %>
+              <%= text_field_tag :comment, nil, placeholder: 'Comment (required)', class: "#{field} w-72", 'aria-label': 'Comment' %>
+              <%= submit_tag 'Confirm', class: small_button %>
+            <% end %>
+          <% end %>
+
+          <% if !step.blocking && !step.skipped? && !step.done? && !step.ok? %>
+            <%= form_with url: skip_accounting_closing_run_step_path(@run, step.code), method: :post, class: 'flex gap-2 items-end' do %>
+              <%= text_field_tag :reason, nil, placeholder: 'Reason to skip', class: "#{field} w-56", 'aria-label': 'Reason to skip' %>
+              <%= submit_tag 'Skip', class: small_button %>
+            <% end %>
+          <% end %>
+
+          <% if step.code == 'analytical_review' %>
+            <% commented = (step.result['comments'] || {}).keys %>
+            <% Array(step.result['flagged']).reject { |f| commented.include?(f['code']) }.first(12).each do |flagged| %>
+              <%= form_with url: comment_accounting_closing_run_step_path(@run, step.code), method: :post, class: 'flex gap-2 items-end w-full' do %>
+                <%= hidden_field_tag :heading, flagged['code'] %>
+                <span class="text-xs text-gray-600 w-64"><%= flagged['code'] %> <%= flagged['label'] %>: <%= flagged['previous'] %> → <%= flagged['amount'] %></span>
+                <%= text_field_tag :text, nil, placeholder: 'Explain the variation', class: "#{field} flex-1", 'aria-label': "Comment on #{flagged['code']}" %>
+                <%= submit_tag 'Save comment', class: small_button %>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if step.code == 'approval' && open_run && can_approve %>
+        <%= form_with url: approve_accounting_closing_run_path(@run), method: :post, class: 'mt-3 flex gap-2 items-end' do %>
+          <%= text_field_tag :comment, nil, placeholder: 'Comment (required)', class: "#{field} w-72", 'aria-label': 'Approval comment' %>
+          <%= submit_tag 'Approve and close the year', class: main_button, data: { turbo_confirm: 'Close the fiscal year? It is locked; only an owner can reopen it.' } %>
+        <% end %>
+      <% end %>
+    </li>
+  <% end %>
+</ol>
+
+<div class="mt-6 bg-white rounded-lg border border-gray-200 p-4" data-section="summary">
+  <h2 class="text-sm font-semibold text-gray-900">Summary</h2>
+  <dl class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+    <div><dt class="text-xs text-gray-500">Result of the year</dt><dd class="font-mono"><%= @summary[:result] ? Accounting::MoneyPresenter.new(@summary[:result]).format : '—' %></dd></div>
+    <div><dt class="text-xs text-gray-500">Balance sheet total</dt><dd class="font-mono"><%= @summary[:balance_sheet_total] ? Accounting::MoneyPresenter.new(@summary[:balance_sheet_total]).format : '—' %></dd></div>
+    <div><dt class="text-xs text-gray-500">Opening entry of the next year</dt><dd><%= @summary[:opening_lines] ? "#{@summary[:opening_lines]} lines" : 'not drafted yet' %></dd></div>
+  </dl>
+  <% if @run.bundle.attached? %>
+    <p class="mt-3 text-sm"><%= link_to 'Download the closing file (ZIP, with its manifest of hashes)', bundle_accounting_closing_run_path(@run), class: 'text-primary-700 hover:underline' %></p>
+  <% end %>
+  <% if @run.closed? && policy(@run).reopen? %>
+    <%= form_with url: reopen_accounting_closing_run_path(@run), method: :post, class: 'mt-3 flex gap-2 items-end' do %>
+      <%= text_field_tag :reason, nil, placeholder: 'Reason to reopen (required)', class: "#{field} w-72", 'aria-label': 'Reason to reopen' %>
+      <%= submit_tag 'Reopen the year', class: small_button, data: { turbo_confirm: 'Reopen this fiscal year? Its locks are lifted and the owners are told.' } %>
+    <% end %>
+  <% end %>
+</div>

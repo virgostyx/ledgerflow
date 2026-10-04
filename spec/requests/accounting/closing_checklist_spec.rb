@@ -10,7 +10,7 @@ RSpec.describe "The closing checklist on a fiscal year", type: :request do
   let(:journal) { create(:journal, :purchase) }
 
   before do
-    entity.update!(vat_regime: :franchise)
+    entity.update!(vat_regime: :franchise, features: { "f10" => false }) # the direct closing is what this screen is while the assistant (F10) is off
     sign_in admin
   end
 

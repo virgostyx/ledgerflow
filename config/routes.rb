@@ -219,6 +219,26 @@ Rails.application.routes.draw do
       end
       resources :line_allocations, only: [ :create, :destroy ]
 
+      # F10: the guided closing of a fiscal year
+      resources :closing_runs, only: %i[index show create] do
+        patch :settings, on: :collection
+        member do
+          post :validate_entries
+          post :approve
+          post :reopen
+          get  :bundle
+        end
+        resources :steps, controller: "closing_steps", param: :code, only: [] do
+          member do
+            post :perform
+            post :acknowledge
+            post :skip
+            post :confirm
+            post :comment
+          end
+        end
+      end
+
       resources :fiscal_years do
         member do
           post :close

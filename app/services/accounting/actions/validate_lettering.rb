@@ -8,6 +8,7 @@ class Accounting::Actions::ValidateLettering
     error = if lines.size < 2                                              then "Select at least two lines"
     elsif lines.any? { |l| !l.journal_entry.in_ledger? }                   then "Only lines of posted entries can be lettered"
     elsif lines.any?(&:lettering_id)                                       then "A line is already lettered"
+    elsif Accounting::JournalEntryLine.carried_forward.where(id: lines.map(&:id)).exists? then "A line was carried into the next fiscal year: letter the carried line instead."
     elsif lines.map(&:account_id).uniq.size > 1                            then "Lines must be on the same account"
     elsif (problem = partner_problem(ctx, lines))                          then problem
     elsif split_allocation_group?(lines)                                   then "A partly settled line can only be lettered with its whole allocation group"

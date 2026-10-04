@@ -85,7 +85,7 @@ class Accounting::ReverseJournalEntry
     candidate = requested || from || entry.entry_date
     MAX_MOVES.times do
       year = Accounting::FiscalYear.where("start_date <= :d AND end_date >= :d", d: candidate).first
-      if year.nil? || !year.open?
+      if year.nil? || year.closed? # a year waiting to be opened (pre_closing, F10) takes entries as an open one does
         return I18n.t("accounting.errors.reverse_date_closed") if requested
 
         following = Accounting::FiscalYear.open.where("start_date > ?", candidate).order(:start_date).first
@@ -96,7 +96,7 @@ class Accounting::ReverseJournalEntry
         next
       end
 
-      lock = Accounting::PeriodLock.covering(candidate).order(ends_on: :desc).first
+      lock = Accounting::PeriodLock.covering(candidate).order(ends_on: :desc).first unless Accounting::ControlledWindow.override_on? # an owner's window lifts the locks (F01)
       return Placement.new(date: candidate, fiscal_year: year, warnings: warnings, vat_regularisation: vat) unless lock
       return I18n.t("accounting.errors.reverse_date_locked") if requested
 
@@ -114,8 +114,9 @@ class Accounting::ReverseJournalEntry
       reversal_of_id: entry.id, reversal_reason: reason.presence, vat_regularisation: placement.vat_regularisation
     ).tap do |reversal|
       entry.lines.each do |l|
+        foreign = l.currency == "EUR" || l.amount_currency.nil? ? {} : { currency: l.currency, exchange_rate: l.exchange_rate, amount_currency: -l.amount_currency } # F11
         reversal.lines.build(account_id: l.account_id, partner_id: l.partner_id, label: l.label,
-                             debit: l.credit, credit: l.debit, sort_order: l.sort_order)
+                             debit: l.credit, credit: l.debit, sort_order: l.sort_order, **foreign)
       end
     end
   end

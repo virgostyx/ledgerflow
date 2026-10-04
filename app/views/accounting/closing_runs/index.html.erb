@@ -1,0 +1,73 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Fiscal years', path: accounting_fiscal_years_path },
+    { label: 'Closing assistant' }
+  ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: 'Closing assistant',
+      description: 'From the open fiscal year to the closed one, in 18 steps that are checked as you go: nothing is hidden, nothing is validated for you.') %>
+
+<div class="space-y-6">
+  <div class="bg-white rounded-lg border border-gray-200 p-4">
+    <h2 class="text-sm font-semibold text-gray-900 mb-3">Fiscal years</h2>
+    <% if @years.empty? %>
+      <p class="text-sm text-gray-500">Every fiscal year is closed.</p>
+    <% else %>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% @years.each do |year| %>
+          <% active = @runs.find { |r| r.fiscal_year_id == year.id && (r.draft? || r.in_progress? || r.ready?) } %>
+          <li class="py-2 flex items-center justify-between gap-3">
+            <span class="font-medium text-gray-900"><%= year.year %>
+              <span class="text-gray-500 font-normal">(<%= Accounting::DatePresenter.new(year.start_date).format %> – <%= Accounting::DatePresenter.new(year.end_date).format %>, <%= year.status.humanize.downcase %>)</span></span>
+            <% if active %>
+              <%= link_to 'Continue the closing', accounting_closing_run_path(active), class: 'px-3 py-1.5 text-sm rounded-md bg-primary-600 text-white hover:bg-primary-700' %>
+            <% elsif policy(Accounting::ClosingRun).create? %>
+              <%= button_to 'Start the closing', accounting_closing_runs_path, method: :post, params: { fiscal_year_id: year.id },
+                    class: 'px-3 py-1.5 text-sm rounded-md bg-primary-600 text-white hover:bg-primary-700 cursor-pointer' %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+
+  <% entity = ActsAsTenant.current_tenant %>
+  <%= form_with url: settings_accounting_closing_runs_path, scope: :entity, method: :patch, class: 'bg-white rounded-lg border border-gray-200 p-4 space-y-3', data: { section: 'settings' } do |f| %>
+    <h2 class="text-sm font-semibold text-gray-900">Closing settings</h2>
+    <p class="text-xs text-gray-500">The accounts the closing entries use and the thresholds of the analytical review (step 14). Only an owner changes them.</p>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+      <div><%= f.label :closing_result_account_code, 'Result account', class: 'text-xs font-medium text-gray-500' %><%= f.text_field :closing_result_account_code, value: entity.closing_result_account_code, class: 'block w-full rounded-md border border-gray-300 px-2 py-1 font-mono' %></div>
+      <div><%= f.label :closing_carry_account_code, 'Carry-forward account', class: 'text-xs font-medium text-gray-500' %><%= f.text_field :closing_carry_account_code, value: entity.closing_carry_account_code, class: 'block w-full rounded-md border border-gray-300 px-2 py-1 font-mono' %></div>
+      <div><%= f.label :review_threshold_pct, 'Review: variation over (%)', class: 'text-xs font-medium text-gray-500' %><%= f.number_field :review_threshold_pct, value: entity.review_threshold_pct, step: '0.01', class: 'block w-full rounded-md border border-gray-300 px-2 py-1' %></div>
+      <div><%= f.label :review_threshold_amount, 'Review: and over (EUR)', class: 'text-xs font-medium text-gray-500' %><%= f.number_field :review_threshold_amount, value: entity.review_threshold_amount, step: '0.01', class: 'block w-full rounded-md border border-gray-300 px-2 py-1' %></div>
+    </div>
+    <% if policy(Accounting::ClosingRun).approve? %>
+      <%= f.submit 'Save the closing settings', class: 'px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer' %>
+    <% end %>
+  <% end %>
+
+  <div class="bg-white rounded-lg border border-gray-200 overflow-x-clip">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <th class="px-4 py-3 text-left">Year</th><th class="px-4 py-3 text-left">Opened by</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-right">Progress</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @runs.each do |run| %>
+          <tr>
+            <td class="px-4 py-3"><%= link_to run.fiscal_year.year, accounting_closing_run_path(run), class: 'text-primary-700 hover:underline' %></td>
+            <td class="px-4 py-3 text-gray-700"><%= run.opened_by&.full_name.presence || run.opened_by&.email || '—' %></td>
+            <td class="px-4 py-3 text-gray-700"><%= run.in_progress? || run.draft? ? 'In progress' : run.status.humanize %></td>
+            <td class="px-4 py-3 text-right text-gray-700"><%= run.progress %> %</td>
+          </tr>
+        <% end %>
+        <% if @runs.empty? %>
+          <tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No closing yet.</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

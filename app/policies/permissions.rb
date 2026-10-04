@@ -25,6 +25,8 @@ module Permissions
     "comments.write"         => %i[admin accountant assistant], # comment on what one can see (F08)
     "vat.file"               => %i[admin accountant],
     "payments.manage"        => %i[admin accountant],
+    "closing.prepare"        => %i[admin accountant],           # run the closing steps, validate the closing entries (F10)
+    "closing.approve"        => %i[admin],                      # approve a closing, reopen a closed year: the owner (F10)
     "rates.override"         => %i[admin accountant],           # type an exchange rate by hand, or use one other than the official one (F11)
     "dunning.prepare"        => %i[admin accountant assistant], # prepare the reminders, edit the texts, mark a dispute or a promise (F09)
     "dunning.send"           => %i[admin accountant],           # validate and send them (F09)

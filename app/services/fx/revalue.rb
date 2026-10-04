@@ -22,6 +22,21 @@ class Fx::Revalue
     ctx
   end
 
+  # What a revaluation would book, without booking it (F10 reads it to know whether the step has anything to do): the currencies that have a position but
+  # no closing rate, and the amounts [[currency, :loss | :gain, amount], ...] the entity's treatment books.
+  Plan = Struct.new(:missing, :amounts)
+
+  def self.plan(fiscal_year:, as_of: fiscal_year.end_date)
+    revalue = new(fiscal_year, as_of, nil)
+    rows = Accounting::ForeignRevaluationQuery.new(as_of: as_of).call
+    Plan.new(rows.select { |r| r.rate.nil? }.map(&:currency).uniq, revalue.send(:amounts_to_book, rows))
+  end
+
+  # The draft entry of the closing date, when there is one that is not reversed.
+  def self.existing(fiscal_year:, as_of: fiscal_year.end_date)
+    Accounting::JournalEntry.where(fiscal_year: fiscal_year, source_type: SOURCE, entry_date: as_of).where.not(status: :reversed).first
+  end
+
   def initialize(fiscal_year, as_of, ctx)
     @fiscal_year = fiscal_year
     @as_of = as_of
@@ -30,7 +45,7 @@ class Fx::Revalue
   end
 
   def run
-    existing = Accounting::JournalEntry.where(fiscal_year: @fiscal_year, source_type: SOURCE, entry_date: @as_of).where.not(status: :reversed).first
+    existing = self.class.existing(fiscal_year: @fiscal_year, as_of: @as_of)
     return @ctx[:entry] = existing if existing
 
     rows = Accounting::ForeignRevaluationQuery.new(as_of: @as_of).call
@@ -56,8 +71,9 @@ class Fx::Revalue
   # [[currency, :loss | :gain, amount], ...]: per position, a loss is booked as an expense when the entity says so, a gain as it says.
   def amounts_to_book(rows)
     rows.group_by(&:currency).flat_map do |currency, group|
-      loss = group.sum(BigDecimal("0")) { |r| [ -r.difference, 0 ].max }
-      gain = group.sum(BigDecimal("0")) { |r| [ r.difference, 0 ].max }
+      differences = group.filter_map(&:difference) # a position without a closing rate has none: it is reported as missing, not booked
+      loss = differences.sum(BigDecimal("0")) { |d| [ -d, 0 ].max }
+      gain = differences.sum(BigDecimal("0")) { |d| [ d, 0 ].max }
       [ (loss.positive? && @entity.unrealized_loss_expense? ? [ currency, :loss, loss ] : nil),
         (gain.positive? && !@entity.unrealized_gain_ignore? ? [ currency, :gain, gain ] : nil) ].compact
     end

@@ -1548,7 +1548,8 @@ CREATE TABLE public.accounting_journal_entries (
     auto_reverse_on date,
     reversal_reason character varying,
     vat_regularisation boolean DEFAULT false NOT NULL,
-    lettering_id bigint
+    lettering_id bigint,
+    closing_run_id bigint
 );
 
 
@@ -1600,6 +1601,8 @@ CREATE TABLE public.accounting_journal_entry_lines (
     payment_promised_on date,
     dunning_level integer DEFAULT 0 NOT NULL,
     last_dunned_at timestamp(6) without time zone,
+    origin_line_id bigint,
+    due_date date,
     CONSTRAINT chk_at_least_one_side CHECK (((debit > (0)::numeric) OR (credit > (0)::numeric))),
     CONSTRAINT chk_credit_non_negative CHECK ((credit >= (0)::numeric)),
     CONSTRAINT chk_debit_non_negative CHECK ((debit >= (0)::numeric)),
@@ -2820,6 +2823,127 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: closing_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.closing_runs (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    fiscal_year_id bigint NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    opened_by_id bigint,
+    closed_by_id bigint,
+    approved_by_id bigint,
+    opened_at timestamp(6) without time zone,
+    closed_at timestamp(6) without time zone,
+    approved_at timestamp(6) without time zone,
+    reopened_by_id bigint,
+    reopened_at timestamp(6) without time zone,
+    reopen_reason text,
+    carry_forward_stale boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: closing_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.closing_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: closing_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.closing_runs_id_seq OWNED BY public.closing_runs.id;
+
+
+--
+-- Name: closing_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.closing_snapshots (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    closing_run_id bigint NOT NULL,
+    content jsonb NOT NULL,
+    sha256 character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: closing_snapshots_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.closing_snapshots_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: closing_snapshots_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.closing_snapshots_id_seq OWNED BY public.closing_snapshots.id;
+
+
+--
+-- Name: closing_steps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.closing_steps (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    closing_run_id bigint NOT NULL,
+    "position" integer NOT NULL,
+    code character varying NOT NULL,
+    title character varying NOT NULL,
+    kind integer NOT NULL,
+    blocking boolean DEFAULT true NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    result jsonb DEFAULT '{}'::jsonb NOT NULL,
+    completed_by_id bigint,
+    completed_at timestamp(6) without time zone,
+    acknowledged_by_id bigint,
+    acknowledged_at timestamp(6) without time zone,
+    comment text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: closing_steps_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.closing_steps_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: closing_steps_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.closing_steps_id_seq OWNED BY public.closing_steps.id;
+
+
+--
 -- Name: currencies; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3099,7 +3223,11 @@ CREATE TABLE public.entities (
     fx_loss_account_code character varying DEFAULT '651200'::character varying NOT NULL,
     fx_gain_account_code character varying DEFAULT '751100'::character varying NOT NULL,
     fx_unrealized_loss integer DEFAULT 0 NOT NULL,
-    fx_unrealized_gain integer DEFAULT 2 NOT NULL
+    fx_unrealized_gain integer DEFAULT 2 NOT NULL,
+    closing_result_account_code character varying DEFAULT '699000'::character varying NOT NULL,
+    closing_carry_account_code character varying DEFAULT '130000'::character varying NOT NULL,
+    review_threshold_pct numeric(6,2) DEFAULT 20.0 NOT NULL,
+    review_threshold_amount numeric(15,2) DEFAULT 1000.0 NOT NULL
 );
 
 
@@ -3816,6 +3944,27 @@ ALTER TABLE ONLY public.api_requests ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: closing_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_runs ALTER COLUMN id SET DEFAULT nextval('public.closing_runs_id_seq'::regclass);
+
+
+--
+-- Name: closing_snapshots id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_snapshots ALTER COLUMN id SET DEFAULT nextval('public.closing_snapshots_id_seq'::regclass);
+
+
+--
+-- Name: closing_steps id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_steps ALTER COLUMN id SET DEFAULT nextval('public.closing_steps_id_seq'::regclass);
+
+
+--
 -- Name: currencies id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4433,6 +4582,30 @@ ALTER TABLE ONLY public.api_requests
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: closing_runs closing_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_runs
+    ADD CONSTRAINT closing_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: closing_snapshots closing_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_snapshots
+    ADD CONSTRAINT closing_snapshots_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: closing_steps closing_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_steps
+    ADD CONSTRAINT closing_steps_pkey PRIMARY KEY (id);
 
 
 --
@@ -5576,6 +5749,13 @@ CREATE INDEX index_accounting_invoices_on_status ON public.accounting_invoices U
 
 
 --
+-- Name: index_accounting_journal_entries_on_closing_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journal_entries_on_closing_run_id ON public.accounting_journal_entries USING btree (closing_run_id);
+
+
+--
 -- Name: index_accounting_journal_entries_on_created_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5671,6 +5851,13 @@ CREATE INDEX index_accounting_journal_entry_lines_on_invoice_id ON public.accoun
 --
 
 CREATE INDEX index_accounting_journal_entry_lines_on_journal_entry_id ON public.accounting_journal_entry_lines USING btree (journal_entry_id);
+
+
+--
+-- Name: index_accounting_journal_entry_lines_on_origin_line_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journal_entry_lines_on_origin_line_id ON public.accounting_journal_entry_lines USING btree (origin_line_id);
 
 
 --
@@ -6290,6 +6477,97 @@ CREATE INDEX index_api_requests_on_api_client_id_and_created_at ON public.api_re
 
 
 --
+-- Name: index_closing_runs_on_approved_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_runs_on_approved_by_id ON public.closing_runs USING btree (approved_by_id);
+
+
+--
+-- Name: index_closing_runs_on_closed_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_runs_on_closed_by_id ON public.closing_runs USING btree (closed_by_id);
+
+
+--
+-- Name: index_closing_runs_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_runs_on_entity_id ON public.closing_runs USING btree (entity_id);
+
+
+--
+-- Name: index_closing_runs_on_fiscal_year_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_runs_on_fiscal_year_id ON public.closing_runs USING btree (fiscal_year_id);
+
+
+--
+-- Name: index_closing_runs_on_opened_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_runs_on_opened_by_id ON public.closing_runs USING btree (opened_by_id);
+
+
+--
+-- Name: index_closing_runs_on_reopened_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_runs_on_reopened_by_id ON public.closing_runs USING btree (reopened_by_id);
+
+
+--
+-- Name: index_closing_snapshots_on_closing_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_closing_snapshots_on_closing_run_id ON public.closing_snapshots USING btree (closing_run_id);
+
+
+--
+-- Name: index_closing_snapshots_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_snapshots_on_entity_id ON public.closing_snapshots USING btree (entity_id);
+
+
+--
+-- Name: index_closing_steps_on_acknowledged_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_steps_on_acknowledged_by_id ON public.closing_steps USING btree (acknowledged_by_id);
+
+
+--
+-- Name: index_closing_steps_on_closing_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_steps_on_closing_run_id ON public.closing_steps USING btree (closing_run_id);
+
+
+--
+-- Name: index_closing_steps_on_closing_run_id_and_code; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_closing_steps_on_closing_run_id_and_code ON public.closing_steps USING btree (closing_run_id, code);
+
+
+--
+-- Name: index_closing_steps_on_completed_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_steps_on_completed_by_id ON public.closing_steps USING btree (completed_by_id);
+
+
+--
+-- Name: index_closing_steps_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_closing_steps_on_entity_id ON public.closing_steps USING btree (entity_id);
+
+
+--
 -- Name: index_consistency_acks_on_entity_and_fingerprint; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6666,6 +6944,14 @@ ALTER TABLE ONLY public.accounting_vat_declarations
 
 
 --
+-- Name: closing_runs fk_rails_14c22b6574; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_runs
+    ADD CONSTRAINT fk_rails_14c22b6574 FOREIGN KEY (fiscal_year_id) REFERENCES public.accounting_fiscal_years(id);
+
+
+--
 -- Name: accounting_journal_entries fk_rails_15d7ff9705; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6794,6 +7080,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 
 --
+-- Name: closing_steps fk_rails_27616d7efe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_steps
+    ADD CONSTRAINT fk_rails_27616d7efe FOREIGN KEY (acknowledged_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_analytical_annotations fk_rails_2f1aa54d01; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6823,6 +7117,14 @@ ALTER TABLE ONLY public.accounting_invoice_emails
 
 ALTER TABLE ONLY public.accounting_bank_statements
     ADD CONSTRAINT fk_rails_31c90e7265 FOREIGN KEY (bank_account_id) REFERENCES public.accounting_bank_accounts(id);
+
+
+--
+-- Name: closing_steps fk_rails_31ee8b5c3c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_steps
+    ADD CONSTRAINT fk_rails_31ee8b5c3c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -6887,6 +7189,14 @@ ALTER TABLE ONLY public.accounting_accounts
 
 ALTER TABLE ONLY public.accounting_supplier_defaults
     ADD CONSTRAINT fk_rails_39e7d7bd98 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id) ON DELETE CASCADE;
+
+
+--
+-- Name: closing_snapshots fk_rails_3a11623f79; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_snapshots
+    ADD CONSTRAINT fk_rails_3a11623f79 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -7218,6 +7528,14 @@ ALTER TABLE ONLY public.entities
 
 
 --
+-- Name: closing_runs fk_rails_86192e2248; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_runs
+    ADD CONSTRAINT fk_rails_86192e2248 FOREIGN KEY (closed_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_recurring_invoices fk_rails_8736d3c032; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7330,6 +7648,14 @@ ALTER TABLE ONLY public.accounting_tasks
 
 
 --
+-- Name: closing_steps fk_rails_9513f74211; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_steps
+    ADD CONSTRAINT fk_rails_9513f74211 FOREIGN KEY (completed_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_9602ee956d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7343,6 +7669,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 ALTER TABLE ONLY public.active_storage_variant_records
     ADD CONSTRAINT fk_rails_993965df05 FOREIGN KEY (blob_id) REFERENCES public.active_storage_blobs(id);
+
+
+--
+-- Name: closing_runs fk_rails_99b57d4a98; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_runs
+    ADD CONSTRAINT fk_rails_99b57d4a98 FOREIGN KEY (opened_by_id) REFERENCES public.users(id);
 
 
 --
@@ -7503,6 +7837,14 @@ ALTER TABLE ONLY public.accounting_payment_reminders
 
 ALTER TABLE ONLY public.accounting_lettering_write_offs
     ADD CONSTRAINT fk_rails_b803c3de6f FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: closing_runs fk_rails_b8b7468d50; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_runs
+    ADD CONSTRAINT fk_rails_b8b7468d50 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -7730,6 +8072,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 
 --
+-- Name: closing_snapshots fk_rails_dc740f05cd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_snapshots
+    ADD CONSTRAINT fk_rails_dc740f05cd FOREIGN KEY (closing_run_id) REFERENCES public.closing_runs(id);
+
+
+--
 -- Name: api_clients fk_rails_dcea944c33; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7743,6 +8093,14 @@ ALTER TABLE ONLY public.api_clients
 
 ALTER TABLE ONLY public.accounting_fiscal_years
     ADD CONSTRAINT fk_rails_dd957818bc FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: closing_runs fk_rails_de8bbe5dd3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_runs
+    ADD CONSTRAINT fk_rails_de8bbe5dd3 FOREIGN KEY (approved_by_id) REFERENCES public.users(id);
 
 
 --
@@ -7794,6 +8152,14 @@ ALTER TABLE ONLY public.accounting_bank_statements
 
 
 --
+-- Name: accounting_journal_entries fk_rails_eab1fe3205; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entries
+    ADD CONSTRAINT fk_rails_eab1fe3205 FOREIGN KEY (closing_run_id) REFERENCES public.closing_runs(id);
+
+
+--
 -- Name: accounting_intracom_listing_lines fk_rails_ebb9da0d3a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7823,6 +8189,14 @@ ALTER TABLE ONLY public.accounting_lettering_events
 
 ALTER TABLE ONLY public.accounting_letterings
     ADD CONSTRAINT fk_rails_ed96a62b21 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: closing_runs fk_rails_ee6bb7d745; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_runs
+    ADD CONSTRAINT fk_rails_ee6bb7d745 FOREIGN KEY (reopened_by_id) REFERENCES public.users(id);
 
 
 --
@@ -7890,11 +8264,27 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 
 --
+-- Name: closing_steps fk_rails_f60ca6c8df; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.closing_steps
+    ADD CONSTRAINT fk_rails_f60ca6c8df FOREIGN KEY (closing_run_id) REFERENCES public.closing_runs(id);
+
+
+--
 -- Name: accounting_supplier_defaults fk_rails_f66b9ac1ed; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_supplier_defaults
     ADD CONSTRAINT fk_rails_f66b9ac1ed FOREIGN KEY (account_id) REFERENCES public.accounting_accounts(id);
+
+
+--
+-- Name: accounting_journal_entry_lines fk_rails_f790bc9bfe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entry_lines
+    ADD CONSTRAINT fk_rails_f790bc9bfe FOREIGN KEY (origin_line_id) REFERENCES public.accounting_journal_entry_lines(id);
 
 
 --
@@ -7968,6 +8358,8 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261005180000'),
+('20261005170000'),
 ('20261005160000'),
 ('20261005150000'),
 ('20261005140000'),

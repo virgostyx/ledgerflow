@@ -18,6 +18,17 @@ RSpec.describe Accounting::Consistency::Runner, type: :service do
     entry
   end
 
+  it "looks only at the fiscal year it is given, as the closing does (F10), not at the others still open to change" do
+    other = create(:fiscal_year, status: :pre_closing, year: fiscal_year.year + 1, start_date: fiscal_year.end_date + 1, end_date: fiscal_year.end_date + 365)
+    entry = create(:journal_entry, :draft, journal: journal, fiscal_year: other, entry_date: other.start_date + 3)
+    ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+    create(:journal_entry_line, journal_entry: entry, account: bank, debit: 70, credit: 0)
+    create(:journal_entry_line, journal_entry: entry, account: sales, debit: 0, credit: 60)
+
+    expect(described_class.call(trigger: "manual").findings.where(check_id: "C01").count).to eq(2)
+    expect(described_class.call(trigger: "closing", fiscal_year: fiscal_year).findings.where(check_id: "C01").count).to eq(1)
+  end
+
   it "stores the run with its findings and counts per severity" do
     run = described_class.call(trigger: "manual")
     expect(run).to have_attributes(trigger: "manual", finished_at: be_present)

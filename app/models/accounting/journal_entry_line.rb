@@ -34,6 +34,14 @@ class Accounting::JournalEntryLine < ApplicationRecord
   validate :only_one_side_positive
   validate :at_least_one_side_positive
 
+  # The lines that the next fiscal year does not carry (F10): a line it carried is replaced by the carried one, which is the one to letter.
+  CARRIED = "EXISTS (SELECT 1 FROM accounting_journal_entry_lines c JOIN accounting_journal_entries ce ON ce.id = c.journal_entry_id " \
+            "WHERE c.origin_line_id = accounting_journal_entry_lines.id AND ce.status = %<posted>s)".freeze
+  scope :carried_forward,     -> { where(format(CARRIED, posted: Accounting::JournalEntry.statuses[:posted])) }
+  scope :not_carried_forward, -> { where.not(format(CARRIED, posted: Accounting::JournalEntry.statuses[:posted])) }
+
+  def carried_forward? = self.class.carried_forward.exists?(id)
+
   def allocations = Accounting::LineAllocation.touching(id)
 
   # Unsigned amount still to settle: the line's amount minus what partial lettering already allocated to it.

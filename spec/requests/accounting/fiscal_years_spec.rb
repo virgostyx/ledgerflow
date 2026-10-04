@@ -219,6 +219,7 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
   end
 
   describe "POST /accounting/fiscal_years/:id/close" do
+    before { entity.update!(features: { "f10" => false }) } # the direct closing is what this is while the assistant (F10) is off
     let!(:misc_journal) do
       create(:journal, code: "CLO", label_fr: "Clôture",
              journal_type: :misc, sequence_prefix: "CLO")

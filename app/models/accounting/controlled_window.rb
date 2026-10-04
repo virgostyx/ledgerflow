@@ -19,6 +19,9 @@ class Accounting::ControlledWindow < ApplicationRecord
 
   scope :open_now, -> { where(closed_at: nil).where("opens_at <= :now AND expires_at > :now", now: Time.current) }
 
+  # True while a block of `within` runs: the guard of the database lets writes through, so the application's own check of the lock must too.
+  def self.override_on? = connection.select_value("SELECT current_setting('ledgerflow.lock_override', true)") == "on"
+
   # Runs the block with the period lock lifted, for the entity's open window of that purpose. Raises Closed otherwise.
   def self.within(purpose:)
     window = open_now.find_by(purpose: purpose) or raise Closed, "No controlled window is open for #{purpose}"

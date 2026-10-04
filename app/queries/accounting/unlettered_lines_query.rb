@@ -43,6 +43,7 @@ class Accounting::UnletteredLinesQuery
       .joins("LEFT JOIN accounting_letterings lt ON lt.id = accounting_journal_entry_lines.lettering_id")
       .where("e.status IN (?) AND e.entry_date <= ?", Accounting::JournalEntry.ledger_status_values, @as_of)
       .where("a.code LIKE ? AND a.reconcilable", Accounting::OpenLineSql::PREFIX.fetch(kind))
+      .where(Accounting::OpenLineSql.carried_forward_sql(@as_of))
       .pluck(
         Arel.sql("accounting_journal_entry_lines.id"), Arel.sql("a.id"), Arel.sql("a.code"),
         Arel.sql("p.id"), Arel.sql("p.name"), Arel.sql("e.entry_date"), Arel.sql("j.code"),

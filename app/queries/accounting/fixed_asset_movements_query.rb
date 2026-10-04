@@ -75,7 +75,7 @@ class Accounting::FixedAssetMovementsQuery
       [ check("Acquisition value #{c.code} vs accounts #{c.code}x", c.cost_end, cost_ledger.select { |code, _| code.start_with?(c.code) }.values.sum(BigDecimal("0"))),
         check("Accumulated depreciation #{c.code} vs account #{accumulated_code}", c.dep_end, -ledger_balance("accounting_accounts.code = ?", accumulated_code)) ]
     end.flatten
-    checks << check("Depreciation of the year vs accounts 630", categories.sum(BigDecimal("0"), &:dep_booked), ledger_balance("accounting_accounts.code LIKE '630%'"))
+    checks << check("Depreciation of the year vs accounts 630", categories.sum(BigDecimal("0"), &:dep_booked), income_ledger_balance("accounting_accounts.code LIKE '630%'"))
   end
 
   def check(label, register, ledger) = Check.new(label: label, register: register, ledger: ledger, difference: ledger - register)
@@ -87,6 +87,13 @@ class Accounting::FixedAssetMovementsQuery
   # Net debit balance of the accounts matching the SQL condition.
   def ledger_balance(condition, *args)
     BigDecimal(ledger_lines.where(condition, *args).sum("posted_lines.debit - posted_lines.credit").to_s)
+  end
+
+  # The balance of an income account of the year as the year's operations made it: the closing entry that settles it (F10), and the reversal of one that was taken back,
+  # are not operations, and the year, once closed, must still agree with its register.
+  def income_ledger_balance(condition, *args)
+    operations = Accounting::JournalEntry.where(Accounting::TrialBalanceQuery::NOT_CLOSING, Accounting::JournalEntry::CLOSING_SOURCE, Accounting::JournalEntry::CLOSING_SOURCE).select(:id)
+    BigDecimal(ledger_lines.where(journal_entry_id: operations).where(condition, *args).sum("posted_lines.debit - posted_lines.credit").to_s)
   end
 
   def ledger_by_account_prefix(condition, *args)

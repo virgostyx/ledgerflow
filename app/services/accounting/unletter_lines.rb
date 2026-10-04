@@ -54,7 +54,7 @@ class Accounting::UnletterLines
   def self.reopen_invoices(lettering)
     return unless Accounting::Actions::PayLetteredInvoices::TRADE_ACCOUNTS.include?(lettering.account.code)
 
-    entry_ids = lettering.lines.pluck(:journal_entry_id)
+    entry_ids = Accounting::Actions::PayLetteredInvoices.entry_ids(lettering.lines.to_a)
     Accounting::Invoice.paid.where(journal_entry_id: entry_ids).find_each do |invoice|
       invoice.reopen! unless Accounting::PaymentBatchLine.active.exists?(invoice_id: invoice.id)
     end

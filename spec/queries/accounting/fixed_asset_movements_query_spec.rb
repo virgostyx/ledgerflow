@@ -27,6 +27,19 @@ RSpec.describe Accounting::FixedAssetMovementsQuery, type: :query do
   def movements(fiscal_year) = described_class.new(fiscal_year: fiscal_year).call
   def row(result, code = "24") = result.categories.find { |c| c.code == code }
 
+  it "still agrees with the 630 accounts once the closing entry has settled them (F10)" do
+    post_cost(12_000, Date.new(2026, 10, 1), fy2026)
+    Accounting::PostDepreciation.call(fiscal_year: fy2026)
+    closing = create(:journal_entry, :draft, journal: misc, fiscal_year: fy2026, entry_date: Date.new(2026, 12, 31), source_type: Accounting::JournalEntry::CLOSING_SOURCE)
+    result_account = create(:account, code: "699000", label_fr: "Result", account_class: 6, account_type: :expense, normal_balance: :debit)
+    ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+    create(:journal_entry_line, journal_entry: closing, account: expense, debit: 0, credit: 600)
+    create(:journal_entry_line, journal_entry: closing, account: result_account, debit: 600, credit: 0)
+    Accounting::PostJournalEntry.call!(entry: closing)
+
+    expect(movements(fy2026).checks.map(&:difference).uniq).to eq([ 0 ])
+  end
+
   context "without disposal" do
     before do
       Accounting::PostDepreciation.call(fiscal_year: fy2026)

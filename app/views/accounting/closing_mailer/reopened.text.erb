@@ -1,0 +1,5 @@
+The fiscal year <%= @run.fiscal_year.year %> of <%= @entity.name %> was reopened by <%= @run.reopened_by&.full_name.presence || @run.reopened_by&.email %>.
+
+Reason: <%= @run.reopen_reason %>
+
+Its locks are lifted and its closing entry is taken back. The opening entry of the next year is to be recalculated when the closing is done again.

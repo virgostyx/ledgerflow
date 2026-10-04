@@ -9,6 +9,10 @@ class Accounting::JournalEntry < ApplicationRecord
   # source_type of the draft proposed by Fx::Revalue (unrealized exchange differences, its reversal scheduled for the next day).
   REVALUATION_SOURCE = "Accounting::Revaluation".freeze
 
+  # source_type of the opening entry of a year, made by the closing of the year before (F10): the closing balances of classes 0 to 5, the open lines of the partners
+  # one by one.
+  CARRY_FORWARD_SOURCE = "Accounting::CarryForward".freeze
+
   # source_type of the exchange difference a lettering generates (F11): posted by itself, linked to the lettering, undone with it.
   FX_SOURCE = "Accounting::FxAdjustment".freeze
 

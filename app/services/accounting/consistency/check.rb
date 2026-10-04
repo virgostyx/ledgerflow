@@ -14,12 +14,17 @@ class Accounting::Consistency::Check
     Dir[File.join(CHECKS_DIR, "*.rb")].sort.map { |file| "Accounting::Consistency::Checks::#{File.basename(file, '.rb').camelize}".constantize }
   end
 
+  # `fiscal_year`: the one year to look at (the closing of F10 checks the year it closes, not the next one that has not received its opening entry yet).
+  def initialize(fiscal_year: nil)
+    @fiscal_year = fiscal_year
+  end
+
   def call = raise(NotImplementedError)
 
   private
 
-  # Fiscal years still open to change: closed years are frozen.
-  def fiscal_years = Accounting::FiscalYear.where.not(status: Accounting::FiscalYear.statuses[:closed])
+  # Fiscal years still open to change: closed years are frozen. Only the one asked for, when one is.
+  def fiscal_years = @fiscal_year ? Accounting::FiscalYear.where(id: @fiscal_year.id) : Accounting::FiscalYear.where.not(status: Accounting::FiscalYear.statuses[:closed])
 
   def finding(subject:, message:, **data)
     subject_type = subject.is_a?(Array) ? subject.first : subject.class.name

@@ -73,6 +73,7 @@ class Accounting::FiscalYearsController < ApplicationController
 
   def close
     authorize @fiscal_year, :close?
+    return redirect_to(accounting_closing_runs_path, alert: "Close the year with the closing assistant.") if feature?(:f10) # F10 replaces the direct closing
 
     result = Accounting::CloseFiscalYear.call(
       fiscal_year: @fiscal_year,

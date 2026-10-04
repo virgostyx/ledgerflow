@@ -59,7 +59,7 @@ class Accounting::LetteringsController < ApplicationController
     @account  = @accounts.find_by(id: params[:account_id])
     return unless @account
 
-    open_lines = Accounting::JournalEntryLine.where(account: @account, lettering_id: nil).joins(:journal_entry).merge(Accounting::JournalEntry.in_ledger)
+    open_lines = Accounting::JournalEntryLine.where(account: @account, lettering_id: nil).not_carried_forward.joins(:journal_entry).merge(Accounting::JournalEntry.in_ledger)
     @partners = Accounting::Partner.where(id: open_lines.select(:partner_id)).order(:name)
     @lines = filter(open_lines)
                .includes(:partner, :journal_entry).order(:partner_id, "accounting_journal_entries.entry_date", :id)

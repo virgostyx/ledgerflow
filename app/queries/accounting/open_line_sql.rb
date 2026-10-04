@@ -21,9 +21,9 @@ module Accounting::OpenLineSql
     "ELSE (#{net}) - SIGN(#{net}) * #{used} END"
   end
 
-  # Invoice due date, else the entry date plus the partner's payment terms, else the entry date alone.
+  # The due date a carried line kept (F10), else the invoice's, else the entry date plus the partner's payment terms, else the entry date alone.
   def self.due_date
-    "COALESCE(i.due_date, (e.entry_date + COALESCE(p.payment_terms_days, 0) * INTERVAL '1 day')::date)"
+    "COALESCE(#{LINES}.due_date, i.due_date, (e.entry_date + COALESCE(p.payment_terms_days, 0) * INTERVAL '1 day')::date)"
   end
 
   # Open-item scope (partner, invoice, lettering joined as documented above) for `kind` as of `as_of`.
@@ -36,6 +36,14 @@ module Accounting::OpenLineSql
       .joins("LEFT JOIN accounting_letterings lt ON lt.id = #{LINES}.lettering_id")
       .where("e.status IN (?) AND e.entry_date <= ?", Accounting::JournalEntry.ledger_status_values, as_of)
       .where("a.code LIKE ? AND a.reconcilable", PREFIX.fetch(kind.to_sym))
+      .where(carried_forward_sql(as_of))
+  end
+
+  # A line that the next fiscal year carries (a line of a posted entry dated up to `as_of` names it as its origin) is replaced by that line: it is not open
+  # any more, the carried one is (F10). Before the carried line's date, the original still is; once the opening entry is reversed (a recalculation), it is again.
+  def self.carried_forward_sql(as_of)
+    "NOT EXISTS (SELECT 1 FROM #{LINES} carried JOIN accounting_journal_entries ce ON ce.id = carried.journal_entry_id " \
+      "WHERE carried.origin_line_id = #{LINES}.id AND ce.status = #{Accounting::JournalEntry.statuses[:posted]} AND ce.entry_date <= #{quote(as_of)})"
   end
 
   def self.quote(value) = ApplicationRecord.connection.quote(value)

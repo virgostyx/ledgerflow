@@ -16,6 +16,10 @@ class Accounting::TrialBalanceQuery
     def closing_display_credit = closing_net.negative? ? -closing_net : BigDecimal("0")
   end
 
+  # The entries that are not the closing entry, nor the reversal of one (a year reopened and closed again: the first closing entry was taken back).
+  NOT_CLOSING = "accounting_journal_entries.source_type IS DISTINCT FROM ? AND (accounting_journal_entries.reversal_of_id IS NULL OR " \
+                "accounting_journal_entries.reversal_of_id NOT IN (SELECT ce.id FROM accounting_journal_entries ce WHERE ce.source_type = ?))".freeze
+
   # date_from: start of the period shown (defaults to the fiscal year's start, i.e. no
   # opening — matches this query's original, still-used-by-balance_sheet/income_statement
   # behavior). Lines before it become the opening balance; from it to as_of, the movements.
@@ -92,6 +96,6 @@ class Accounting::TrialBalanceQuery
         }
       )
       .where("accounting_journal_entries.entry_date <= ?", @as_of)
-      .merge(@exclude_closing ? Accounting::JournalEntry.where("accounting_journal_entries.source_type IS DISTINCT FROM ?", Accounting::JournalEntry::CLOSING_SOURCE) : Accounting::JournalEntry.all)
+      .merge(@exclude_closing ? Accounting::JournalEntry.where(NOT_CLOSING, Accounting::JournalEntry::CLOSING_SOURCE, Accounting::JournalEntry::CLOSING_SOURCE) : Accounting::JournalEntry.all)
   end
 end
