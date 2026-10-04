@@ -8,6 +8,7 @@ class Peppol::SendInvoice
         .reduce(
           Peppol::Actions::ValidateSendable,
           Peppol::Actions::BuildUblXml,
+          Peppol::Actions::ValidateUbl,
           Peppol::Actions::SendViaAccessPoint,
           Peppol::Actions::HandleDeliveryStatus
         )

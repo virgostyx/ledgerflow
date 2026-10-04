@@ -580,10 +580,13 @@ en:
   peppol:
     invoices:
       sent: "Invoice sent via Peppol network."
+      retrying: "The Access Point could not be reached: the invoice will be sent again by itself (a minute, then five minutes later)."
     errors:
       invoice_not_posted: "Only posted invoices can be sent via Peppol."
       not_customer:       "Only customer invoices and credit notes can be sent via Peppol."
       already_sent:       "This document has already been sent via Peppol (status: %{status})."
+      invalid_ubl:        "The document does not pass the checks before sending: %{problems}"
+      being_retried:      "The Access Point could not be reached: this document is waiting to be sent again by itself."
       no_sender_id:       "Set your Peppol identifier in Settings, Peppol, before sending."
       no_receiver_id:     "%{partner} has no Peppol identifier: add it to the partner, or its Belgian VAT number, before sending."
       no_vat_number:      "Your entity has no VAT number, which Peppol requires on an invoice with VAT. Set it in Settings, Entity."

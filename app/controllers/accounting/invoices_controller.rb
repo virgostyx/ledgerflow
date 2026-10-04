@@ -1,5 +1,5 @@
 class Accounting::InvoicesController < ApplicationController
-  before_action :set_invoice, only: [ :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :return_invoice, :send_peppol,
+  before_action :set_invoice, only: [ :peppol_fallback_email, :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :return_invoice, :send_peppol,
                                       :create_credit_note, :apply_credit_note, :pdf, :document, :send_email, :duplicate ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
@@ -189,7 +189,23 @@ class Accounting::InvoicesController < ApplicationController
     Accounting::AuditLog.record!(auditable: @invoice, action: "peppol_sent", user: current_user, payload: { success: result.success?, error: (result.message unless result.success?) })
 
     if result.success?
-      redirect_to accounting_invoice_path(@invoice), notice: t("peppol.invoices.sent")
+      redirect_to accounting_invoice_path(@invoice), notice: t(result[:retrying] ? "peppol.invoices.retrying" : "peppol.invoices.sent")
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: result.message
+    end
+  end
+
+  # The buyer is not reachable through Peppol (not registered, no identifier): the PDF goes to its e-mail address instead, and the audit trail says
+  # that the e-mail replaced the network.
+  def peppol_fallback_email
+    authorize @invoice, :send_peppol?
+    recipient = @invoice.partner.email
+    return redirect_to(accounting_invoice_path(@invoice), alert: t("peppol.errors.no_buyer_email", partner: @invoice.partner.name)) if recipient.blank?
+
+    result = Accounting::SendInvoiceEmail.call(invoice: @invoice, recipient: recipient, user: current_user)
+    Accounting::AuditLog.record!(auditable: @invoice, action: "peppol_fallback_email", user: current_user, payload: { recipient: recipient, success: result.success? })
+    if result.success?
+      redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.email_queued", recipient: recipient)
     else
       redirect_to accounting_invoice_path(@invoice), alert: result.message
     end

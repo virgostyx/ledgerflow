@@ -35,7 +35,9 @@ class Peppol::Actions::ValidateSendable
     return I18n.t("peppol.errors.not_customer") unless invoice.customer?
     return I18n.t("peppol.errors.invoice_not_posted") unless invoice.issued?
 
-    I18n.t("peppol.errors.already_sent", status: invoice.peppol_status) if invoice.queued? || invoice.delivered?
+    return I18n.t("peppol.errors.already_sent", status: invoice.peppol_status) if invoice.queued? || invoice.delivered?
+
+    I18n.t("peppol.errors.being_retried") if Accounting::PeppolMessage.outbound.retrying.exists?(invoice_id: invoice.id)
   end
   private_class_method :sendability_error
 end

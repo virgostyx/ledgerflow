@@ -62,6 +62,17 @@ RSpec.describe Peppol::AccessPoint::Digiteal do
       expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error, /Digiteal/)
     end
 
+    it 'tells a technical error (temporary, to be tried again) from a refusal' do
+      stub_request(:post, endpoint).to_return(status: 503, body: '{}')
+      expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::TemporaryError)
+
+      stub_request(:post, endpoint).to_timeout
+      expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::TemporaryError)
+
+      stub_request(:post, endpoint).to_return(status: 400, body: '{}')
+      expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error) { |e| expect(e).not_to be_a(Peppol::AccessPoint::TemporaryError) }
+    end
+
     it 'raises an Error on an answer that is not JSON' do
       stub_request(:post, endpoint).to_return(status: 201, body: 'oops')
       expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error, /Digiteal/)

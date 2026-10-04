@@ -2048,7 +2048,10 @@ CREATE TABLE public.accounting_peppol_messages (
     document_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    partner_id bigint
+    partner_id bigint,
+    attempts integer DEFAULT 0 NOT NULL,
+    next_attempt_at timestamp(6) without time zone,
+    ack text
 );
 
 
@@ -7100,6 +7103,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261004180000'),
 ('20261004170000'),
 ('20261004160000'),
 ('20261004150000'),

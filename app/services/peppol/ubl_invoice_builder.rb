@@ -11,8 +11,10 @@ class Peppol::UblInvoiceBuilder
     "intracom_goods" => "K", "intracom_services" => "AE", "construction_reverse_charge" => "AE", "export" => "G", "exempt" => "E"
   }.freeze
 
-  # ponytail: conformity with the official BIS 3.0 rules (Schematron) is not checked offline; see the handoff.
-  def initialize(invoice)
+  # `pdf`: the bytes of the invoice as a PDF, attached to the document (what the buyer reads; the XML is the legal original).
+  # Conformity with the official BIS 3.0 rules (Schematron) is not checked here: Peppol::UblRules checks what can be checked offline.
+  def initialize(invoice, pdf: nil)
+    @pdf = pdf
     @invoice = invoice
     @entity  = invoice.entity
     @partner = invoice.partner
@@ -38,6 +40,7 @@ class Peppol::UblInvoiceBuilder
         xml["cbc"].DocumentCurrencyCode @currency
         xml["cbc"].BuyerReference(@invoice.external_ref.presence || @invoice.invoice_number)
         build_billing_reference(xml)
+        build_attachment(xml)
 
         build_supplier_party(xml)
         build_customer_party(xml)
@@ -58,6 +61,18 @@ class Peppol::UblInvoiceBuilder
 
     xml["cac"].BillingReference do
       xml["cac"].InvoiceDocumentReference { xml["cbc"].ID @invoice.credited_invoice.invoice_number }
+    end
+  end
+
+  # BG-24, after the references and before the parties, as UBL orders its elements.
+  def build_attachment(xml)
+    return unless @pdf
+
+    xml["cac"].AdditionalDocumentReference do
+      xml["cbc"].ID @invoice.invoice_number
+      xml["cac"].Attachment do
+        xml["cbc"].EmbeddedDocumentBinaryObject(Base64.strict_encode64(@pdf), "mimeCode" => "application/pdf", "filename" => "#{@invoice.invoice_number.to_s.tr('^A-Za-z0-9._-', '_')}.pdf")
+      end
     end
   end
 

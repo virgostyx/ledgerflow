@@ -34,6 +34,11 @@
       <%= button_to 'Send via Peppol', send_peppol_accounting_invoice_path(@invoice), method: :post,
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
+    <% if @invoice.customer? && @invoice.issued? && !@invoice.opening? && !(@invoice.queued? || @invoice.delivered?) && @invoice.entity.peppol_access_point && policy(@invoice).send_peppol? && @invoice.partner.email.present? %>
+      <%= button_to 'PDF by e-mail instead', peppol_fallback_email_accounting_invoice_path(@invoice), method: :post,
+            title: 'The buyer cannot be reached through Peppol: send the PDF to its e-mail address instead (kept in the audit trail)',
+            class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
+    <% end %>
     <% if @invoice.invoice? && @invoice.issued? && !@invoice.opening? && policy(Accounting::RecurringInvoice).create? %>
       <%= link_to 'Make recurring', new_accounting_recurring_invoice_path(invoice_id: @invoice.id),
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>

@@ -19,6 +19,8 @@ class Peppol::AccessPoint::Digiteal < Peppol::AccessPoint::Base
     end
 
     JSON.parse(response.body)["id"].presence or raise Peppol::AccessPoint::Error, "Digiteal returned no document id"
+  rescue Faraday::TimeoutError, Faraday::ConnectionFailed, Faraday::ServerError => e
+    raise Peppol::AccessPoint::TemporaryError, "Digiteal cannot be reached: #{e.message}"
   rescue Faraday::Error => e
     raise Peppol::AccessPoint::Error, "Digiteal API error: #{e.message}"
   rescue JSON::ParserError => e
@@ -42,7 +44,7 @@ class Peppol::AccessPoint::Digiteal < Peppol::AccessPoint::Base
 
   def delivery_events(payload)
     kind = { "DELIVERED" => :delivered, "FAILED" => :failed }[payload["status"].to_s.upcase]
-    kind ? [ Peppol::Event.new(kind: kind, message_id: payload["document_id"], error: payload["error"]) ] : []
+    kind ? [ Peppol::Event.new(kind: kind, message_id: payload["document_id"], error: payload["error"], raw: payload.to_json) ] : []
   end
 
   def connection

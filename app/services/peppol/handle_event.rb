@@ -23,7 +23,7 @@ class Peppol::HandleEvent
     invoice = event.message_id.present? && ActsAsTenant.without_tenant { Accounting::Invoice.find_by(peppol_id: event.message_id) }
     return ctx[:ignored] = true unless invoice
 
-    ActsAsTenant.with_tenant(invoice.entity) { record(invoice, kind, event.error.presence || DEFAULT_MESSAGES.fetch(kind)) }
+    ActsAsTenant.with_tenant(invoice.entity) { record(invoice, kind, event.error.presence || DEFAULT_MESSAGES.fetch(kind), event.raw) }
     ctx[:invoice] = invoice
   end
 
@@ -46,13 +46,13 @@ class Peppol::HandleEvent
   end
 
   # Idempotent: an Access Point may send the same event twice.
-  def self.record(invoice, kind, message)
+  def self.record(invoice, kind, message, raw = nil)
     return if invoice.peppol_status == kind.to_s
 
     ApplicationRecord.transaction do
       invoice.update!(peppol_status: kind)
       invoice.peppol_events.create!(kind: kind, message: message)
-      Accounting::PeppolMessage.outbound.find_by(message_id: invoice.peppol_id)&.update!(status: kind, problems: (kind == :failed ? [ message ] : []))
+      Accounting::PeppolMessage.outbound.find_by(message_id: invoice.peppol_id)&.update!(status: kind, problems: (kind == :failed ? [ message ] : []), ack: raw.presence)
     end
   end
 

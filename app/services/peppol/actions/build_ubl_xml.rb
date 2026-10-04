@@ -5,7 +5,7 @@ class Peppol::Actions::BuildUblXml
   promises :ubl_xml
 
   executed do |ctx|
-    ctx.ubl_xml = Peppol::UblInvoiceBuilder.new(ctx.invoice).build
+    ctx.ubl_xml = Peppol::UblInvoiceBuilder.new(ctx.invoice, pdf: Accounting::InvoicePdf.new(ctx.invoice).render).build
   rescue StandardError => e
     ctx.fail!("UBL build error: #{e.message}")
   end

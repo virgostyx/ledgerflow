@@ -220,4 +220,44 @@ RSpec.describe Peppol::AccessPoint::B2brouter do
         .to raise_error(Peppol::AccessPoint::InvalidSignature)
     end
   end
+
+  # F06 step 5: a technical error is told from a refusal, so that only the first is tried again
+  describe 'errors' do
+    before { stub_request(:get, %r{#{base}/accounts/.*/invoices}).to_return(status: 200, body: { invoices: [] }.to_json, headers: json) }
+
+    [ 500, 502, 503, 429 ].each do |status|
+      it "is temporary for a #{status}" do
+        stub_request(:post, import_url).to_return(status: status, body: '{}', headers: json)
+
+        expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::TemporaryError)
+      end
+    end
+
+    it 'is temporary when the Access Point cannot be reached or is too slow' do
+      stub_request(:post, import_url).to_timeout
+      expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::TemporaryError, /cannot be reached/)
+
+      stub_request(:post, import_url).to_raise(Faraday::ConnectionFailed.new('refused'))
+      expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::TemporaryError)
+    end
+
+    it 'is a plain error, not to be retried, when the document is refused' do
+      stub_request(:post, import_url).to_return(status: 422, body: { error: { message: 'Contact: VAT is invalid' } }.to_json, headers: json)
+
+      expect { access_point.send_document(**send_args) }.to raise_error(Peppol::AccessPoint::Error) { |e| expect(e).not_to be_a(Peppol::AccessPoint::TemporaryError) }
+    end
+
+    it 'keeps the body of a delivery webhook as the acknowledgement' do
+      w = webhook('closed')
+
+      expect(access_point.parse_webhook(**w).sole.raw).to eq(w[:body])
+    end
+  end
+
+  it 'says whether it is a sandbox, by the key' do
+    keyed = ->(key, id) { described_class.new(create(:entity, peppol_access_point: :b2brouter, peppol_participant_id: id, peppol_credentials: { 'api_key' => key, 'account_id' => '1', 'webhook_secret' => 's' })) }
+
+    expect(keyed.call('test_k', '0208:0111111111').test_environment?).to be(true)
+    expect(keyed.call('live_k', '0208:0222222222').test_environment?).to be(false)
+  end
 end

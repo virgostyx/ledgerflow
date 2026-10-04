@@ -74,6 +74,7 @@ Rails.application.routes.draw do
           post :cancel_invoice
           post :return_invoice
           post :send_peppol
+          post :peppol_fallback_email
           post :create_credit_note
           post :apply_credit_note
           get  :pdf

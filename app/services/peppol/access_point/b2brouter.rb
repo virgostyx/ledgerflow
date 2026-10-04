@@ -76,7 +76,7 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
     end
     return [] unless kind
 
-    [ Peppol::Event.new(kind: kind, message_id: payload.dig("data", "invoice_id").to_s, error: payload.dig("data", "notes").presence) ]
+    [ Peppol::Event.new(kind: kind, message_id: payload.dig("data", "invoice_id").to_s, error: payload.dig("data", "notes").presence, raw: body) ]
   end
 
   private
@@ -109,8 +109,12 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
       r.params.update(params) if params
     end
     response.body.present? ? JSON.parse(response.body) : {}
-  rescue Faraday::ClientError, Faraday::ServerError => e
+  rescue Faraday::TooManyRequestsError, Faraday::ServerError => e
+    raise Peppol::AccessPoint::TemporaryError, "B2Brouter: #{api_message(e.response) || e.message}"
+  rescue Faraday::ClientError => e
     raise Peppol::AccessPoint::Error, "B2Brouter: #{api_message(e.response) || e.message}"
+  rescue Faraday::TimeoutError, Faraday::ConnectionFailed => e
+    raise Peppol::AccessPoint::TemporaryError, "B2Brouter cannot be reached: #{e.message}"
   rescue Faraday::Error, JSON::ParserError => e
     raise Peppol::AccessPoint::Error, "B2Brouter API error: #{e.message}"
   end

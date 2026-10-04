@@ -22,7 +22,7 @@ RSpec.describe Peppol::SendInvoice do
     ActiveJob::Base.queue_adapter = previous
   end
 
-  before { entity.update!(peppol_access_point: :simulator, peppol_participant_id: "0208:0999999999", vat_number: "BE0999999999") }
+  before { entity.update!(peppol_access_point: :simulator, peppol_participant_id: "0208:0999999999", vat_number: "BE0999999922") }
 
   context "with the simulator" do
     it "succeeds, keeps the message id of the Access Point and queues the invoice" do
@@ -80,6 +80,9 @@ RSpec.describe Peppol::SendInvoice do
       note = create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year, document_type: :credit_note, credited_invoice: invoice,
                     invoice_number: "VTE2025/0002")
       create(:invoice_line, invoice: note, account: create(:account, code: "700100"), quantity: 1, unit_price: "100.00", vat_rate: "21.00", position: 1)
+
+      note.compute_totals # as posting does: the totals of the document are those of its lines
+      note.save!
 
       expect(described_class.call(invoice: note)).to be_success
     end
@@ -171,7 +174,10 @@ RSpec.describe Peppol::SendInvoice do
 
     it "does not need a VAT number when nothing is taxable" do
       entity.update!(vat_number: nil)
-      invoice.lines.each { |l| l.update_columns(vat_rate: 0) }
+      invoice.lines.each { |l| l.update_columns(vat_rate: 0, vat_amount: 0, total_incl_vat: l.subtotal_excl_vat) }
+      invoice.reload.compute_totals
+      invoice.save!
+
       expect(described_class.call(invoice: invoice)).to be_success
     end
 

@@ -4,6 +4,8 @@
 module Peppol::AccessPoint
   class Error < StandardError; end
   class NotConfigured < Error; end
+  # The Access Point could not be reached or answered with a server error: worth trying again (a refusal of the document is not).
+  class TemporaryError < Error; end
   class InvalidSignature < Error; end
 
   PROVIDERS = {

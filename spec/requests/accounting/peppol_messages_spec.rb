@@ -168,7 +168,7 @@ RSpec.describe "Peppol messages", type: :request do
       inv
     end
     let!(:failed) do
-      entity.update!(peppol_access_point: :simulator, peppol_participant_id: "0208:0999999999", vat_number: "BE0999999999")
+      entity.update!(peppol_access_point: :simulator, peppol_participant_id: "0208:0999999999", vat_number: "BE0999999922")
       Accounting::PeppolMessage.create!(direction: :outbound, message_id: "OUT-1", status: :failed, invoice: invoice, problems: [ "boom" ], xml: "<Invoice/>")
     end
 
