@@ -66,11 +66,21 @@ class Peppol::AccessPoint::Simulator < Peppol::AccessPoint::Base
           <cac:PartyName><cbc:Name>Simulated Supplier</cbc:Name></cac:PartyName>
           <cac:PartyTaxScheme><cbc:CompanyID>BE0123456749</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>
         </cac:Party></cac:AccountingSupplierParty>
-        <cac:TaxTotal><cbc:TaxAmount currencyID="EUR">21.00</cbc:TaxAmount></cac:TaxTotal>
+        <cac:TaxTotal><cbc:TaxAmount currencyID="EUR">21.00</cbc:TaxAmount>
+          <cac:TaxSubtotal><cbc:TaxableAmount currencyID="EUR">100.00</cbc:TaxableAmount><cbc:TaxAmount currencyID="EUR">21.00</cbc:TaxAmount>
+            <cac:TaxCategory><cbc:ID>S</cbc:ID><cbc:Percent>21</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal>
+        </cac:TaxTotal>
         <cac:LegalMonetaryTotal>
+          <cbc:LineExtensionAmount currencyID="EUR">100.00</cbc:LineExtensionAmount>
           <cbc:TaxExclusiveAmount currencyID="EUR">100.00</cbc:TaxExclusiveAmount>
           <cbc:TaxInclusiveAmount currencyID="EUR">121.00</cbc:TaxInclusiveAmount>
+          <cbc:PayableAmount currencyID="EUR">121.00</cbc:PayableAmount>
         </cac:LegalMonetaryTotal>
+        <cac:InvoiceLine>
+          <cbc:ID>1</cbc:ID><cbc:InvoicedQuantity unitCode="C62">1</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID="EUR">100.00</cbc:LineExtensionAmount>
+          <cac:Item><cbc:Name>Simulated service</cbc:Name><cac:ClassifiedTaxCategory><cbc:ID>S</cbc:ID><cbc:Percent>21</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item>
+          <cac:Price><cbc:PriceAmount currencyID="EUR">100.00</cbc:PriceAmount></cac:Price>
+        </cac:InvoiceLine>
       </Invoice>
     XML
   end

@@ -19,15 +19,33 @@ class Peppol::ProcessMessage
     message
   end
 
+  # Reads the document, checks it, and drafts the invoice when nothing is wrong. Every problem found is kept (not only the first), the message
+  # can be worked on again once they are dealt with.
   def self.draft_invoice(message)
+    canonical = Peppol::InvoiceMapper.call(message.xml)
+    problems = Peppol::InvoiceChecks.call(canonical)
+    rate = exchange_rate_for(canonical, problems)
     fiscal_year = Accounting::FiscalYear.current
-    return message.update!(status: :needs_review, problems: [ "No open fiscal year to book the document in" ]) unless fiscal_year
+    problems << "No open fiscal year to book the document in" unless fiscal_year
+    return message.update!(status: :needs_review, problems: problems) if problems.any?
 
-    result = Peppol::ReceiveInvoice.call(xml: message.xml, fiscal_year: fiscal_year)
-    if result.success?
-      message.update!(status: :processed, invoice: result[:invoice], problems: [])
-    else
+    result = Peppol::ReceiveInvoice.call(xml: message.xml, fiscal_year: fiscal_year, exchange_rate: rate)
+    if result.failure?
       message.update!(status: :needs_review, problems: [ result.message ])
+    else
+      note = [ message.note, ("Invoice already received (same supplier and number): no second draft" if result[:duplicate]) ].compact.join(" · ").presence
+      message.update!(status: :processed, invoice: result[:invoice], problems: [], note: note)
+    end
+  rescue Peppol::InvoiceMapper::Unreadable => e
+    message.update!(status: :needs_review, problems: [ e.message ])
+  end
+
+  # EUR is 1; another currency takes the rate on file for the issue date, and never a guess: without one the message waits.
+  def self.exchange_rate_for(canonical, problems)
+    return BigDecimal("1") if canonical.currency == "EUR" || !Accounting::MoneyPresenter::SUPPORTED_CURRENCIES.include?(canonical.currency) || canonical.issue_date.nil?
+
+    Accounting::ExchangeRate.rate_for(canonical.currency, canonical.issue_date).tap do |rate|
+      problems << "No exchange rate for #{canonical.currency} on or before #{canonical.issue_date}: add it to the exchange rates, then work on the message again" unless rate
     end
   end
 
@@ -43,5 +61,5 @@ class Peppol::ProcessMessage
       message.update!(note: [ message.note, "Not kept in the document store: #{result.message}" ].compact.join(" · "))
     end
   end
-  private_class_method :draft_invoice, :keep_in_document_store
+  private_class_method :draft_invoice, :exchange_rate_for, :keep_in_document_store
 end

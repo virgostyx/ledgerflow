@@ -149,13 +149,7 @@ RSpec.describe "Peppol::Webhooks", type: :request do
 
     it "books a received invoice in the entity addressed, found from the receiver identifier" do
       entity.update!(peppol_participant_id: "0208:0555666777")
-      ubl = '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" ' \
-            'xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" ' \
-            'xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">' \
-            "<cbc:ID>IN-1</cbc:ID><cbc:IssueDate>2025-06-01</cbc:IssueDate>" \
-            "<cac:AccountingSupplierParty><cac:Party><cac:PartyName><cbc:Name>Fournisseur</cbc:Name></cac:PartyName>" \
-            "<cac:PartyTaxScheme><cbc:CompanyID>BE0123456789</cbc:CompanyID></cac:PartyTaxScheme></cac:Party></cac:AccountingSupplierParty>" \
-            "<cac:LegalMonetaryTotal><cbc:TaxInclusiveAmount>605.00</cbc:TaxInclusiveAmount></cac:LegalMonetaryTotal></Invoice>"
+      ubl = PeppolUbl.invoice(number: "IN-1", issue: "2025-06-01", due: nil, lines: [ [ 500, "S", 21 ] ])
       body = { event: "INVOICE_RECEIVED", receiver: "0208:0555666777", ubl_xml: ubl }.to_json
 
       expect {

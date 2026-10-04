@@ -6,34 +6,9 @@ require "rails_helper"
 RSpec.describe Peppol::ReceiveMessage do
   include_context "with_open_fiscal_year"
 
-  let!(:supplier) { create(:partner, :with_vat, partner_type: :supplier, name: "Fournisseur SA") } # BE0123456789
+  let!(:supplier) { create(:partner, partner_type: :supplier, name: "Fournisseur SA", vat_number: PeppolUbl::SUPPLIER_VAT) }
 
-  def ubl(number: "SUP-2026-001", root: "Invoice", vat: "BE0123456789", total: "121.00", extra: "")
-    <<~XML
-      <?xml version="1.0" encoding="UTF-8"?>
-      <#{root} xmlns="urn:oasis:names:specification:ubl:schema:xsd:#{root}-2"
-               xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-               xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-        <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0</cbc:CustomizationID>
-        <cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>
-        <cbc:ID>#{number}</cbc:ID>
-        <cbc:IssueDate>2026-09-01</cbc:IssueDate>
-        <cbc:DueDate>2026-10-01</cbc:DueDate>
-        <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
-        #{extra}
-        <cac:AccountingSupplierParty><cac:Party>
-          <cbc:EndpointID schemeID="0208">0123456789</cbc:EndpointID>
-          <cac:PartyName><cbc:Name>Fournisseur SA</cbc:Name></cac:PartyName>
-          <cac:PartyTaxScheme><cbc:CompanyID>#{vat}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>
-        </cac:Party></cac:AccountingSupplierParty>
-        <cac:TaxTotal><cbc:TaxAmount currencyID="EUR">21.00</cbc:TaxAmount></cac:TaxTotal>
-        <cac:LegalMonetaryTotal>
-          <cbc:TaxExclusiveAmount currencyID="EUR">100.00</cbc:TaxExclusiveAmount>
-          <cbc:TaxInclusiveAmount currencyID="EUR">#{total}</cbc:TaxInclusiveAmount>
-        </cac:LegalMonetaryTotal>
-      </#{root}>
-    XML
-  end
+  def ubl(number: "SUP-2026-001", root: "Invoice", vat: PeppolUbl::SUPPLIER_VAT, **options) = PeppolUbl.invoice(number: number, root: root, vat: vat, **options)
 
   def event(xml: ubl, message_id: "AP-MSG-1", **attrs) = Peppol::Event.new(kind: :received, message_id: message_id, receiver: "0208:0999999999", xml: xml, **attrs)
   def take_in(**attrs) = described_class.call(event: event(**attrs))
@@ -45,7 +20,7 @@ RSpec.describe Peppol::ReceiveMessage do
 
       message = messages.sole
       expect(result[:message]).to eq(message)
-      expect(message).to have_attributes(message_id: "AP-MSG-1", receiver_id: "0208:0999999999", sender_id: "0208:0123456789", document_type: "invoice",
+      expect(message).to have_attributes(message_id: "AP-MSG-1", receiver_id: "0208:0999999999", sender_id: "0208:0123456749", document_type: "invoice",
                                          process: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0", status: "processed", problems: [])
       expect(message.xml).to include("SUP-2026-001")
       expect(message.invoice).to be_draft
@@ -97,7 +72,7 @@ RSpec.describe Peppol::ReceiveMessage do
 
       expect(result).to be_success
       expect(messages.sole).to have_attributes(status: "needs_review", invoice_id: nil)
-      expect(messages.sole.problems.join).to include("Missing required")
+      expect(messages.sole.problems.join).to include("no number")
       expect(messages.sole.xml).to include("<nothing/>")
       expect(Accounting::Invoice.count).to eq(0)
     end

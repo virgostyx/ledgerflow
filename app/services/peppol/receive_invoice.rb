@@ -6,58 +6,60 @@ class Peppol::ReceiveInvoice
   # ponytail: no scan or size policy beyond this; a larger embedded file is simply not kept (the XML still is).
   PDF_MAX_BYTES = 15.megabytes
 
-  def self.call(xml:, fiscal_year:)
-    doc = Nokogiri::XML(xml)
-    doc.remove_namespaces!
-
-    invoice_number = doc.at_xpath("//ID")&.text
-    issue_date     = doc.at_xpath("//IssueDate")&.text
-    due_date       = doc.at_xpath("//DueDate")&.text
-    currency       = doc.at_xpath("//DocumentCurrencyCode")&.text || "EUR"
-    supplier_vat   = doc.at_xpath("//AccountingSupplierParty//CompanyID")&.text
-    subtotal       = doc.at_xpath("//LegalMonetaryTotal/TaxExclusiveAmount")&.text
-    total_incl     = doc.at_xpath("//LegalMonetaryTotal/TaxInclusiveAmount")&.text
-    vat_amount     = doc.at_xpath("//TaxTotal/TaxAmount")&.text
-
-    validate_required!(invoice_number, issue_date, total_incl)
+  # `exchange_rate`: the rate of a document that is not in euros (never guessed: Peppol::ProcessMessage finds it, or the message waits).
+  # => ctx[:invoice], ctx[:duplicate] (an invoice with the same supplier and number was already there: it is returned, no second draft)
+  def self.call(xml:, fiscal_year:, exchange_rate: nil)
+    canonical = Peppol::InvoiceMapper.call(xml)
+    totals = canonical.totals
+    validate_required!(canonical.number, canonical.issue_date, totals.tax_inclusive)
+    raise ArgumentError, "The exchange rate of #{canonical.currency} is needed" if canonical.currency != "EUR" && exchange_rate.blank?
 
     invoice = nil
+    duplicate = false
     ApplicationRecord.transaction(requires_new: true) do
-      partner = Accounting::Partner.find_by(vat_number: supplier_vat)
-      partner ||= Accounting::Partner.create!(
-        name: doc.at_xpath("//AccountingSupplierParty//PartyName/Name")&.text || supplier_vat,
-        partner_type: :supplier,
-        vat_number:   supplier_vat,
-        country:      "BE"
-      )
-
-      invoice = already_received(partner, invoice_number) || Accounting::Invoice.create!(
+      partner = supplier_partner(canonical.supplier)
+      invoice = already_received(partner, canonical.number)
+      duplicate = invoice.present?
+      invoice ||= Accounting::Invoice.create!(
         invoice_type:    :supplier,
-        document_type:   doc.root.name == "CreditNote" ? :credit_note : :invoice,
-        invoice_date:    Date.parse(issue_date),
-        due_date:        due_date.present? ? Date.parse(due_date) : nil,
-        currency:        currency,
-        external_ref:    invoice_number,
-        supplier_reference: invoice_number,
-        order_reference: text_of(doc.at_xpath("//OrderReference/ID")),
-        buyer_reference: text_of(doc.at_xpath("/*/BuyerReference")),
-        subtotal_excl_vat: subtotal.present? ? BigDecimal(subtotal) : BigDecimal("0"),
-        vat_amount:      vat_amount.present? ? BigDecimal(vat_amount) : BigDecimal("0"),
-        total_incl_vat:  BigDecimal(total_incl),
+        document_type:   canonical.kind == :credit_note ? :credit_note : :invoice,
+        invoice_date:    canonical.issue_date,
+        due_date:        canonical.due_date,
+        currency:        canonical.currency,
+        exchange_rate:   exchange_rate || 1,
+        external_ref:    canonical.number,
+        supplier_reference: canonical.number,
+        order_reference: canonical.references[:order],
+        buyer_reference: canonical.references[:buyer],
+        subtotal_excl_vat: totals.tax_exclusive || BigDecimal("0"),
+        vat_amount:      canonical.tax_total || BigDecimal("0"),
+        total_incl_vat:  totals.tax_inclusive,
         partner:         partner,
         fiscal_year:     fiscal_year,
         status:          :draft
       ).tap do |created|
-        keep_documents(created, xml, doc, invoice_number)
+        keep_documents(created, xml, Nokogiri::XML(xml).tap(&:remove_namespaces!), canonical.number)
         announce(created)
       end
     end
 
-    LightService::Context.make(invoice: invoice)
+    LightService::Context.make(invoice: invoice, duplicate: duplicate)
   rescue StandardError => e
     ctx = LightService::Context.make
     ctx.fail!("Receive error: #{e.message}")
     ctx
+  end
+
+  # The supplier already known by its VAT number (or, with none, by its exact name), else a new one, with the country and the address of the
+  # document. A VAT number that is not an EU one is not kept (the partner would be refused): the supplier is still created.
+  def self.supplier_partner(supplier)
+    vat = supplier.vat.presence
+    found = vat && Accounting::Partner.find_by(vat_number: vat)
+    found ||= Accounting::Partner.supplier.find_by("lower(name) = ?", supplier.name.to_s.downcase) if vat.nil? && supplier.name.present?
+    found || Accounting::Partner.create!(
+      name: supplier.name.presence || vat || "Unknown supplier", partner_type: :supplier, country: supplier.country.presence || "BE",
+      vat_number: (vat if vat && Accounting::Partner.valid_vat_number?(vat)), street: supplier.street, city: supplier.city, zip: supplier.zip
+    )
   end
 
   def self.validate_required!(*values)
@@ -99,5 +101,5 @@ class Peppol::ReceiveInvoice
   end
 
   def self.file_name(name) = name.to_s.gsub(/[^\w.\-]+/, "_")
-  private_class_method :validate_required!, :already_received, :announce, :text_of, :keep_documents, :embedded_pdf, :file_name
+  private_class_method :validate_required!, :already_received, :announce, :text_of, :keep_documents, :embedded_pdf, :file_name, :supplier_partner
 end

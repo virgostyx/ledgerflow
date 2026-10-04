@@ -69,27 +69,7 @@ RSpec.describe Peppol::HandleEvent do
     expect { handle(kind: :delivered, message_id: 'MSG-1') }.not_to change { invoice.peppol_events.count }
   end
   describe 'a received document' do
-    let(:xml) do
-      <<~XML
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-                 xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-                 xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-          <cbc:ID>INCOMING-001</cbc:ID>
-          <cbc:IssueDate>2025-06-01</cbc:IssueDate>
-          <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
-          <cac:AccountingSupplierParty><cac:Party>
-            <cac:PartyName><cbc:Name>Fournisseur Externe</cbc:Name></cac:PartyName>
-            <cac:PartyTaxScheme><cbc:CompanyID>BE0123456789</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>
-          </cac:Party></cac:AccountingSupplierParty>
-          <cac:TaxTotal><cbc:TaxAmount currencyID="EUR">105.00</cbc:TaxAmount></cac:TaxTotal>
-          <cac:LegalMonetaryTotal>
-            <cbc:TaxExclusiveAmount currencyID="EUR">500.00</cbc:TaxExclusiveAmount>
-            <cbc:TaxInclusiveAmount currencyID="EUR">605.00</cbc:TaxInclusiveAmount>
-          </cac:LegalMonetaryTotal>
-        </Invoice>
-      XML
-    end
+    let(:xml) { PeppolUbl.invoice(number: 'INCOMING-001', name: 'Fournisseur Externe', issue: '2025-06-01', due: nil, lines: [ [ 500, 'S', 21 ] ]) }
 
     before { entity.update!(peppol_participant_id: '0208:0555666777') }
 
