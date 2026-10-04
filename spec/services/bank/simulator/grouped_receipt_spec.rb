@@ -22,7 +22,7 @@ RSpec.describe Bank::Simulator::GroupedReceipt, type: :service do
 
     tx = Accounting::BankTransaction.sole
     expect(tx.amount).to eq(BigDecimal('1500'))
-    expect(Accounting::MatchBankTransaction.call(transaction: tx)).to have_attributes(kind: :invoices, target: invoices)
+    expect(Accounting::MatchBankTransaction.call(transaction: tx)).to have_attributes(kind: :invoices, target: match_array(invoices))
   end
 
   it 'refuses fewer than two invoices' do

@@ -18,8 +18,48 @@
 <% end %>
 
 <% if @account %>
+  <%= form_with url: new_accounting_lettering_path, method: :get, class: 'mb-4 flex flex-wrap items-end gap-3 text-sm' do |f| %>
+    <%= hidden_field_tag :account_id, @account.id %>
+    <label>Partner <%= f.select :partner_id, @partners.map { |p| [p.name, p.id] }, { selected: params[:partner_id], include_blank: 'All' }, class: 'block rounded-md border border-gray-300 px-2 py-1' %></label>
+    <label>From (EUR) <%= f.number_field :min_amount, value: params[:min_amount], step: '0.01', min: 0, class: 'block w-28 rounded-md border border-gray-300 px-2 py-1' %></label>
+    <label>To (EUR) <%= f.number_field :max_amount, value: params[:max_amount], step: '0.01', min: 0, class: 'block w-28 rounded-md border border-gray-300 px-2 py-1' %></label>
+    <label>Older than (days) <%= f.number_field :older_than, value: params[:older_than], min: 0, class: 'block w-24 rounded-md border border-gray-300 px-2 py-1' %></label>
+    <label>State <%= f.select :state, [['All', ''], ['Open', 'open'], ['Partly settled', 'partly']], { selected: params[:state] }, class: 'block rounded-md border border-gray-300 px-2 py-1' %></label>
+    <%= f.submit 'Filter', class: 'px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer' %>
+  <% end %>
+
+  <div class="mb-6">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-sm font-semibold text-gray-700">Suggestions</h2>
+      <%= button_to 'Refresh suggestions', accounting_lettering_suggestions_path(account_id: @account.id), method: :post, class: 'text-sm text-primary-700 hover:underline cursor-pointer' %>
+    </div>
+    <% if @suggestions.any? %>
+      <%# the checkboxes belong to this form by attribute: the Accept and Reject buttons are forms of their own, which cannot be nested %>
+      <%= form_with url: preview_accounting_lettering_suggestions_path, method: :post, id: 'preview_suggestions' do %>
+        <%= submit_tag 'Preview the ticked suggestions', class: 'px-3 py-1 bg-gray-100 text-sm rounded-md hover:bg-gray-200 cursor-pointer mb-2' %>
+      <% end %>
+      <div>
+        <ul class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm mb-2">
+          <% @suggestions.each do |suggestion| %>
+            <li class="px-4 py-2 flex items-center gap-3">
+              <%= check_box_tag 'suggestion_ids[]', suggestion.id, false, id: "suggestion_ids_#{suggestion.id}", form: 'preview_suggestions' %>
+              <span class="font-semibold w-10"><%= suggestion.score %></span>
+              <span class="text-gray-500 w-16">rule <%= suggestion.rule %></span>
+              <span class="flex-1"><%= suggestion.partner&.name %> — <%= suggestion.line_ids.map { |id| @suggestion_lines[id]&.journal_entry&.reference }.compact.join(' · ') %>
+                <%= '(with a rounding entry)' if suggestion.rule == 6 %></span>
+              <%= button_to 'Accept', accept_accounting_lettering_suggestion_path(suggestion), method: :post, form: { class: 'shrink-0' }, class: 'text-primary-700 hover:underline cursor-pointer' %>
+              <%= button_to 'Reject', reject_accounting_lettering_suggestion_path(suggestion), method: :post, form: { class: 'shrink-0' }, class: 'text-gray-500 hover:underline cursor-pointer' %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-500">No suggestion for this account.</p>
+    <% end %>
+  </div>
+
   <% open_amounts = @lines.index_with(&:open_amount).transform_keys(&:id) %>
-  <%= form_with url: accounting_letterings_path, method: :post, data: { controller: 'lettering-total' } do |f| %>
+  <%= form_with url: accounting_letterings_path, method: :post, data: { controller: 'lettering-total', lettering_total_tolerance_value: ActsAsTenant.current_tenant.bank_rounding_tolerance.to_s, action: 'keydown@window->lettering-total#key' } do |f| %>
     <%= hidden_field_tag :account_id, @account.id %>
     <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto mb-4">
       <table class="w-full text-sm">
@@ -39,7 +79,7 @@
           <% @lines.each do |line| %>
             <tr>
               <td class="px-4 py-2"><%= check_box_tag 'line_ids[]', line.id, false, id: "line_ids_#{line.id}",
-                    data: { debit: line.debit, credit: line.credit, action: 'lettering-total#update', lettering_total_target: 'box' } %></td>
+                    data: { debit: line.debit, credit: line.credit, partner: line.partner_id, action: 'lettering-total#update', lettering_total_target: 'box' } %></td>
               <td class="px-4 py-2"><%= l line.journal_entry.entry_date %></td>
               <td class="px-4 py-2"><%= link_to line.journal_entry.reference, accounting_journal_entry_path(line.journal_entry), class: 'text-primary-600 hover:underline' %></td>
               <td class="px-4 py-2"><%= line.partner&.name %></td>
@@ -60,8 +100,20 @@
             class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed' %>
       <%= f.submit 'Allocate partially', formaction: accounting_line_allocations_path, data: { lettering_total_target: 'allocate' },
             class: 'px-4 py-2 bg-gray-100 text-sm font-medium rounded-md hover:bg-gray-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed' %>
+      <% if Accounting::CreateRoundingAccounts.ready? %>
+        <%= f.submit 'Letter with a rounding entry', formaction: accounting_lettering_write_offs_path, data: { lettering_total_target: 'rounding' },
+              title: 'Books the small difference on the rounding account, as a draft entry',
+              class: 'px-4 py-2 bg-gray-100 text-sm font-medium rounded-md hover:bg-gray-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed' %>
+      <% end %>
       <span class="text-sm text-gray-600">Difference: <strong data-lettering-total-target="difference">0.00</strong></span>
     </div>
+    <% if policy(Accounting::Lettering).cross_partner? %>
+      <div class="mt-3 flex items-center gap-3 text-sm text-gray-700">
+        <label class="flex items-center gap-1"><%= check_box_tag :cross_partner, '1', false %> Letter lines of different partners (correction)</label>
+        <%= text_field_tag :reason, nil, placeholder: 'Reason (required for a correction)', class: 'border rounded px-2 py-1 text-sm w-72' %>
+      </div>
+    <% end %>
+    <p class="mt-3 text-xs text-gray-400">Keys: j / k move, x ticks the line, n next partner, l letters.</p>
   <% end %>
 
   <% if @allocations.any? %>

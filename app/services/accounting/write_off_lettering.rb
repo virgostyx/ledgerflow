@@ -6,7 +6,7 @@
 class Accounting::WriteOffLettering
   def self.call(lines:, user: nil)
     ctx = LightService::Context.make(lines: lines)
-    lines = Accounting::JournalEntryLine.where(id: Array(lines).map(&:id)).order(:id).includes(:journal_entry, :account).to_a
+    lines = Accounting::JournalEntryLine.where(id: Array(lines).map(&:id)).order(:id).includes(:account, :partner, journal_entry: :fiscal_year).to_a
     ApplicationRecord.transaction do
       Accounting::PeriodLock.serialize_for_entity!
       difference = lines.sum(&:debit) - lines.sum(&:credit)

@@ -85,7 +85,9 @@
             <td class="px-4 py-2 text-right"><%= row.debit.positive? ? number_to_currency(row.debit, unit: "€") : "" %></td>
             <td class="px-4 py-2 text-right"><%= row.credit.positive? ? number_to_currency(row.credit, unit: "€") : "" %></td>
             <td class="px-4 py-2 text-right font-semibold"><%= number_to_currency(row.running_balance, unit: "€") %></td>
-            <td class="px-4 py-2 font-mono text-xs"><%= row.lettering_code %></td>
+            <td class="px-4 py-2 font-mono text-xs">
+              <%= link_to row.lettering_code, accounting_lettering_path(row.lettering_id), class: "text-primary-700 hover:underline", title: "History of this lettering" if row.lettering_id %>
+            </td>
           </tr>
         <% end %>
         <% if @rows.empty? %>

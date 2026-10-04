@@ -135,7 +135,18 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :letterings, only: [ :new, :create, :destroy ]
+      resources :letterings, only: [ :new, :create, :destroy, :show ]
+      resources :lettering_write_offs, only: :create
+      resources :lettering_suggestions, only: :create do
+        member do
+          post :accept
+          post :reject
+        end
+        collection do
+          post :preview
+          post :accept_batch
+        end
+      end
       resources :line_allocations, only: [ :create, :destroy ]
 
       resources :fiscal_years do

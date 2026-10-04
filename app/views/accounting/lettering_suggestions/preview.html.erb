@@ -1,0 +1,34 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Lettering', path: new_accounting_lettering_path },
+    { label: 'Preview' }
+  ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: 'Confirm the suggestions') %>
+
+<% if @suggestions.empty? %>
+  <p class="text-sm text-gray-600">Nothing to confirm: these suggestions are gone or already decided.</p>
+<% else %>
+  <p class="text-sm text-gray-600 mb-4">These letterings will be made. Nothing has been changed yet.</p>
+  <ul class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm mb-4">
+    <% @suggestions.each do |suggestion| %>
+      <li class="px-4 py-2">
+        <strong>Score <%= suggestion.score %></strong> — rule <%= suggestion.rule %> — <%= suggestion.partner&.name %> (<%= suggestion.account.code %>)
+        <%= 'with a rounding entry' if suggestion.rule == 6 %>
+        <ul class="text-gray-500">
+          <% suggestion.line_ids.each do |id| %>
+            <% line = @lines[id] %>
+            <li><%= line.journal_entry.reference %> — <%= number_with_precision(line.debit.positive? ? line.debit : -line.credit, precision: 2) %></li>
+          <% end %>
+        </ul>
+      </li>
+    <% end %>
+  </ul>
+  <%= form_with url: accept_batch_accounting_lettering_suggestions_path, method: :post do %>
+    <% @suggestions.each do |suggestion| %><%= hidden_field_tag 'suggestion_ids[]', suggestion.id, id: nil %><% end %>
+    <%= submit_tag 'Confirm', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer' %>
+    <%= link_to 'Cancel', new_accounting_lettering_path(account_id: @suggestions.first.account_id), class: 'ml-3 text-sm text-gray-600 hover:underline' %>
+  <% end %>
+<% end %>
