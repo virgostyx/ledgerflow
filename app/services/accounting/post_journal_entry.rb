@@ -16,6 +16,7 @@ class Accounting::PostJournalEntry
         Accounting::Actions::WriteAuditLog,
         Accounting::Actions::FinalizeBankMatch,
         Accounting::Actions::FinalizeLetteringWriteOff,
+        Accounting::Actions::MarkReversedOriginal,
         Accounting::Actions::BroadcastTurboUpdate
       )
       raise ActiveRecord::Rollback if result.failure?

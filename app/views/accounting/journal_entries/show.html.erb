@@ -19,11 +19,8 @@
             class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
     <% end %>
     <% if @entry.posted? && policy(@entry).reverse? %>
-      <%= form_with url: reverse_accounting_journal_entry_path(@entry), method: :post, class: 'flex items-center gap-2',
-            data: { turbo_confirm: 'Reverse this entry? A counter-entry will be posted.' } do %>
-        <%= text_field_tag :reason, nil, required: true, placeholder: 'Reason for the reversal', class: 'form-input text-sm' %>
-        <%= submit_tag 'Reverse', class: 'px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50 transition-colors' %>
-      <% end %>
+      <%= link_to 'Reverse…', reversal_accounting_journal_entry_path(@entry),
+            class: 'px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50 transition-colors' %>
     <% end %>
     <% if @entry.draft? && policy(@entry).update? %>
       <%= link_to 'Edit', edit_accounting_journal_entry_path(@entry),
@@ -38,6 +35,12 @@
 
 <% if @entry.description.present? %>
   <p class="text-sm text-gray-600 mb-6"><%= @entry.description %></p>
+<% end %>
+<% if @entry.auto_reverse_on %>
+  <p class="text-sm text-gray-600 mb-6">A draft reversal is planned for <%= l @entry.auto_reverse_on %>.</p>
+<% end %>
+<% if @entry.vat_regularisation %>
+  <p class="text-sm text-amber-700 mb-6">VAT regularisation: this reversal is dated after the filed VAT period of the entry it reverses.</p>
 <% end %>
 
 <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">

@@ -9,6 +9,10 @@ production:
     class: Accounting::ConsistencyCheckJob
     queue: default
     schedule: every day at 2am
+  auto_reverse_entries:
+    class: Accounting::AutoReverseEntriesJob
+    queue: default
+    schedule: every day at 4am
   suggest_letterings:
     class: Accounting::SuggestLetteringsJob
     queue: default

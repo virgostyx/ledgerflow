@@ -7,7 +7,7 @@ class Accounting::CancelInvoice
     return ctx.tap { |c| c.fail!(refusal) } if refusal
 
     ApplicationRecord.transaction do
-      reversed = Accounting::ReverseJournalEntry.call(entry: invoice.journal_entry, from_source: true)
+      reversed = Accounting::ReverseJournalEntry.call(entry: invoice.journal_entry, from_source: true, date: invoice.journal_entry.entry_date) # strict, as before F07
       if reversed.failure?
         ctx.fail!(reversed.message)
         raise ActiveRecord::Rollback

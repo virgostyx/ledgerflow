@@ -50,6 +50,7 @@ Rails.application.routes.draw do
         member do
           post :post_entry
           post :reverse
+          get  :reversal
         end
       end
 

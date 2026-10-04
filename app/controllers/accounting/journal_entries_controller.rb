@@ -1,5 +1,5 @@
 class Accounting::JournalEntriesController < ApplicationController
-  before_action :set_entry, only: [ :show, :edit, :update, :post_entry, :reverse ]
+  before_action :set_entry, only: [ :show, :edit, :update, :post_entry, :reverse, :reversal ]
 
   def index
     @pagy, @entries = pagy(policy_scope(Accounting::JournalEntry).includes(:journal).filter_by(filter_params).order(entry_date: :desc, created_at: :desc).autofilter(**autofilter_params))
@@ -89,12 +89,19 @@ class Accounting::JournalEntriesController < ApplicationController
     end
   end
 
+  # Preview of the reversal: inverse lines, date it will have, warnings (period, VAT, closed year, lettering).
+  def reversal
+    authorize @entry, :reverse?
+    @preview = Accounting::ReverseJournalEntry.preview(@entry, date: params[:date].presence)
+  end
+
   def reverse
     authorize @entry, :reverse?
-    result = Accounting::ReverseJournalEntry.call(entry: @entry, reason: params[:reason])
+    result = Accounting::ReverseJournalEntry.call(entry: @entry, reason: params[:reason], date: params[:date].presence,
+                                                  confirm_unletter: params[:confirm_unletter] == "1", user: current_user)
     if result.success?
       redirect_to accounting_journal_entry_path(result[:reversal]),
-                  notice: t("accounting.journal_entries.reversed", reference: result[:reversal].reference)
+                  notice: ([ t("accounting.journal_entries.reversed", reference: result[:reversal].reference) ] + result[:warnings]).join(" ")
     else
       redirect_to accounting_journal_entry_path(@entry), alert: result.message
     end
@@ -108,7 +115,7 @@ class Accounting::JournalEntriesController < ApplicationController
 
   def entry_params
     params.require(:accounting_journal_entry).permit(
-      :journal_id, :fiscal_year_id, :entry_date, :description,
+      :journal_id, :fiscal_year_id, :entry_date, :description, :auto_reverse_on,
       lines_attributes: [
         :id, :account_id, :partner_id, :debit, :credit, :label, :vat_code, :vat_amount, :_destroy,
         analytical_annotations_attributes: [ :id, :analytical_axis_id, :analytical_account_id, :_destroy ]

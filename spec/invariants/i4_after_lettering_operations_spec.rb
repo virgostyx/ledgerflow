@@ -26,7 +26,7 @@ RSpec.describe "Invariant I4 — after lettering operations", type: :invariant d
     end
   end
 
-  def open_lines = Accounting::JournalEntryLine.where(account: account_440, lettering_id: nil).joins(:journal_entry).merge(Accounting::JournalEntry.posted).to_a
+  def open_lines = Accounting::JournalEntryLine.where(account: account_440, lettering_id: nil).joins(:journal_entry).merge(Accounting::JournalEntry.posted).order(:id).to_a
 
   def aged_total = Accounting::AgedBalanceQuery.totals(Accounting::AgedBalanceQuery.new(kind: :supplier, as_of: fiscal_year.end_date).call).total
 
@@ -51,14 +51,14 @@ RSpec.describe "Invariant I4 — after lettering operations", type: :invariant d
     when 1
       credit = mine.find(&:credit?) and debit = mine.find(&:debit?)
       Accounting::AllocateLines.call(lines: [ credit, debit ]) if credit && debit
-    when 2 then (allocation = Accounting::LineAllocation.all.sample(random: rng)) && Accounting::RemoveAllocation.call(allocation: allocation)
-    when 3 then (lettering = Accounting::Lettering.all.sample(random: rng)) && Accounting::UnletterLines.call(lettering: lettering, reason: "random", user: user)
+    when 2 then (allocation = Accounting::LineAllocation.order(:id).to_a.sample(random: rng)) && Accounting::RemoveAllocation.call(allocation: allocation)
+    when 3 then (lettering = Accounting::Lettering.order(:id).to_a.sample(random: rng)) && Accounting::UnletterLines.call(lettering: lettering, reason: "random", user: user)
     when 4
       result = Accounting::WriteOffLettering.call(lines: mine.sample(2, random: rng), user: user)
       Accounting::PostJournalEntry.call(entry: result[:entry]) if result.success?
     when 5
       Accounting::SuggestLetterings.call
-      (suggestion = Accounting::LetteringSuggestion.proposed.to_a.sample(random: rng)) && Accounting::AcceptLetteringSuggestion.call(suggestion: suggestion, user: user)
+      (suggestion = Accounting::LetteringSuggestion.proposed.order(:id).to_a.sample(random: rng)) && Accounting::AcceptLetteringSuggestion.call(suggestion: suggestion, user: user)
       Accounting::LetteringWriteOff.pending.each { |w| Accounting::PostJournalEntry.call(entry: w.journal_entry) } if rng.rand(2).zero?
     else Accounting::LetterLines.call(lines: lines.sample(2, random: rng), user: user)
     end
@@ -81,7 +81,7 @@ RSpec.describe "Invariant I4 — after lettering operations", type: :invariant d
     expect(Accounting::AgedBalanceQuery.new(kind: :supplier, as_of: fiscal_year.end_date).call.map(&:to_h)).to eq(before)
   end
 
-  [ 1, 2, 3 ].each do |seed|
+  (ENV["I4_SEEDS"] ? ENV["I4_SEEDS"].split(",").map(&:to_i) : [ 1, 2, 3 ]).each do |seed|
     it "holds after every operation of a random sequence (seed #{seed})" do
       rng = Random.new(seed)
       partners.each do |partner|

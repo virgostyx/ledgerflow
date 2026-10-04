@@ -89,6 +89,10 @@ BEGIN
   IF current_setting('ledgerflow.lock_override', true) = 'on' THEN
     RETURN COALESCE(NEW, OLD);
   END IF;
+  IF TG_OP = 'UPDATE' AND OLD.status = 1 AND NEW.status = 2
+   AND (to_jsonb(NEW) - 'status' - 'updated_at') = (to_jsonb(OLD) - 'status' - 'updated_at') THEN
+    RETURN NEW;
+  END IF;
   IF TG_OP IN ('UPDATE', 'DELETE') AND OLD.status <> 0 AND date_in_locked_period(OLD.entity_id, OLD.entry_date) THEN
     RAISE EXCEPTION 'entry % is validated and inside a locked period', OLD.id USING ERRCODE = 'raise_exception';
   END IF;
@@ -1413,7 +1417,10 @@ CREATE TABLE public.accounting_journal_entries (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     entity_id bigint NOT NULL,
-    created_by_id bigint
+    created_by_id bigint,
+    auto_reverse_on date,
+    reversal_reason character varying,
+    vat_regularisation boolean DEFAULT false NOT NULL
 );
 
 
@@ -3732,6 +3739,13 @@ CREATE INDEX idx_documents_integrity_failed ON public.accounting_documents USING
 --
 
 CREATE INDEX idx_documents_search_blob ON public.accounting_documents USING gin (search_blob public.gin_trgm_ops);
+
+
+--
+-- Name: idx_entries_auto_reverse_on; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_entries_auto_reverse_on ON public.accounting_journal_entries USING btree (auto_reverse_on) WHERE (auto_reverse_on IS NOT NULL);
 
 
 --
@@ -6328,6 +6342,8 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261004110000'),
+('20261004100000'),
 ('20261003290000'),
 ('20261003280000'),
 ('20261003270000'),

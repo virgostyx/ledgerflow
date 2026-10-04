@@ -56,7 +56,7 @@ class Banking::UndoMatch
   end
 
   def self.reverse(transaction, entry, reason)
-    reversed = Accounting::ReverseJournalEntry.call(entry: entry, reason: reason)
+    reversed = Accounting::ReverseJournalEntry.call(entry: entry, reason: reason, date: entry.entry_date) # strict: a locked period still refuses an undo (F02)
     return reversed.message if reversed.failure?
 
     transaction.update!(status: :pending, journal_entry: nil, match_data: {})

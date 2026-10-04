@@ -1,0 +1,61 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Journal Entries', path: accounting_journal_entries_path },
+    { label: @entry.reference, path: accounting_journal_entry_path(@entry) },
+    { label: 'Reverse' }
+  ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Reverse #{@entry.reference}", back_path: accounting_journal_entry_path(@entry), back_text: 'Entry') %>
+
+<% placement = @preview[:placement] %>
+<% if @preview[:problem] %>
+  <p class="mb-4 text-sm text-red-700"><%= @preview[:problem] %></p>
+<% end %>
+<% placement&.warnings&.each do |warning| %>
+  <p class="mb-2 text-sm text-amber-700"><%= warning %></p>
+<% end %>
+
+<h2 class="text-sm font-semibold text-gray-700 mt-4 mb-2">The counter-entry (lines reversed)</h2>
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 border-b border-gray-200">
+      <tr>
+        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Account</th>
+        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Partner</th>
+        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Debit</th>
+        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Credit</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      <% @entry.lines.each do |line| %>
+        <tr>
+          <td class="px-4 py-2"><%= line.account.full_label %></td>
+          <td class="px-4 py-2"><%= line.partner&.name %></td>
+          <td class="px-4 py-2 text-right"><%= number_with_precision(line.credit, precision: 2) if line.credit.positive? %></td>
+          <td class="px-4 py-2 text-right"><%= number_with_precision(line.debit, precision: 2) if line.debit.positive? %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<%= form_with url: reverse_accounting_journal_entry_path(@entry), method: :post, class: 'space-y-3 max-w-xl' do %>
+  <div>
+    <%= label_tag :reason, 'Reason (required)', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+    <%= text_field_tag :reason, nil, required: true, class: 'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm' %>
+  </div>
+  <div>
+    <%= label_tag :date, 'Date of the reversal', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+    <%= date_field_tag :date, params[:date].presence || placement&.date, class: 'rounded-md border border-gray-300 px-3 py-2 text-sm' %>
+    <span class="text-xs text-gray-400">Must be in an open period.</span>
+  </div>
+  <% if @preview[:lettered] %>
+    <label class="flex items-start gap-2 text-sm text-amber-800">
+      <%= check_box_tag :confirm_unletter, '1', false, class: 'mt-1' %>
+      Some lines of this entry are lettered or partly allocated: I confirm that they are unlettered first, with the same reason.
+    </label>
+  <% end %>
+  <%= submit_tag 'Reverse the entry', class: 'px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50 cursor-pointer' %>
+<% end %>
