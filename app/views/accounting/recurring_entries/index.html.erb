@@ -1,0 +1,63 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: 'Dashboard', path: accounting_root_path }, { label: 'Recurring entries' } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: 'Recurring entries') do |header| %>
+  <% header.with_actions do %>
+    <%= link_to 'Entry templates', accounting_entry_templates_path, class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50' %>
+    <%= link_to 'New recurring entry', new_accounting_recurring_entry_path, class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700' %>
+  <% end %>
+<% end %>
+
+<% if @monthly.any? %>
+  <p class="text-sm text-gray-600 mb-4">Next twelve months, all schedules:
+    <%= @monthly.map { |month, total| "#{l(month, format: '%b %Y')} #{number_with_precision(total, precision: 2, delimiter: ',')}" }.join(' · ') %></p>
+<% end %>
+
+<div class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm">
+  <% @recurrings.each do |recurring| %>
+    <% last_run = @last_runs[recurring.id] %>
+    <div class="px-4 py-3">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <strong><%= recurring.name %></strong>
+          <span class="text-gray-500">— <%= recurring.entry_template.name %> — <%= recurring.frequency %>, <%= recurring.day_of_month ? "day #{recurring.day_of_month}" : 'last day' %> —
+            <%= recurring.mode_post? ? 'posts by itself' : 'draft' %><%= ' — feeds the cash forecast' if recurring.feeds_cash_forecast %></span>
+        </div>
+        <span class="text-xs px-2 py-1 rounded-full <%= { 'active' => 'bg-emerald-100 text-emerald-800', 'paused' => 'bg-gray-100 text-gray-700', 'finished' => 'bg-gray-100 text-gray-700', 'blocked' => 'bg-red-100 text-red-800' }[recurring.status] %>"><%= recurring.status.humanize %></span>
+      </div>
+      <p class="mt-1 text-gray-600">Next due <strong><%= l recurring.next_due_on %></strong>
+        <% if last_run %> — last run <%= l last_run.due_on %>: <%= last_run.status.humanize %><%= " (#{last_run.error})" if last_run.error.present? %><% end %></p>
+      <% if recurring.blocked? %><p class="mt-1 text-red-700"><%= recurring.blocked_reason %></p><% end %>
+      <div class="mt-2 flex flex-wrap items-center gap-4">
+        <details><summary class="cursor-pointer text-primary-700">Next twelve due dates</summary>
+          <table class="mt-1 text-xs">
+            <% @previews[recurring.id].each do |date, amount| %>
+              <tr><td class="pr-6"><%= l date %></td><td class="text-right"><%= number_with_precision(amount, precision: 2, delimiter: ',') if amount %></td></tr>
+            <% end %>
+          </table>
+        </details>
+        <%= link_to 'Edit', edit_accounting_recurring_entry_path(recurring), class: 'text-gray-700 hover:underline' %>
+        <% if recurring.paused? %>
+          <%= button_to 'Resume', resume_accounting_recurring_entry_path(recurring), method: :post, form: { class: 'shrink-0' }, class: 'text-primary-700 hover:underline cursor-pointer' %>
+        <% elsif !recurring.finished? %>
+          <%= button_to 'Pause', pause_accounting_recurring_entry_path(recurring), method: :post, form: { class: 'shrink-0' }, class: 'text-gray-700 hover:underline cursor-pointer' %>
+          <%= button_to 'Skip next', skip_accounting_recurring_entry_path(recurring), method: :post, form: { class: 'shrink-0' }, class: 'text-gray-700 hover:underline cursor-pointer' %>
+        <% end %>
+        <% if recurring.blocked? %>
+          <%= button_to 'Try again', resume_accounting_recurring_entry_path(recurring), method: :post, form: { class: 'shrink-0' }, class: 'text-primary-700 hover:underline cursor-pointer' %>
+        <% end %>
+        <% if !recurring.mode_post? && policy(Accounting::RecurringEntry).approve_post? %>
+          <%= button_to 'Let it post by itself', approve_post_accounting_recurring_entry_path(recurring), method: :post, form: { class: 'shrink-0' },
+                data: { turbo_confirm: 'The entries will be posted without anyone checking them, at the amount and with the template as they are now. A change of either takes this back.' },
+                class: 'text-amber-700 hover:underline cursor-pointer' %>
+        <% end %>
+        <%= button_to 'Delete', accounting_recurring_entry_path(recurring), method: :delete, form: { class: 'shrink-0' },
+              data: { turbo_confirm: 'Delete this schedule? The entries it made are kept.' }, class: 'text-red-600 hover:underline cursor-pointer' %>
+      </div>
+    </div>
+  <% end %>
+  <% if @recurrings.empty? %>
+    <p class="px-4 py-6 text-center text-gray-500">No recurring entry yet. Start from an entry template.</p>
+  <% end %>
+</div>

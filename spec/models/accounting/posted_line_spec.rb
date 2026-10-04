@@ -27,12 +27,12 @@ RSpec.describe Accounting::PostedLine, type: :model do
     expect(described_class.where(id: line.id)).to be_empty
   end
 
-  it "excludes lines from a reversed entry" do
+  it "includes lines from a reversed entry (it stays a validated entry, its reversal cancels it)" do
     entry = create(:journal_entry, :posted, :with_balanced_lines, entity: entity, fiscal_year: fiscal_year)
     line  = entry.lines.first
     entry.update_column(:status, Accounting::JournalEntry.statuses[:reversed])
 
-    expect(described_class.where(id: line.id)).to be_empty
+    expect(described_class.where(id: line.id)).not_to be_empty
   end
 
   it "scopes to the current tenant" do

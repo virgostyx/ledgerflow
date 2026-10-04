@@ -13,7 +13,7 @@ class Accounting::JournalSummaryQuery
     rows = Accounting::JournalEntryLine
       .joins(:journal_entry)
       .where(accounting_journal_entries: { fiscal_year_id: @fiscal_year.id,
-                                            status: Accounting::JournalEntry.statuses[:posted] })
+                                            status: Accounting::JournalEntry.ledger_status_values })
       .group("accounting_journal_entries.journal_id", "date_trunc('month', accounting_journal_entries.entry_date)")
       .select(
         "accounting_journal_entries.journal_id AS journal_id",

@@ -51,6 +51,7 @@ Rails.application.routes.draw do
           post :post_entry
           post :reverse
           get  :reversal
+          post :duplicate
         end
       end
 
@@ -133,6 +134,23 @@ Rails.application.routes.draw do
         member do
           get  :disposal
           post :dispose
+        end
+      end
+
+      resources :entry_templates, except: [ :show ] do
+        member do
+          get  :entry
+          post :create_entry
+        end
+        post :examples, on: :collection
+      end
+
+      resources :recurring_entries, except: [ :show ] do
+        member do
+          post :pause
+          post :resume
+          post :skip
+          post :approve_post
         end
       end
 

@@ -29,7 +29,7 @@ class Accounting::SuggestLetterings
       .joins("JOIN accounting_accounts a ON a.id = accounting_journal_entry_lines.account_id")
       .joins("LEFT JOIN accounting_invoices i ON i.id = accounting_journal_entry_lines.invoice_id")
       .where(lettering_id: nil, partner_id: Accounting::Partner.select(:id))
-      .where("e.status = ? AND a.reconcilable AND (a.code LIKE '40%' OR a.code LIKE '44%')", Accounting::JournalEntry.statuses[:posted])
+      .where("e.status IN (?) AND a.reconcilable AND (a.code LIKE '40%' OR a.code LIKE '44%')", Accounting::JournalEntry.ledger_status_values)
       .where("accounting_journal_entry_lines.debit + accounting_journal_entry_lines.credit = accounting_journal_entry_lines.amount_residual")
       .pluck(Arel.sql("accounting_journal_entry_lines.id"), Arel.sql("accounting_journal_entry_lines.account_id"),
              Arel.sql("accounting_journal_entry_lines.partner_id"),

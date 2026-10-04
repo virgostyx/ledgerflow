@@ -43,7 +43,7 @@ class Accounting::CashFlowStatement
 
   def base
     Accounting::JournalEntryLine.joins(:journal_entry, :account)
-      .where(accounting_journal_entries: { fiscal_year_id: @fiscal_year.id, status: Accounting::JournalEntry.statuses[:posted] })
+      .where(accounting_journal_entries: { fiscal_year_id: @fiscal_year.id, status: Accounting::JournalEntry.ledger_status_values })
       .where("accounting_journal_entries.entry_date <= ?", @to)
       .where("accounting_journal_entries.source_type IS DISTINCT FROM ?", Accounting::JournalEntry::CLOSING_SOURCE)
   end

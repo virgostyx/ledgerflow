@@ -7,7 +7,7 @@ class Accounting::Actions::PayLetteredInvoices
   TRADE_ACCOUNTS = [ Accounting::AccountCodes::CUSTOMERS, Accounting::AccountCodes::SUPPLIERS ].freeze
 
   executed do |ctx|
-    next unless TRADE_ACCOUNTS.include?(ctx.lettering.account.code)
+    next if ctx[:settle] == false || !TRADE_ACCOUNTS.include?(ctx.lettering.account.code)
 
     Accounting::Invoice.where(status: %i[posted partially_paid]).where(journal_entry_id: ctx.lines.map(&:journal_entry_id)).find_each(&:pay!)
   rescue AASM::InvalidTransition, ActiveRecord::RecordInvalid => e

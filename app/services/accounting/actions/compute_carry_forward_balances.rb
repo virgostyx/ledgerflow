@@ -40,7 +40,7 @@ class Accounting::Actions::ComputeCarryForwardBalances
       .where(
         accounting_journal_entries: {
           fiscal_year_id: ctx.previous_fiscal_year.id,
-          status:         Accounting::JournalEntry.statuses[:posted]
+          status:         Accounting::JournalEntry.ledger_status_values
         },
         account_id: candidate_ids
       )

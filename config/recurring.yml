@@ -9,6 +9,10 @@ production:
     class: Accounting::ConsistencyCheckJob
     queue: default
     schedule: every day at 2am
+  generate_recurring_entries:
+    class: Accounting::GenerateRecurringEntriesJob
+    queue: default
+    schedule: every day at 5:30am
   auto_reverse_entries:
     class: Accounting::AutoReverseEntriesJob
     queue: default

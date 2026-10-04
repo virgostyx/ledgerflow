@@ -51,7 +51,7 @@ class Accounting::DashboardKpis
   end
 
   def ledger_version
-    entries = Accounting::JournalEntry.where(fiscal_year_id: @fiscal_year.id, status: :posted)
+    entries = Accounting::JournalEntry.where(fiscal_year_id: @fiscal_year.id, status: Accounting::JournalEntry::LEDGER_STATUSES)
     [ entries.count, entries.maximum(:updated_at)&.to_f ]
   end
 

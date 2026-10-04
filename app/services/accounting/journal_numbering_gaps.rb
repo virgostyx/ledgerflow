@@ -8,7 +8,7 @@ class Accounting::JournalNumberingGaps
 
   def call
     numbers = Accounting::JournalEntry
-      .where(journal: @journal, fiscal_year: @fiscal_year, status: Accounting::JournalEntry.statuses[:posted])
+      .where(journal: @journal, fiscal_year: @fiscal_year, status: Accounting::JournalEntry.ledger_status_values)
       .where("reference LIKE ?", "#{@journal.sequence_prefix}#{@fiscal_year.year}/%")
       .pluck(:reference)
       .map { |ref| ref.split("/").last.to_i }

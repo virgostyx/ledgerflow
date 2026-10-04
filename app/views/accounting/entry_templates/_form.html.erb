@@ -1,0 +1,29 @@
+<%= form_with model: template, scope: :accounting_entry_template, url: (template.persisted? ? accounting_entry_template_path(template) : accounting_entry_templates_path), class: 'space-y-4 max-w-4xl' do |f| %>
+  <% if template.errors.any? %>
+    <div class="rounded-md bg-red-50 p-3 text-sm text-red-700"><%= template.errors.full_messages.to_sentence %></div>
+  <% end %>
+  <div class="grid grid-cols-3 gap-4 text-sm">
+    <label>Name <%= f.text_field :name, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Journal <%= f.collection_select :journal_id, Accounting::Journal.order(:code), :id, ->(j) { "#{j.code} — #{j.label_fr}" }, {}, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Description <%= f.text_field :description, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+  </div>
+  <p class="text-xs text-gray-500">Variables in the description and the labels: {month}, {year}, {period} (also {mois}, {année}, {période}). A line is a fixed amount, a percentage of the amount asked for the entry, or typed when the entry is made.</p>
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-xs text-gray-500 uppercase"><th>Account</th><th>Side</th><th>Amount</th><th>Fixed amount</th><th>%</th><th>Label</th><th></th></tr></thead>
+    <tbody>
+      <%= f.fields_for :lines do |lf| %>
+        <tr>
+          <td><%= lf.collection_select :account_id, Accounting::Account.where(is_leaf: true).order(:code), :id, ->(a) { a.full_label }, { include_blank: true }, class: 'rounded-md border border-gray-300 px-2 py-1 w-64' %></td>
+          <td><%= lf.select :side, Accounting::EntryTemplateLine.sides.keys.map { |s| [ s.humanize, s ] }, {}, class: 'rounded-md border border-gray-300 px-2 py-1' %></td>
+          <td><%= lf.select :amount_kind, [ [ 'Fixed', 'fixed' ], [ 'Percentage of the amount', 'percent' ], [ 'Typed each time', 'input' ] ], {}, class: 'rounded-md border border-gray-300 px-2 py-1' %></td>
+          <td><%= lf.number_field :amount, step: '0.01', min: 0, class: 'w-24 rounded-md border border-gray-300 px-2 py-1' %></td>
+          <td><%= lf.number_field :percentage, step: '0.001', min: 0, class: 'w-20 rounded-md border border-gray-300 px-2 py-1' %></td>
+          <td><%= lf.text_field :label, class: 'rounded-md border border-gray-300 px-2 py-1' %></td>
+          <td><%= lf.hidden_field :position %><% if lf.object.persisted? %><label class="text-xs text-red-600"><%= lf.check_box :_destroy %> remove</label><% end %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <%= f.submit 'Save', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer' %>
+  <%= link_to 'Cancel', accounting_entry_templates_path, class: 'ml-3 text-sm text-gray-600 hover:underline' %>
+<% end %>

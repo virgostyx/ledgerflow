@@ -1,0 +1,19 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: 'Dashboard', path: accounting_root_path }, { label: 'Entry templates', path: accounting_entry_templates_path }, { label: @template.name } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "New entry from #{@template.name}", back_path: accounting_entry_templates_path, back_text: 'Templates') %>
+
+<%= form_with url: create_entry_accounting_entry_template_path(@template), method: :post, class: 'space-y-4 max-w-xl text-sm' do %>
+  <label class="block">Date <%= date_field_tag :date, params[:date].presence || Date.current, class: 'block rounded-md border border-gray-300 px-3 py-2' %></label>
+  <% if @template.needs_base? %>
+    <label class="block">Amount <%= number_field_tag :base_amount, params[:base_amount], step: '0.01', min: 0, class: 'block rounded-md border border-gray-300 px-3 py-2' %>
+      <span class="text-xs text-gray-400">The percentage lines are taken of this amount.</span></label>
+  <% end %>
+  <% @template.input_lines.each do |line| %>
+    <label class="block"><%= line.label.presence || line.account.full_label %> (<%= line.account.code %>, <%= line.side %>)
+      <%= number_field_tag "inputs[#{line.id}]", params.dig(:inputs, line.id.to_s), step: '0.01', min: 0, class: 'block rounded-md border border-gray-300 px-3 py-2' %></label>
+  <% end %>
+  <p class="text-gray-500">The entry is created as a draft. Check it, then post it.</p>
+  <%= submit_tag 'Create the draft', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer' %>
+<% end %>

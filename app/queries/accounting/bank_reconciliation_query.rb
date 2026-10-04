@@ -54,7 +54,7 @@ class Accounting::BankReconciliationQuery
     lines = Accounting::JournalEntryLine
       .joins(:journal_entry)
       .where(account: @gl_account)
-      .where(accounting_journal_entries: { status: Accounting::JournalEntry.statuses[:posted] })
+      .where(accounting_journal_entries: { status: Accounting::JournalEntry.ledger_status_values })
       .where("accounting_journal_entries.entry_date <= ?", @as_of)
     lines.sum(:debit) - lines.sum(:credit)
   end
@@ -67,7 +67,7 @@ class Accounting::BankReconciliationQuery
     lines = Accounting::JournalEntryLine
       .joins(:journal_entry)
       .where(account: @gl_account)
-      .where(accounting_journal_entries: { status: Accounting::JournalEntry.statuses[:posted] })
+      .where(accounting_journal_entries: { status: Accounting::JournalEntry.ledger_status_values })
       .where("accounting_journal_entries.entry_date <= ?", @as_of)
       .where.not(journal_entry_id: linked_entry_ids)
     lines = lines.where("accounting_journal_entries.entry_date > ?", opening_date) if opening_date

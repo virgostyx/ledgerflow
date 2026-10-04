@@ -34,7 +34,7 @@ module Accounting::OpenLineSql
       .joins("LEFT JOIN accounting_partners p ON p.id = #{LINES}.partner_id")
       .joins("LEFT JOIN accounting_invoices i ON i.id = #{LINES}.invoice_id")
       .joins("LEFT JOIN accounting_letterings lt ON lt.id = #{LINES}.lettering_id")
-      .where("e.status = ? AND e.entry_date <= ?", Accounting::JournalEntry.statuses[:posted], as_of)
+      .where("e.status IN (?) AND e.entry_date <= ?", Accounting::JournalEntry.ledger_status_values, as_of)
       .where("a.code LIKE ? AND a.reconcilable", PREFIX.fetch(kind.to_sym))
   end
 

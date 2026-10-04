@@ -1,5 +1,5 @@
 class Accounting::JournalEntriesController < ApplicationController
-  before_action :set_entry, only: [ :show, :edit, :update, :post_entry, :reverse, :reversal ]
+  before_action :set_entry, only: [ :show, :edit, :update, :post_entry, :reverse, :reversal, :duplicate ]
 
   def index
     @pagy, @entries = pagy(policy_scope(Accounting::JournalEntry).includes(:journal).filter_by(filter_params).order(entry_date: :desc, created_at: :desc).autofilter(**autofilter_params))
@@ -93,6 +93,16 @@ class Accounting::JournalEntriesController < ApplicationController
   def reversal
     authorize @entry, :reverse?
     @preview = Accounting::ReverseJournalEntry.preview(@entry, date: params[:date].presence)
+  end
+
+  def duplicate
+    authorize Accounting::JournalEntry, :create?
+    result = Accounting::DuplicateJournalEntry.call(entry: @entry, user: current_user)
+    if result.success?
+      redirect_to edit_accounting_journal_entry_path(result[:entry]), notice: "Draft copy of #{@entry.reference || 'the entry'} created"
+    else
+      redirect_to accounting_journal_entry_path(@entry), alert: result.message
+    end
   end
 
   def reverse

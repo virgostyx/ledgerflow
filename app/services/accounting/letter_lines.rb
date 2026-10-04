@@ -3,15 +3,16 @@
 #
 # The lines are locked first (two people lettering the same line at the same moment: the second finds it lettered and is refused).
 # user: who does it (nil: the system); auto: an automatic lettering; cross_partner: lines of different partners, which needs the right
-# `reconciliations.cross_partner` and a reason. The history of every line records it.
+# `reconciliations.cross_partner` and a reason. The history of every line records it. settle: false lettering does not pay invoices
+# (a reversed entry lettered with its own reversal settles nothing).
 class Accounting::LetterLines
   extend LightService::Organizer
 
-  def self.call(lines:, user: nil, reason: nil, cross_partner: false, auto: false, kind: "full")
+  def self.call(lines:, user: nil, reason: nil, cross_partner: false, auto: false, kind: "full", settle: true)
     result = nil
     ApplicationRecord.transaction do
       locked = Accounting::JournalEntryLine.where(id: Array(lines).map(&:id)).order(:id).lock.includes(:journal_entry, :account).to_a
-      result = with(lines: locked, user: user, reason: reason.to_s.strip.presence, cross_partner: cross_partner, auto: auto, kind: kind).reduce(
+      result = with(lines: locked, user: user, reason: reason.to_s.strip.presence, cross_partner: cross_partner, auto: auto, kind: kind, settle: settle).reduce(
         Accounting::Actions::PostFxAdjustment,
         Accounting::Actions::ValidateLettering,
         Accounting::Actions::CreateLettering,

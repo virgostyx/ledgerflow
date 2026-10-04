@@ -1,0 +1,25 @@
+<%= form_with model: recurring, scope: :accounting_recurring_entry, url: (recurring.persisted? ? accounting_recurring_entry_path(recurring) : accounting_recurring_entries_path), class: 'space-y-4 max-w-3xl text-sm' do |f| %>
+  <% if recurring.errors.any? %>
+    <div class="rounded-md bg-red-50 p-3 text-red-700"><%= recurring.errors.full_messages.to_sentence %></div>
+  <% end %>
+  <div class="grid grid-cols-2 gap-4">
+    <label>Name <%= f.text_field :name, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Entry template <%= f.collection_select :entry_template_id, Accounting::EntryTemplate.order(:name).select(&:fixed_amounts_only?), :id, :name, {}, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %>
+      <span class="text-xs text-gray-400">Only templates without a line typed each time.</span></label>
+    <label>Frequency <%= f.select :frequency, Accounting::RecurringEntry.frequencies.keys.map { |k| [ k.humanize, k ] }, {}, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Day of the month <%= f.number_field :day_of_month, min: 1, max: 31, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %>
+      <span class="text-xs text-gray-400">Empty: the last day. A 31st falls on the last day of a shorter month.</span></label>
+    <label>Starts on <%= f.date_field :starts_on, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Ends on (optional) <%= f.date_field :ends_on, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Maximum occurrences (optional) <%= f.number_field :max_occurrences, min: 1, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Make it this many days ahead <%= f.number_field :lead_days, min: 0, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Amount (EUR) <%= f.number_field :base_amount, step: '0.01', min: 0, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %>
+      <span class="text-xs text-gray-400">The amount the percentage lines of the template are taken of.</span></label>
+    <label>Yearly indexation (%) <%= f.number_field :indexation_percent, step: '0.001', min: 0, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %>
+      <span class="text-xs text-gray-400">Applied from the first due date of each calendar year after the first.</span></label>
+  </div>
+  <label class="flex items-center gap-2"><%= f.check_box :feeds_cash_forecast %> Feeds the cash forecast</label>
+  <p class="text-xs text-gray-500">The entries are made as drafts. Only an owner can let a schedule post by itself, from the list.</p>
+  <%= f.submit 'Save', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer' %>
+  <%= link_to 'Cancel', accounting_recurring_entries_path, class: 'ml-3 text-gray-600 hover:underline' %>
+<% end %>

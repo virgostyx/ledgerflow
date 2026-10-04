@@ -75,7 +75,7 @@ class Accounting::TrialBalanceQuery
       .where(
         accounting_journal_entries: {
           fiscal_year_id: @fiscal_year.id,
-          status: Accounting::JournalEntry.statuses[:posted]
+          status: Accounting::JournalEntry.ledger_status_values
         }
       )
       .where("accounting_journal_entries.entry_date <= ?", @as_of)

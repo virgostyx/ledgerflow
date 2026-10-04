@@ -9,6 +9,10 @@ class Accounting::JournalEntry < ApplicationRecord
   # source_type of the drafts proposed by Accounting::ProposeRevaluationEntry (unrealized FX loss and its reversal).
   REVALUATION_SOURCE = "Accounting::Revaluation".freeze
 
+  # The entries that count in the ledger and its reports: validated ones, including those since reversed (the reversal, also validated, cancels
+  # them). Reports that read VAT codes, analytical annotations or projects keep to `posted`: a reversal does not copy those.
+  LEDGER_STATUSES = %i[posted reversed].freeze
+
   acts_as_tenant :entity
   broadcasts_refreshes_to ->(r) { [ r.entity, :journal_entries ] }
 
@@ -57,5 +61,11 @@ class Accounting::JournalEntry < ApplicationRecord
   end
 
   # Posting and reversal are logged by their services (post_entry, reverse_entry): one audit row per action.
+  def self.ledger_status_values = LEDGER_STATUSES.map { |s| statuses.fetch(s) }
+
+  scope :in_ledger, -> { where(status: ledger_status_values) }
+
+  def in_ledger? = LEDGER_STATUSES.include?(status.to_sym)
+
   def skip_audit? = saved_change_to_status? && status.to_s.in?(%w[posted reversed])
 end

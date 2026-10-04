@@ -27,7 +27,7 @@ class Accounting::WriteOffLettering
 
   def self.problem(lines, difference)
     if lines.size < 2 then "Select at least two lines"
-    elsif lines.any? { |l| !l.journal_entry.posted? || l.lettering_id } then "Only open lines of posted entries can be written off"
+    elsif lines.any? { |l| !l.journal_entry.in_ledger? || l.lettering_id } then "Only open lines of posted entries can be written off"
     elsif lines.map(&:account_id).uniq.size > 1 then "Lines must be on the same account"
     elsif lines.map(&:partner_id).uniq.size > 1 then "Lines must have the same partner"
     elsif !Accounting::CreateRoundingAccounts.ready? then "The rounding accounts (658100, 758100) do not exist in this entity's chart"

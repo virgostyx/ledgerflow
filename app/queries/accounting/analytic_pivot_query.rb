@@ -37,7 +37,8 @@ class Accounting::AnalyticPivotQuery
   private
 
   def scope
-    Accounting::PostedLine.joins(:account)
+    # `posted` only: a reversal copies no annotation, so the reversed original must stay out as it always did
+    Accounting::PostedLine.joins(:account).where(journal_entry_id: Accounting::JournalEntry.posted.select(:id))
       .where(fiscal_year_id: @fiscal_year.id, entry_date: @period,
              accounting_accounts: { account_type: [ Accounting::Account.account_types[:expense], Accounting::Account.account_types[:revenue] ] })
   end

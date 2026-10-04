@@ -948,6 +948,81 @@ ALTER SEQUENCE public.accounting_documents_id_seq OWNED BY public.accounting_doc
 
 
 --
+-- Name: accounting_entry_template_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_entry_template_lines (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    entry_template_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    partner_id bigint,
+    side integer NOT NULL,
+    amount_kind integer NOT NULL,
+    amount numeric(15,2),
+    percentage numeric(7,3),
+    vat_code integer,
+    label character varying,
+    "position" integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_entry_template_lines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_entry_template_lines_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_entry_template_lines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_entry_template_lines_id_seq OWNED BY public.accounting_entry_template_lines.id;
+
+
+--
+-- Name: accounting_entry_templates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_entry_templates (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    name character varying NOT NULL,
+    journal_id bigint NOT NULL,
+    description character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_entry_templates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_entry_templates_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_entry_templates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_entry_templates_id_seq OWNED BY public.accounting_entry_templates.id;
+
+
+--
 -- Name: accounting_exchange_rates; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1993,6 +2068,57 @@ ALTER SEQUENCE public.accounting_period_locks_id_seq OWNED BY public.accounting_
 
 
 --
+-- Name: accounting_recurring_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_recurring_entries (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    entry_template_id bigint NOT NULL,
+    name character varying NOT NULL,
+    frequency integer DEFAULT 0 NOT NULL,
+    day_of_month integer,
+    starts_on date NOT NULL,
+    ends_on date,
+    max_occurrences integer,
+    occurrences_count integer DEFAULT 0 NOT NULL,
+    next_due_on date NOT NULL,
+    lead_days integer DEFAULT 0 NOT NULL,
+    mode integer DEFAULT 0 NOT NULL,
+    base_amount numeric(15,2),
+    indexation_percent numeric(6,3),
+    indexed_year integer,
+    feeds_cash_forecast boolean DEFAULT false NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    blocked_reason character varying,
+    post_approved_by_id bigint,
+    post_approved_at timestamp(6) without time zone,
+    created_by_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_recurring_entries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_recurring_entries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_recurring_entries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_recurring_entries_id_seq OWNED BY public.accounting_recurring_entries.id;
+
+
+--
 -- Name: accounting_recurring_invoices; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2029,6 +2155,44 @@ CREATE SEQUENCE public.accounting_recurring_invoices_id_seq
 --
 
 ALTER SEQUENCE public.accounting_recurring_invoices_id_seq OWNED BY public.accounting_recurring_invoices.id;
+
+
+--
+-- Name: accounting_recurring_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_recurring_runs (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    recurring_entry_id bigint,
+    recurring_name character varying NOT NULL,
+    due_on date NOT NULL,
+    journal_entry_id bigint,
+    status integer DEFAULT 0 NOT NULL,
+    amount numeric(15,2),
+    error character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_recurring_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_recurring_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_recurring_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_recurring_runs_id_seq OWNED BY public.accounting_recurring_runs.id;
 
 
 --
@@ -2504,7 +2668,7 @@ CREATE VIEW public.posted_lines AS
     l.amount_currency
    FROM (public.accounting_journal_entry_lines l
      JOIN public.accounting_journal_entries e ON ((e.id = l.journal_entry_id)))
-  WHERE (e.status = 1);
+  WHERE (e.status = ANY (ARRAY[1, 2]));
 
 
 --
@@ -2844,6 +3008,20 @@ ALTER TABLE ONLY public.accounting_documents ALTER COLUMN id SET DEFAULT nextval
 
 
 --
+-- Name: accounting_entry_template_lines id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_template_lines ALTER COLUMN id SET DEFAULT nextval('public.accounting_entry_template_lines_id_seq'::regclass);
+
+
+--
+-- Name: accounting_entry_templates id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_templates ALTER COLUMN id SET DEFAULT nextval('public.accounting_entry_templates_id_seq'::regclass);
+
+
+--
 -- Name: accounting_exchange_rates id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3026,10 +3204,24 @@ ALTER TABLE ONLY public.accounting_period_locks ALTER COLUMN id SET DEFAULT next
 
 
 --
+-- Name: accounting_recurring_entries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_entries ALTER COLUMN id SET DEFAULT nextval('public.accounting_recurring_entries_id_seq'::regclass);
+
+
+--
 -- Name: accounting_recurring_invoices id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_recurring_invoices ALTER COLUMN id SET DEFAULT nextval('public.accounting_recurring_invoices_id_seq'::regclass);
+
+
+--
+-- Name: accounting_recurring_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_runs ALTER COLUMN id SET DEFAULT nextval('public.accounting_recurring_runs_id_seq'::regclass);
 
 
 --
@@ -3304,6 +3496,22 @@ ALTER TABLE ONLY public.accounting_documents
 
 
 --
+-- Name: accounting_entry_template_lines accounting_entry_template_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_template_lines
+    ADD CONSTRAINT accounting_entry_template_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_entry_templates accounting_entry_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_templates
+    ADD CONSTRAINT accounting_entry_templates_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_exchange_rates accounting_exchange_rates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3512,11 +3720,27 @@ ALTER TABLE ONLY public.accounting_period_locks
 
 
 --
+-- Name: accounting_recurring_entries accounting_recurring_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_entries
+    ADD CONSTRAINT accounting_recurring_entries_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_recurring_invoices accounting_recurring_invoices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_recurring_invoices
     ADD CONSTRAINT accounting_recurring_invoices_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_recurring_runs accounting_recurring_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_runs
+    ADD CONSTRAINT accounting_recurring_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -3882,6 +4106,13 @@ CREATE UNIQUE INDEX idx_on_entity_id_fingerprint_e37fdec9cd ON public.accounting
 
 
 --
+-- Name: idx_on_entity_id_status_next_due_on_ca6acf9cb4; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_entity_id_status_next_due_on_ca6acf9cb4 ON public.accounting_recurring_entries USING btree (entity_id, status, next_due_on);
+
+
+--
 -- Name: idx_on_entity_id_status_score_3232f53987; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3893,6 +4124,13 @@ CREATE INDEX idx_on_entity_id_status_score_3232f53987 ON public.accounting_lette
 --
 
 CREATE INDEX idx_on_journal_entry_line_id_307850d4ba ON public.accounting_analytical_annotations USING btree (journal_entry_line_id);
+
+
+--
+-- Name: idx_on_recurring_entry_id_due_on_121642b48a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_recurring_entry_id_due_on_121642b48a ON public.accounting_recurring_runs USING btree (recurring_entry_id, due_on);
 
 
 --
@@ -4257,6 +4495,55 @@ CREATE INDEX index_accounting_documents_on_replaces_id ON public.accounting_docu
 --
 
 CREATE INDEX index_accounting_documents_on_uploaded_by_id ON public.accounting_documents USING btree (uploaded_by_id);
+
+
+--
+-- Name: index_accounting_entry_template_lines_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_entry_template_lines_on_account_id ON public.accounting_entry_template_lines USING btree (account_id);
+
+
+--
+-- Name: index_accounting_entry_template_lines_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_entry_template_lines_on_entity_id ON public.accounting_entry_template_lines USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_entry_template_lines_on_entry_template_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_entry_template_lines_on_entry_template_id ON public.accounting_entry_template_lines USING btree (entry_template_id);
+
+
+--
+-- Name: index_accounting_entry_template_lines_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_entry_template_lines_on_partner_id ON public.accounting_entry_template_lines USING btree (partner_id);
+
+
+--
+-- Name: index_accounting_entry_templates_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_entry_templates_on_entity_id ON public.accounting_entry_templates USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_entry_templates_on_entity_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_entry_templates_on_entity_id_and_name ON public.accounting_entry_templates USING btree (entity_id, name);
+
+
+--
+-- Name: index_accounting_entry_templates_on_journal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_entry_templates_on_journal_id ON public.accounting_entry_templates USING btree (journal_id);
 
 
 --
@@ -4974,6 +5261,34 @@ CREATE INDEX index_accounting_period_locks_on_unlocked_by_id ON public.accountin
 
 
 --
+-- Name: index_accounting_recurring_entries_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_recurring_entries_on_created_by_id ON public.accounting_recurring_entries USING btree (created_by_id);
+
+
+--
+-- Name: index_accounting_recurring_entries_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_recurring_entries_on_entity_id ON public.accounting_recurring_entries USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_recurring_entries_on_entry_template_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_recurring_entries_on_entry_template_id ON public.accounting_recurring_entries USING btree (entry_template_id);
+
+
+--
+-- Name: index_accounting_recurring_entries_on_post_approved_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_recurring_entries_on_post_approved_by_id ON public.accounting_recurring_entries USING btree (post_approved_by_id);
+
+
+--
 -- Name: index_accounting_recurring_invoices_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4985,6 +5300,27 @@ CREATE INDEX index_accounting_recurring_invoices_on_entity_id ON public.accounti
 --
 
 CREATE INDEX index_accounting_recurring_invoices_on_source_invoice_id ON public.accounting_recurring_invoices USING btree (source_invoice_id);
+
+
+--
+-- Name: index_accounting_recurring_runs_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_recurring_runs_on_entity_id ON public.accounting_recurring_runs USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_recurring_runs_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_recurring_runs_on_journal_entry_id ON public.accounting_recurring_runs USING btree (journal_entry_id);
+
+
+--
+-- Name: index_accounting_recurring_runs_on_recurring_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_recurring_runs_on_recurring_entry_id ON public.accounting_recurring_runs USING btree (recurring_entry_id);
 
 
 --
@@ -5312,6 +5648,22 @@ ALTER TABLE ONLY public.accounting_invoice_emails
 
 
 --
+-- Name: accounting_recurring_runs fk_rails_020f47ceee; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_runs
+    ADD CONSTRAINT fk_rails_020f47ceee FOREIGN KEY (recurring_entry_id) REFERENCES public.accounting_recurring_entries(id) ON DELETE SET NULL;
+
+
+--
+-- Name: accounting_entry_template_lines fk_rails_03540d0728; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_template_lines
+    ADD CONSTRAINT fk_rails_03540d0728 FOREIGN KEY (account_id) REFERENCES public.accounting_accounts(id);
+
+
+--
 -- Name: accounting_bank_statements fk_rails_04d068db3c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5360,6 +5712,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 
 --
+-- Name: accounting_entry_template_lines fk_rails_16b413916b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_template_lines
+    ADD CONSTRAINT fk_rails_16b413916b FOREIGN KEY (entry_template_id) REFERENCES public.accounting_entry_templates(id) ON DELETE CASCADE;
+
+
+--
 -- Name: accounting_letterings fk_rails_17df05ba4f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5389,6 +5749,14 @@ ALTER TABLE ONLY public.accounting_bank_rules
 
 ALTER TABLE ONLY public.accounting_journal_entry_lines
     ADD CONSTRAINT fk_rails_1e6c3311fa FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id);
+
+
+--
+-- Name: accounting_entry_templates fk_rails_209ac7afcb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_templates
+    ADD CONSTRAINT fk_rails_209ac7afcb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -5512,6 +5880,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 
 --
+-- Name: accounting_recurring_entries fk_rails_363e936719; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_entries
+    ADD CONSTRAINT fk_rails_363e936719 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_accounts fk_rails_3656d9eddb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5581,6 +5957,14 @@ ALTER TABLE ONLY public.accounting_fixed_assets
 
 ALTER TABLE ONLY public.accounting_invoices
     ADD CONSTRAINT fk_rails_470177bd08 FOREIGN KEY (credited_invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
+-- Name: accounting_entry_template_lines fk_rails_477c89b68c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_template_lines
+    ADD CONSTRAINT fk_rails_477c89b68c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -5720,6 +6104,22 @@ ALTER TABLE ONLY public.accounting_payment_batches
 
 
 --
+-- Name: accounting_recurring_entries fk_rails_75a5595564; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_entries
+    ADD CONSTRAINT fk_rails_75a5595564 FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: accounting_recurring_entries fk_rails_760f537da9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_entries
+    ADD CONSTRAINT fk_rails_760f537da9 FOREIGN KEY (entry_template_id) REFERENCES public.accounting_entry_templates(id);
+
+
+--
 -- Name: accounting_bank_rules fk_rails_77c6b626d4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5816,6 +6216,14 @@ ALTER TABLE ONLY public.accounting_import_batches
 
 
 --
+-- Name: accounting_recurring_entries fk_rails_902421d7af; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_entries
+    ADD CONSTRAINT fk_rails_902421d7af FOREIGN KEY (post_approved_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_9168abe1d0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5885,6 +6293,14 @@ ALTER TABLE ONLY public.webauthn_credentials
 
 ALTER TABLE ONLY public.accounting_period_locks
     ADD CONSTRAINT fk_rails_a58d738482 FOREIGN KEY (unlocked_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: accounting_entry_templates fk_rails_a85a054ffc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_templates
+    ADD CONSTRAINT fk_rails_a85a054ffc FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
 
 
 --
@@ -6096,6 +6512,14 @@ ALTER TABLE ONLY public.accounting_invoice_lines
 
 
 --
+-- Name: accounting_recurring_runs fk_rails_d08db517d9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_runs
+    ADD CONSTRAINT fk_rails_d08db517d9 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_documents fk_rails_d1eb99157d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6133,6 +6557,14 @@ ALTER TABLE ONLY public.accounting_controlled_windows
 
 ALTER TABLE ONLY public.accounting_intracom_listings
     ADD CONSTRAINT fk_rails_d6237e4acb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_recurring_runs fk_rails_da9af52fce; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_recurring_runs
+    ADD CONSTRAINT fk_rails_da9af52fce FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id) ON DELETE SET NULL;
 
 
 --
@@ -6296,6 +6728,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 
 --
+-- Name: accounting_entry_template_lines fk_rails_f80805823c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_entry_template_lines
+    ADD CONSTRAINT fk_rails_f80805823c FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
 -- Name: accounting_vat_grid_mappings fk_rails_f8460edd74; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6342,6 +6782,9 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261004140000'),
+('20261004130000'),
+('20261004120000'),
 ('20261004110000'),
 ('20261004100000'),
 ('20261003290000'),

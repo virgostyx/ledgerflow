@@ -1,0 +1,31 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: 'Dashboard', path: accounting_root_path }, { label: 'Entry templates' } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: 'Entry templates') do |header| %>
+  <% header.with_actions do %>
+    <%= button_to 'Add the examples', examples_accounting_entry_templates_path, method: :post,
+          class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer' %>
+    <%= link_to 'New template', new_accounting_entry_template_path, class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700' %>
+  <% end %>
+<% end %>
+
+<div class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm">
+  <% @templates.each do |template| %>
+    <div class="px-4 py-3 flex items-center justify-between gap-4">
+      <div>
+        <strong><%= template.name %></strong>
+        <span class="text-gray-500">— <%= template.journal.code %> — <%= template.lines.map { |l| "#{l.account.code} #{l.side}" }.join(', ') %></span>
+      </div>
+      <div class="flex items-center gap-4">
+        <%= link_to 'New entry', entry_accounting_entry_template_path(template), class: 'text-primary-700 hover:underline' %>
+        <%= link_to 'Edit', edit_accounting_entry_template_path(template), class: 'text-gray-700 hover:underline' %>
+        <%= button_to 'Delete', accounting_entry_template_path(template), method: :delete, form: { class: 'shrink-0' },
+              data: { turbo_confirm: "Delete the template #{template.name}?" }, class: 'text-red-600 hover:underline cursor-pointer' %>
+      </div>
+    </div>
+  <% end %>
+  <% if @templates.empty? %>
+    <p class="px-4 py-6 text-center text-gray-500">No template yet. Add the examples to start from.</p>
+  <% end %>
+</div>

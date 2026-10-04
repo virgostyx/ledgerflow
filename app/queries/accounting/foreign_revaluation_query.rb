@@ -41,7 +41,7 @@ class Accounting::ForeignRevaluationQuery
     Accounting::JournalEntryLine
       .joins("JOIN accounting_journal_entries e ON e.id = #{LINES}.journal_entry_id")
       .joins("JOIN accounting_accounts a ON a.id = #{LINES}.account_id")
-      .where("e.status = ? AND e.entry_date <= ?", Accounting::JournalEntry.statuses[:posted], @as_of)
+      .where("e.status IN (?) AND e.entry_date <= ?", Accounting::JournalEntry.ledger_status_values, @as_of)
       .where("a.code LIKE '55%'").where.not(currency: "EUR").group(:currency)
       .pluck(Arel.sql("#{LINES}.currency"), Arel.sql("SUM(#{sign} * #{LINES}.amount_currency)"), Arel.sql("SUM(#{LINES}.debit - #{LINES}.credit)"))
       .map { |currency, foreign, booked| [ :bank, currency, foreign, booked ] }

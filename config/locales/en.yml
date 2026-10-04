@@ -141,6 +141,17 @@ en:
     not_found:           "Entity not found."
 
   accounting:
+    recurring:
+      errors:
+        locked_period: "The period of %{date} is locked (%{from} to %{to}): nothing is made until it is unlocked."
+    entry_templates:
+      errors:
+        base_required: "Enter the amount the percentage lines are taken of."
+        input_required: "Enter the amount of the line \"%{label}\"."
+        invalid_amount: "An amount is not a number."
+        archived_account: "An account of the template is archived: %{codes}."
+        no_fiscal_year: "No open fiscal year covers %{date}."
+        unbalanced: "The entry would not balance (debit %{debit}, credit %{credit})."
     lettering:
       suggestion_decided: This suggestion has already been decided
       reason_required: "A reason is required to undo a lettering."

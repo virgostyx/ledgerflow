@@ -15,6 +15,9 @@ module Permissions
     "reconciliations.manage" => %i[admin accountant assistant],
     "reconciliations.cross_partner"      => %i[admin accountant], # letter lines of different partners (a correction), with a reason
     "reconciliations.unreconcile_locked" => %i[admin],           # undo a lettering whose lines are in a locked period
+    "entry_templates.manage" => %i[admin accountant],  # entry templates (F07)
+    "recurring.manage"       => %i[admin accountant],  # recurring entries: create, pause, resume (F07)
+    "recurring.approve_post" => %i[admin],             # lets a recurring entry post by itself (F07)
     "vat.file"               => %i[admin accountant],
     "payments.manage"        => %i[admin accountant],
     "dunning.send"           => %i[admin accountant],

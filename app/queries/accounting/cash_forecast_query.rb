@@ -29,6 +29,7 @@ class Accounting::CashForecastQuery
     payable_items.each    { |date, amount| add(movements, date, :out, amount, :payables) }
     vat_item&.then        { |date, amount| add(movements, date, :out, amount, :vat) }
     manual_items.each     { |date, dir, amount| add(movements, date, dir, amount, :manual) }
+    recurring_items.each  { |date, dir, amount| add(movements, date, dir, amount, :recurring) }
 
     balance = opening_cash
     weeks = (1..@weeks_count).map do |n|
@@ -117,6 +118,19 @@ class Accounting::CashForecastQuery
     due = Date.new(@start.year, @start.month, VAT_DUE_DAY)
     due = due.next_month if due < @start
     [ due, owed ]
+  end
+
+  # Recurring entries that ask to feed the forecast (F07): their due dates within the horizon, read from the schedule.
+  def recurring_items
+    Accounting::RecurringEntry.where(feeds_cash_forecast: true, status: %i[active blocked]).includes(entry_template: { lines: :account }).flat_map do |recurring|
+      direction = recurring.forecast_direction
+      next [] unless direction
+
+      recurring.upcoming_dates(60).select { |date| date.between?(@start, @last_day) }.filter_map do |date|
+        amount = recurring.forecast_amount(date)
+        [ date, direction, amount ] if amount
+      end
+    end
   end
 
   def manual_items

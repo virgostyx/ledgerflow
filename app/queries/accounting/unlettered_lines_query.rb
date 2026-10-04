@@ -41,7 +41,7 @@ class Accounting::UnletteredLinesQuery
       .joins("LEFT JOIN accounting_partners p ON p.id = accounting_journal_entry_lines.partner_id")
       .joins("LEFT JOIN accounting_invoices i ON i.id = accounting_journal_entry_lines.invoice_id")
       .joins("LEFT JOIN accounting_letterings lt ON lt.id = accounting_journal_entry_lines.lettering_id")
-      .where("e.status = ? AND e.entry_date <= ?", Accounting::JournalEntry.statuses[:posted], @as_of)
+      .where("e.status IN (?) AND e.entry_date <= ?", Accounting::JournalEntry.ledger_status_values, @as_of)
       .where("a.code LIKE ? AND a.reconcilable", Accounting::OpenLineSql::PREFIX.fetch(kind))
       .pluck(
         Arel.sql("accounting_journal_entry_lines.id"), Arel.sql("a.id"), Arel.sql("a.code"),

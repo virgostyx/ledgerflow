@@ -107,7 +107,7 @@ RSpec.describe Accounting::ReverseJournalEntry, "cases" do
       entry = post_entry
       first = reverse(entry)[:reversal]
 
-      again = reverse(first.reload)[:reversal]
+      again = reverse(first.reload, confirm_unletter: true)[:reversal] # the pair is lettered: unlettered first
 
       expect(again.lines.map { |l| [ l.account_id, l.debit, l.credit ] }).to match_array(entry.lines.map { |l| [ l.account_id, l.debit, l.credit ] })
     end
@@ -148,9 +148,10 @@ RSpec.describe Accounting::ReverseJournalEntry, "cases" do
       result = reverse(invoice_entry, confirm_unletter: true)
 
       expect(result).to be_success
-      expect(payable.reload.lettering_id).to be_nil
       expect(payment.reload.lettering_id).to be_nil
       expect(Accounting::LetteringEvent.where(action: "unletter", line_id: payable.id).sole.reason).to eq("wrong account")
+      # the entry is then lettered with its own reversal, not with the payment
+      expect(payable.reload.lettering.lines.pluck(:journal_entry_id)).to match_array([ invoice_entry.id, result[:reversal].id ])
     end
 
     it "leaves the open lines of the account as if the entry had never been booked: the payment alone, unallocated" do
@@ -160,16 +161,14 @@ RSpec.describe Accounting::ReverseJournalEntry, "cases" do
       expect(open.sum("accounting_journal_entry_lines.credit - accounting_journal_entry_lines.debit")).to eq(-121)
     end
 
-    # The reports count the entries "posted" only: the original, once reversed, drops out while its reversal stays, so a reversed entry
-    # distorts the trial balance and R04. Not changed here (it moves ~20 report queries): see QUESTIONS.md, F07.
-    it "keeps the aged balance equal to the account balance (I4) after the reversal" do
-      pending "reports leave reversed originals out: QUESTIONS.md F07"
+    it "keeps the aged balance equal to the account balance (I4) after the reversal: the payment alone, unallocated" do
       account_440.update!(normal_balance: :credit)
       reverse(invoice_entry, confirm_unletter: true)
 
       aged = Accounting::AgedBalanceQuery.totals(Accounting::AgedBalanceQuery.new(kind: :supplier, as_of: fiscal_year.end_date).call).total
+      balance = Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, as_of: fiscal_year.end_date).call.find { |r| r.code == "440000" }.balance
 
-      expect(aged).to eq(-121)
+      expect(aged).to eq(balance).and eq(-121)
     end
 
     it "also drops partial allocations of the lines" do
