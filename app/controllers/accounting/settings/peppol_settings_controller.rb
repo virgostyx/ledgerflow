@@ -19,8 +19,11 @@ class Accounting::Settings::PeppolSettingsController < Accounting::Settings::Bas
     return redirect_to(edit_accounting_settings_peppol_settings_path, alert: t("accounting.settings.peppol_settings.simulator_only")) unless @entity.peppol_ap_simulator?
 
     result = Peppol::AccessPoint.for(@entity).simulate_incoming
+    message = result[:message]
     if result.failure?
       redirect_to edit_accounting_settings_peppol_settings_path, alert: result.message
+    elsif message&.needs_review? # recorded, but nothing could be drafted from it (F06: it is kept for review)
+      redirect_to edit_accounting_settings_peppol_settings_path, alert: "#{message.problems.join(' ')} #{t('accounting.settings.peppol_settings.kept_for_review')}"
     else
       redirect_to edit_accounting_settings_peppol_settings_path, notice: t("accounting.settings.peppol_settings.simulated")
     end

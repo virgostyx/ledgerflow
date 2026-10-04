@@ -33,6 +33,22 @@ RSpec.describe Peppol::SendInvoice do
       expect(invoice.peppol_status).to eq("queued")
     end
 
+    it "records the message as sent, with its XML, the parties and the type, and follows its delivery (F06)" do
+      described_class.call(invoice: invoice)
+
+      message = Accounting::PeppolMessage.outbound.sole
+      expect(message).to have_attributes(message_id: invoice.reload.peppol_id, status: "queued", sender_id: "0208:0999999999", receiver_id: "0208:0123456789",
+                                         document_type: "invoice", invoice_id: invoice.id)
+      expect(message.xml).to include("VTE2025/0001")
+
+      ActsAsTenant.without_tenant { Peppol::HandleEvent.call(event: Peppol::Event.new(kind: :delivered, message_id: invoice.peppol_id)) }
+      expect(message.reload).to have_attributes(status: "delivered", problems: [])
+
+      invoice.update_columns(peppol_status: Accounting::Invoice.peppol_statuses[:queued])
+      ActsAsTenant.without_tenant { Peppol::HandleEvent.call(event: Peppol::Event.new(kind: :failed, message_id: invoice.peppol_id, error: "Receiver rejected it")) }
+      expect(message.reload).to have_attributes(status: "failed", problems: [ "Receiver rejected it" ])
+    end
+
     it "records that the invoice was sent, in its history" do
       described_class.call(invoice: invoice)
       expect(invoice.reload.peppol_events.sole).to have_attributes(kind: "sent", message: a_string_including(invoice.peppol_id))

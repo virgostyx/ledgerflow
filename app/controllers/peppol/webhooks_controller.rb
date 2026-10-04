@@ -14,9 +14,19 @@ class Peppol::WebhooksController < ApplicationController
       Rails.logger.warn("[Peppol] #{event.kind} event not applied: #{result.message}") if result.failure?
     end
     head :ok
-  rescue Peppol::AccessPoint::InvalidSignature
+  rescue Peppol::AccessPoint::InvalidSignature => e
+    log_rejection(entity, e)
     head :unauthorized
   rescue Peppol::AccessPoint::Error
     head :bad_request
+  end
+
+  private
+
+  # A call that does not pass the signature is refused and kept in the audit trail of the entity (who called, why it was refused).
+  def log_rejection(entity, error)
+    ActsAsTenant.with_tenant(entity) do
+      Accounting::AuditLog.record!(auditable: entity, action: "peppol_webhook_rejected", user: nil, ip_address: request.remote_ip, payload: { reason: error.message })
+    end
   end
 end

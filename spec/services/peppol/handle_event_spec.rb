@@ -109,17 +109,20 @@ RSpec.describe Peppol::HandleEvent do
       expect { expect(received(receiver: '0208:0000000000')[:ignored]).to be true }.not_to change { ActsAsTenant.without_tenant { Accounting::Invoice.count } }
     end
 
-    it 'creates nothing, and says why, when the entity has no open fiscal year' do
+    it 'drafts nothing but keeps the message for review, with the reason, when the entity has no open fiscal year' do
       fiscal_year.update!(status: :closed)
       result = nil
       expect { result = received }.not_to change { ActsAsTenant.without_tenant { Accounting::Invoice.count } }
-      expect(result).to be_failure
-      expect(result.message).to match(/open fiscal year/)
+      expect(result).to be_success
+      expect(result[:message]).to have_attributes(status: 'needs_review')
+      expect(result[:message].problems.join).to match(/open fiscal year/)
     end
 
-    it 'fails when the document cannot be read' do
+    it 'keeps the message for review when the document cannot be read (F06: nothing received is lost)' do
       result = handle(kind: :received, receiver: '0208:0555666777', xml: '<Invoice/>')
-      expect(result).to be_failure
+
+      expect(result).to be_success
+      expect(result[:message]).to have_attributes(status: 'needs_review', xml: '<Invoice/>')
     end
   end
 end

@@ -401,6 +401,7 @@ en:
       peppol_settings:
         updated: "Peppol settings updated."
         simulated: "Simulated incoming invoice booked as a draft supplier invoice."
+        kept_for_review: "The message was kept for review."
         simulator_only: "Only available with the simulator."
       vat_settings:
         updated: "VAT settings updated."

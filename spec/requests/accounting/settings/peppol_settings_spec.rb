@@ -91,9 +91,11 @@ RSpec.describe "Accounting::Settings::PeppolSettings", type: :request do
       expect(flash[:notice]).to include("Simulated")
     end
 
-    it "tells why nothing was booked" do
+    it "tells why nothing was booked, and that the message was kept for review" do
       post simulate_incoming_accounting_settings_peppol_settings_path
-      expect(flash[:alert]).to match(/open fiscal year/)
+
+      expect(flash[:alert]).to match(/open fiscal year/).and include("kept for review")
+      expect(Accounting::PeppolMessage.inbound.sole).to have_attributes(status: "needs_review")
     end
 
     it "does nothing for an entity that is not on the simulator" do

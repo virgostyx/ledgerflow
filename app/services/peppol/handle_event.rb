@@ -27,17 +27,21 @@ class Peppol::HandleEvent
     ctx[:invoice] = invoice
   end
 
-  # A document addressed to one of our entities becomes a draft supplier invoice in its open fiscal year.
+  # A document addressed to one of our entities is recorded first, then worked on (Peppol::ReceiveMessage): it is never lost, and a
+  # document that cannot be worked on waits for a person. An exception here (the database is down) reaches the webhook, which answers 500
+  # so that the Access Point sends the document again.
   def self.receive(ctx, event)
     entity = event.receiver.present? && ActsAsTenant.without_tenant { Entity.find_by(peppol_participant_id: event.receiver) }
-    return ctx[:ignored] = true unless entity
+    unless entity
+      Rails.logger.warn("[Peppol] document received for #{event.receiver.presence || 'no receiver'}: no entity has that Peppol identifier, it is ignored")
+      return ctx[:ignored] = true
+    end
 
     ActsAsTenant.with_tenant(entity) do
-      fiscal_year = Accounting::FiscalYear.current
-      next ctx.fail!("#{entity.name} has no open fiscal year to book the document received") unless fiscal_year
-
-      result = Peppol::ReceiveInvoice.call(xml: event.xml.to_s, fiscal_year: fiscal_year)
-      result.failure? ? ctx.fail!(result.message) : ctx[:invoice] = result[:invoice]
+      result = Peppol::ReceiveMessage.call(event: event)
+      ctx[:message] = result[:message]
+      ctx[:duplicate] = result[:duplicate]
+      ctx[:invoice] = result[:invoice]
     end
   end
 
@@ -48,6 +52,7 @@ class Peppol::HandleEvent
     ApplicationRecord.transaction do
       invoice.update!(peppol_status: kind)
       invoice.peppol_events.create!(kind: kind, message: message)
+      Accounting::PeppolMessage.outbound.find_by(message_id: invoice.peppol_id)&.update!(status: kind, problems: (kind == :failed ? [ message ] : []))
     end
   end
 

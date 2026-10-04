@@ -125,8 +125,11 @@ RSpec.describe Peppol::AccessPoint::Simulator do
       expect(invoice.pdf_document.download).to start_with('%PDF')
     end
 
-    it 'says why nothing was booked' do
-      expect(ActsAsTenant.without_tenant { access_point.simulate_incoming }.message).to match(/open fiscal year/)
+    it 'keeps the message for review, and says why nothing was booked' do
+      message = ActsAsTenant.without_tenant { access_point.simulate_incoming }[:message]
+
+      expect(message).to have_attributes(status: 'needs_review', invoice_id: nil)
+      expect(message.problems.join).to match(/open fiscal year/)
     end
 
     it 'needs the entity to have a Peppol identifier' do

@@ -3,6 +3,7 @@
 # the documentation only. Received invoices are not handled yet (their webhook is not documented in what was read).
 class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
   API_VERSION = "2026-03-02".freeze
+  SIGNATURE_TOLERANCE = 5.minutes.to_i # seconds a webhook's timestamp may differ from ours
   # Sandbox scenarios (docs.b2brouter.net/en/developers/testing/sandbox): success = sent, registered; refused by the buyer =
   # sent, registered, refused; no receiver = sent, error. "registered" is the Peppol network accepting the message.
   DELIVERED_STATES = %w[registered closed accepted read paid].freeze
@@ -88,12 +89,14 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
     request(:get, "/accounts/#{account_id}/invoices", params: { number: number, limit: 5 })["invoices"].to_a.find { |i| i["number"] == number }
   end
 
+  # The timestamp is part of what is signed: a call older than the tolerance is refused, so that a signed message cannot be replayed later.
   def verify_signature!(header, body)
     parts = header.to_s.split(",").filter_map { |p| p.split("=", 2) if p.include?("=") }.to_h
     secret = credential("webhook_secret")
     ok = secret && parts["t"] && parts["s"] &&
          ActiveSupport::SecurityUtils.secure_compare(OpenSSL::HMAC.hexdigest("SHA256", secret, "#{parts['t']}.#{body}"), parts["s"])
     raise Peppol::AccessPoint::InvalidSignature, "Bad signature" unless ok
+    raise Peppol::AccessPoint::InvalidSignature, "Stale timestamp" if (Time.now.to_i - parts["t"].to_i).abs > SIGNATURE_TOLERANCE
   end
 
   def request(verb, path, params: nil, body: nil, content_type: nil)
