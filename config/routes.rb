@@ -156,6 +156,17 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :peppol_messages, only: %i[index show] do
+        member do
+          get  :pdf
+          post :reprocess
+          post :dismiss
+          post :assign_supplier
+          post :resend
+        end
+        post :reprocess_all, on: :collection
+      end
+
       resources :letterings, only: [ :new, :create, :destroy, :show ]
       resources :lettering_write_offs, only: :create
       resources :lettering_suggestions, only: :create do
@@ -230,6 +241,7 @@ Rails.application.routes.draw do
           resources :analytical_accounts, shallow: true
         end
         resource :vat_settings, only: [ :edit, :update ]
+        resource :peppol_mappings, only: [ :edit, :update ]
         resource :peppol_settings, only: [ :edit, :update ] do
           post :simulate_incoming
         end

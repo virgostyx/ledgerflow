@@ -10,6 +10,14 @@ RSpec.describe Accounting::VatCategoryMapping do
     expect(described_class.pluck(:vat_treatment).uniq).to eq([ "domestic" ])
   end
 
+  it "does not bring a category back once the entity unmapped it (the defaults are made once)" do
+    described_class.ensure_defaults!
+    described_class.find_by(category: "E").destroy!
+    described_class.ensure_defaults!
+
+    expect(described_class.pluck(:category)).to match_array(%w[S Z O])
+  end
+
   it "leaves what the entity changed" do
     described_class.create!(category: "E", vat_treatment: :exempt)
     described_class.ensure_defaults!

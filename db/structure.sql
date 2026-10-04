@@ -2047,7 +2047,8 @@ CREATE TABLE public.accounting_peppol_messages (
     invoice_id bigint,
     document_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    partner_id bigint
 );
 
 
@@ -5443,6 +5444,13 @@ CREATE INDEX index_accounting_peppol_messages_on_invoice_id ON public.accounting
 
 
 --
+-- Name: index_accounting_peppol_messages_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_peppol_messages_on_partner_id ON public.accounting_peppol_messages USING btree (partner_id);
+
+
+--
 -- Name: index_accounting_period_locks_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6446,6 +6454,14 @@ ALTER TABLE ONLY public.accounting_recurring_invoices
 
 
 --
+-- Name: accounting_peppol_messages fk_rails_8823ec69c6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_peppol_messages
+    ADD CONSTRAINT fk_rails_8823ec69c6 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id) ON DELETE SET NULL;
+
+
+--
 -- Name: accounting_fixed_assets fk_rails_89ceae2139; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7084,6 +7100,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261004170000'),
 ('20261004160000'),
 ('20261004150000'),
 ('20261004140000'),

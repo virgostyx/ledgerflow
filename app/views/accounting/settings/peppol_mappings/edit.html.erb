@@ -1,0 +1,49 @@
+<% content_for :breadcrumb do %>
+  <%= link_to "Settings", accounting_settings_root_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <%= link_to "Peppol", edit_accounting_settings_peppol_settings_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <span class="text-gray-700 font-medium">VAT categories</span>
+<% end %>
+
+<div class="max-w-3xl">
+  <%= render Ui::PageHeaderComponent.new(title: "Received invoices: VAT and accounts") %>
+  <%= render 'accounting/peppol_messages/test_banner' %>
+
+  <%= form_with url: accounting_settings_peppol_mappings_path, method: :patch, class: 'space-y-6 text-sm' do %>
+    <section>
+      <h2 class="font-semibold mb-1">VAT categories of the UBL</h2>
+      <p class="text-gray-500 mb-2">How a received invoice is treated for VAT. A category left empty is not mapped: a document that carries it waits for the accountant. Reverse charge (AE), intra-community (K) and export (G) are tax decisions, left unmapped until you choose.</p>
+      <table class="w-full">
+        <thead><tr class="text-left text-xs text-gray-500 uppercase"><th class="py-1">Category</th><th>VAT treatment</th><th>Rate to self-assess</th></tr></thead>
+        <tbody>
+          <% Accounting::VatCategoryMapping::CATEGORIES.each do |category| %>
+            <% mapping = @mappings[category] %>
+            <tr class="border-t border-gray-100">
+              <td class="py-2 font-mono"><%= category %></td>
+              <td><%= select_tag "mappings[#{category}][vat_treatment]", options_for_select([ [ 'Not mapped', '' ] ] + Accounting::VatCategoryMapping.vat_treatments.keys.map { |t| [ t.humanize, t ] }, mapping&.vat_treatment), class: 'rounded-md border border-gray-300 px-2 py-1' %></td>
+              <td><%= number_field_tag "mappings[#{category}][vat_rate]", mapping&.vat_rate, step: '0.01', min: 0, class: 'w-24 rounded-md border border-gray-300 px-2 py-1' %> <span class="text-xs text-gray-400">empty: the rate of the document</span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2 class="font-semibold mb-1">Account proposed per supplier</h2>
+      <p class="text-gray-500 mb-2">Remembered when a supplier invoice is posted. Change it here to propose another one on the next invoice received.</p>
+      <% if @defaults.any? %>
+        <table class="w-full">
+          <% @defaults.each do |default| %>
+            <tr class="border-t border-gray-100"><td class="py-2"><%= default.partner.name %></td>
+              <td><%= select_tag "defaults[#{default.id}][account_id]", options_from_collection_for_select(@accounts, :id, :full_label, default.account_id), include_blank: true, class: 'rounded-md border border-gray-300 px-2 py-1 w-72' %></td></tr>
+          <% end %>
+        </table>
+      <% else %>
+        <p class="text-gray-500">None yet: the first supplier invoice you post will start the list.</p>
+      <% end %>
+    </section>
+
+    <%= submit_tag 'Save', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer' %>
+  <% end %>
+</div>

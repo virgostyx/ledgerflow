@@ -120,6 +120,7 @@ RSpec.describe "The draft of a received invoice" do
     end
 
     it "waits for review when the document mixes a reverse charge with ordinary VAT" do
+      Accounting::VatCategoryMapping.ensure_defaults!
       Accounting::VatCategoryMapping.create!(category: "AE", vat_treatment: :construction_reverse_charge, vat_rate: 21)
 
       message = take(PeppolUbl.invoice(lines: [ [ 100, "S", 21 ], [ 100, "AE", 0 ] ]))

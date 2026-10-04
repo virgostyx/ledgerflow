@@ -8,8 +8,9 @@ class Accounting::PeppolMessage < ApplicationRecord
 
   enum :direction,     { inbound: 0, outbound: 1 }
   enum :document_type, { invoice: 0, credit_note: 1, other: 2 }, prefix: :document
-  enum :status,        { received: 0, processed: 1, needs_review: 2, queued: 3, delivered: 4, failed: 5 }
+  enum :status,        { received: 0, processed: 1, needs_review: 2, queued: 3, delivered: 4, failed: 5, dismissed: 6 }
 
+  belongs_to :partner,  class_name: "Accounting::Partner", optional: true # the supplier a person picked for a message that could not choose
   belongs_to :invoice,  class_name: "Accounting::Invoice", optional: true
   belongs_to :document, class_name: "Accounting::Document", optional: true
 

@@ -6,6 +6,9 @@
 class Peppol::AccessPoint::Base
   attr_reader :entity
 
+  # A sandbox or a simulation: the screens say so, so that nobody takes a test for the real network.
+  def test_environment? = false
+
   def self.credential_fields = []
 
   # Some Access Points refuse a document whose buyer has no e-mail address.

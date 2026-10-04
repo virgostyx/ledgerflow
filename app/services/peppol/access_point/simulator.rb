@@ -10,6 +10,8 @@ class Peppol::AccessPoint::Simulator < Peppol::AccessPoint::Base
   FAILED       = "-FAILED".freeze
   SLOW         = "-SLOW".freeze
 
+  def test_environment? = true
+
   def send_document(xml:, sender:, receiver:, document_id:)
     ensure_well_formed!(xml)
     raise Peppol::AccessPoint::Error, "Receiver #{receiver.inspect} is not a Peppol participant identifier" unless Peppol::ParticipantId.valid?(receiver)

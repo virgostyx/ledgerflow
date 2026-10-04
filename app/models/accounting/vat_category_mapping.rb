@@ -15,8 +15,10 @@ class Accounting::VatCategoryMapping < ApplicationRecord
   validates :category, inclusion: { in: CATEGORIES }, uniqueness: { scope: :entity_id }
   validates :vat_rate, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
-  # Idempotent: what the entity already chose is left as it is.
+  # Once: an entity that already has mappings (it chose, or it left a category unmapped on purpose) is left as it is.
   def self.ensure_defaults!
+    return if exists?
+
     DEFAULTS.each { |category| find_or_create_by!(category: category) { |m| m.vat_treatment = :domestic } }
   end
 end

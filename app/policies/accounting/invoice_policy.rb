@@ -46,7 +46,7 @@ class Accounting::InvoicePolicy < ApplicationPolicy
   end
 
   def send_peppol?
-    can?("invoices.issue")
+    can?("peppol.send")
   end
 
   private

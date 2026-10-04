@@ -186,6 +186,7 @@ class Accounting::InvoicesController < ApplicationController
     authorize @invoice, :send_peppol?
 
     result = Peppol::SendInvoice.call(invoice: @invoice)
+    Accounting::AuditLog.record!(auditable: @invoice, action: "peppol_sent", user: current_user, payload: { success: result.success?, error: (result.message unless result.success?) })
 
     if result.success?
       redirect_to accounting_invoice_path(@invoice), notice: t("peppol.invoices.sent")

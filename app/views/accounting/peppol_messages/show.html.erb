@@ -1,0 +1,82 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: 'Dashboard', path: accounting_root_path }, { label: 'Peppol', path: accounting_peppol_messages_path(direction: @message.direction) }, { label: @message.message_id.truncate(24) } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "#{@message.inbound? ? 'Received' : 'Sent'} #{@message.document_type.humanize.downcase}", back_path: accounting_peppol_messages_path(direction: @message.direction), back_text: 'Peppol') %>
+<%= render 'test_banner' %>
+
+<div class="flex items-center gap-3 mb-4 text-sm">
+  <%= peppol_status_badge(@message) %>
+  <span class="text-gray-600"><%= l @message.occurred_at, format: :short %> — <%= @message.inbound? ? "from #{@message.sender_id || 'unknown'}" : "to #{@message.receiver_id || 'unknown'}" %></span>
+  <% if @message.invoice %><%= link_to 'Open the invoice', accounting_invoice_path(@message.invoice), class: 'text-primary-700 hover:underline' %><% end %>
+</div>
+
+<% if @message.problems.any? %>
+  <div class="mb-4 rounded-md bg-amber-50 border border-amber-300 p-3 text-sm text-amber-900">
+    <strong>This message waits:</strong>
+    <ul class="list-disc ml-5"><% @message.problems.each do |problem| %><li><%= problem %></li><% end %></ul>
+  </div>
+<% end %>
+<% if @message.note.present? %><p class="mb-4 text-sm text-gray-600"><%= @message.note %></p><% end %>
+
+<% if @message.needs_review? %>
+  <div class="mb-6 grid md:grid-cols-3 gap-4 text-sm">
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <h2 class="font-semibold mb-2">Deal with the cause</h2>
+      <ul class="space-y-1">
+        <li><%= link_to 'Exchange rates', accounting_settings_exchange_rates_path, class: 'text-primary-700 hover:underline' %> (a foreign currency needs its rate)</li>
+        <li><%= link_to 'VAT categories', edit_accounting_settings_peppol_mappings_path, class: 'text-primary-700 hover:underline' %> (an unmapped category)</li>
+        <li><%= link_to 'Partners', accounting_partners_path, class: 'text-primary-700 hover:underline' %> (the supplier)</li>
+      </ul>
+      <%= button_to 'Work on it again', reprocess_accounting_peppol_message_path(@message), method: :post, class: 'mt-3 px-3 py-1 bg-primary-600 text-white rounded-md hover:bg-primary-700 cursor-pointer' %>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <h2 class="font-semibold mb-2">Give it its supplier</h2>
+      <%= form_with url: assign_supplier_accounting_peppol_message_path(@message), method: :post do %>
+        <%= select_tag :partner_id, options_from_collection_for_select(@suppliers, :id, ->(p) { [ p.name, p.vat_number ].compact.join(' — ') }), class: 'w-full rounded-md border border-gray-300 px-2 py-1' %>
+        <%= submit_tag 'Use this supplier', class: 'mt-2 px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer' %>
+      <% end %>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <h2 class="font-semibold mb-2">Put it aside</h2>
+      <%= form_with url: dismiss_accounting_peppol_message_path(@message), method: :post do %>
+        <%= text_field_tag :reason, nil, required: true, placeholder: 'Why (required)', class: 'w-full rounded-md border border-gray-300 px-2 py-1' %>
+        <%= submit_tag 'Put aside', class: 'mt-2 px-3 py-1 border border-red-300 text-red-700 rounded-md hover:bg-red-50 cursor-pointer' %>
+      <% end %>
+      <p class="mt-2 text-xs text-gray-500">The message is kept, never deleted.</p>
+    </div>
+  </div>
+<% end %>
+
+<% if @message.outbound? && @message.failed? && peppol_allowed?(:resend?) %>
+  <%= button_to 'Send again', resend_accounting_peppol_message_path(@message), method: :post, class: 'mb-4 px-3 py-1 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 cursor-pointer' %>
+<% end %>
+
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="bg-white rounded-lg border border-gray-200 p-4 text-sm overflow-auto" style="max-height: 70vh">
+    <h2 class="font-semibold mb-2"><%= @pdf ? 'The PDF of the supplier' : 'Readable rendering' %></h2>
+    <% if @pdf %>
+      <iframe src="<%= pdf_accounting_peppol_message_path(@message) %>" class="w-full" style="height: 60vh" title="PDF" sandbox></iframe>
+    <% elsif @readable %>
+      <p class="text-gray-500 mb-2">No PDF came with the document: this is the XML, read.</p>
+      <p><strong><%= @readable.supplier.name %></strong> <%= @readable.supplier.vat %> <%= @readable.supplier.iban %></p>
+      <p>No <%= @readable.number %> — <%= @readable.issue_date %><%= " — due #{@readable.due_date}" if @readable.due_date %> — <%= @readable.currency %></p>
+      <table class="w-full mt-2">
+        <% @readable.lines.each do |line| %>
+          <tr><td><%= line.name || line.description %></td><td class="text-right"><%= line.quantity %> × <%= line.unit_price %></td><td class="text-right"><%= line.amount %></td><td class="text-right"><%= line.tax_category %> <%= line.tax_percent %>%</td></tr>
+        <% end %>
+        <% @readable.charges.each do |charge| %>
+          <tr class="text-gray-600"><td><%= charge.charge ? 'Charge' : 'Allowance' %>: <%= charge.reason %></td><td></td><td class="text-right"><%= charge.charge ? '' : '−' %><%= charge.amount %></td><td class="text-right"><%= charge.tax_category %> <%= charge.tax_percent %>%</td></tr>
+        <% end %>
+      </table>
+      <p class="mt-2">Without VAT <strong><%= @readable.totals.tax_exclusive %></strong> — VAT <strong><%= @readable.tax_total %></strong> — with VAT <strong><%= @readable.totals.tax_inclusive %></strong></p>
+      <% if @readable.payment[:id] %><p>Payment reference: <%= @readable.payment[:id] %></p><% end %>
+    <% else %>
+      <p class="text-gray-500">This document cannot be read as an invoice.</p>
+    <% end %>
+  </div>
+  <div class="bg-white rounded-lg border border-gray-200 p-4 overflow-auto" style="max-height: 70vh">
+    <h2 class="font-semibold mb-2 text-sm">The XML as received</h2>
+    <pre class="text-xs whitespace-pre-wrap"><%= peppol_xml_for_display(@message.xml) %></pre>
+  </div>
+</div>

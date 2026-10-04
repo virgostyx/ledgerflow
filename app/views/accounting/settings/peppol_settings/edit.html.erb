@@ -9,6 +9,8 @@
 
 <div class="max-w-2xl">
   <%= render Ui::PageHeaderComponent.new(title: "Peppol") %>
+  <%= render 'accounting/peppol_messages/test_banner' %>
+  <p class="mb-4 text-sm"><%= link_to 'VAT categories and account proposals', edit_accounting_settings_peppol_mappings_path, class: 'text-primary-700 hover:underline' %> · <%= link_to 'Received and sent invoices', accounting_peppol_messages_path, class: 'text-primary-700 hover:underline' %></p>
 
   <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
     <%= form_with model: @entity, url: accounting_settings_peppol_settings_path, method: :patch,

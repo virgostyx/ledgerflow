@@ -18,6 +18,9 @@ module Permissions
     "entry_templates.manage" => %i[admin accountant],  # entry templates (F07)
     "recurring.manage"       => %i[admin accountant],  # recurring entries: create, pause, resume (F07)
     "recurring.approve_post" => %i[admin],             # lets a recurring entry post by itself (F07)
+    "peppol.review"          => %i[admin accountant assistant], # received invoices: look, work on again, pick the supplier, dismiss (F06)
+    "peppol.send"            => %i[admin accountant],           # send an invoice through Peppol, send it again
+    "peppol.configure"       => %i[admin accountant],           # Access Point, credentials, VAT category mappings, account proposals
     "vat.file"               => %i[admin accountant],
     "payments.manage"        => %i[admin accountant],
     "dunning.send"           => %i[admin accountant],

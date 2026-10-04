@@ -22,6 +22,9 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
     ]
   end
 
+  # The sandbox keys start with test_ (docs.b2brouter.net/en/developers/testing/sandbox).
+  def test_environment? = credential("api_key").to_s.start_with?("test_")
+
   # Two calls, as documented: import the file, then send the imported invoice.
   def send_document(xml:, sender:, receiver:, document_id:)
     api_key, account_id = credential("api_key"), credential("account_id")

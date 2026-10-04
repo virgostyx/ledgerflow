@@ -1,6 +1,7 @@
 # What was last used for a supplier (F06): the expense account, the journal, the VAT treatment and the payment terms. Feeds the proposals for the
 # next invoice received from that supplier. Written when a supplier invoice is posted (Accounting::RememberSupplierDefaults).
 class Accounting::SupplierDefault < ApplicationRecord
+  include Accounting::AuditTrailed
   self.table_name = "accounting_supplier_defaults"
 
   acts_as_tenant :entity

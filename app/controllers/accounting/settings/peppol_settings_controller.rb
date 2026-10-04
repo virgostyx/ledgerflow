@@ -1,5 +1,6 @@
 class Accounting::Settings::PeppolSettingsController < Accounting::Settings::BaseController
   before_action :set_entity
+  before_action { authorize Accounting::PeppolMessage, :configure?, policy_class: Accounting::PeppolMessagePolicy }
 
   def edit; end
 

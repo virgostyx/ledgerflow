@@ -3,9 +3,6 @@
 # reference (BuyerReference). All or nothing. An Access Point may deliver the same document twice: the invoice already
 # received (same supplier, same number, not cancelled) is returned instead of a second draft.
 class Peppol::ReceiveInvoice
-  # ponytail: no scan or size policy beyond this; a larger embedded file is simply not kept (the XML still is).
-  PDF_MAX_BYTES = 15.megabytes
-
   # `exchange_rate`: the rate of a document that is not in euros (never guessed: Peppol::ProcessMessage finds it, or the message waits).
   # => ctx[:invoice], ctx[:duplicate] (an invoice with the same supplier and number was already there: it is returned, no second draft)
   # `plan`: Peppol::InvoicePlan::Plan, the lines, treatment, journal and references of the draft (without one, only the header and the amounts).
@@ -110,17 +107,10 @@ class Peppol::ReceiveInvoice
     invoice.pdf_document.attach(**pdf) if pdf
   end
 
-  # The first embedded file that really is a PDF (declared as one, starts with %PDF, within the size limit).
+  # The PDF the supplier embedded, if any (Peppol::EmbeddedPdf).
   def self.embedded_pdf(doc, invoice_number)
-    doc.xpath("//AdditionalDocumentReference/Attachment/EmbeddedDocumentBinaryObject").each do |node|
-      next unless node["mimeCode"].to_s.casecmp?("application/pdf")
-
-      bytes = Base64.decode64(node.text.to_s)
-      next unless bytes.start_with?("%PDF") && bytes.bytesize <= PDF_MAX_BYTES
-
-      return { io: StringIO.new(bytes), filename: file_name(node["filename"].presence || "#{invoice_number}.pdf"), content_type: "application/pdf" }
-    end
-    nil
+    pdf = Peppol::EmbeddedPdf.find(doc) or return
+    { io: StringIO.new(pdf[:bytes]), filename: file_name(pdf[:filename].presence || "#{invoice_number}.pdf"), content_type: "application/pdf" }
   end
 
   def self.file_name(name) = name.to_s.gsub(/[^\w.\-]+/, "_")

@@ -25,7 +25,7 @@ class Peppol::ProcessMessage
     canonical = Peppol::InvoiceMapper.call(message.xml)
     problems = Peppol::InvoiceChecks.call(canonical)
     rate = exchange_rate_for(canonical, problems)
-    match = Peppol::SupplierMatch.find(canonical.supplier)
+    match = message.partner ? Peppol::SupplierMatch::Result.new(partner: message.partner, by: :chosen) : Peppol::SupplierMatch.find(canonical.supplier)
     problems << match.problem if match.problem
     plan = Peppol::InvoicePlan.build(canonical, partner: match.partner)
     problems.concat(plan.problems)
