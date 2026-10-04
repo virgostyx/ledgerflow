@@ -168,6 +168,25 @@ Rails.application.routes.draw do
         post :reprocess_all, on: :collection
       end
 
+      resources :tasks, only: %i[index show new create edit update] do
+        member do
+          post :external_link
+          post :revoke_external_link
+        end
+      end
+      resources :comments, only: %i[create update] do
+        member do
+          post :hide
+          post :resolve
+          post :reopen
+        end
+      end
+      resource :notification_preferences, only: %i[edit update]
+      resources :notifications, only: :index do
+        post :read, on: :member
+        post :read_all, on: :collection
+      end
+
       resources :letterings, only: [ :new, :create, :destroy, :show ]
       resources :lettering_write_offs, only: :create
       resources :lettering_suggestions, only: :create do
@@ -289,6 +308,9 @@ Rails.application.routes.draw do
   end
 
   # Webhooks Peppol (public; the token designates the entity, the signature is checked with its Access Point secret)
+  # F08: a third party answers a question through a signed link, with no account
+  get  "/reply/:token", to: "external_replies#show", as: :external_reply
+  post "/reply/:token", to: "external_replies#create"
   post "/peppol/webhooks/:token", to: "peppol/webhooks#receive", as: :peppol_webhook
 
   # Health check

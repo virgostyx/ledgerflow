@@ -1,0 +1,18 @@
+<%# The thread of comments of a task or of a thing (F08). `roots`: the comments with no parent, replies loaded. %>
+<% roots ||= commentable.comments.where(parent_id: nil).includes(:author, replies: :author) if commentable.respond_to?(:comments) %>
+<% roots ||= Accounting::Comment.where(commentable: commentable, parent_id: nil).order(:id).includes(:author, replies: :author) %>
+<section class="mt-6" data-section="comments">
+  <h2 class="text-sm font-semibold text-gray-700 mb-2">Comments</h2>
+  <% roots.each do |comment| %>
+    <%= render 'accounting/comments/comment', comment: comment, commentable: commentable %>
+    <div class="ml-8"><% comment.replies.each { |reply| %><%= render 'accounting/comments/comment', comment: reply, commentable: commentable %><% } %></div>
+  <% end %>
+  <% if roots.empty? %><p class="text-sm text-gray-500">No comment yet.</p><% end %>
+  <% if Accounting::CommentPolicy.new(current_user, Accounting::Comment.new(commentable: commentable)).create? %>
+    <%= form_with url: accounting_comments_path, method: :post, class: 'mt-3 space-y-2' do %>
+      <%= hidden_field_tag :commentable_type, commentable.class.name %><%= hidden_field_tag :commentable_id, commentable.id %>
+      <%= text_area_tag :body, nil, rows: 2, required: true, placeholder: 'Write a comment. Name someone with @ and the start of their e-mail address.', class: 'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm' %>
+      <%= submit_tag 'Comment', class: 'px-3 py-1 bg-gray-100 text-sm rounded-md hover:bg-gray-200 cursor-pointer' %>
+    <% end %>
+  <% end %>
+</section>

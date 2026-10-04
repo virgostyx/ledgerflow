@@ -1,0 +1,52 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: 'Dashboard', path: accounting_root_path }, { label: 'Tasks' } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: @scope == 'all' ? 'All tasks' : 'My tasks') do |header| %>
+  <% header.with_actions do %>
+    <% if policy(Accounting::Task).create? %>
+      <%= link_to 'New task', new_accounting_task_path, class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700' %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<div class="flex items-center gap-4 mb-4 text-sm">
+  <%= link_to 'My tasks', accounting_tasks_path(scope: 'mine'), class: (@scope == 'mine' ? 'font-semibold text-primary-700' : 'text-gray-600') %>
+  <%= link_to 'All tasks', accounting_tasks_path(scope: 'all'), class: (@scope == 'all' ? 'font-semibold text-primary-700' : 'text-gray-600') %>
+  <%= form_with url: accounting_tasks_path, method: :get, class: 'ml-auto flex flex-wrap items-center gap-2' do %>
+    <%= hidden_field_tag :scope, @scope %>
+    <%= hidden_field_tag :target_type, params[:target_type] if params[:target_type].present? %>
+    <%= hidden_field_tag :target_id, params[:target_id] if params[:target_id].present? %>
+    <%= select_tag :status, options_for_select([ [ 'Any status', '' ] ] + Accounting::Task.statuses.keys.map { |s| [ s.humanize, s ] }, params[:status]), class: 'rounded-md border border-gray-300 px-2 py-1' %>
+    <%= select_tag :kind, options_for_select([ [ 'Any type', '' ] ] + Accounting::Task.kinds.keys.map { |s| [ s.humanize, s ] }, params[:kind]), class: 'rounded-md border border-gray-300 px-2 py-1' %>
+    <%= select_tag :due, options_for_select([ [ 'Any due date', '' ], [ 'Overdue', 'overdue' ], [ 'Next 7 days', 'week' ] ], params[:due]), class: 'rounded-md border border-gray-300 px-2 py-1' %>
+    <% if @scope == 'all' %>
+      <%= select_tag :assignee_id, options_from_collection_for_select(@assignees, :id, :full_name, params[:assignee_id]), include_blank: 'Anyone', class: 'rounded-md border border-gray-300 px-2 py-1' %>
+    <% end %>
+    <%= submit_tag 'Filter', class: 'px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer' %>
+  <% end %>
+</div>
+
+<div class="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 border-b border-gray-200">
+      <tr>
+        <% %w[Title About Assignee Due Status].each do |h| %><th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"><%= h %></th><% end %>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      <% @tasks.each do |task| %>
+        <tr>
+          <td class="px-3 py-2"><%= link_to task.title, accounting_task_path(task), class: 'text-primary-700 hover:underline font-medium' %>
+            <span class="text-gray-400 text-xs"><%= task.kind.humanize %><%= ' · high priority' if task.high? %></span></td>
+          <td class="px-3 py-2"><%= task_target_label(task) %></td>
+          <td class="px-3 py-2"><%= task.assignee&.full_name || '—' %></td>
+          <td class="px-3 py-2 <%= 'text-red-700 font-medium' if task.due_on && task.due_on < Date.current && !task.closed? %>"><%= task.due_on ? l(task.due_on) : '—' %></td>
+          <td class="px-3 py-2"><%= task_status_badge(task) %></td>
+        </tr>
+      <% end %>
+      <% if @tasks.empty? %><tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">No task here.</td></tr><% end %>
+    </tbody>
+  </table>
+</div>
+<%= render 'shared/pagination', pagy: @pagy %>

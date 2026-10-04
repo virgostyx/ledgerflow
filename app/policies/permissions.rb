@@ -21,6 +21,8 @@ module Permissions
     "peppol.review"          => %i[admin accountant assistant], # received invoices: look, work on again, pick the supplier, dismiss (F06)
     "peppol.send"            => %i[admin accountant],           # send an invoice through Peppol, send it again
     "peppol.configure"       => %i[admin accountant],           # Access Point, credentials, VAT category mappings, account proposals
+    "tasks.manage"           => %i[admin accountant assistant], # create, assign, change and close tasks (F08)
+    "comments.write"         => %i[admin accountant assistant], # comment on what one can see (F08)
     "vat.file"               => %i[admin accountant],
     "payments.manage"        => %i[admin accountant],
     "dunning.send"           => %i[admin accountant],

@@ -14,6 +14,7 @@
     ) do |header| %>
   <% header.with_actions do %>
     <%= render Accounting::StatusBadgeComponent.new(status: @entry.status.to_sym) %>
+    <%= task_badge(@entry) %> <%= task_link(@entry) %>
     <% if @entry.draft? && policy(@entry).post? && @period_lock.nil? %>
       <%= button_to 'Post', post_entry_accounting_journal_entry_path(@entry), method: :post,
             class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
@@ -80,4 +81,8 @@
 
 <% if feature?(:f03) && policy(Accounting::Document).index? %>
   <%= render "accounting/documents/panel", entry: @entry %>
+<% end %>
+
+<% if feature?(:f08) %>
+  <%= render 'accounting/comments/thread', commentable: @entry %>
 <% end %>

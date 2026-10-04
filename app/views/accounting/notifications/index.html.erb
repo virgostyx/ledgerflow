@@ -1,0 +1,24 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: 'Dashboard', path: accounting_root_path }, { label: 'Notifications' } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: 'Notifications') do |header| %>
+  <% header.with_actions do %>
+    <%= link_to 'Preferences', edit_accounting_notification_preferences_path, class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50' %>
+    <%= button_to 'Mark all as read', read_all_accounting_notifications_path, method: :post, class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer' %>
+  <% end %>
+<% end %>
+
+<div class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm">
+  <% @notifications.each do |n| %>
+    <div class="px-4 py-3 flex items-center justify-between <%= 'font-semibold' unless n.read_at %>">
+      <span>
+        <% task = n.subject.is_a?(Accounting::Task) ? n.subject : (n.subject.commentable if n.subject.respond_to?(:commentable) && n.subject.commentable.is_a?(Accounting::Task)) %>
+        <%= { 'task_assigned' => 'Task assigned to you', 'mention' => 'You were mentioned', 'task_due' => 'Task due tomorrow', 'digest' => 'Daily summary', 'external_reply' => 'A third party answered' }.fetch(n.event.split(':').first, n.event.humanize) %><%= " by #{n.data['by']}" if n.data['by'] %><%= ": #{task.title}" if task %>
+        <span class="text-gray-400 font-normal"><%= l n.created_at, format: :short %></span>
+      </span>
+      <%= button_to (n.read_at ? 'Open' : 'Read and open'), read_accounting_notification_path(n), method: :post, form: { class: 'shrink-0' }, class: 'text-primary-700 hover:underline cursor-pointer' %>
+    </div>
+  <% end %>
+  <% if @notifications.empty? %><p class="px-4 py-6 text-center text-gray-500">Nothing.</p><% end %>
+</div>

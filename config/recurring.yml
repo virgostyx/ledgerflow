@@ -13,6 +13,14 @@ production:
     class: Peppol::PullReceivedJob
     queue: default
     schedule: every 15 minutes
+  task_due_reminders:
+    class: Accounting::TaskDueRemindersJob
+    queue: default
+    schedule: every day at 7am
+  daily_task_digest:
+    class: Accounting::DailyTaskDigestJob
+    queue: default
+    schedule: every day at 7:30am
   generate_recurring_entries:
     class: Accounting::GenerateRecurringEntriesJob
     queue: default

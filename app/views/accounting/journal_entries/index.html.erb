@@ -46,9 +46,10 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
+        <% task_counts = feature?(:f08) ? Accounting::TaskBadges.counts(Accounting::JournalEntry, @entries.map(&:id)) : {} %>
         <% @entries.each do |entry| %>
           <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-4 py-3 font-mono text-sm text-primary-700"><%= entry.reference || '—' %></td>
+            <td class="px-4 py-3 font-mono text-sm text-primary-700"><%= entry.reference || '—' %><%= task_badge(entry, count: task_counts.fetch(entry.id, 0)) %></td>
             <td class="px-4 py-3 text-gray-500"><%= entry.journal.code %></td>
             <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(entry.entry_date).format %></td>
             <td class="px-4 py-3 text-gray-700 max-w-xs truncate"><%= entry.description %></td>

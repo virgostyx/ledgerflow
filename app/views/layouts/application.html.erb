@@ -83,6 +83,21 @@
           <% end %>
         <% end %>
 
+        <% if feature?(:f08) %>
+          <%= link_to accounting_tasks_path, class: nav_class(accounting_tasks_path) do %>
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+            </svg>
+            Tasks<% mine = Accounting::Task.open_ones.where(assignee_id: current_user.id).count %><% if mine.positive? %> <span class="ml-auto text-xs px-1.5 rounded-full bg-blue-100 text-blue-800"><%= mine %></span><% end %>
+          <% end %>
+          <%= link_to accounting_notifications_path, class: nav_class(accounting_notifications_path) do %>
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/>
+            </svg>
+            Notifications<% unread = Accounting::Notification.where(user: current_user, channel: :in_app).unread.count %><% if unread.positive? %> <span class="ml-auto text-xs px-1.5 rounded-full bg-amber-100 text-amber-800"><%= unread %></span><% end %>
+          <% end %>
+        <% end %>
+
         <% if peppol_allowed?(:index?) %>
           <%= link_to accounting_peppol_messages_path, class: nav_class(accounting_peppol_messages_path) do %>
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">

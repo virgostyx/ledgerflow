@@ -141,6 +141,28 @@ en:
     not_found:           "Entity not found."
 
   accounting:
+    tasks:
+      created: "Task created."
+      updated: "Task updated."
+      commented: "Comment added."
+      comment_updated: "Comment updated."
+      comment_hidden: "Comment hidden."
+      comment_resolved: "Comment settled."
+      comment_reopened: "Comment opened again."
+      all_read: "All notifications read."
+      link_issued: "The link is ready: send it to the person you are asking."
+      link_revoked: "The link no longer answers."
+      preferences_saved: "Preferences saved."
+      mentions_ignored: "Comment added. %{names} not told: unknown, ambiguous, or not allowed to see this."
+      errors:
+        question_blank: "Write the question to ask."
+        link_expired: "This link is no longer valid."
+        reply_needs_name: "Give your name."
+        reply_empty: "Write an answer or attach a file."
+        reply_too_long: "The answer is too long (%{max} characters at most)."
+        target_not_visible: "You cannot see what this task is about."
+        reply_to_other_thread: "A reply belongs to the thread of the comment it answers."
+        comment_locked: "A comment can only be changed by its author, within fifteen minutes, and not once it is hidden."
     recurring:
       errors:
         locked_period: "The period of %{date} is locked (%{from} to %{to}): nothing is made until it is unlocked."

@@ -18,9 +18,10 @@
 <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto">
   <table class="w-full text-sm">
     <thead class="bg-gray-50 border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-      <tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Counterparty</th><th class="px-4 py-3">Communication</th><th class="px-4 py-3 text-right">Amount</th><th class="px-4 py-3">State</th></tr>
+      <tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Counterparty</th><th class="px-4 py-3">Communication</th><th class="px-4 py-3 text-right">Amount</th><th class="px-4 py-3">State</th><th class="px-4 py-3"></th></tr>
     </thead>
     <tbody class="divide-y divide-gray-100">
+      <% task_counts = feature?(:f08) ? Accounting::TaskBadges.counts(Accounting::BankTransaction, @transactions.map(&:id)) : {} %>
       <% @transactions.each do |tx| %>
         <tr>
           <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(tx.transaction_date).format %></td>
@@ -28,6 +29,7 @@
           <td class="px-4 py-3 text-gray-700"><%= tx.description %></td>
           <td class="px-4 py-3 text-right font-mono <%= tx.credit? ? "text-emerald-700" : "text-red-700" %>"><%= Accounting::MoneyPresenter.new(tx.amount).format %></td>
           <td class="px-4 py-3 text-xs text-gray-600"><%= tx.status.humanize %></td>
+          <td class="px-4 py-3 text-xs"><%= task_badge(tx, count: task_counts.fetch(tx.id, 0)) %> <%= task_link(tx, label: "＋ task") %></td>
         </tr>
       <% end %>
     </tbody>

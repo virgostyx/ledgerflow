@@ -1,0 +1,32 @@
+<div class="mt-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm <%= 'opacity-60' if comment.resolved? %>" id="comment_<%= comment.id %>">
+  <div class="flex items-center justify-between text-xs text-gray-500">
+    <span><strong><%= comment.author&.full_name || "#{comment.external_name} (outside)" %></strong> · <%= l comment.created_at, format: :short %><%= ' · edited' if comment.edited_at %><%= ' · settled' if comment.resolved? %></span>
+    <span class="flex items-center gap-3">
+      <% unless comment.hidden? %>
+        <% if comment.resolved? %><%= button_to 'Open again', reopen_accounting_comment_path(comment), method: :post, form: { class: 'inline' }, class: 'text-gray-600 hover:underline cursor-pointer' %>
+        <% elsif Accounting::CommentPolicy.new(current_user, comment).resolve? %><%= button_to 'Settle', resolve_accounting_comment_path(comment), method: :post, form: { class: 'inline' }, class: 'text-gray-600 hover:underline cursor-pointer' %><% end %>
+        <% if Accounting::CommentPolicy.new(current_user, comment).hide? %><%= button_to 'Hide', hide_accounting_comment_path(comment), method: :post, form: { class: 'inline' }, data: { turbo_confirm: 'Hide this comment? It is kept, but no longer shown.' }, class: 'text-red-600 hover:underline cursor-pointer' %><% end %>
+      <% end %>
+    </span>
+  </div>
+  <% if comment.hidden? %>
+    <p class="mt-1 text-gray-400 italic">Comment hidden by <%= comment.hidden_by&.full_name %>.</p>
+  <% else %>
+    <p class="mt-1 whitespace-pre-line"><%= comment.body %></p>
+    <% if comment.editable_by?(current_user) %>
+      <details class="mt-1"><summary class="cursor-pointer text-xs text-primary-700">Edit (until <%= l comment.created_at + Accounting::Comment::EDIT_WINDOW, format: :short %>)</summary>
+        <%= form_with url: accounting_comment_path(comment), method: :patch, class: 'mt-1 space-y-1' do %>
+          <%= text_area_tag :body, comment.body, rows: 2, class: 'block w-full rounded-md border border-gray-300 px-2 py-1 text-sm' %>
+          <%= submit_tag 'Save', class: 'px-2 py-1 bg-gray-100 text-xs rounded-md hover:bg-gray-200 cursor-pointer' %>
+        <% end %></details>
+    <% end %>
+    <% if Accounting::CommentPolicy.new(current_user, comment).create? && comment.parent_id.nil? %>
+      <details class="mt-1"><summary class="cursor-pointer text-xs text-gray-600">Reply</summary>
+        <%= form_with url: accounting_comments_path, method: :post, class: 'mt-1 space-y-1' do %>
+          <%= hidden_field_tag :commentable_type, commentable.class.name %><%= hidden_field_tag :commentable_id, commentable.id %><%= hidden_field_tag :parent_id, comment.id %>
+          <%= text_area_tag :body, nil, rows: 2, required: true, class: 'block w-full rounded-md border border-gray-300 px-2 py-1 text-sm' %>
+          <%= submit_tag 'Reply', class: 'px-2 py-1 bg-gray-100 text-xs rounded-md hover:bg-gray-200 cursor-pointer' %>
+        <% end %></details>
+    <% end %>
+  <% end %>
+</div>

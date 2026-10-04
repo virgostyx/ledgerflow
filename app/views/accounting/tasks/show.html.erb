@@ -1,0 +1,41 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: 'Dashboard', path: accounting_root_path }, { label: 'Tasks', path: accounting_tasks_path }, { label: @task.title.truncate(40) } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: @task.title, back_path: accounting_tasks_path, back_text: 'Tasks') do |header| %>
+  <% header.with_actions do %>
+    <%= task_status_badge(@task) %>
+    <% if policy(@task).update? %><%= link_to 'Edit', edit_accounting_task_path(@task), class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50' %><% end %>
+  <% end %>
+<% end %>
+
+<dl class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-sm">
+  <div><dt class="text-xs text-gray-500">About</dt><dd><%= task_target_label(@task) %></dd></div>
+  <div><dt class="text-xs text-gray-500">Assigned to</dt><dd><%= @task.assignee&.full_name || '—' %></dd></div>
+  <div><dt class="text-xs text-gray-500">Due</dt><dd><%= @task.due_on ? l(@task.due_on) : '—' %></dd></div>
+  <div><dt class="text-xs text-gray-500">Type · priority</dt><dd><%= @task.kind.humanize %> · <%= @task.priority.humanize.downcase %></dd></div>
+  <div><dt class="text-xs text-gray-500">Created by</dt><dd><%= @task.author&.full_name || '—' %></dd></div>
+  <% if @task.completed_at %><div><dt class="text-xs text-gray-500">Closed</dt><dd><%= l @task.completed_at, format: :short %> by <%= @task.completed_by&.full_name %></dd></div><% end %>
+  <% if @task.anomaly_fingerprint.present? %><div><dt class="text-xs text-gray-500">Anomaly</dt><dd><%= link_to 'Consistency checks', accounting_consistency_runs_path, class: 'text-primary-700 hover:underline' %></dd></div><% end %>
+</dl>
+<% if @task.description.present? %><p class="mb-6 text-sm text-gray-700 whitespace-pre-line"><%= @task.description %></p><% end %>
+
+<% if policy(@task).update? %>
+  <section class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm" data-section="external-link">
+    <h2 class="font-semibold text-gray-700 mb-1">Ask a third party</h2>
+    <% if @task.external_open? %>
+      <p class="text-gray-600">Question: <em><%= @task.question %></em></p>
+      <p class="mt-1">Link, valid until <%= l @task.external_expires_at.to_date %>: <code class="break-all text-xs"><%= external_reply_url(token: @task.external_link_token) %></code></p>
+      <%= button_to 'End the link now', revoke_external_link_accounting_task_path(@task), method: :post, class: 'mt-2 text-red-600 hover:underline cursor-pointer' %>
+    <% else %>
+      <p class="text-gray-500 mb-2">A link lets someone outside answer in text and with files, and see nothing else. Nothing is sent from here: you send the link.</p>
+    <% end %>
+    <%= form_with url: external_link_accounting_task_path(@task), method: :post, class: 'mt-2 flex flex-wrap items-end gap-2' do %>
+      <label class="flex-1 min-w-64">Question <%= text_area_tag :question, @task.question, rows: 2, required: true, class: 'block w-full rounded-md border border-gray-300 px-2 py-1' %></label>
+      <label>Days <%= number_field_tag :days, 14, min: 1, max: Accounting::IssueExternalLink::MAX_DAYS, class: 'w-20 rounded-md border border-gray-300 px-2 py-1' %></label>
+      <%= submit_tag (@task.external_open? ? 'New link' : 'Make a link'), class: 'px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer' %>
+    <% end %>
+  </section>
+<% end %>
+
+<%= render 'accounting/comments/thread', commentable: @task, roots: @roots %>

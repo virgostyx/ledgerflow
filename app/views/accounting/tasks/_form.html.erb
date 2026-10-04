@@ -1,0 +1,20 @@
+<%= form_with model: task, scope: :accounting_task, url: (task.persisted? ? accounting_task_path(task) : accounting_tasks_path), class: 'space-y-4 max-w-2xl text-sm' do |f| %>
+  <% if task.target %>
+    <p class="text-gray-600">About: <%= task_target_label(task) %></p>
+    <%= f.hidden_field :target_type, value: task.target_type %><%= f.hidden_field :target_id, value: task.target_id %>
+  <% end %>
+  <%= f.hidden_field :anomaly_fingerprint if task.anomaly_fingerprint.present? %>
+  <label class="block">Title <%= f.text_field :title, required: true, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+  <label class="block">Description <%= f.text_area :description, rows: 3, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+  <div class="grid grid-cols-2 gap-4">
+    <label>Type <%= f.select :kind, Accounting::Task.kinds.keys.map { |k| [ k.humanize, k ] }, {}, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Priority <%= f.select :priority, Accounting::Task.priorities.keys.map { |k| [ k.humanize, k ] }, {}, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Assigned to <%= f.collection_select :assignee_id, @assignees, :id, :full_name, { include_blank: 'Nobody' }, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label>Due <%= f.date_field :due_on, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <% if task.persisted? %>
+      <label>Status <%= f.select :status, Accounting::Task.statuses.keys.map { |k| [ k.humanize, k ] }, {}, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <% end %>
+  </div>
+  <%= f.submit 'Save', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer' %>
+  <%= link_to 'Cancel', accounting_tasks_path, class: 'ml-3 text-gray-600 hover:underline' %>
+<% end %>

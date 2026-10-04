@@ -1,0 +1,12 @@
+<div class="w-full max-w-xl bg-white rounded-lg border border-gray-200 p-6 text-sm">
+  <p class="text-xs text-gray-500"><%= @task.entity.legal_name %> asks you:</p>
+  <p class="mt-2 whitespace-pre-line text-gray-900"><%= @task.question %></p>
+  <p class="mt-2 text-xs text-gray-400">This page answers until <%= l @task.external_expires_at.to_date %>. It shows nothing else.</p>
+  <% if flash[:alert] %><p class="mt-3 rounded-md bg-red-50 p-2 text-red-700"><%= flash[:alert] %></p><% end %>
+  <%= form_with url: external_reply_path(params[:token]), method: :post, multipart: true, class: 'mt-4 space-y-3' do %>
+    <label class="block">Your name <%= text_field_tag :name, params[:name], required: true, maxlength: 100, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label class="block">Your answer <%= text_area_tag :body, params[:body], rows: 5, maxlength: Accounting::ReceiveExternalReply::MAX_BODY, class: 'block w-full rounded-md border border-gray-300 px-3 py-2' %></label>
+    <label class="block">Files (up to <%= Accounting::ReceiveExternalReply::MAX_FILES %>: PDF, image, XML) <%= file_field_tag 'files[]', multiple: true, class: 'block w-full text-sm' %></label>
+    <%= submit_tag 'Send my answer', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer' %>
+  <% end %>
+</div>

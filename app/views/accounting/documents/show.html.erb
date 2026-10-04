@@ -5,6 +5,7 @@
 <%= render Ui::PageHeaderComponent.new(title: @document.name, description: "#{@document.kind.humanize} · #{@document.status.humanize} · #{number_to_human_size(@document.byte_size)}",
                                       back_path: accounting_documents_path, back_text: "Documents") do |header| %>
   <% header.with_actions do %>
+    <%= task_badge(@document) %> <%= task_link(@document) %>
     <% if @downloadable %>
       <%= link_to "Download", download_accounting_document_path(@document), class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50" %>
     <% end %>
@@ -144,3 +145,7 @@
 </div>
 
 <div class="mt-6"><%= render "accounting/documents/extraction", document: @document %></div>
+
+<% if feature?(:f08) %>
+  <%= render 'accounting/comments/thread', commentable: @document %>
+<% end %>

@@ -13,6 +13,7 @@ class Accounting::ConsistencyRunsController < ApplicationController
     findings = findings.where(check_id: params[:check_id]) if params[:check_id].present?
     @show_acknowledged = params[:acknowledged] == "1"
     @findings = findings.reject { |f| @acks.key?(f.fingerprint) && !@show_acknowledged }
+    @anomaly_tasks = feature?(:f08) ? Accounting::Task.open_ones.where(anomaly_fingerprint: @findings.map(&:fingerprint)).group(:anomaly_fingerprint).count : {}
     @checks = Accounting::Consistency::Check.registry.map { |c| [ "#{c.check_id} — #{c.title}", c.check_id ] }
   end
 

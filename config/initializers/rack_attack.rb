@@ -18,6 +18,11 @@ class Rack::Attack
     req.ip if req.post? && req.path.start_with?("/two_factor")
   end
 
+  # The page where a third party answers a question (F08) is public: a link is tried, and a file uploaded, a few times a minute per IP
+  throttle("external_reply/ip", limit: 20, period: 1.minute) do |req|
+    req.ip if req.path.start_with?("/reply/")
+  end
+
   # API throttle: 300 requests per minute per IP
   throttle("api/ip", limit: 300, period: 1.minute) do |req|
     req.ip if req.path.start_with?("/api/")

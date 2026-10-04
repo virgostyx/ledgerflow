@@ -1,0 +1,12 @@
+<%= @entity.legal_name %>
+<% if @notification.event.start_with?("digest") %>
+You have <%= @notification.data["open"] %> open task(s): <%= @notification.data["overdue"] %> overdue, <%= @notification.data["soon"] %> due within three days.
+<% end %>
+
+<% if @task %>Task: <%= @task.title %><%= " (due #{l @task.due_on})" if @task.due_on %>
+<% end %><% if @comment && !@comment.hidden? %>
+<%= @comment.author&.full_name || @comment.external_name %> wrote:
+<%= @comment.body %>
+<% end %><%= "\n#{@notification.data['by']} did this." if @notification.data['by'].present? %>
+
+Open the application to answer: /accounting/tasks

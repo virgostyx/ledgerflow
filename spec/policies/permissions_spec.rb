@@ -14,6 +14,8 @@ RSpec.describe Permissions do
     "records.delete"         => [ [ Accounting::PartnerPolicy, :destroy? ], [ Accounting::Settings::BasePolicy, :destroy? ] ],
     "entries.post"           => [ [ Accounting::JournalEntryPolicy, :post? ], [ Accounting::BankReconciliationsPolicy, :post? ] ],
     "entries.reverse"        => [ [ Accounting::JournalEntryPolicy, :reverse? ] ],
+    "tasks.manage"           => [ [ Accounting::TaskPolicy, :create? ], [ Accounting::TaskPolicy, :update? ] ],
+    "comments.write"         => [ [ Accounting::CommentPolicy, :create? ] ],
     "peppol.review"          => [ [ Accounting::PeppolMessagePolicy, :index? ], [ Accounting::PeppolMessagePolicy, :reprocess? ] ],
     "peppol.send"            => [ [ Accounting::PeppolMessagePolicy, :resend? ], [ Accounting::InvoicePolicy, :send_peppol? ] ],
     "peppol.configure"       => [ [ Accounting::PeppolMessagePolicy, :configure? ] ],

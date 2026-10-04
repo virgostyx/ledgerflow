@@ -68,13 +68,19 @@
           <td class="px-4 py-2 text-right"><%= number_to_currency((@query&.opening_balance || 0), unit: "€") %></td>
           <td></td>
         </tr>
+        <% line_tasks = feature?(:f08) ? Accounting::TaskBadges.counts(Accounting::JournalEntryLine, @rows.map(&:line_id)) : {} %>
+        <% can_task = task_allowed_for?(nil) %>
         <% @rows.each do |row| %>
           <tr>
             <td class="px-4 py-2"><%= l(row.entry_date, format: :short) %></td>
             <td class="px-4 py-2 font-mono text-xs">
               <%= link_to row.reference, accounting_journal_entry_path(row.journal_entry_id), class: "text-primary-700 hover:underline" %>
             </td>
-            <td class="px-4 py-2"><%= row.label %></td>
+            <td class="px-4 py-2"><%= row.label %>
+              <% if feature?(:f08) %>
+                <% if line_tasks.fetch(row.line_id, 0).positive? %><%= link_to "#{line_tasks[row.line_id]} task#{'s' if line_tasks[row.line_id] > 1}", accounting_tasks_path(scope: 'all', target_type: 'Accounting::JournalEntryLine', target_id: row.line_id), class: "ml-1 text-xs px-1.5 rounded-full bg-blue-100 text-blue-800", title: "Open tasks about this line" %><% end %>
+                <% if can_task %><%= link_to "＋", new_accounting_task_path(target_type: 'Accounting::JournalEntryLine', target_id: row.line_id), class: "ml-1 text-xs text-primary-700", title: "Add a task about this line" %><% end %>
+              <% end %></td>
             <td class="px-4 py-2">
               <% if row.partner_id %>
                 <%= link_to row.partner_name,

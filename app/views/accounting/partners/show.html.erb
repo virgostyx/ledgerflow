@@ -12,8 +12,9 @@
       back_path: accounting_partners_path,
       back_text: 'Partners'
     ) do |header| %>
-  <% if policy(@partner).update? %>
-    <% header.with_actions do %>
+  <% header.with_actions do %>
+    <%= task_badge(@partner) %> <%= task_link(@partner) %>
+    <% if policy(@partner).update? %>
       <%= link_to 'Edit', edit_accounting_partner_path(@partner),
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
     <% end %>
@@ -44,3 +45,7 @@
     </div>
   </dl>
 </div>
+
+<% if feature?(:f08) %>
+  <div class="max-w-xl"><%= render 'accounting/comments/thread', commentable: @partner %></div>
+<% end %>

@@ -54,6 +54,12 @@
               <% else %><%= f.subject_type&.demodulize %> #<%= f.subject_id %><% end %>
             </td>
             <td class="px-3 py-2">
+              <% if feature?(:f08) && task_allowed_for?(nil) %>
+                <% subject = (Accounting::TaskTargets::TYPES.include?(f.subject_type) ? f.subject_type : nil) %>
+                <%= link_to (@anomaly_tasks.fetch(f.fingerprint, 0).positive? ? "#{@anomaly_tasks[f.fingerprint]} task#{'s' if @anomaly_tasks[f.fingerprint] > 1}" : "Task"),
+                      (@anomaly_tasks.fetch(f.fingerprint, 0).positive? ? accounting_tasks_path(scope: 'all', anomaly_fingerprint: f.fingerprint) : new_accounting_task_path(anomaly_fingerprint: f.fingerprint, title: f.message.truncate(80), kind: 'to_check', target_type: subject, target_id: (f.subject_id if subject))),
+                      class: "text-xs text-primary-600 underline mr-2" %>
+              <% end %>
               <% if !ack && policy(Accounting::ConsistencyRun).acknowledge? %>
                 <%= form_with url: acknowledge_accounting_consistency_runs_path, method: :post, class: "flex gap-1" do |af| %>
                   <%= hidden_field_tag :fingerprint, f.fingerprint %>

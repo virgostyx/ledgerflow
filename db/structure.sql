@@ -681,6 +681,49 @@ ALTER SEQUENCE public.accounting_cash_forecast_items_id_seq OWNED BY public.acco
 
 
 --
+-- Name: accounting_comments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_comments (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    commentable_type character varying NOT NULL,
+    commentable_id bigint NOT NULL,
+    parent_id bigint,
+    author_id bigint,
+    external_name character varying,
+    body text NOT NULL,
+    mentioned_user_ids bigint[] DEFAULT '{}'::bigint[] NOT NULL,
+    resolved_at timestamp(6) without time zone,
+    resolved_by_id bigint,
+    hidden_at timestamp(6) without time zone,
+    hidden_by_id bigint,
+    edited_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_comments_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_comments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_comments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_comments_id_seq OWNED BY public.accounting_comments.id;
+
+
+--
 -- Name: accounting_consistency_acknowledgements; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1796,6 +1839,44 @@ ALTER SEQUENCE public.accounting_line_allocations_id_seq OWNED BY public.account
 
 
 --
+-- Name: accounting_notifications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_notifications (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    event character varying NOT NULL,
+    subject_type character varying,
+    subject_id bigint,
+    channel integer DEFAULT 0 NOT NULL,
+    data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    read_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_notifications_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_notifications_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_notifications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_notifications_id_seq OWNED BY public.accounting_notifications.id;
+
+
+--
 -- Name: accounting_partners; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2280,6 +2361,52 @@ CREATE SEQUENCE public.accounting_supplier_defaults_id_seq
 --
 
 ALTER SEQUENCE public.accounting_supplier_defaults_id_seq OWNED BY public.accounting_supplier_defaults.id;
+
+
+--
+-- Name: accounting_tasks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_tasks (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    title character varying NOT NULL,
+    description text,
+    status integer DEFAULT 0 NOT NULL,
+    priority integer DEFAULT 1 NOT NULL,
+    kind integer DEFAULT 4 NOT NULL,
+    assignee_id bigint,
+    due_on date,
+    target_type character varying,
+    target_id bigint,
+    anomaly_fingerprint character varying,
+    author_id bigint,
+    completed_at timestamp(6) without time zone,
+    completed_by_id bigint,
+    question text,
+    external_expires_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_tasks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_tasks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_tasks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_tasks_id_seq OWNED BY public.accounting_tasks.id;
 
 
 --
@@ -2850,7 +2977,9 @@ CREATE TABLE public.user_entities (
     valid_from date,
     valid_until date,
     journal_ids bigint[],
-    custom_role_id bigint
+    custom_role_id bigint,
+    notify_by_email boolean DEFAULT true NOT NULL,
+    notify_daily_digest boolean DEFAULT false NOT NULL
 );
 
 
@@ -3080,6 +3209,13 @@ ALTER TABLE ONLY public.accounting_cash_forecast_items ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: accounting_comments id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_comments ALTER COLUMN id SET DEFAULT nextval('public.accounting_comments_id_seq'::regclass);
+
+
+--
 -- Name: accounting_consistency_acknowledgements id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3276,6 +3412,13 @@ ALTER TABLE ONLY public.accounting_line_allocations ALTER COLUMN id SET DEFAULT 
 
 
 --
+-- Name: accounting_notifications id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_notifications ALTER COLUMN id SET DEFAULT nextval('public.accounting_notifications_id_seq'::regclass);
+
+
+--
 -- Name: accounting_partners id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3357,6 +3500,13 @@ ALTER TABLE ONLY public.accounting_recurring_runs ALTER COLUMN id SET DEFAULT ne
 --
 
 ALTER TABLE ONLY public.accounting_supplier_defaults ALTER COLUMN id SET DEFAULT nextval('public.accounting_supplier_defaults_id_seq'::regclass);
+
+
+--
+-- Name: accounting_tasks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_tasks ALTER COLUMN id SET DEFAULT nextval('public.accounting_tasks_id_seq'::regclass);
 
 
 --
@@ -3579,6 +3729,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 ALTER TABLE ONLY public.accounting_cash_forecast_items
     ADD CONSTRAINT accounting_cash_forecast_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_comments accounting_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_comments
+    ADD CONSTRAINT accounting_comments_pkey PRIMARY KEY (id);
 
 
 --
@@ -3806,6 +3964,14 @@ ALTER TABLE ONLY public.accounting_line_allocations
 
 
 --
+-- Name: accounting_notifications accounting_notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_notifications
+    ADD CONSTRAINT accounting_notifications_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_partners accounting_partners_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3899,6 +4065,14 @@ ALTER TABLE ONLY public.accounting_recurring_runs
 
 ALTER TABLE ONLY public.accounting_supplier_defaults
     ADD CONSTRAINT accounting_supplier_defaults_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_tasks accounting_tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_tasks
+    ADD CONSTRAINT accounting_tasks_pkey PRIMARY KEY (id);
 
 
 --
@@ -4188,6 +4362,13 @@ CREATE INDEX idx_lines_partner_open ON public.accounting_journal_entry_lines USI
 
 
 --
+-- Name: idx_notifications_once; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_notifications_once ON public.accounting_notifications USING btree (user_id, event, subject_type, subject_id, channel);
+
+
+--
 -- Name: idx_on_analytical_account_id_287261de69; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4227,6 +4408,13 @@ CREATE INDEX idx_on_bank_account_id_ef8d5b8375 ON public.accounting_bank_reconci
 --
 
 CREATE INDEX idx_on_bank_account_id_new_balance_date_4441da131d ON public.accounting_bank_statements USING btree (bank_account_id, new_balance_date);
+
+
+--
+-- Name: idx_on_commentable_type_commentable_id_41f4c9ee89; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_commentable_type_commentable_id_41f4c9ee89 ON public.accounting_comments USING btree (commentable_type, commentable_id);
 
 
 --
@@ -4570,6 +4758,41 @@ CREATE INDEX index_accounting_bank_transactions_on_statement_id ON public.accoun
 --
 
 CREATE INDEX index_accounting_cash_forecast_items_on_entity_id ON public.accounting_cash_forecast_items USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_comments_on_author_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_comments_on_author_id ON public.accounting_comments USING btree (author_id);
+
+
+--
+-- Name: index_accounting_comments_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_comments_on_entity_id ON public.accounting_comments USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_comments_on_hidden_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_comments_on_hidden_by_id ON public.accounting_comments USING btree (hidden_by_id);
+
+
+--
+-- Name: index_accounting_comments_on_parent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_comments_on_parent_id ON public.accounting_comments USING btree (parent_id);
+
+
+--
+-- Name: index_accounting_comments_on_resolved_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_comments_on_resolved_by_id ON public.accounting_comments USING btree (resolved_by_id);
 
 
 --
@@ -5273,6 +5496,27 @@ CREATE INDEX index_accounting_line_allocations_on_entity_id ON public.accounting
 
 
 --
+-- Name: index_accounting_notifications_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_notifications_on_entity_id ON public.accounting_notifications USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_notifications_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_notifications_on_user_id ON public.accounting_notifications USING btree (user_id);
+
+
+--
+-- Name: index_accounting_notifications_on_user_id_and_read_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_notifications_on_user_id_and_read_at ON public.accounting_notifications USING btree (user_id, read_at);
+
+
+--
 -- Name: index_accounting_partners_on_active; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5564,6 +5808,55 @@ CREATE INDEX index_accounting_supplier_defaults_on_journal_id ON public.accounti
 --
 
 CREATE UNIQUE INDEX index_accounting_supplier_defaults_on_partner_id ON public.accounting_supplier_defaults USING btree (partner_id);
+
+
+--
+-- Name: index_accounting_tasks_on_anomaly_fingerprint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_tasks_on_anomaly_fingerprint ON public.accounting_tasks USING btree (anomaly_fingerprint) WHERE (anomaly_fingerprint IS NOT NULL);
+
+
+--
+-- Name: index_accounting_tasks_on_assignee_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_tasks_on_assignee_id ON public.accounting_tasks USING btree (assignee_id);
+
+
+--
+-- Name: index_accounting_tasks_on_author_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_tasks_on_author_id ON public.accounting_tasks USING btree (author_id);
+
+
+--
+-- Name: index_accounting_tasks_on_completed_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_tasks_on_completed_by_id ON public.accounting_tasks USING btree (completed_by_id);
+
+
+--
+-- Name: index_accounting_tasks_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_tasks_on_entity_id ON public.accounting_tasks USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_tasks_on_entity_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_tasks_on_entity_id_and_status ON public.accounting_tasks USING btree (entity_id, status);
+
+
+--
+-- Name: index_accounting_tasks_on_target_type_and_target_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_tasks_on_target_type_and_target_id ON public.accounting_tasks USING btree (target_type, target_id);
 
 
 --
@@ -5890,6 +6183,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: accounting_comments fk_rails_00415e2273; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_comments
+    ADD CONSTRAINT fk_rails_00415e2273 FOREIGN KEY (resolved_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoice_emails fk_rails_00a167c998; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5903,6 +6204,14 @@ ALTER TABLE ONLY public.accounting_invoice_emails
 
 ALTER TABLE ONLY public.accounting_recurring_runs
     ADD CONSTRAINT fk_rails_020f47ceee FOREIGN KEY (recurring_entry_id) REFERENCES public.accounting_recurring_entries(id) ON DELETE SET NULL;
+
+
+--
+-- Name: accounting_tasks fk_rails_025d6cad98; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_tasks
+    ADD CONSTRAINT fk_rails_025d6cad98 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -6122,6 +6431,14 @@ ALTER TABLE ONLY public.accounting_exchange_rates
 
 
 --
+-- Name: accounting_comments fk_rails_350c30b7e0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_comments
+    ADD CONSTRAINT fk_rails_350c30b7e0 FOREIGN KEY (author_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoice_line_annotations fk_rails_35cd3761f9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6183,6 +6500,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 ALTER TABLE ONLY public.accounting_payment_reminder_items
     ADD CONSTRAINT fk_rails_40a5661100 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
+-- Name: accounting_tasks fk_rails_4224f36c68; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_tasks
+    ADD CONSTRAINT fk_rails_4224f36c68 FOREIGN KEY (author_id) REFERENCES public.users(id);
 
 
 --
@@ -6418,6 +6743,14 @@ ALTER TABLE ONLY public.accounting_bank_rules
 
 
 --
+-- Name: accounting_comments fk_rails_7807ac8a6b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_comments
+    ADD CONSTRAINT fk_rails_7807ac8a6b FOREIGN KEY (parent_id) REFERENCES public.accounting_comments(id);
+
+
+--
 -- Name: api_requests fk_rails_7d5aab56e7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6546,6 +6879,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: accounting_tasks fk_rails_949f4e9b2c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_tasks
+    ADD CONSTRAINT fk_rails_949f4e9b2c FOREIGN KEY (completed_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_9602ee956d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6559,6 +6900,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 ALTER TABLE ONLY public.active_storage_variant_records
     ADD CONSTRAINT fk_rails_993965df05 FOREIGN KEY (blob_id) REFERENCES public.active_storage_blobs(id);
+
+
+--
+-- Name: accounting_notifications fk_rails_9aa86e7d75; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_notifications
+    ADD CONSTRAINT fk_rails_9aa86e7d75 FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -6658,6 +7007,14 @@ ALTER TABLE ONLY public.accounting_lettering_events
 
 
 --
+-- Name: accounting_comments fk_rails_b41b793817; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_comments
+    ADD CONSTRAINT fk_rails_b41b793817 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_line_allocations fk_rails_b66f2461eb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6706,6 +7063,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: accounting_notifications fk_rails_c0402a52fb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_notifications
+    ADD CONSTRAINT fk_rails_c0402a52fb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_depreciation_entries fk_rails_c32703c58c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6743,6 +7108,14 @@ ALTER TABLE ONLY public.accounting_recurring_invoices
 
 ALTER TABLE ONLY public.accounting_invoice_events
     ADD CONSTRAINT fk_rails_c545c3aa7e FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_tasks fk_rails_c64db72a80; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_tasks
+    ADD CONSTRAINT fk_rails_c64db72a80 FOREIGN KEY (assignee_id) REFERENCES public.users(id);
 
 
 --
@@ -6978,6 +7351,14 @@ ALTER TABLE ONLY public.accounting_letterings
 
 
 --
+-- Name: accounting_comments fk_rails_f01d869f99; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_comments
+    ADD CONSTRAINT fk_rails_f01d869f99 FOREIGN KEY (hidden_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_payment_batch_lines fk_rails_f036501dd6; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7104,6 +7485,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261005100000'),
 ('20261004190000'),
 ('20261004180000'),
 ('20261004170000'),

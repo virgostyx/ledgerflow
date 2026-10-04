@@ -11,7 +11,7 @@ class Accounting::Document < ApplicationRecord
 
   acts_as_tenant :entity
 
-  enum :origin, { manual_upload: 0, email: 1, peppol: 2, bank_import: 3, scan: 4 }
+  enum :origin, { manual_upload: 0, email: 1, peppol: 2, bank_import: 3, scan: 4, external_reply: 5 }
   enum :kind,   { other: 0, purchase_invoice: 1, sales_invoice: 2, credit_note: 3, statement: 4, contract: 5 }
   enum :status, { inbox: 0, linked: 1, archived: 2 }
 

@@ -1,0 +1,7 @@
+<div class="w-full max-w-xl bg-white rounded-lg border border-gray-200 p-6 text-sm">
+  <p class="text-gray-900 font-medium">Thank you: your answer was sent to <%= @task.entity.legal_name %>.</p>
+  <% if @refused.any? %>
+    <p class="mt-3 text-amber-800">Not accepted:</p>
+    <ul class="list-disc ml-5 text-amber-800"><% @refused.each do |name, why| %><li><%= name %>: <%= why %></li><% end %></ul>
+  <% end %>
+</div>

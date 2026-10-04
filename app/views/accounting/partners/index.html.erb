@@ -45,9 +45,10 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
+        <% task_counts = feature?(:f08) ? Accounting::TaskBadges.counts(Accounting::Partner, @partners.map(&:id)) : {} %>
         <% @partners.each do |partner| %>
           <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-4 py-3 font-medium text-gray-900"><%= partner.name %>
+            <td class="px-4 py-3 font-medium text-gray-900"><%= partner.name %><%= task_badge(partner, count: task_counts.fetch(partner.id, 0)) %>
               <% if partner.to_validate %>
                 <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800" title="Created from a received document: check it">To validate</span>
                 <% if policy(partner).update? %><%= button_to 'Validate', validate_accounting_partner_path(partner), method: :post, form: { class: 'inline' }, class: 'ml-2 text-xs text-primary-700 hover:underline cursor-pointer' %><% end %>
