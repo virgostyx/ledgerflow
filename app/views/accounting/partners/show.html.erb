@@ -39,6 +39,12 @@
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</dt>
       <dd class="mt-1 text-sm text-gray-900"><%= @partner.phone.presence || '—' %></dd>
     </div>
+    <% if feature?(:f09) && @partner.email_bounced_at %>
+      <div class="col-span-2 text-sm text-red-700">E-mail bounced on <%= Accounting::DatePresenter.new(@partner.email_bounced_at.to_date).format %>: check the address.</div>
+    <% end %>
+    <% if feature?(:f09) && @partner.do_not_dun %>
+      <div class="col-span-2 text-sm text-amber-800">Marked 'do not remind': left out of the customer reminders.</div>
+    <% end %>
     <div class="col-span-2">
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">IBAN</dt>
       <dd class="mt-1 text-sm font-mono text-gray-900"><%= @partner.iban.presence || '—' %></dd>
@@ -48,4 +54,21 @@
 
 <% if feature?(:f08) %>
   <div class="max-w-xl"><%= render 'accounting/comments/thread', commentable: @partner %></div>
+<% end %>
+
+<% if feature?(:f09) %>
+  <% reminders = Accounting::DunningItem.where(partner: @partner, excluded: false).where.not(status: :pending).order(run_on: :desc, id: :desc).limit(20) %>
+  <% if reminders.any? %>
+    <div class="bg-white rounded-lg border border-gray-200 p-6 max-w-xl mt-6" data-section="dunning">
+      <h2 class="text-sm font-semibold text-gray-900">Reminders</h2>
+      <ul class="mt-3 divide-y divide-gray-100 text-sm">
+        <% reminders.each do |item| %>
+          <li class="py-2 flex justify-between gap-3">
+            <span><%= link_to "Level #{item.level}", accounting_dunning_item_path(item), class: 'text-primary-700 hover:underline' %>, <%= Accounting::DatePresenter.new(item.run_on).format %>, <%= item.email? ? 'e-mail' : 'letter' %></span>
+            <span class="text-gray-600"><%= item.status.humanize %> · <%= Accounting::MoneyPresenter.new(item.grand_total).format %></span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
 <% end %>

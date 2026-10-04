@@ -25,7 +25,10 @@ module Permissions
     "comments.write"         => %i[admin accountant assistant], # comment on what one can see (F08)
     "vat.file"               => %i[admin accountant],
     "payments.manage"        => %i[admin accountant],
-    "dunning.send"           => %i[admin accountant],
+    "dunning.prepare"        => %i[admin accountant assistant], # prepare the reminders, edit the texts, mark a dispute or a promise (F09)
+    "dunning.send"           => %i[admin accountant],           # validate and send them (F09)
+    "dunning.configure"      => %i[admin accountant],           # levels, delays, texts, charges, sender of the reminders (F09)
+    "dunning.auto_send"      => %i[admin],                      # let the first level go by itself: the owner only (F09)
     "periods.lock"           => %i[admin accountant],
     "periods.unlock"         => %i[admin],
     "users.manage"           => %i[admin],

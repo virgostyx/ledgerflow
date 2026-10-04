@@ -41,3 +41,11 @@ production:
     class: Accounting::VerifyDocumentsJob
     queue: default
     schedule: every sunday at 3am
+  dunning_promises:
+    class: Accounting::DunningPromisesJob
+    queue: default
+    schedule: every day at 6am
+  dunning_auto_send:
+    class: Accounting::DunningAutoSendJob
+    queue: default
+    schedule: every day at 8am

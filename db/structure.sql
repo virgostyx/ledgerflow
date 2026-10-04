@@ -115,10 +115,10 @@ BEGIN
   IF current_setting('ledgerflow.lock_override', true) = 'on' THEN
     RETURN COALESCE(NEW, OLD);
   END IF;
-  -- lettering stays possible in a locked period: only these columns may change
+  -- lettering and dunning follow-up stay possible in a locked period: only these columns may change
   IF TG_OP = 'UPDATE' AND NEW.journal_entry_id = OLD.journal_entry_id
-     AND (to_jsonb(NEW) - ARRAY['lettering_id', 'amount_residual', 'updated_at'])
-       = (to_jsonb(OLD) - ARRAY['lettering_id', 'amount_residual', 'updated_at']) THEN
+     AND (to_jsonb(NEW) - ARRAY['lettering_id', 'amount_residual', 'updated_at', 'disputed', 'payment_promised_on', 'dunning_level', 'last_dunned_at'])
+       = (to_jsonb(OLD) - ARRAY['lettering_id', 'amount_residual', 'updated_at', 'disputed', 'payment_promised_on', 'dunning_level', 'last_dunned_at']) THEN
     RETURN NEW;
   END IF;
   IF TG_OP IN ('UPDATE', 'DELETE') AND entry_in_locked_period(OLD.journal_entry_id) THEN
@@ -1587,6 +1587,10 @@ CREATE TABLE public.accounting_journal_entry_lines (
     lettering_id bigint,
     entry_date date,
     amount_residual numeric(15,2) NOT NULL,
+    disputed boolean DEFAULT false NOT NULL,
+    payment_promised_on date,
+    dunning_level integer DEFAULT 0 NOT NULL,
+    last_dunned_at timestamp(6) without time zone,
     CONSTRAINT chk_at_least_one_side CHECK (((debit > (0)::numeric) OR (credit > (0)::numeric))),
     CONSTRAINT chk_credit_non_negative CHECK ((credit >= (0)::numeric)),
     CONSTRAINT chk_debit_non_negative CHECK ((debit >= (0)::numeric)),
@@ -1901,7 +1905,10 @@ CREATE TABLE public.accounting_partners (
     payment_terms_days integer DEFAULT 30 NOT NULL,
     peppol_participant_id character varying,
     external_ref character varying,
-    to_validate boolean DEFAULT false NOT NULL
+    to_validate boolean DEFAULT false NOT NULL,
+    do_not_dun boolean DEFAULT false NOT NULL,
+    email_bounced_at timestamp(6) without time zone,
+    language character varying DEFAULT 'fr'::character varying NOT NULL
 );
 
 
@@ -2836,6 +2843,177 @@ ALTER SEQUENCE public.custom_roles_id_seq OWNED BY public.custom_roles.id;
 
 
 --
+-- Name: dunning_item_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dunning_item_lines (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    dunning_item_id bigint NOT NULL,
+    line_id bigint NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    due_date date NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: dunning_item_lines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.dunning_item_lines_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: dunning_item_lines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.dunning_item_lines_id_seq OWNED BY public.dunning_item_lines.id;
+
+
+--
+-- Name: dunning_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dunning_items (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    dunning_run_id bigint NOT NULL,
+    partner_id bigint NOT NULL,
+    run_on date NOT NULL,
+    level integer NOT NULL,
+    proposed_level integer NOT NULL,
+    skips_level boolean DEFAULT false NOT NULL,
+    skip_confirmed boolean DEFAULT false NOT NULL,
+    excluded boolean DEFAULT false NOT NULL,
+    total numeric(15,2) NOT NULL,
+    fees numeric(15,2) DEFAULT 0.0 NOT NULL,
+    interest numeric(15,2) DEFAULT 0.0 NOT NULL,
+    indemnity numeric(15,2) DEFAULT 0.0 NOT NULL,
+    channel integer DEFAULT 0 NOT NULL,
+    recipient character varying,
+    language character varying DEFAULT 'fr'::character varying NOT NULL,
+    subject character varying,
+    body text,
+    status integer DEFAULT 0 NOT NULL,
+    sent_at timestamp(6) without time zone,
+    message_id character varying,
+    error text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: dunning_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.dunning_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: dunning_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.dunning_items_id_seq OWNED BY public.dunning_items.id;
+
+
+--
+-- Name: dunning_policies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dunning_policies (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    level_1_days integer DEFAULT 7 NOT NULL,
+    level_2_days integer DEFAULT 21 NOT NULL,
+    level_3_days integer DEFAULT 45 NOT NULL,
+    min_amount numeric(15,2) DEFAULT 0.0 NOT NULL,
+    follow_up_days integer DEFAULT 7 NOT NULL,
+    min_days_between integer DEFAULT 14 NOT NULL,
+    fee_1 numeric(15,2) DEFAULT 0.0 NOT NULL,
+    fee_2 numeric(15,2) DEFAULT 0.0 NOT NULL,
+    fee_3 numeric(15,2) DEFAULT 0.0 NOT NULL,
+    interest_enabled boolean DEFAULT false NOT NULL,
+    interest_rate numeric(7,3),
+    indemnity_enabled boolean DEFAULT false NOT NULL,
+    indemnity_amount numeric(15,2),
+    auto_send_level_1 boolean DEFAULT false NOT NULL,
+    from_name character varying,
+    reply_to character varying,
+    signature text,
+    templates jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: dunning_policies_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.dunning_policies_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: dunning_policies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.dunning_policies_id_seq OWNED BY public.dunning_policies.id;
+
+
+--
+-- Name: dunning_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dunning_runs (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    created_by_id bigint,
+    run_on date NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    auto boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: dunning_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.dunning_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: dunning_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.dunning_runs_id_seq OWNED BY public.dunning_runs.id;
+
+
+--
 -- Name: entities; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3594,6 +3772,34 @@ ALTER TABLE ONLY public.custom_roles ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: dunning_item_lines id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_item_lines ALTER COLUMN id SET DEFAULT nextval('public.dunning_item_lines_id_seq'::regclass);
+
+
+--
+-- Name: dunning_items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_items ALTER COLUMN id SET DEFAULT nextval('public.dunning_items_id_seq'::regclass);
+
+
+--
+-- Name: dunning_policies id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_policies ALTER COLUMN id SET DEFAULT nextval('public.dunning_policies_id_seq'::regclass);
+
+
+--
+-- Name: dunning_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_runs ALTER COLUMN id SET DEFAULT nextval('public.dunning_runs_id_seq'::regclass);
+
+
+--
 -- Name: entities id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4177,6 +4383,38 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 ALTER TABLE ONLY public.custom_roles
     ADD CONSTRAINT custom_roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: dunning_item_lines dunning_item_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_item_lines
+    ADD CONSTRAINT dunning_item_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: dunning_items dunning_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_items
+    ADD CONSTRAINT dunning_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: dunning_policies dunning_policies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_policies
+    ADD CONSTRAINT dunning_policies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: dunning_runs dunning_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_runs
+    ADD CONSTRAINT dunning_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -6000,6 +6238,76 @@ CREATE UNIQUE INDEX index_depreciation_entries_on_asset_and_fiscal_year ON publi
 
 
 --
+-- Name: index_dunning_item_lines_on_dunning_item_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dunning_item_lines_on_dunning_item_id ON public.dunning_item_lines USING btree (dunning_item_id);
+
+
+--
+-- Name: index_dunning_item_lines_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dunning_item_lines_on_entity_id ON public.dunning_item_lines USING btree (entity_id);
+
+
+--
+-- Name: index_dunning_item_lines_on_line_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dunning_item_lines_on_line_id ON public.dunning_item_lines USING btree (line_id);
+
+
+--
+-- Name: index_dunning_items_on_dunning_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dunning_items_on_dunning_run_id ON public.dunning_items USING btree (dunning_run_id);
+
+
+--
+-- Name: index_dunning_items_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dunning_items_on_entity_id ON public.dunning_items USING btree (entity_id);
+
+
+--
+-- Name: index_dunning_items_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dunning_items_on_partner_id ON public.dunning_items USING btree (partner_id);
+
+
+--
+-- Name: index_dunning_items_on_partner_id_and_run_on; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_dunning_items_on_partner_id_and_run_on ON public.dunning_items USING btree (partner_id, run_on) WHERE (NOT excluded);
+
+
+--
+-- Name: index_dunning_policies_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_dunning_policies_on_entity_id ON public.dunning_policies USING btree (entity_id);
+
+
+--
+-- Name: index_dunning_runs_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dunning_runs_on_created_by_id ON public.dunning_runs USING btree (created_by_id);
+
+
+--
+-- Name: index_dunning_runs_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dunning_runs_on_entity_id ON public.dunning_runs USING btree (entity_id);
+
+
+--
 -- Name: index_entities_on_created_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6247,6 +6555,14 @@ ALTER TABLE ONLY public.accounting_invoice_lines
 
 
 --
+-- Name: dunning_items fk_rails_118236502c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_items
+    ADD CONSTRAINT fk_rails_118236502c FOREIGN KEY (dunning_run_id) REFERENCES public.dunning_runs(id);
+
+
+--
 -- Name: accounting_analytical_axes fk_rails_13dea0cb3e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6303,11 +6619,27 @@ ALTER TABLE ONLY public.accounting_bank_rules
 
 
 --
+-- Name: dunning_items fk_rails_1cf31fa049; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_items
+    ADD CONSTRAINT fk_rails_1cf31fa049 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_1e6c3311fa; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_journal_entry_lines
     ADD CONSTRAINT fk_rails_1e6c3311fa FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id);
+
+
+--
+-- Name: dunning_item_lines fk_rails_1f8241fae6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_item_lines
+    ADD CONSTRAINT fk_rails_1f8241fae6 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -6503,6 +6835,14 @@ ALTER TABLE ONLY public.accounting_payment_reminder_items
 
 
 --
+-- Name: dunning_items fk_rails_41b7a0c050; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_items
+    ADD CONSTRAINT fk_rails_41b7a0c050 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_tasks fk_rails_4224f36c68; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6580,6 +6920,14 @@ ALTER TABLE ONLY public.accounting_payment_reminders
 
 ALTER TABLE ONLY public.accounting_peppol_messages
     ADD CONSTRAINT fk_rails_4ddfe0a4ec FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dunning_item_lines fk_rails_56b10261a7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_item_lines
+    ADD CONSTRAINT fk_rails_56b10261a7 FOREIGN KEY (line_id) REFERENCES public.accounting_journal_entry_lines(id);
 
 
 --
@@ -6927,6 +7275,14 @@ ALTER TABLE ONLY public.accounting_depreciation_entries
 
 
 --
+-- Name: dunning_item_lines fk_rails_a159bcc01d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_item_lines
+    ADD CONSTRAINT fk_rails_a159bcc01d FOREIGN KEY (dunning_item_id) REFERENCES public.dunning_items(id);
+
+
+--
 -- Name: accounting_payment_batch_lines fk_rails_a27948dec1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6956,6 +7312,14 @@ ALTER TABLE ONLY public.accounting_period_locks
 
 ALTER TABLE ONLY public.accounting_entry_templates
     ADD CONSTRAINT fk_rails_a85a054ffc FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: dunning_runs fk_rails_aacf1736ec; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_runs
+    ADD CONSTRAINT fk_rails_aacf1736ec FOREIGN KEY (created_by_id) REFERENCES public.users(id);
 
 
 --
@@ -7204,6 +7568,14 @@ ALTER TABLE ONLY public.accounting_recurring_runs
 
 ALTER TABLE ONLY public.accounting_documents
     ADD CONSTRAINT fk_rails_d1eb99157d FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: dunning_policies fk_rails_d2aa233126; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_policies
+    ADD CONSTRAINT fk_rails_d2aa233126 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -7463,6 +7835,14 @@ ALTER TABLE ONLY public.accounting_depreciation_entries
 
 
 --
+-- Name: dunning_runs fk_rails_fb346d725c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dunning_runs
+    ADD CONSTRAINT fk_rails_fb346d725c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_analytical_annotations fk_rails_fec4fb0e51; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7485,6 +7865,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261005120000'),
 ('20261005100000'),
 ('20261004190000'),
 ('20261004180000'),

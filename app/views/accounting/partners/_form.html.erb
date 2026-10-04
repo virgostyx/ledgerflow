@@ -86,6 +86,17 @@
     <%= f.label :country, 'Country', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
   </div>
 
+  <% if feature?(:f09) %>
+    <div class="relative">
+      <%= f.select :language, [ [ 'French', 'fr' ], [ 'Dutch', 'nl' ], [ 'English', 'en' ] ], {}, class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500', 'aria-label': 'Language of the reminders' %>
+      <p class="mt-1 text-xs text-gray-400">Language of the reminders sent to this customer.</p>
+    </div>
+    <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+      <%= f.check_box :do_not_dun, class: 'rounded border-gray-300 text-primary-600 focus:ring-primary-500' %>
+      Do not remind this customer
+    </label>
+  <% end %>
+
   <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
     <%= f.check_box :active, class: 'rounded border-gray-300 text-primary-600 focus:ring-primary-500' %>
     Active

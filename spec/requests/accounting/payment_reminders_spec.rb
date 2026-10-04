@@ -19,7 +19,10 @@ RSpec.describe 'Accounting::PaymentReminders', type: :request do
     ActiveJob::Base.queue_adapter = previous
   end
 
-  before { sign_in accountant }
+  before do
+    entity.update!(features: { 'f09' => false }) # the manual reminders are what the screen is while F09 is off
+    sign_in accountant
+  end
 
   def overdue(partner, days: 20, total: 121)
     create(:invoice, :posted, partner: partner, fiscal_year: fiscal_year, due_date: Date.current - days, total_incl_vat: total)

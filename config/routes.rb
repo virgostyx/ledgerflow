@@ -96,6 +96,23 @@ Rails.application.routes.draw do
 
       resources :recurring_invoices, except: [ :show ]
       resources :payment_reminders, only: [ :index, :create ]
+      # F09: customer dunning (replaces the manual reminders above once the feature is on)
+      resources :dunning_runs, only: %i[index show create] do
+        post :send_run, on: :member
+      end
+      resources :dunning_items, only: %i[show update] do
+        member do
+          get  :pdf
+          post :bounce
+        end
+      end
+      resources :dunning_lines, only: [] do
+        member do
+          patch :dispute
+          patch :promise
+        end
+      end
+      resource :dunning_policy, only: %i[show update]
       resources :documents, only: %i[index create show update destroy] do
         member do
           get  :file

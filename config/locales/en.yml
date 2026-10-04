@@ -382,6 +382,22 @@ en:
         none_selected: "Select at least one customer to remind."
         nothing_overdue: "Nothing overdue."
         already_reminded: "Already reminded on %{date}: wait %{days} days between two reminders."
+    dunning:
+      prepared: "Reminders prepared for %{count} customer(s). Nothing has been sent."
+      queued: "%{count} reminder(s) are being sent."
+      item_updated: "Reminder updated."
+      line_updated: "Line updated."
+      bounce_recorded: "Bounce recorded."
+      policy_updated: "Reminder rules updated."
+      errors:
+        not_sent: "Only a reminder sent by e-mail can bounce."
+        nobody: "Nobody has to be reminded today."
+        already_sent: "This reminder has already been sent."
+        do_not_remind: "This customer is marked 'do not remind'."
+        skips_level: "Level %{level} skips a level: confirm it first."
+        not_a_customer_line: "Only a line of a customer account can be disputed or promised."
+        promise_in_the_past: "The promised date cannot be in the past."
+        changed: "The situation changed since the preparation: prepare the reminders again."
     recurring_invoices:
       created: "Recurring invoice created. A draft will be generated at each due date, for you to review and post."
       updated: "Recurring invoice updated."

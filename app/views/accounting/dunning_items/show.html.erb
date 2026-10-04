@@ -1,0 +1,122 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [
+    { label: 'Dashboard', path: accounting_root_path },
+    { label: 'Customer reminders', path: accounting_dunning_runs_path },
+    { label: Accounting::DatePresenter.new(@item.run_on).format, path: accounting_dunning_run_path(@item.dunning_run_id) },
+    { label: @item.partner.name }
+  ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: @item.partner.name,
+      description: "Level #{@item.level}, #{@item.email? ? 'e-mail' : 'letter to print'}, #{@item.status.humanize.downcase}",
+      back_path: accounting_dunning_run_path(@item.dunning_run_id), back_text: 'Reminders') do |header| %>
+  <% header.with_actions do %>
+    <%= link_to (@item.letter? ? 'Letter to print (PDF)' : 'Statement (PDF)'), pdf_accounting_dunning_item_path(@item), target: '_blank', rel: 'noopener',
+          class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
+  <% end %>
+<% end %>
+
+<% editable = @item.pending? && dunning_can?(:update?) %>
+<% input = 'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500' %>
+
+<% if @item.partner.email_bounced_at %>
+  <div class="mb-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">E-mail bounced on <%= Accounting::DatePresenter.new(@item.partner.email_bounced_at.to_date).format %>: check the address of this customer.</div>
+<% end %>
+<% if @item.error.present? && !@item.sent? %>
+  <div class="mb-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800"><%= @item.error %></div>
+<% end %>
+<% if @item.skips_level? %>
+  <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+    Level <%= @item.level %> skips level <%= @item.proposed_level %>, the one proposed. Nothing is sent unless you confirm it.
+  </div>
+<% end %>
+
+<%= form_with model: @item, url: accounting_dunning_item_path(@item), scope: :accounting_dunning_item, method: :patch, class: 'bg-white rounded-lg border border-gray-200 p-6 mb-6 space-y-4' do |f| %>
+  <h2 class="text-sm font-semibold text-gray-900"><%= @item.letter? ? 'Letter to print' : 'E-mail' %></h2>
+  <fieldset <%= 'disabled' unless editable %> class="space-y-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <%= f.label :level, 'Level', class: 'text-xs font-medium text-gray-500' %>
+        <%= f.select :level, Accounting::DunningPolicy::LEVELS.map { |l| [ "Level #{l}#{' (proposed)' if l == @item.proposed_level}", l ] }, { selected: @item.level }, class: input %>
+      </div>
+      <% if @item.email? %>
+        <div class="md:col-span-2">
+          <%= f.label :recipient, 'Send to', class: 'text-xs font-medium text-gray-500' %>
+          <%= f.email_field :recipient, class: input, autocomplete: 'off' %>
+        </div>
+      <% end %>
+    </div>
+    <div>
+      <%= f.label :subject, 'Subject', class: 'text-xs font-medium text-gray-500' %>
+      <%= f.text_field :subject, class: input %>
+    </div>
+    <div>
+      <%= f.label :body, 'Text', class: 'text-xs font-medium text-gray-500' %>
+      <%= f.text_area :body, rows: 14, class: "#{input} font-mono" %>
+    </div>
+    <% if @item.skips_level? %>
+      <label class="flex items-center gap-2 text-sm text-gray-700"><%= f.check_box :skip_confirmed, class: 'rounded border-gray-300' %> I confirm this level, which skips level <%= @item.proposed_level %></label>
+    <% end %>
+    <label class="flex items-center gap-2 text-sm text-gray-700"><%= f.check_box :excluded, class: 'rounded border-gray-300' %> Leave this customer out of the run</label>
+  </fieldset>
+  <% if editable %>
+    <%= f.submit 'Save', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors cursor-pointer' %>
+  <% end %>
+<% end %>
+
+<div class="bg-white rounded-lg border border-gray-200 p-6 mb-6" data-section="lines">
+  <h2 class="text-sm font-semibold text-gray-900 mb-3">Statement of account</h2>
+  <p class="text-xs text-gray-500 mb-3">Every open line of the customer; the balance is the one of the aged balance (R04). Credits not yet allocated are shown, never deducted.</p>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <th class="py-2 text-left">Reference</th><th class="py-2 text-left">Due</th><th class="py-2 text-right">Days late</th><th class="py-2 text-right">Amount</th>
+          <th class="py-2 text-left pl-4">Note</th><th class="py-2 text-left pl-4">Follow-up</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @statement.rows.each do |row| %>
+          <% line = Accounting::JournalEntryLine.find(row.line_id) %>
+          <tr>
+            <td class="py-2 text-gray-900"><%= row.reference.presence || '—' %></td>
+            <td class="py-2 text-gray-700"><%= Accounting::DatePresenter.new(row.due_date).format %></td>
+            <td class="py-2 text-right text-gray-700"><%= [ row.age_days, 0 ].max %></td>
+            <td class="py-2 text-right font-mono"><%= Accounting::MoneyPresenter.new(row.residual).format %></td>
+            <td class="py-2 pl-4 text-gray-600"><%= @statement.note(row, @item) %></td>
+            <td class="py-2 pl-4">
+              <% if row.residual.positive? && dunning_can?(:update?) %>
+                <div class="flex flex-wrap items-center gap-2">
+                  <%= button_to (line.disputed ? 'End dispute' : 'Dispute'), dispute_accounting_dunning_line_path(line), method: :patch,
+                        params: { disputed: (line.disputed ? '0' : '1'), item_id: @item.id }, class: 'text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 cursor-pointer' %>
+                  <%= form_with url: promise_accounting_dunning_line_path(line), method: :patch, class: 'flex items-center gap-1' do %>
+                    <%= hidden_field_tag :item_id, @item.id %>
+                    <%= date_field_tag :payment_promised_on, line.payment_promised_on, 'aria-label': 'Promised on', class: 'rounded border border-gray-300 px-1 py-0.5 text-xs' %>
+                    <%= submit_tag 'Promised on', class: 'text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 cursor-pointer' %>
+                  <% end %>
+                </div>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot>
+        <tr class="font-semibold"><td colspan="3" class="pt-3">Balance</td><td class="pt-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(@statement.balance).format %></td><td colspan="2"></td></tr>
+        <tr><td colspan="3">Asked for</td><td class="text-right font-mono"><%= Accounting::MoneyPresenter.new(@item.total).format %></td><td colspan="2"></td></tr>
+        <% if (@item.grand_total - @item.total).positive? %>
+          <tr><td colspan="3">Charges</td><td class="text-right font-mono"><%= Accounting::MoneyPresenter.new(@item.fees + @item.interest + @item.indemnity).format %></td><td colspan="2"></td></tr>
+        <% end %>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<% if @item.sent? && @item.email? && dunning_can?(:bounce?) %>
+  <%= form_with url: bounce_accounting_dunning_item_path(@item), method: :post, class: 'bg-white rounded-lg border border-gray-200 p-6 flex items-end gap-3' do %>
+    <div class="flex-1">
+      <%= label_tag :reason, 'The mail server reported a bounce', class: 'text-xs font-medium text-gray-500' %>
+      <%= text_field_tag :reason, nil, placeholder: 'Reason reported', class: input %>
+    </div>
+    <%= submit_tag 'Record the bounce', class: 'px-4 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50 cursor-pointer' %>
+  <% end %>
+<% end %>

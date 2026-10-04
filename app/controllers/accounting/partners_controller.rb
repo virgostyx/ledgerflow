@@ -62,7 +62,7 @@ class Accounting::PartnersController < ApplicationController
   def partner_params
     params.require(:accounting_partner).permit(
       :name, :partner_type, :vat_number, :email, :phone,
-      :street, :city, :zip, :country, :iban, :bic, :active, :notes, :payment_terms_days, :peppol_participant_id
+      :street, :city, :zip, :country, :iban, :bic, :active, :notes, :payment_terms_days, :peppol_participant_id, :do_not_dun, :language
     )
   end
 end
