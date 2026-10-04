@@ -25,15 +25,21 @@ class Peppol::ProcessMessage
     canonical = Peppol::InvoiceMapper.call(message.xml)
     problems = Peppol::InvoiceChecks.call(canonical)
     rate = exchange_rate_for(canonical, problems)
+    match = Peppol::SupplierMatch.find(canonical.supplier)
+    problems << match.problem if match.problem
+    plan = Peppol::InvoicePlan.build(canonical, partner: match.partner)
+    problems.concat(plan.problems)
     fiscal_year = Accounting::FiscalYear.current
     problems << "No open fiscal year to book the document in" unless fiscal_year
     return message.update!(status: :needs_review, problems: problems) if problems.any?
 
-    result = Peppol::ReceiveInvoice.call(xml: message.xml, fiscal_year: fiscal_year, exchange_rate: rate)
+    result = Peppol::ReceiveInvoice.call(xml: message.xml, fiscal_year: fiscal_year, exchange_rate: rate, plan: plan, partner: match.partner)
     if result.failure?
       message.update!(status: :needs_review, problems: [ result.message ])
     else
-      note = [ message.note, ("Invoice already received (same supplier and number): no second draft" if result[:duplicate]) ].compact.join(" · ").presence
+      notes = [ message.note, (match.partner ? nil : "New supplier #{result[:invoice].partner.name} created, to validate"),
+                ("Invoice already received (same supplier and number): no second draft" if result[:duplicate]) ] + plan.notes
+      note = notes.compact.uniq.join(" · ").presence
       message.update!(status: :processed, invoice: result[:invoice], problems: [], note: note)
     end
   rescue Peppol::InvoiceMapper::Unreadable => e

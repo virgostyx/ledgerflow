@@ -82,6 +82,8 @@ RSpec.describe "Accounting::Settings::PeppolSettings", type: :request do
   end
 
   describe "POST /accounting/settings/peppol_settings/simulate_incoming" do
+    include_context "with_suspense_account"
+
     before { entity.update!(peppol_access_point: :simulator, peppol_participant_id: "0208:0123456789") }
 
     it "books a simulated incoming invoice and says so" do

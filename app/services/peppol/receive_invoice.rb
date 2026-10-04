@@ -8,7 +8,9 @@ class Peppol::ReceiveInvoice
 
   # `exchange_rate`: the rate of a document that is not in euros (never guessed: Peppol::ProcessMessage finds it, or the message waits).
   # => ctx[:invoice], ctx[:duplicate] (an invoice with the same supplier and number was already there: it is returned, no second draft)
-  def self.call(xml:, fiscal_year:, exchange_rate: nil)
+  # `plan`: Peppol::InvoicePlan::Plan, the lines, treatment, journal and references of the draft (without one, only the header and the amounts).
+  # `partner`: the supplier when Peppol::SupplierMatch found it; nil: it is created, as a supplier "to validate".
+  def self.call(xml:, fiscal_year:, exchange_rate: nil, plan: nil, partner: nil)
     canonical = Peppol::InvoiceMapper.call(xml)
     totals = canonical.totals
     validate_required!(canonical.number, canonical.issue_date, totals.tax_inclusive)
@@ -17,7 +19,7 @@ class Peppol::ReceiveInvoice
     invoice = nil
     duplicate = false
     ApplicationRecord.transaction(requires_new: true) do
-      partner = supplier_partner(canonical.supplier)
+      partner ||= supplier_partner(canonical.supplier)
       invoice = already_received(partner, canonical.number)
       duplicate = invoice.present?
       invoice ||= Accounting::Invoice.create!(
@@ -36,8 +38,10 @@ class Peppol::ReceiveInvoice
         total_incl_vat:  totals.tax_inclusive,
         partner:         partner,
         fiscal_year:     fiscal_year,
-        status:          :draft
+        status:          :draft,
+        **plan_attributes(plan)
       ).tap do |created|
+        add_lines(created, plan) if plan
         keep_documents(created, xml, Nokogiri::XML(xml).tap(&:remove_namespaces!), canonical.number)
         announce(created)
       end
@@ -50,6 +54,24 @@ class Peppol::ReceiveInvoice
     ctx
   end
 
+  # The treatment, journal, payment reference and credited invoice the plan decided.
+  def self.plan_attributes(plan)
+    return {} unless plan
+
+    { vat_treatment: plan.treatment, journal: plan.journal, payment_reference: plan.payment_reference.presence, credited_invoice: plan.credited_invoice }.compact
+  end
+
+  # One line per planned group; the totals are then those of the lines, which is what will be posted (the VAT recomputed by category is within
+  # a cent of the document's: the checks made sure of it).
+  def self.add_lines(invoice, plan)
+    plan.lines.each_with_index do |line, i|
+      invoice.lines.create!(description: line.description, account: line.account, quantity: 1, unit_price: line.amount, vat_rate: line.vat_rate, position: i + 1)
+    end
+    invoice.lines.reload
+    invoice.compute_totals
+    invoice.save!
+  end
+
   # The supplier already known by its VAT number (or, with none, by its exact name), else a new one, with the country and the address of the
   # document. A VAT number that is not an EU one is not kept (the partner would be refused): the supplier is still created.
   def self.supplier_partner(supplier)
@@ -58,7 +80,8 @@ class Peppol::ReceiveInvoice
     found ||= Accounting::Partner.supplier.find_by("lower(name) = ?", supplier.name.to_s.downcase) if vat.nil? && supplier.name.present?
     found || Accounting::Partner.create!(
       name: supplier.name.presence || vat || "Unknown supplier", partner_type: :supplier, country: supplier.country.presence || "BE",
-      vat_number: (vat if vat && Accounting::Partner.valid_vat_number?(vat)), street: supplier.street, city: supplier.city, zip: supplier.zip
+      vat_number: (vat if vat && Accounting::Partner.valid_vat_number?(vat)), street: supplier.street, city: supplier.city, zip: supplier.zip,
+      iban: (Accounting::Iban.normalize(supplier.iban) if Accounting::Iban.valid?(supplier.iban)), to_validate: true
     )
   end
 
@@ -101,5 +124,5 @@ class Peppol::ReceiveInvoice
   end
 
   def self.file_name(name) = name.to_s.gsub(/[^\w.\-]+/, "_")
-  private_class_method :validate_required!, :already_received, :announce, :text_of, :keep_documents, :embedded_pdf, :file_name, :supplier_partner
+  private_class_method :validate_required!, :already_received, :announce, :text_of, :keep_documents, :embedded_pdf, :file_name, :supplier_partner, :plan_attributes, :add_lines
 end

@@ -35,12 +35,12 @@ class Accounting::SuggestLetterings
              Arel.sql("accounting_journal_entry_lines.partner_id"),
              Arel.sql("((accounting_journal_entry_lines.debit - accounting_journal_entry_lines.credit) * 100)::bigint"),
              Arel.sql("e.entry_date"), Arel.sql("e.id"), Arel.sql("e.reference"),
-             Arel.sql("i.id"), Arel.sql("i.invoice_number"), Arel.sql("i.supplier_reference"),
+             Arel.sql("i.id"), Arel.sql("i.invoice_number"), Arel.sql("i.supplier_reference"), Arel.sql("i.payment_reference"),
              Arel.sql("i.document_type"), Arel.sql("i.credited_invoice_id"))
     communications = Accounting::BankTransaction.where(journal_entry_id: rows.map { |r| r[5] }).where.not(structured_communication: nil)
                                                 .pluck(:journal_entry_id, :structured_communication).group_by(&:first)
-    rows.map do |id, account_id, partner_id, amount, date, entry_id, ref, invoice_id, number, supplier_ref, document_type, credited|
-      refs = [ ref, number, supplier_ref, *communications.fetch(entry_id, []).map(&:last) ].filter_map { |r| normalize(r) }
+    rows.map do |id, account_id, partner_id, amount, date, entry_id, ref, invoice_id, number, supplier_ref, payment_ref, document_type, credited|
+      refs = [ ref, number, supplier_ref, payment_ref, *communications.fetch(entry_id, []).map(&:last) ].filter_map { |r| normalize(r) }
       Line.new(id: id, account_id: account_id, partner_id: partner_id, amount: amount, date: date, refs: refs, invoice_id: invoice_id,
                document_type: document_type, credited_invoice_id: credited)
     end

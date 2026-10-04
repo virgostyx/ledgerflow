@@ -4,6 +4,7 @@ require "rails_helper"
 # XML; an invoice whose totals are inconsistent waits for review, with the reason, and no draft.
 RSpec.describe Peppol::ProcessMessage, "on the official examples" do
   include_context "with_open_fiscal_year"
+  include_context "with_suspense_account"
 
   def example(name) = Rails.root.join("spec/fixtures/files/peppol", name).read
   def take(xml, id = SecureRandom.hex(4)) = Peppol::ReceiveMessage.call(event: Peppol::Event.new(kind: :received, message_id: id, receiver: "0208:0999999999", xml: xml))[:message]
@@ -25,11 +26,20 @@ RSpec.describe Peppol::ProcessMessage, "on the official examples" do
       end
     end
 
-    it "drafts a reverse-charge invoice (category AE, no VAT) with the totals of the XML" do
+    it "waits for the accountant when the VAT category AE is not mapped (a reverse charge is a tax decision)" do
+      message = take(example("constructed-reverse-charge-AE.xml"))
+
+      expect(message).to have_attributes(status: "needs_review", invoice_id: nil)
+      expect(message.problems.join).to include("AE").and include("not mapped")
+    end
+
+    it "drafts a reverse-charge invoice (category AE) once it is mapped: the total is the XML's, the VAT is self-assessed at the rate of the entity" do
+      Accounting::VatCategoryMapping.create!(category: "AE", vat_treatment: :construction_reverse_charge, vat_rate: 21)
+
       message = take(example("constructed-reverse-charge-AE.xml"))
 
       expect(message).to have_attributes(status: "processed")
-      expect(message.invoice).to have_attributes(subtotal_excl_vat: 1000, vat_amount: 0, total_incl_vat: 1000)
+      expect(message.invoice).to have_attributes(vat_treatment: "construction_reverse_charge", subtotal_excl_vat: 1000, vat_amount: 210, total_incl_vat: 1000)
     end
   end
 

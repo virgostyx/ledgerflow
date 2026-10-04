@@ -58,3 +58,10 @@ module PeppolUbl
       "<cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:AllowanceCharge>"
   end
 end
+
+# The suspense account (499000) every real chart has: the lines of a received invoice go on it until a person has coded them.
+RSpec.shared_context "with_suspense_account" do
+  let!(:suspense_account) do
+    ActsAsTenant.with_tenant(entity) { Accounting::Account.find_by(code: "499000") || create(:account, code: "499000", label_fr: "Comptes d'attente", account_class: 4, entity: entity) }
+  end
+end

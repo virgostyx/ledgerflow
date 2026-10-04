@@ -104,6 +104,7 @@ class Accounting::Partner < ApplicationRecord
 
   def self.filter_by(q)
     rel = matching(partner_type: q[:partner_type], country: q[:country]).search(q[:q], "name", "vat_number", "city")
+    rel = rel.where(to_validate: true) if q[:to_validate] == "1"
     q[:inactive] == "1" ? rel : rel.active
   end
 end

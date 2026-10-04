@@ -17,6 +17,8 @@ namespace :peppol do
 
     result = Peppol::AccessPoint.for(entity).simulate_incoming
     abort result.message if result.failure?
+    message = result[:message]
+    abort "Message kept for review: #{message.problems.join(' ')}" if message&.needs_review?
     puts "Booked draft invoice #{result[:invoice].external_ref}"
   rescue Peppol::AccessPoint::Error => e
     abort e.message

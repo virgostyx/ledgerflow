@@ -44,7 +44,9 @@ Rails.application.routes.draw do
 
       get "column_values/:resource/:column", to: "column_values#show", as: :column_values
 
-      resources :partners
+      resources :partners do
+        post :validate, on: :member
+      end
 
       resources :journal_entries do
         member do

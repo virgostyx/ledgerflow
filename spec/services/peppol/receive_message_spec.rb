@@ -5,6 +5,7 @@ require "rails_helper"
 # person ("needs_review", with the reasons) instead of vanishing.
 RSpec.describe Peppol::ReceiveMessage do
   include_context "with_open_fiscal_year"
+  include_context "with_suspense_account"
 
   let!(:supplier) { create(:partner, partner_type: :supplier, name: "Fournisseur SA", vat_number: PeppolUbl::SUPPLIER_VAT) }
 
@@ -123,6 +124,7 @@ end
 
 RSpec.describe Peppol::HandleEvent, "a received document" do
   include_context "with_open_fiscal_year"
+  include_context "with_suspense_account"
 
   it "is ignored, with a log line, when it is addressed to nobody we know" do
     expect(Rails.logger).to receive(:warn).with(/0208:0000000000/)

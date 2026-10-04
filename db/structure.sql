@@ -1447,7 +1447,8 @@ CREATE TABLE public.accounting_invoices (
     order_reference character varying,
     buyer_reference character varying,
     supplier_reference character varying,
-    created_by_id bigint
+    created_by_id bigint,
+    payment_reference character varying
 );
 
 
@@ -1818,7 +1819,8 @@ CREATE TABLE public.accounting_partners (
     entity_id bigint NOT NULL,
     payment_terms_days integer DEFAULT 30 NOT NULL,
     peppol_participant_id character varying,
-    external_ref character varying
+    external_ref character varying,
+    to_validate boolean DEFAULT false NOT NULL
 );
 
 
@@ -2240,6 +2242,42 @@ ALTER SEQUENCE public.accounting_recurring_runs_id_seq OWNED BY public.accountin
 
 
 --
+-- Name: accounting_supplier_defaults; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_supplier_defaults (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    partner_id bigint NOT NULL,
+    account_id bigint,
+    journal_id bigint,
+    vat_treatment integer,
+    payment_terms_days integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_supplier_defaults_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_supplier_defaults_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_supplier_defaults_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_supplier_defaults_id_seq OWNED BY public.accounting_supplier_defaults.id;
+
+
+--
 -- Name: accounting_vat_account_grid_rules; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2271,6 +2309,40 @@ CREATE SEQUENCE public.accounting_vat_account_grid_rules_id_seq
 --
 
 ALTER SEQUENCE public.accounting_vat_account_grid_rules_id_seq OWNED BY public.accounting_vat_account_grid_rules.id;
+
+
+--
+-- Name: accounting_vat_category_mappings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_vat_category_mappings (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    category character varying NOT NULL,
+    vat_treatment integer DEFAULT 0 NOT NULL,
+    vat_rate numeric(5,2),
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_vat_category_mappings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_vat_category_mappings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_vat_category_mappings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_vat_category_mappings_id_seq OWNED BY public.accounting_vat_category_mappings.id;
 
 
 --
@@ -3276,10 +3348,24 @@ ALTER TABLE ONLY public.accounting_recurring_runs ALTER COLUMN id SET DEFAULT ne
 
 
 --
+-- Name: accounting_supplier_defaults id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_supplier_defaults ALTER COLUMN id SET DEFAULT nextval('public.accounting_supplier_defaults_id_seq'::regclass);
+
+
+--
 -- Name: accounting_vat_account_grid_rules id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_vat_account_grid_rules ALTER COLUMN id SET DEFAULT nextval('public.accounting_vat_account_grid_rules_id_seq'::regclass);
+
+
+--
+-- Name: accounting_vat_category_mappings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_vat_category_mappings ALTER COLUMN id SET DEFAULT nextval('public.accounting_vat_category_mappings_id_seq'::regclass);
 
 
 --
@@ -3803,11 +3889,27 @@ ALTER TABLE ONLY public.accounting_recurring_runs
 
 
 --
+-- Name: accounting_supplier_defaults accounting_supplier_defaults_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_supplier_defaults
+    ADD CONSTRAINT accounting_supplier_defaults_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_vat_account_grid_rules accounting_vat_account_grid_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_vat_account_grid_rules
     ADD CONSTRAINT accounting_vat_account_grid_rules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_vat_category_mappings accounting_vat_category_mappings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_vat_category_mappings
+    ADD CONSTRAINT accounting_vat_category_mappings_pkey PRIMARY KEY (id);
 
 
 --
@@ -4141,6 +4243,13 @@ CREATE UNIQUE INDEX idx_on_entity_id_account_id_code_b0055f39aa ON public.accoun
 --
 
 CREATE INDEX idx_on_entity_id_active_priority_e7ac68ff08 ON public.accounting_bank_rules USING btree (entity_id, active, priority);
+
+
+--
+-- Name: idx_on_entity_id_category_b670f57b0a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_entity_id_category_b670f57b0a ON public.accounting_vat_category_mappings USING btree (entity_id, category);
 
 
 --
@@ -5418,6 +5527,41 @@ CREATE INDEX index_accounting_recurring_runs_on_recurring_entry_id ON public.acc
 
 
 --
+-- Name: index_accounting_supplier_defaults_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_supplier_defaults_on_account_id ON public.accounting_supplier_defaults USING btree (account_id);
+
+
+--
+-- Name: index_accounting_supplier_defaults_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_supplier_defaults_on_entity_id ON public.accounting_supplier_defaults USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_supplier_defaults_on_journal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_supplier_defaults_on_journal_id ON public.accounting_supplier_defaults USING btree (journal_id);
+
+
+--
+-- Name: index_accounting_supplier_defaults_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_supplier_defaults_on_partner_id ON public.accounting_supplier_defaults USING btree (partner_id);
+
+
+--
+-- Name: index_accounting_vat_category_mappings_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_vat_category_mappings_on_entity_id ON public.accounting_vat_category_mappings USING btree (entity_id);
+
+
+--
 -- Name: index_accounting_vat_codes_on_code; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5990,6 +6134,14 @@ ALTER TABLE ONLY public.accounting_accounts
 
 
 --
+-- Name: accounting_supplier_defaults fk_rails_39e7d7bd98; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_supplier_defaults
+    ADD CONSTRAINT fk_rails_39e7d7bd98 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id) ON DELETE CASCADE;
+
+
+--
 -- Name: accounting_lettering_suggestions fk_rails_3b7eb4f554; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6150,6 +6302,14 @@ ALTER TABLE ONLY public.accounting_documents
 
 
 --
+-- Name: accounting_supplier_defaults fk_rails_63dbd18c54; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_supplier_defaults
+    ADD CONSTRAINT fk_rails_63dbd18c54 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_analytical_accounts fk_rails_67d9b95568; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6187,6 +6347,22 @@ ALTER TABLE ONLY public.accounting_payment_reminder_items
 
 ALTER TABLE ONLY public.accounting_intracom_listing_lines
     ADD CONSTRAINT fk_rails_70ee9c6548 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
+-- Name: accounting_supplier_defaults fk_rails_70fc4ee974; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_supplier_defaults
+    ADD CONSTRAINT fk_rails_70fc4ee974 FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: accounting_vat_category_mappings fk_rails_711a695661; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_vat_category_mappings
+    ADD CONSTRAINT fk_rails_711a695661 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -6838,6 +7014,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 
 --
+-- Name: accounting_supplier_defaults fk_rails_f66b9ac1ed; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_supplier_defaults
+    ADD CONSTRAINT fk_rails_f66b9ac1ed FOREIGN KEY (account_id) REFERENCES public.accounting_accounts(id);
+
+
+--
 -- Name: accounting_peppol_messages fk_rails_f79980ca22; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6900,6 +7084,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261004160000'),
 ('20261004150000'),
 ('20261004140000'),
 ('20261004130000'),

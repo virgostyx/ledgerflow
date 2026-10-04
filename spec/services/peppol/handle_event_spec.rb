@@ -69,6 +69,8 @@ RSpec.describe Peppol::HandleEvent do
     expect { handle(kind: :delivered, message_id: 'MSG-1') }.not_to change { invoice.peppol_events.count }
   end
   describe 'a received document' do
+    include_context 'with_suspense_account'
+
     let(:xml) { PeppolUbl.invoice(number: 'INCOMING-001', name: 'Fournisseur Externe', issue: '2025-06-01', due: nil, lines: [ [ 500, 'S', 21 ] ]) }
 
     before { entity.update!(peppol_participant_id: '0208:0555666777') }

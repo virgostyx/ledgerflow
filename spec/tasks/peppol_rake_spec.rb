@@ -23,6 +23,7 @@ end
 
 RSpec.describe "peppol:simulator:receive" do
   include_context "with_open_fiscal_year"
+  include_context "with_suspense_account"
 
   before do
     Rails.application.load_tasks unless Rake::Task.task_defined?("peppol:simulator:receive")
@@ -32,6 +33,13 @@ RSpec.describe "peppol:simulator:receive" do
   it "books an incoming invoice for a simulator entity" do
     entity.update!(peppol_access_point: :simulator, peppol_participant_id: "0208:0123456789")
     expect { Rake::Task["peppol:simulator:receive"].invoke(entity.id.to_s) }.to output(/Booked draft invoice SIM-/).to_stdout
+  end
+
+  it "says that the message was kept for review when no invoice could be drafted" do
+    suspense_account.destroy!
+    entity.update!(peppol_access_point: :simulator, peppol_participant_id: "0208:0123456789")
+
+    expect { Rake::Task["peppol:simulator:receive"].invoke(entity.id.to_s) }.to raise_error(SystemExit).and output(/kept for review.*suspense account/).to_stderr
   end
 
   it "aborts for an entity that is not on the simulator" do

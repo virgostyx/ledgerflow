@@ -2,6 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Peppol::Webhooks", type: :request do
   include_context "with_open_fiscal_year"
+  include_context "with_suspense_account"
 
   let(:partner) { create(:partner, :with_vat) }
   let!(:invoice) do

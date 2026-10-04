@@ -1,7 +1,7 @@
 # Suggests what a bank transaction corresponds to, with a score (F02 spec, "Rapprochement automatique"). Never writes anything.
 # The rules run in this order, the first that gives a result wins:
 #   batch (a SEPA payment file we generated) .... 100
-#   1 structured communication, same amount ..... 100 (same invoice, other amount: 80)
+#   1 structured communication, same amount ..... 100 (same invoice, other amount: 80); for a supplier invoice: its payment reference
 #   2 invoice number in the communication ....... 95  (customer: our number; supplier: the supplier's reference)
 #   5 grouped payment (named invoices) .......... 80
 #   3 same amount, counterparty IBAN = partner .. 90  (a single candidate)
@@ -49,7 +49,17 @@ class Accounting::MatchBankTransaction
   end
 
   def self.match_payment(tx)
-    match_invoice_number(tx, :supplier) || match_by_partner(tx, :supplier)
+    match_supplier_reference(tx) || match_invoice_number(tx, :supplier) || match_by_partner(tx, :supplier)
+  end
+
+  # Rule 1 for a supplier invoice (F06): the structured communication of the payment is the payment reference the supplier gave on the invoice
+  # (kept when it was received through Peppol), same amount, only one invoice.
+  def self.match_supplier_reference(tx)
+    digits = Accounting::StructuredCommunication.extract(tx.structured_communication.presence || tx.description) or return
+    found = open_invoices_of(:supplier).where.not(payment_reference: nil).select { |i| Accounting::StructuredCommunication.extract(i.payment_reference) == digits }
+    return unless found.size == 1 && (rounding = rounding_for(found.first, tx.amount.abs, :supplier))
+
+    suggestion(:supplier_invoice, found.first, 100, 1, rounding: rounding)
   end
 
   def self.open_customer_invoices = Accounting::Invoice.customer.invoice.posted.where.not(invoice_number: nil).includes(:credit_notes, :journal, :cash_journal, :credited_invoice, :entity, partner: :entity)
@@ -164,6 +174,6 @@ class Accounting::MatchBankTransaction
     account = Accounting::Account.find_by(code: FEES_ACCOUNT_CODE)
     suggestion(:expense, account, 75, nil) if account
   end
-  private_class_method :rounding_for, :draft_payment_lines, :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_invoice_number, :match_by_partner,
+  private_class_method :rounding_for, :draft_payment_lines, :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_supplier_reference, :match_invoice_number, :match_by_partner,
                        :match_group, :open_invoices_of, :partners_by_iban, :partners_by_name, :match_rule
 end

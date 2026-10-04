@@ -105,6 +105,7 @@ RSpec.describe Peppol::AccessPoint::Simulator do
   end
 
   describe '#simulate_incoming' do
+    include_context 'with_suspense_account'
     it 'books a sample supplier invoice addressed to the entity, as a received document would be' do
       ActsAsTenant.with_tenant(entity) { create(:fiscal_year, status: :open) }
 

@@ -16,6 +16,8 @@ class Accounting::PostInvoice
         Accounting::Actions::PayFromCash
       )
       raise ActiveRecord::Rollback if result.failure?
+
+      Accounting::RememberSupplierDefaults.call(invoice: invoice)
     end
     result
   rescue StandardError => e

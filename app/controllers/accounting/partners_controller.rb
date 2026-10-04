@@ -1,5 +1,5 @@
 class Accounting::PartnersController < ApplicationController
-  before_action :set_partner, only: [ :show, :edit, :update, :destroy ]
+  before_action :set_partner, only: [ :show, :edit, :update, :destroy, :validate ]
 
   def index
     @pagy, @partners = pagy(policy_scope(Accounting::Partner).filter_by(filter_params).order(:name).autofilter(**autofilter_params))
@@ -7,6 +7,14 @@ class Accounting::PartnersController < ApplicationController
 
   def show
     authorize @partner
+  end
+
+  # A partner created from a received document (Peppol) is looked at by a person: it stops waiting.
+  def validate
+    authorize @partner, :update?
+    @partner.update!(to_validate: false)
+    Accounting::AuditLog.record!(auditable: @partner, action: "partner_validated", user: current_user)
+    redirect_to accounting_partners_path, notice: "#{@partner.name} validated"
   end
 
   def new

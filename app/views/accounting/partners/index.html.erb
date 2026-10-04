@@ -47,7 +47,11 @@
       <tbody class="divide-y divide-gray-100">
         <% @partners.each do |partner| %>
           <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-4 py-3 font-medium text-gray-900"><%= partner.name %></td>
+            <td class="px-4 py-3 font-medium text-gray-900"><%= partner.name %>
+              <% if partner.to_validate %>
+                <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800" title="Created from a received document: check it">To validate</span>
+                <% if policy(partner).update? %><%= button_to 'Validate', validate_accounting_partner_path(partner), method: :post, form: { class: 'inline' }, class: 'ml-2 text-xs text-primary-700 hover:underline cursor-pointer' %><% end %>
+              <% end %></td>
             <td class="px-4 py-3 text-gray-500 capitalize"><%= partner.partner_type %></td>
             <td class="px-4 py-3 font-mono text-gray-500"><%= partner.vat_number.presence || '—' %></td>
             <td class="px-4 py-3 text-gray-500"><%= partner.country %></td>
