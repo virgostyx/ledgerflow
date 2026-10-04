@@ -9,13 +9,17 @@
 # pas, ou qui ne s'additionnent pas, sont listés avec le rapport (`chain_breaks`, `to_review`).
 class Accounting::BankReconciliationQuery
   Item = Struct.new(:date, :label, :reference, :amount, :journal_entry_id, keyword_init: true)
+  # `currency`: the one of the account, in which the whole reconciliation is done (F11). For an account in a foreign currency, `booked_eur` is what the
+  # books carry in EUR and `fx_difference` the exchange difference to report apart: the balance valued at the closing rate of `as_of`, less the euros
+  # booked (negative = a loss; nil without a closing rate, never guessed). Both are nil for an account in EUR.
   Result = Struct.new(:statement_balance, :accounting_balance, :bn, :sn, :bn_total, :sn_total,
-                      :expected_balance, :gap, :chain_breaks, :to_review, keyword_init: true)
+                      :expected_balance, :gap, :chain_breaks, :to_review, :currency, :booked_eur, :fx_difference, keyword_init: true)
 
   def initialize(bank_account:, as_of: Date.current)
     @bank_account = bank_account
     @as_of        = as_of
     @gl_account   = bank_account.journal.default_account
+    @foreign      = bank_account.currency != "EUR"
   end
 
   def call
@@ -30,7 +34,8 @@ class Accounting::BankReconciliationQuery
     Result.new(statement_balance: statement_balance, accounting_balance: accounting_balance,
                bn: bn, sn: sn, bn_total: bn_total, sn_total: sn_total,
                expected_balance: expected, gap: accounting_balance - expected,
-               chain_breaks: statements.select(&:chain_broken?), to_review: statements.select(&:to_review?))
+               chain_breaks: statements.select(&:chain_broken?), to_review: statements.select(&:to_review?),
+               currency: @bank_account.currency, booked_eur: (booked_eur if @foreign), fx_difference: (fx_difference(accounting_balance) if @foreign))
   end
 
   private
@@ -51,12 +56,24 @@ class Accounting::BankReconciliationQuery
   end
 
   def accounting_balance_as_of
-    lines = Accounting::JournalEntryLine
-      .joins(:journal_entry)
-      .where(account: @gl_account)
-      .where(accounting_journal_entries: { status: Accounting::JournalEntry.ledger_status_values })
-      .where("accounting_journal_entries.entry_date <= ?", @as_of)
+    lines = ledger_lines.where("accounting_journal_entries.entry_date <= ?", @as_of)
+    @foreign ? lines.where(currency: @bank_account.currency).sum(:amount_currency) : lines.sum(:debit) - lines.sum(:credit)
+  end
+
+  def ledger_lines
+    Accounting::JournalEntryLine.joins(:journal_entry).where(account: @gl_account)
+                                .where(accounting_journal_entries: { status: Accounting::JournalEntry.ledger_status_values })
+  end
+
+  def booked_eur
+    lines = ledger_lines.where("accounting_journal_entries.entry_date <= ?", @as_of)
     lines.sum(:debit) - lines.sum(:credit)
+  end
+
+  def fx_difference(balance)
+    Fx::Convert.to_eur(balance, Fx::RateFor.closing(@bank_account.currency, @as_of)) - booked_eur
+  rescue Fx::MissingRate
+    nil
   end
 
   # Booked on the GL account, but not (yet, as of `as_of`) linked to any statement transaction.
@@ -74,7 +91,7 @@ class Accounting::BankReconciliationQuery
     lines
       .map do |line|
         Item.new(date: line.journal_entry.entry_date, label: line.label, reference: line.journal_entry.reference,
-                  amount: line.debit - line.credit, journal_entry_id: line.journal_entry_id)
+                  amount: (@foreign ? line.amount_currency.to_d : line.debit - line.credit), journal_entry_id: line.journal_entry_id)
       end
   end
 

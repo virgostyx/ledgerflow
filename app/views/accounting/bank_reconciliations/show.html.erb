@@ -112,7 +112,7 @@
               <% end %>
             </td>
             <td class="px-4 py-3 text-right font-mono <%= tx.credit? ? 'text-emerald-700' : 'text-red-700' %>">
-              <%= Accounting::MoneyPresenter.new(tx.amount).format %>
+              <%= Accounting::MoneyPresenter.new(tx.amount, currency: tx.currency).format %>
             </td>
             <td class="px-4 py-3">
               <% manual_form = capture do %>
@@ -139,7 +139,7 @@
                             <%= text_field_tag "bank_reconciliation[splits][#{i}][amount]", nil, placeholder: 'Amount', class: 'rounded-md border-gray-300 text-xs w-24' %>
                           </div>
                         <% end %>
-                        <p class="text-xs text-gray-400">The amounts must add up to <%= Accounting::MoneyPresenter.new(tx.amount.abs).format %>.</p>
+                        <p class="text-xs text-gray-400">The amounts must add up to <%= Accounting::MoneyPresenter.new(tx.amount.abs, currency: tx.currency).format %>.</p>
                       </div>
                     </details>
                   <% end %>
@@ -215,7 +215,7 @@
             <tr>
               <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(tx.transaction_date).format %></td>
               <td class="px-4 py-3 text-gray-700"><%= tx.description %></td>
-              <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(tx.amount).format %></td>
+              <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(tx.amount, currency: tx.currency).format %></td>
               <td class="px-4 py-3"><%= link_to (tx.journal_entry.reference.presence || "entry ##{tx.journal_entry.id}"), accounting_journal_entry_path(tx.journal_entry), class: "text-primary-600 hover:underline" %></td>
               <td class="px-4 py-3">
                 <%= form_with url: accounting_bank_reconciliation_path, method: :patch, class: "flex gap-2 items-center" do %>

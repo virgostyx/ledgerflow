@@ -49,3 +49,7 @@ production:
     class: Accounting::DunningAutoSendJob
     queue: default
     schedule: every day at 8am
+  import_exchange_rates:
+    class: Rates::ImportJob
+    queue: default
+    schedule: every day at 6pm

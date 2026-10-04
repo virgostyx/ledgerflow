@@ -18,16 +18,17 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
       create(:partner, :supplier, :with_iban, external_ref: "S1")
       Accounting::ExternalInvoice.upsert(
         external_ref: "U1", partner_external_ref: "S1", invoice_type: "supplier", invoice_date: fiscal_year.start_date.to_s,
-        currency: "USD", exchange_rate: "0.9",
+        currency: "USD", exchange_rate: "1.11111111",
         lines: [ { account_code: "604000", description: "Work", quantity: "1", unit_price: "1000", vat_rate: "0" } ]
       )
 
       get revaluation_accounting_fiscal_year_path(fiscal_year)
-      expect(response.body).to include("USD", "No rate on or before this date")
+      expect(response.body).to include("USD", "No closing rate for USD on")
 
-      Accounting::ExchangeRate.create!(currency: "USD", rate_date: fiscal_year.end_date, rate: "0.95")
+      Accounting::ExchangeRate.create!(currency: "USD", rate_date: fiscal_year.end_date, rate: "1.05263158", rate_type: :closing, source: "manual")
       get revaluation_accounting_fiscal_year_path(fiscal_year)
       expect(response.body).to include("-50.0")
+      expect(response.body).to match(%r{href="[^"]*general_ledger\?[^"]*account_id=#{account_440.id}[^"]*"}) # the drill-down to R02
       expect(purchase).to be_present
     end
   end
@@ -40,14 +41,14 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
       create(:partner, :supplier, :with_iban, external_ref: "S1")
       Accounting::ExternalInvoice.upsert(
         external_ref: "U1", partner_external_ref: "S1", invoice_type: "supplier", invoice_date: fiscal_year.start_date.to_s,
-        currency: "USD", exchange_rate: "0.9",
+        currency: "USD", exchange_rate: "1.11111111",
         lines: [ { account_code: "604000", description: "Work", quantity: "1", unit_price: "1000", vat_rate: "0" } ]
       )
 
       post propose_revaluation_accounting_fiscal_year_path(fiscal_year)
-      expect(flash[:alert]).to include("No closing rate")
+      expect(flash[:alert]).to include("No closing exchange rate for USD")
 
-      Accounting::ExchangeRate.create!(currency: "USD", rate_date: fiscal_year.end_date, rate: "0.95")
+      Accounting::ExchangeRate.create!(currency: "USD", rate_date: fiscal_year.end_date, rate: "1.05263158", rate_type: :closing, source: "manual")
       expect { post propose_revaluation_accounting_fiscal_year_path(fiscal_year) }.to change(Accounting::JournalEntry, :count).by(1)
       expect(response).to redirect_to(accounting_journal_entry_path(Accounting::JournalEntry.last))
       expect(Accounting::JournalEntry.last).to be_draft

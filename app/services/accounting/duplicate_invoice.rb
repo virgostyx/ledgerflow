@@ -14,7 +14,7 @@ class Accounting::DuplicateInvoice
 
     ApplicationRecord.transaction do
       copy = Accounting::Invoice.create!(
-        invoice.slice(:partner_id, :invoice_type, :journal_id, :currency, :exchange_rate, :vat_treatment, :description, :notes)
+        invoice.slice(:partner_id, :invoice_type, :journal_id, :currency, :exchange_rate, :exchange_rate_reason, :vat_treatment, :description, :notes)
                .merge(fiscal_year: fiscal_year, invoice_date: date, due_date: due_date_like(invoice, date), created_by: created_by)
       )
       invoice.lines.each { |line| copy_line(line, copy) }

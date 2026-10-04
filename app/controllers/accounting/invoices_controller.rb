@@ -105,6 +105,7 @@ class Accounting::InvoicesController < ApplicationController
     result = Accounting::PostInvoice.call(invoice: @invoice)
 
     if result.success?
+      flash[:alert] = result[:rate_warning] if result[:rate_warning] # a typed rate far from the official one (F11)
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.posted")
     else
       redirect_to accounting_invoice_path(@invoice), alert: result.message
@@ -235,7 +236,7 @@ class Accounting::InvoicesController < ApplicationController
   def invoice_params
     params.require(:accounting_invoice).permit(
       :invoice_date, :due_date, :partner_id, :journal_id, :cash_journal_id,
-      :fiscal_year_id, :currency, :exchange_rate, :description, :notes, :external_ref, :vat_treatment,
+      :fiscal_year_id, :currency, :exchange_rate, :exchange_rate_reason, :description, :notes, :external_ref, :vat_treatment,
       lines_attributes: [
         :id, :description, :account_id, :quantity, :unit_price,
         :vat_rate, :vat_code, :position, :_destroy,

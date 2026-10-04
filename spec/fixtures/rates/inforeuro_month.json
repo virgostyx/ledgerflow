@@ -1,0 +1,42 @@
+[
+ {
+  "country": "Belgium",
+  "currency": "Euro",
+  "isoA3Code": "EUR",
+  "isoA2Code": "BE",
+  "value": 1,
+  "comment": ""
+ },
+ {
+  "country": "Japan",
+  "currency": "Japanese yen",
+  "isoA3Code": "JPY",
+  "isoA2Code": "JP",
+  "value": 178.41,
+  "comment": ""
+ },
+ {
+  "country": "United Kingdom",
+  "currency": "Pound sterling",
+  "isoA3Code": "GBP",
+  "isoA2Code": "GB",
+  "value": 0.85718,
+  "comment": ""
+ },
+ {
+  "country": "United States",
+  "currency": "United States dollar",
+  "isoA3Code": "USD",
+  "isoA2Code": "US",
+  "value": 1.1355,
+  "comment": ""
+ },
+ {
+  "country": "Zambia",
+  "currency": "Zambian Kwacha",
+  "isoA3Code": "ZMW",
+  "isoA2Code": "ZM",
+  "value": 22.2019,
+  "comment": ""
+ }
+]

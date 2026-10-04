@@ -43,14 +43,14 @@
             <td class="px-4 py-3"><%= link_to "##{statement.sequence || statement.id}", accounting_bank_statement_path(statement), class: "font-medium text-primary-700 hover:underline" %></td>
             <td class="px-4 py-3 text-gray-700"><%= statement.bank_account.label_fr %></td>
             <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(statement.new_balance_date || statement.old_balance_date).format %></td>
-            <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(statement.old_balance).format %></td>
-            <td class="px-4 py-3 text-right font-mono"><%= statement.new_balance ? Accounting::MoneyPresenter.new(statement.new_balance).format : "—" %></td>
+            <td class="px-4 py-3 text-right font-mono"><%= Accounting::MoneyPresenter.new(statement.old_balance, currency: statement.bank_account.currency).format %></td>
+            <td class="px-4 py-3 text-right font-mono"><%= statement.new_balance ? Accounting::MoneyPresenter.new(statement.new_balance, currency: statement.bank_account.currency).format : "—" %></td>
             <td class="px-4 py-3 space-x-1">
               <% if statement.to_review? %>
-                <span class="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800" title="The closing balance differs by <%= Accounting::MoneyPresenter.new(statement.integrity_gap).format %> from the opening balance plus the movements">To review</span>
+                <span class="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800" title="The closing balance differs by <%= Accounting::MoneyPresenter.new(statement.integrity_gap, currency: statement.bank_account.currency).format %> from the opening balance plus the movements">To review</span>
               <% end %>
               <% if statement.chain_broken? %>
-                <span class="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800" title="The opening balance does not follow the previous statement">Chain broken by <%= Accounting::MoneyPresenter.new(statement.chain_gap).format %></span>
+                <span class="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800" title="The opening balance does not follow the previous statement">Chain broken by <%= Accounting::MoneyPresenter.new(statement.chain_gap, currency: statement.bank_account.currency).format %></span>
               <% end %>
               <% unless statement.to_review? || statement.chain_broken? %><span class="text-xs text-emerald-700">OK</span><% end %>
             </td>

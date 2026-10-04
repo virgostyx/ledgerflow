@@ -32,6 +32,9 @@ class Layouts::JournalEntryFormComponent < ViewComponent::Base
     @axes
   end
 
+  # EUR first, then the other currencies of the application.
+  def currency_options = [ "EUR" ] + (Accounting::MoneyPresenter::SUPPORTED_CURRENCIES - [ "EUR" ])
+
   def partners
     @partners ||= Accounting::Partner.where(active: true).order(:name)
   end

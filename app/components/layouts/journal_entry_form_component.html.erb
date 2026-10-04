@@ -1,6 +1,7 @@
 <%= form_with model: @entry, scope: :accounting_journal_entry, url: form_url,
               data: { controller: "journal-entry-form",
-                      journal_entry_form_axes_value: axes_json } do |f| %>
+                      journal_entry_form_axes_value: axes_json,
+                      journal_entry_form_rate_lookup_url_value: helpers.accounting_exchange_rate_lookup_path } do |f| %>
 
   <%= f.hidden_field :fiscal_year_id %>
 
@@ -95,6 +96,29 @@
           </div>
         </div>
 
+        <div class="foreign-row mt-1 grid grid-cols-12 gap-2 pl-1 items-center text-xs text-gray-500">
+          <div class="col-span-2">
+            <%= lf.select :currency, currency_options, { selected: lf.object.currency.presence || "EUR" },
+                  'aria-label': 'Currency', class: 'block w-full rounded border border-gray-300 bg-white text-xs',
+                  data: { action: 'change->journal-entry-form#onForeignChanged' } %>
+          </div>
+          <div class="col-span-2">
+            <%= lf.number_field :amount_currency, value: lf.object.amount_currency&.abs, step: 'any', min: 0, placeholder: 'Amount in currency', 'aria-label': 'Amount in currency',
+                  class: 'block w-full rounded border border-gray-300 bg-white text-xs text-right font-mono',
+                  data: { action: 'input->journal-entry-form#onForeignChanged' } %>
+          </div>
+          <div class="col-span-2">
+            <%= lf.text_field :exchange_rate, value: lf.object.exchange_rate&.to_s("F"), readonly: true, placeholder: 'Rate per 1 EUR', 'aria-label': 'Rate per 1 EUR',
+                  class: 'block w-full rounded border border-gray-200 bg-gray-50 text-xs text-right font-mono' %>
+          </div>
+          <div class="col-span-2">
+            <%= select_tag "#{lf.object_name}[side]", options_for_select([ [ "Debit", "debit" ], [ "Credit", "credit" ] ], (lf.object.credit.to_d.positive? ? "credit" : "debit")),
+                  'aria-label': 'Side of the amount in currency', class: 'block w-full rounded border border-gray-300 bg-white text-xs',
+                  data: { action: 'change->journal-entry-form#onForeignChanged' } %>
+          </div>
+          <p class="col-span-4 text-amber-700" data-journal-entry-form-target="foreignNotice"></p>
+        </div>
+
         <%# Analytical axis selects — one per axis %>
         <% if axes.any? %>
           <div class="analytical-axes-row mt-1.5 grid gap-2 pl-1"
@@ -181,6 +205,31 @@
           <button type="button" class="text-gray-400 hover:text-red-600 text-lg"
                   data-action="click->journal-entry-form#removeLine">×</button>
         </div>
+      </div>
+
+      <div class="foreign-row mt-1 grid grid-cols-12 gap-2 pl-1 items-center text-xs text-gray-500">
+        <div class="col-span-2">
+          <select name="accounting_journal_entry[lines_attributes][NEW_INDEX][currency]" aria-label="Currency" class="block w-full rounded border border-gray-300 bg-white text-xs"
+                  data-action="change->journal-entry-form#onForeignChanged">
+            <% currency_options.each do |code| %><option value="<%= code %>"><%= code %></option><% end %>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <input type="number" step="any" min="0" placeholder="Amount in currency" aria-label="Amount in currency"
+                 name="accounting_journal_entry[lines_attributes][NEW_INDEX][amount_currency]"
+                 class="block w-full rounded border border-gray-300 bg-white text-xs text-right font-mono" data-action="input->journal-entry-form#onForeignChanged">
+        </div>
+        <div class="col-span-2">
+          <input type="text" readonly placeholder="Rate per 1 EUR" aria-label="Rate per 1 EUR" name="accounting_journal_entry[lines_attributes][NEW_INDEX][exchange_rate]"
+                 class="block w-full rounded border border-gray-200 bg-gray-50 text-xs text-right font-mono">
+        </div>
+        <div class="col-span-2">
+          <select name="accounting_journal_entry[lines_attributes][NEW_INDEX][side]" aria-label="Side of the amount in currency"
+                  class="block w-full rounded border border-gray-300 bg-white text-xs" data-action="change->journal-entry-form#onForeignChanged">
+            <option value="debit">Debit</option><option value="credit">Credit</option>
+          </select>
+        </div>
+        <p class="col-span-4 text-amber-700" data-journal-entry-form-target="foreignNotice"></p>
       </div>
 
       <%# Analytical axis selects in template %>

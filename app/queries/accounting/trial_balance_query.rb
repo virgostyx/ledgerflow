@@ -2,6 +2,7 @@ class Accounting::TrialBalanceQuery
   Result = Struct.new(:id, :code, :label_fr, :account_type, :normal_balance,
                       :total_debit, :total_credit, :balance,
                       :opening_debit, :opening_credit, :movement_debit, :movement_credit,
+                      :currency, :balance_in_currency, # an account kept in a foreign currency (F11): the currency and the balance in it, signed like the debit
                       keyword_init: true) do
     # Ouverture/clôture: net soldes, placés en Débit s'ils sont positifs, en Crédit sinon
     # (docs/dev/reports/spec.md §5) — pas le même sens que #balance, qui suit le sens
@@ -43,6 +44,7 @@ class Accounting::TrialBalanceQuery
 
     account_ids = rows.map(&:account_id)
     accounts    = Accounting::Account.where(id: account_ids).index_by(&:id)
+    in_currency = balances_in_currency(accounts.values.select(&:currency))
 
     rows.map do |row|
       account = accounts[row.account_id]
@@ -62,12 +64,23 @@ class Accounting::TrialBalanceQuery
         opening_debit:  BigDecimal(row.opening_debit.to_s),
         opening_credit: BigDecimal(row.opening_credit.to_s),
         movement_debit: BigDecimal(row.movement_debit.to_s),
-        movement_credit: BigDecimal(row.movement_credit.to_s)
+        movement_credit: BigDecimal(row.movement_credit.to_s),
+        currency:       account.currency,
+        balance_in_currency: (in_currency.fetch(account.id, BigDecimal("0")) if account.currency)
       )
     end.sort_by(&:code)
   end
 
   private
+
+  # Σ of the amounts in the account's currency on the lines in that currency, up to the date (what the account holds in that currency).
+  def balances_in_currency(accounts)
+    return {} if accounts.empty?
+
+    base_scope.where(account_id: accounts.map(&:id))
+              .where("accounting_journal_entry_lines.currency = (SELECT a.currency FROM accounting_accounts a WHERE a.id = accounting_journal_entry_lines.account_id)")
+              .group(:account_id).sum("accounting_journal_entry_lines.amount_currency").transform_values { |v| BigDecimal(v.to_s) }
+  end
 
   def base_scope
     Accounting::JournalEntryLine

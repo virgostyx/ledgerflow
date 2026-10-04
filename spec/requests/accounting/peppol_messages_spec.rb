@@ -95,7 +95,7 @@ RSpec.describe "Peppol messages", type: :request do
     let!(:waiting) { take(example("vat-category-E.xml")) }
 
     it "drafts it again once the cause is dealt with (the exchange rate entered), and audits it" do
-      Accounting::ExchangeRate.create!(currency: "GBP", rate_date: Date.new(2017, 1, 1), rate: BigDecimal("1.15"))
+      Accounting::ExchangeRate.create!(currency: "GBP", rate_date: Date.new(2018, 8, 30), rate: BigDecimal("1.15"), rate_type: :daily, source: "ecb")
 
       post reprocess_accounting_peppol_message_path(waiting)
 
@@ -113,7 +113,7 @@ RSpec.describe "Peppol messages", type: :request do
 
     it "works on several at once" do
       other = take(example("vat-category-Z.xml"))
-      Accounting::ExchangeRate.create!(currency: "GBP", rate_date: Date.new(2017, 1, 1), rate: BigDecimal("1.15"))
+      Accounting::ExchangeRate.create!(currency: "GBP", rate_date: Date.new(2018, 8, 30), rate: BigDecimal("1.15"), rate_type: :daily, source: "ecb")
 
       post reprocess_all_accounting_peppol_messages_path, params: { message_ids: [ waiting.id, other.id ] }
 

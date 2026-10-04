@@ -32,6 +32,8 @@
       <%= f.label :as_of, t_ab.(:as_of), class: "block text-sm font-medium text-gray-700" %>
       <%= f.date_field :as_of, value: @as_of, class: "mt-1 form-input" %>
     </div>
+    <label class="text-sm text-gray-700 pb-2"><%= check_box_tag :by_currency, 1, params[:by_currency].present? %> By currency</label>
+    <label class="text-sm text-gray-700 pb-2"><%= check_box_tag :at_closing_rate, 1, params[:at_closing_rate].present? %> At the closing rate</label>
     <%= f.submit t("accounting.reports.filter"), class: "btn-primary" %>
   <% end %>
 
@@ -81,6 +83,43 @@
       </tfoot>
     </table>
   </div>
+
+  <% if @by_currency %>
+    <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">By currency</h2>
+    <div class="overflow-x-auto" data-section="by-currency">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-2 text-left font-medium text-gray-600">Currency</th>
+            <th class="px-4 py-2 text-left font-medium text-gray-600">Partner</th>
+            <th class="px-4 py-2 text-right font-medium text-gray-600">Amount in currency</th>
+            <th class="px-4 py-2 text-right font-medium text-gray-600">Booked (EUR)</th>
+            <% if params[:at_closing_rate].present? %>
+              <th class="px-4 py-2 text-right font-medium text-gray-600">Closing rate (per 1 EUR)</th>
+              <th class="px-4 py-2 text-right font-medium text-gray-600">At the closing rate (EUR)</th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white font-mono">
+          <% @by_currency.each do |r| %>
+            <tr>
+              <td class="px-4 py-2 font-sans"><%= r.currency %></td>
+              <td class="px-4 py-2 font-sans"><%= r.partner_name || t_ab.(:no_partner) %></td>
+              <td class="px-4 py-2 text-right"><%= format("%.#{Accounting::Currency.decimals_of(r.currency)}f", r.foreign_amount) %></td>
+              <td class="px-4 py-2 text-right"><%= format("%.2f", r.booked_eur) %></td>
+              <% if params[:at_closing_rate].present? %>
+                <td class="px-4 py-2 text-right"><%= r.rate&.to_s("F") %></td>
+                <td class="px-4 py-2 text-right"><%= r.revalued_eur ? format("%.2f", r.revalued_eur) : "No rate" %></td>
+              <% end %>
+            </tr>
+          <% end %>
+          <% if @by_currency.empty? %>
+            <tr><td colspan="6" class="px-4 py-4 text-center text-gray-400 font-sans"><%= t("accounting.reports.no_data") %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
 
   <% if @stale_credits.any? %>
     <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700"><%= t_ab.(:stale_title, days: @stale_days) %></h2>

@@ -1,6 +1,7 @@
 <div class="mx-auto max-w-7xl px-4 py-8">
   <h1 class="mb-6 text-2xl font-bold text-gray-900">Bank reconciliation</h1>
 
+  <% money = ->(v) { @result.currency == "EUR" ? number_to_currency(v, unit: "€") : "#{number_with_precision(v, precision: Accounting::Currency.decimals_of(@result.currency), delimiter: ',')} #{@result.currency}" } %>
   <%= form_with url: accounting_reports_bank_reconciliation_report_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
     <div>
       <label class="block text-sm font-medium text-gray-700">Bank account</label>
@@ -15,22 +16,31 @@
   <% end %>
 
   <% if @result %>
+    <% if @result.currency != "EUR" %>
+    <p class="mb-4 text-sm text-gray-600" data-section="foreign-account">This account is in <%= @result.currency %>: the statement and the books are compared in <%= @result.currency %>.
+      The books carry <%= number_to_currency(@result.booked_eur, unit: "€") %> for it.
+      <% if @result.fx_difference %>
+        At the closing rate of <%= Accounting::DatePresenter.new(@as_of).format %> the exchange difference to report, apart from this reconciliation, is <%= number_to_currency(@result.fx_difference, unit: "€") %>.
+      <% else %>
+        There is no closing rate for <%= @result.currency %> on <%= Accounting::DatePresenter.new(@as_of).format %>, so no exchange difference is shown.
+      <% end %></p>
+  <% end %>
     <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
       <div class="rounded border border-gray-200 p-4">
         <p class="text-gray-500">B — Statement balance</p>
-        <p class="text-xl font-semibold"><%= number_to_currency(@result.statement_balance, unit: "€") %></p>
+        <p class="text-xl font-semibold"><%= money.(@result.statement_balance) %></p>
       </div>
       <div class="rounded border border-gray-200 p-4">
         <p class="text-gray-500">A — Accounting balance</p>
-        <p class="text-xl font-semibold"><%= number_to_currency(@result.accounting_balance, unit: "€") %></p>
+        <p class="text-xl font-semibold"><%= money.(@result.accounting_balance) %></p>
       </div>
       <div class="rounded border border-gray-200 p-4">
         <p class="text-gray-500">Expected balance (B + BN − SN)</p>
-        <p class="text-xl font-semibold"><%= number_to_currency(@result.expected_balance, unit: "€") %></p>
+        <p class="text-xl font-semibold"><%= money.(@result.expected_balance) %></p>
       </div>
       <div class="rounded border p-4 <%= @result.gap.zero? ? 'border-green-200 bg-green-50' : 'border-red-300 bg-red-50' %>">
         <p class="text-gray-500">Gap</p>
-        <p class="text-xl font-semibold"><%= number_to_currency(@result.gap, unit: "€") %></p>
+        <p class="text-xl font-semibold"><%= money.(@result.gap) %></p>
       </div>
     </div>
 
@@ -67,7 +77,7 @@
               <%= link_to item.reference, accounting_journal_entry_path(item.journal_entry_id), class: "text-primary-700 hover:underline" %>
             </td>
             <td class="px-4 py-2"><%= item.label %></td>
-            <td class="px-4 py-2 text-right"><%= number_to_currency(item.amount, unit: "€") %></td>
+            <td class="px-4 py-2 text-right"><%= money.(item.amount) %></td>
           </tr>
         <% end %>
         <% if @result.bn.empty? %>
@@ -90,7 +100,7 @@
             <td class="px-4 py-2"><%= l(item.date, format: :short) %></td>
             <td class="px-4 py-2 font-mono text-xs"><%= item.reference %></td>
             <td class="px-4 py-2"><%= item.label %></td>
-            <td class="px-4 py-2 text-right"><%= number_to_currency(item.amount, unit: "€") %></td>
+            <td class="px-4 py-2 text-right"><%= money.(item.amount) %></td>
           </tr>
         <% end %>
         <% if @result.sn.empty? %>

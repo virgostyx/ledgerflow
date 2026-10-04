@@ -7,7 +7,7 @@ class Accounting::Actions::ValidateBalance
     debit  = ctx.entry.lines.sum(:debit)
     credit = ctx.entry.lines.sum(:credit)
 
-    unless (debit - credit).abs <= BigDecimal("0.01")
+    unless (debit - credit).abs <= BigDecimal("0.005") # the database's own tolerance
       ctx.fail_with_rollback!(
         I18n.t("accounting.errors.unbalanced_entry", debit: debit, credit: credit)
       )

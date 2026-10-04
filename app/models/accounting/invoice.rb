@@ -62,6 +62,7 @@ class Accounting::Invoice < ApplicationRecord
   validates :partner,      presence: true
   validates :currency,      inclusion: { in: Accounting::MoneyPresenter::SUPPORTED_CURRENCIES }
   validates :exchange_rate, numericality: { greater_than: 0 }
+  before_validation :start_from_official_rate, if: -> { draft? && currency != "EUR" && exchange_rate == 1 && exchange_rate_reason.blank? && invoice_date }
 
   after_commit :record_payment_event, on: :update, if: -> { external_digest.present? && saved_change_to_status? }
 
@@ -147,9 +148,18 @@ class Accounting::Invoice < ApplicationRecord
     self.total_incl_vat    = domestic? ? lines.sum(&:total_incl_vat) : subtotal_excl_vat
   end
 
-  # EUR-equivalent of total_incl_vat, for comparison against journal entry lines (always EUR).
+  # A draft in a foreign currency that still has the default rate takes the official one of its date (F11), when there is one: posting checks the rate
+  # again (Actions::ValidateInvoiceRate), and refuses with the message that names the currency and the date when there is none.
+  def start_from_official_rate
+    self.exchange_rate = Fx::RateFor.call(currency, document_date: invoice_date, accounting_date: invoice_date, entity: entity || ActsAsTenant.current_tenant)
+  rescue Fx::MissingRate
+    nil
+  end
+  private :start_from_official_rate
+
+  # EUR-equivalent of total_incl_vat, for comparison against journal entry lines (always EUR). The rate is units of `currency` for 1 EUR.
   def total_incl_vat_eur
-    (total_incl_vat * exchange_rate).round(2)
+    Fx::Convert.to_eur(total_incl_vat, exchange_rate)
   end
 
   # Customer receipts credit the receivable through lines linked to the invoice (journal_entry_lines.invoice_id).

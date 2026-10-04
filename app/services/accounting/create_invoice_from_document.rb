@@ -57,8 +57,9 @@ class Accounting::CreateInvoiceFromDocument
     code = value("currency").to_s.upcase
     return [ "EUR", BigDecimal("1") ] if code.blank? || code == "EUR" || Accounting::MoneyPresenter::SUPPORTED_CURRENCIES.exclude?(code)
 
-    rate = Accounting::ExchangeRate.rate_for(code, date)
-    rate ? [ code, rate ] : [ "EUR", BigDecimal("1") ]
+    [ code, Fx::RateFor.call(code, document_date: date) ]
+  rescue Fx::MissingRate
+    [ "EUR", BigDecimal("1") ] # still a draft: the person enters the currency and its rate
   end
 
   def probable_duplicate(reference)

@@ -16,5 +16,7 @@ module Accounting::AccountCodes
   INTERNAL_TRANSFERS = "580000" # transit account of the transfers between two bank accounts of the entity (F02)
   ROUNDING_LOSS   = "658100" # rounding differences of the bank payments (F02), created by the owner on existing entities
   ROUNDING_GAIN   = "758100"
+  FX_UNREALIZED_GAIN = "499200" # balance-sheet counterpart of the unrealized exchange gains, when the entity chooses to defer or recognize them (F11)
+  FX_DEFERRED_GAIN   = "492200" # "Produits à reporter": where a deferred unrealized gain waits
   FX_UNREALIZED   = "499100" # balance-sheet counterpart of the unrealized exchange losses booked at closing
 end

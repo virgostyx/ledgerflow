@@ -10,7 +10,8 @@ RSpec.describe Seeders::ReferenceLedgerSeeder do
 
       expect(Accounting::FiscalYear.pluck(:year, :status)).to contain_exactly([ 2025, "closed" ], [ 2026, "open" ])
       expect(Accounting::Invoice.count).to be >= 8 # sales/purchases + special VAT + credit note
-      expect(Accounting::Lettering.count).to eq(2) # full + grouped
+      expect(Accounting::Lettering.count).to eq(3) # full + grouped + the sale in USD paid at another rate (F11)
+      expect(Accounting::JournalEntry.where(source_type: Accounting::JournalEntry::FX_SOURCE).count).to eq(1) # its exchange difference
       expect(Accounting::LineAllocation.count).to be >= 1 # partial
       expect(Accounting::BankAccount.count).to eq(2)
       expect(Accounting::BankTransaction.where(journal_entry_id: nil)).not_to be_empty # SN

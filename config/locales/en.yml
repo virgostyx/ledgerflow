@@ -322,10 +322,10 @@ en:
         return_reason_required: "Give the project manager a reason for returning the invoice."
 
     revaluation:
-      proposed: "Draft entry created: check it, then post it. Its reversal is drafted in the next fiscal year once that year exists."
+      proposed: "Draft entry created: check it, then post it. Its reversal is scheduled for the day after the closing date."
       errors:
         missing_rate: "No closing rate for %{currencies}: enter it in Settings > Exchange rates first."
-        no_loss: "No unrealized exchange loss to book (gains are not booked before they are realized)."
+        nothing_to_book: "Nothing to book: no unrealized exchange difference, or the treatment chosen for this entity books none."
         missing_account: "Account(s) %{codes} missing: create them in the chart of accounts first."
         no_journal: "No active miscellaneous journal."
     closing_checklist:

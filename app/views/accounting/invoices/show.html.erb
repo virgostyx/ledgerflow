@@ -259,7 +259,7 @@
           </tr>
           <% if @invoice.currency != 'EUR' %>
             <tr class="text-sm">
-              <td colspan="5" class="px-4 py-2 text-right text-gray-500 font-medium">EUR equivalent (rate <%= @invoice.exchange_rate %>)</td>
+              <td colspan="5" class="px-4 py-2 text-right text-gray-500 font-medium">EUR equivalent (<%= @invoice.exchange_rate.to_s('F') %> <%= @invoice.currency %> for 1 EUR)</td>
               <td class="px-4 py-2 text-right font-mono font-bold text-gray-900"><%= Accounting::MoneyPresenter.new(@invoice.total_incl_vat_eur).format %></td>
             </tr>
           <% end %>

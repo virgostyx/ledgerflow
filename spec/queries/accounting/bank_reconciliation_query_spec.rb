@@ -141,4 +141,54 @@ RSpec.describe Accounting::BankReconciliationQuery, type: :query do
       expect(after.gap).to eq(0)
     end
   end
+
+  describe "a bank account in a foreign currency (F11)" do
+    before { bank_account.update_columns(currency: "USD") }
+
+    # a statement line of the account carries the currency of the account
+    def post_transaction(amount:, journal_entry: nil, transaction_date: as_of)
+      create(:bank_transaction, bank_account: bank_account, amount: BigDecimal(amount.to_s), currency: "USD", transaction_date: transaction_date,
+             journal_entry: journal_entry, status: journal_entry ? :reconciled : :pending)
+    end
+
+    def post_usd(usd:, eur:, side: :debit, entry_date: as_of)
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: entry_date)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      other = side == :debit ? :credit : :debit
+      sign = side == :debit ? 1 : -1
+      create(:journal_entry_line, journal_entry: entry, account: gl_account, side => BigDecimal(eur), other => 0, currency: "USD",
+             amount_currency: sign * BigDecimal(usd), exchange_rate: (BigDecimal(usd) / BigDecimal(eur)).round(8))
+      create(:journal_entry_line, journal_entry: entry, account: other_account, other => BigDecimal(eur), side => 0)
+      entry.post!
+      entry
+    end
+
+    it "is done in the currency of the account: the statement in USD against the books in USD, whatever the euros are" do
+      entry = post_usd(usd: "1000", eur: "900")
+      post_usd(usd: "200", eur: "190", entry_date: as_of - 1) # booked, not on the statement
+      post_transaction(amount: 1000, journal_entry: entry)
+
+      expect(result).to have_attributes(currency: "USD", statement_balance: BigDecimal("1000"), accounting_balance: BigDecimal("1200"), gap: 0)
+      expect(result.bn.map(&:amount)).to eq([ BigDecimal("200") ])
+      expect(result.booked_eur).to eq(BigDecimal("1090"))
+    end
+
+    it "points out the exchange difference apart, between the euros booked and the balance at the closing rate of the date" do
+      entry = post_usd(usd: "1000", eur: "900")
+      post_transaction(amount: 1000, journal_entry: entry)
+      Accounting::ExchangeRate.create!(currency: "USD", rate_date: as_of, rate: "1.25", rate_type: :closing, source: "manual")
+
+      expect(result.fx_difference).to eq(BigDecimal("-100")) # 1000 USD are 800 EUR at 1.25, and 900 are booked: a loss of 100
+    end
+
+    it "gives no exchange difference without a closing rate, rather than guessing one" do
+      post_usd(usd: "1000", eur: "900")
+      expect(result.fx_difference).to be_nil
+    end
+
+    it "has none for an account in EUR" do
+      bank_account.update_columns(currency: "EUR")
+      expect(result).to have_attributes(currency: "EUR", fx_difference: nil, booked_eur: nil)
+    end
+  end
 end

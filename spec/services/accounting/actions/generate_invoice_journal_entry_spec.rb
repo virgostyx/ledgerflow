@@ -270,7 +270,7 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
     subject(:invoice) do
       inv = create(:invoice, invoice_type: :customer, partner: partner,
                    fiscal_year: fiscal_year, journal: sale_journal,
-                   currency: 'USD', exchange_rate: '0.92')
+                   currency: 'USD', exchange_rate: '1.08695652', exchange_rate_reason: 'Rate of the test')
       create(:invoice_line, invoice: inv, account: account_700,
              quantity: 1, unit_price: '1000.00', vat_rate: '21.00', position: 1)
       inv.compute_totals
@@ -289,10 +289,15 @@ RSpec.describe Accounting::Actions::GenerateInvoiceJournalEntry, type: :service 
       expect(receivable_line.amount_currency).to eq(BigDecimal('1210.00'))
     end
 
+    it 'signe le montant en devise comme la ligne : positif au débit, négatif au crédit' do
+      revenue_line = invoice.journal_entry.lines.find { |l| l.account == account_700 }
+      expect(revenue_line.amount_currency).to eq(BigDecimal('-1000.00'))
+    end
+
     it 'stocke la devise et le taux de change sur la ligne' do
       receivable_line = invoice.journal_entry.lines.find { |l| l.account == account_400 }
       expect(receivable_line.currency).to eq('USD')
-      expect(receivable_line.exchange_rate).to eq(BigDecimal('0.92'))
+      expect(receivable_line.exchange_rate).to eq(BigDecimal('1.08695652'))
     end
 
     it 'convertit aussi les lignes produit et TVA en EUR' do

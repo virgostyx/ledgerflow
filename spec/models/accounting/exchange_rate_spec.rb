@@ -1,40 +1,39 @@
-require 'rails_helper'
+require "rails_helper"
 
+# F11: a rate is the number of units of foreign currency for 1 EUR, with a kind and a source; never zero or negative.
 RSpec.describe Accounting::ExchangeRate, type: :model do
-  include_context 'with entity'
+  include_context "with entity"
 
-  def rate(currency, date, value) = described_class.create!(currency: currency, rate_date: date, rate: value)
+  def rate(**attrs) = described_class.new({ currency: "USD", rate_date: Date.new(2026, 9, 30), rate: "1.1", rate_type: :daily, source: "ecb" }.merge(attrs))
 
-  describe 'validations' do
-    it 'requires an ISO currency other than EUR, a positive rate and a date' do
-      expect(described_class.new(currency: 'USD', rate_date: Date.current, rate: '0.9')).to be_valid
-      expect(described_class.new(currency: 'EUR', rate_date: Date.current, rate: '1')).not_to be_valid
-      expect(described_class.new(currency: 'US', rate_date: Date.current, rate: '1')).not_to be_valid
-      expect(described_class.new(currency: 'USD', rate_date: Date.current, rate: '0')).not_to be_valid
-      expect(described_class.new(currency: 'USD', rate: '0.9')).not_to be_valid
-    end
-
-    it 'is unique per currency and day' do
-      rate('USD', Date.new(2026, 9, 30), '0.9')
-      expect(described_class.new(currency: 'USD', rate_date: Date.new(2026, 9, 30), rate: '0.8')).not_to be_valid
-    end
+  it "keeps 8 decimals" do
+    expect(rate(rate: "1.12345678").tap(&:save!).reload.rate).to eq(BigDecimal("1.12345678"))
   end
 
-  describe '.rate_for' do
-    before do
-      rate('USD', Date.new(2026, 9, 1), '0.90')
-      rate('USD', Date.new(2026, 9, 30), '0.95')
-    end
+  it "refuses a rate that is zero or negative" do
+    expect(rate(rate: "0")).not_to be_valid
+    expect(rate(rate: "-1.1")).not_to be_valid
+  end
 
-    it 'returns the latest rate on or before the date' do
-      expect(described_class.rate_for('USD', Date.new(2026, 9, 15))).to eq(BigDecimal('0.90'))
-      expect(described_class.rate_for('usd', Date.new(2026, 9, 30))).to eq(BigDecimal('0.95'))
-    end
+  it "refuses EUR, and a code that is not three letters" do
+    expect(rate(currency: "EUR")).not_to be_valid
+    expect(rate(currency: "US")).not_to be_valid
+  end
 
-    it 'is 1 for EUR, nil when no rate is known yet' do
-      expect(described_class.rate_for('EUR', Date.current)).to eq(1)
-      expect(described_class.rate_for('USD', Date.new(2026, 8, 1))).to be_nil
-      expect(described_class.rate_for('JPY', Date.current)).to be_nil
-    end
+  it "has four kinds: daily, monthly_average, closing and manual" do
+    expect(described_class.rate_types.keys).to eq(%w[daily monthly_average closing manual])
+  end
+
+  it "is unique per currency, date, kind and source" do
+    rate.save!
+    expect(rate).not_to be_valid
+    expect(rate(source: "manual-file")).to be_valid
+    expect(rate(rate_type: :closing)).to be_valid
+    expect(rate(rate_date: Date.new(2026, 9, 29))).to be_valid
+  end
+
+  it "needs a reason when it is typed by hand" do
+    expect(rate(rate_type: :manual, source: "manual", reason: nil)).not_to be_valid
+    expect(rate(rate_type: :manual, source: "manual", reason: "Rate of the bank statement")).to be_valid
   end
 end

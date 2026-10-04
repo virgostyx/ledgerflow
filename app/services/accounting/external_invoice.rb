@@ -13,6 +13,8 @@ class Accounting::ExternalInvoice
 
   # ponytail: no journal or credit-note choice yet; the journal follows the invoice type, as in the UI.
   ATTRIBUTES = %w[document_type invoice_type invoice_date due_date currency exchange_rate vat_treatment description notes project_id].freeze
+  # The rate of a document in a foreign currency is the caller's (BudgetFlow's own), not one of the official rates: it is typed, with this reason.
+  RATE_REASON = "Rate given by the calling application".freeze
   LINE_DECIMALS = %w[quantity unit_price vat_rate].freeze
   # A client working in draft mode hands the books to the accountant: once posted, only they can undo it, by returning it
   # to the project manager from LedgerFlow (neither a correction nor a deletion from the third party is accepted).
@@ -111,7 +113,8 @@ class Accounting::ExternalInvoice
     normalized.slice(*ATTRIBUTES.map(&:to_sym)).merge(
       partner: normalized[:partner], fiscal_year: normalized[:fiscal_year], credited_invoice: normalized[:credited_invoice],
       external_project_name: normalized[:external_project_name], external_budget_line: normalized[:external_budget_line],
-      supplier_reference: normalized[:supplier_reference], external_digest: digest)
+      supplier_reference: normalized[:supplier_reference], external_digest: digest,
+      exchange_rate_reason: (RATE_REASON if normalized[:currency].present? && normalized[:currency] != "EUR"))
   end
 
   # A document just saved: left as a draft, or posted at once.

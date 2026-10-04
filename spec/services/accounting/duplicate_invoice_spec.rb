@@ -13,7 +13,7 @@ RSpec.describe Accounting::DuplicateInvoice, type: :service do
   # A posted invoice dated well in the past, due 30 days later, with two lines (the first one analytically annotated).
   let!(:original) do
     inv = create(:invoice, invoice_type: :customer, partner: partner, fiscal_year: fiscal_year, journal: sale_journal,
-                 invoice_date: Date.new(2025, 1, 10), due_date: Date.new(2025, 2, 9), currency: 'USD', exchange_rate: BigDecimal('0.9'),
+                 invoice_date: Date.new(2025, 1, 10), due_date: Date.new(2025, 2, 9), currency: 'USD', exchange_rate: BigDecimal('1.11111111'), exchange_rate_reason: 'Rate of the test',
                  vat_treatment: :domestic, description: 'Monthly retainer', notes: 'Thanks!', external_ref: 'PO-42')
     line = create(:invoice_line, invoice: inv, account: account_700, description: 'Consulting', quantity: 2, unit_price: '500.00', vat_rate: '21.00', position: 1)
     create(:invoice_line, invoice: inv, account: account_700, description: 'Travel', quantity: 1, unit_price: '80.00', vat_rate: '6.00', position: 2)
@@ -35,7 +35,7 @@ RSpec.describe Accounting::DuplicateInvoice, type: :service do
 
   it 'copies the partner, type, journal, currency, rate, VAT treatment, description and notes' do
     expect(copy).to have_attributes(partner: partner, invoice_type: 'customer', journal: sale_journal, currency: 'USD',
-                                    exchange_rate: BigDecimal('0.9'), vat_treatment: 'domestic', description: 'Monthly retainer',
+                                    exchange_rate: BigDecimal('1.11111111'), exchange_rate_reason: 'Rate of the test', vat_treatment: 'domestic', description: 'Monthly retainer',
                                     notes: 'Thanks!', document_type: 'invoice')
   end
 

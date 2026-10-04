@@ -62,7 +62,7 @@ Le rapprochement par numéro de TVA reprend un tiers LedgerFlow déjà saisi à 
 | — | `invoice_type` | toujours `supplier` |
 | `invoice_date`, `due_date` | `invoice_date`, `due_date` | ISO 8601 ; la date doit tomber dans un exercice **ouvert** |
 | `currency` | `currency` | |
-| `exchange_rate_used` (pas `effective_exchange_rate`, qui préfère le taux réel du paiement) | `exchange_rate` | **Inverser** (cf. 6.1). `"1.0"` pour l'EUR. |
+| `exchange_rate_used` (pas `effective_exchange_rate`, qui préfère le taux réel du paiement) | `exchange_rate` | **Aucune inversion** depuis F11 : LedgerFlow utilise la même convention (devises pour 1 EUR, 8 décimales). `"1.0"` pour l'EUR. |
 | `project.id` | `project_id` | |
 | `project.name` | `project_name` | affiché au comptable pour choisir les comptes analytiques |
 | `invoice.sub_line` (via l'engagement) | `budget_line` | `"#{chapter.code}.#{budget_line.code}.#{sub_line.code}"` |
@@ -96,7 +96,7 @@ Les montants sont envoyés en **chaînes décimales** (`"50.00"`) depuis des `Bi
 
 ## 6. Points d'attention (pièges relevés)
 
-1. **Le taux de change est inversé.** BudgetFlow : `amount_eur = amount / exchange_rate_used` (devise étrangère pour 1 EUR, 8 décimales). LedgerFlow : `total_eur = total × exchange_rate` (EUR pour 1 unité de devise, **6 décimales**). L'adaptateur doit envoyer `1 / exchange_rate_used`. La perte de précision peut créer un écart de quelques centimes sur de gros montants en devise. Contrôle proposé : comparer `total_incl_vat` de la réponse à `invoice.amount` et signaler tout écart dans `accounting_export_error`. Décision à prendre : passer la colonne LedgerFlow à 8 décimales.
+1. **Le taux de change n'est plus inversé (F11).** BudgetFlow : `amount_eur = amount / exchange_rate_used` (devise étrangère pour 1 EUR, 8 décimales). LedgerFlow utilise désormais la même convention (`total_eur = total ÷ exchange_rate`, 8 décimales) : l'adaptateur envoie `exchange_rate_used` tel quel. (Ce paragraphe décrivait l'ancienne convention, EUR pour 1 unité sur 6 décimales.)
 2. **Numéro de facture du fournisseur.** BudgetFlow a `invoice_number` (obligatoire, celui du fournisseur). LedgerFlow numérote lui-même (`ACH2026/…`) et n'a pas de champ dédié pour le numéro fournisseur dans l'API : `external_ref` est la clé BudgetFlow, pas ce numéro. Proposition : ajouter `supplier_reference` (colonne et champ d'API) et l'utiliser pour le contrôle de doublon R19 C05. **À décider** : en attendant, l'adaptateur peut le mettre dans `description`.
 3. **Avoirs.** Un avoir BudgetFlow est une `Invoice` de type `credit_note` rattachée à un engagement, **sans lien vers la facture d'origine**. Il part donc sans `credited_invoice_external_ref`, ce que l'API accepte. Il réduit le solde du fournisseur mais n'est pas lettré contre une facture.
 4. **Reçus (`invoice_type: receipt`).** Hors périmètre : ce ne sont pas des factures comptables. À ne pas exporter tant qu'il n'y a pas de règle.

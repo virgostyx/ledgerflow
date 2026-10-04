@@ -152,7 +152,7 @@ RSpec.describe Accounting::LetterLines, type: :service do
     let(:customer)      { create(:partner, :customer) }
     let(:invoice) do
       create(:invoice, :with_lines, invoice_type: :customer, partner: customer,
-             fiscal_year: fiscal_year, journal: sale_journal, currency: 'USD', exchange_rate: '0.92')
+             fiscal_year: fiscal_year, journal: sale_journal, currency: 'USD', exchange_rate: '1.08695652', exchange_rate_reason: 'Rate of the test')
     end
     let(:receivable_line) do
       Accounting::PostInvoice.call(invoice: invoice)
@@ -160,7 +160,12 @@ RSpec.describe Accounting::LetterLines, type: :service do
     end
     # Invoice total is 1210.00 USD (1000.00 + 21% VAT) * 0.92 = 1113.20 EUR at invoice date;
     # the bank actually receives 1143.20 EUR at a slightly better rate.
-    let(:payment_line) { line(account: account_400, credit: 1143.20, partner: customer) }
+    # The payment carries the currency of the invoice (as Accounting::PayInvoiceFromTransaction books it): 1210 USD received as 1143.20 EUR.
+    let(:payment_line) do
+      line(account: account_400, credit: 1143.20, partner: customer).tap do |l|
+        l.update_columns(currency: 'USD', amount_currency: -1210, exchange_rate: (BigDecimal('1210') / BigDecimal('1143.20')).round(8))
+      end
+    end
 
     it 'succeeds despite the EUR mismatch and posts the FX gain' do
       result = described_class.call(lines: [ receivable_line, payment_line ])

@@ -35,6 +35,33 @@ RSpec.describe Accounting::TrialBalanceQuery, type: :query do
                         amount: BigDecimal("500.00"))
   end
 
+  describe "an account kept in a foreign currency (F11)" do
+    let!(:usd_account) { create(:account, code: "467001", label_fr: "Held in USD", account_type: :asset, normal_balance: :debit, account_class: 4, currency: "USD") }
+
+    def post_usd(amount_usd:, eur:, side:)
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 40)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      sign = side == :debit ? 1 : -1
+      create(:journal_entry_line, journal_entry: entry, account: usd_account, side => BigDecimal(eur), (side == :debit ? :credit : :debit) => 0,
+             currency: "USD", amount_currency: sign * BigDecimal(amount_usd), exchange_rate: (BigDecimal(amount_usd) / BigDecimal(eur)).round(8))
+      create(:journal_entry_line, journal_entry: entry, account: liability_account, (side == :debit ? :credit : :debit) => BigDecimal(eur), side => 0)
+      entry.post!
+    end
+
+    it "carries its currency and its balance in that currency, net of what went out" do
+      post_usd(amount_usd: "1100", eur: "1000", side: :debit)
+      post_usd(amount_usd: "330", eur: "300", side: :credit)
+
+      row = described_class.new(fiscal_year: fiscal_year).call.find { |r| r.code == "467001" }
+      expect(row).to have_attributes(currency: "USD", balance_in_currency: BigDecimal("770"), balance: BigDecimal("700"))
+    end
+
+    it "has neither for an account kept in EUR" do
+      row = described_class.new(fiscal_year: fiscal_year).call.find { |r| r.code == "604000" }
+      expect(row).to have_attributes(currency: nil, balance_in_currency: nil)
+    end
+  end
+
   describe "#call" do
     subject(:results) { described_class.new(fiscal_year: fiscal_year).call }
 

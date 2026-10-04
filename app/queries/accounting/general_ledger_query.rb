@@ -2,6 +2,7 @@ class Accounting::GeneralLedgerQuery
   Result = Struct.new(:line_id, :entry_date, :reference, :label,
                       :debit, :credit, :running_balance, :journal_entry_id,
                       :partner_id, :partner_name, :lettering_code, :lettering_id,
+                      :currency, :amount_currency, :exchange_rate,
                       keyword_init: true)
 
   attr_reader :opening_balance
@@ -48,7 +49,10 @@ class Accounting::GeneralLedgerQuery
         partner_id:       line.partner_id,
         partner_name:     line.partner&.name,
         lettering_code:   line.lettering&.code,
-        lettering_id:     line.lettering_id
+        lettering_id:     line.lettering_id,
+        currency:         line.currency,
+        amount_currency:  line.amount_currency,
+        exchange_rate:    line.exchange_rate
       )
     end
   end

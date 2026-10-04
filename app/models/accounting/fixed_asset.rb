@@ -86,8 +86,8 @@ class Accounting::FixedAsset < ApplicationRecord
     prorata = invoice.entity.vat_prorata_rate || BigDecimal("100")
     new(invoice_line: line, description: line.description, acquisition_date: invoice.invoice_date, asset_account: line.account,
         asset_category: line.account.code.start_with?("22") ? :immovable : :movable,
-        acquisition_value: (line.subtotal_excl_vat * invoice.exchange_rate).round(2),
-        vat_amount_initial: (line.vat_amount * invoice.exchange_rate * prorata / 100).round(2),
+        acquisition_value: Fx::Convert.to_eur(line.subtotal_excl_vat, invoice.exchange_rate),
+        vat_amount_initial: (Fx::Convert.to_eur(line.vat_amount, invoice.exchange_rate) * prorata / 100).round(2),
         prorata_at_acquisition: prorata)
   end
 

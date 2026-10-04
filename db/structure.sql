@@ -215,6 +215,8 @@ CREATE TABLE public.accounting_accounts (
     entity_id bigint NOT NULL,
     fixed_cost boolean DEFAULT false NOT NULL,
     cash_flow_category character varying,
+    currency character varying(3),
+    revalue_at_closing boolean DEFAULT false NOT NULL,
     CONSTRAINT chk_account_class CHECK (((account_class >= 1) AND (account_class <= 7)))
 );
 
@@ -1074,9 +1076,14 @@ CREATE TABLE public.accounting_exchange_rates (
     entity_id bigint NOT NULL,
     currency character varying(3) NOT NULL,
     rate_date date NOT NULL,
-    rate numeric(14,6) NOT NULL,
+    rate numeric(18,8) NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    rate_type integer DEFAULT 3 NOT NULL,
+    source character varying DEFAULT 'manual'::character varying NOT NULL,
+    imported_at timestamp(6) without time zone,
+    reason text,
+    created_by_id bigint
 );
 
 
@@ -1477,7 +1484,7 @@ CREATE TABLE public.accounting_invoices (
     entity_id bigint NOT NULL,
     journal_id bigint,
     cash_journal_id bigint,
-    exchange_rate numeric(10,6) DEFAULT 1.0 NOT NULL,
+    exchange_rate numeric(18,8) DEFAULT 1.0 NOT NULL,
     vat_treatment integer DEFAULT 0 NOT NULL,
     document_type integer DEFAULT 0 NOT NULL,
     credited_invoice_id bigint,
@@ -1491,7 +1498,8 @@ CREATE TABLE public.accounting_invoices (
     buyer_reference character varying,
     supplier_reference character varying,
     created_by_id bigint,
-    payment_reference character varying
+    payment_reference character varying,
+    exchange_rate_reason text
 );
 
 
@@ -1539,7 +1547,8 @@ CREATE TABLE public.accounting_journal_entries (
     created_by_id bigint,
     auto_reverse_on date,
     reversal_reason character varying,
-    vat_regularisation boolean DEFAULT false NOT NULL
+    vat_regularisation boolean DEFAULT false NOT NULL,
+    lettering_id bigint
 );
 
 
@@ -1577,8 +1586,8 @@ CREATE TABLE public.accounting_journal_entry_lines (
     vat_code integer,
     vat_amount numeric(15,2),
     currency character varying DEFAULT 'EUR'::character varying NOT NULL,
-    amount_currency numeric(15,2),
-    exchange_rate numeric(10,6),
+    amount_currency numeric(18,4),
+    exchange_rate numeric(18,8),
     sort_order integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
@@ -1908,7 +1917,8 @@ CREATE TABLE public.accounting_partners (
     to_validate boolean DEFAULT false NOT NULL,
     do_not_dun boolean DEFAULT false NOT NULL,
     email_bounced_at timestamp(6) without time zone,
-    language character varying DEFAULT 'fr'::character varying NOT NULL
+    language character varying DEFAULT 'fr'::character varying NOT NULL,
+    currency character varying(3) DEFAULT 'EUR'::character varying NOT NULL
 );
 
 
@@ -2810,6 +2820,38 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: currencies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.currencies (
+    id bigint NOT NULL,
+    code character varying(3) NOT NULL,
+    decimals integer DEFAULT 2 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: currencies_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.currencies_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: currencies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.currencies_id_seq OWNED BY public.currencies.id;
+
+
+--
 -- Name: custom_roles; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3048,7 +3090,16 @@ CREATE TABLE public.entities (
     documents_mail_token character varying NOT NULL,
     auto_post_exact_bank_matches boolean DEFAULT false NOT NULL,
     bank_rounding_tolerance numeric(15,2) DEFAULT 0.05 NOT NULL,
-    auto_reconcile_exact boolean DEFAULT false NOT NULL
+    auto_reconcile_exact boolean DEFAULT false NOT NULL,
+    rate_policy integer DEFAULT 0 NOT NULL,
+    rate_date_basis integer DEFAULT 0 NOT NULL,
+    rate_alert_pct numeric(5,2) DEFAULT 5.0 NOT NULL,
+    rate_fallback_currencies character varying[] DEFAULT '{}'::character varying[] NOT NULL,
+    fx_realized_as_draft boolean DEFAULT false NOT NULL,
+    fx_loss_account_code character varying DEFAULT '651200'::character varying NOT NULL,
+    fx_gain_account_code character varying DEFAULT '751100'::character varying NOT NULL,
+    fx_unrealized_loss integer DEFAULT 0 NOT NULL,
+    fx_unrealized_gain integer DEFAULT 2 NOT NULL
 );
 
 
@@ -3765,6 +3816,13 @@ ALTER TABLE ONLY public.api_requests ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: currencies id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.currencies ALTER COLUMN id SET DEFAULT nextval('public.currencies_id_seq'::regclass);
+
+
+--
 -- Name: custom_roles id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4378,6 +4436,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: currencies currencies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.currencies
+    ADD CONSTRAINT currencies_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: custom_roles custom_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4565,10 +4631,10 @@ CREATE INDEX idx_entries_journal_reference ON public.accounting_journal_entries 
 
 
 --
--- Name: idx_exchange_rates_on_entity_currency_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_exchange_rates_unique; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_exchange_rates_on_entity_currency_date ON public.accounting_exchange_rates USING btree (entity_id, currency, rate_date);
+CREATE UNIQUE INDEX idx_exchange_rates_unique ON public.accounting_exchange_rates USING btree (entity_id, currency, rate_date, rate_type, source);
 
 
 --
@@ -5188,6 +5254,13 @@ CREATE INDEX index_accounting_entry_templates_on_journal_id ON public.accounting
 
 
 --
+-- Name: index_accounting_exchange_rates_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_exchange_rates_on_created_by_id ON public.accounting_exchange_rates USING btree (created_by_id);
+
+
+--
 -- Name: index_accounting_exchange_rates_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5542,6 +5615,13 @@ CREATE INDEX index_accounting_journal_entries_on_fiscal_year_id ON public.accoun
 --
 
 CREATE INDEX index_accounting_journal_entries_on_journal_id ON public.accounting_journal_entries USING btree (journal_id);
+
+
+--
+-- Name: index_accounting_journal_entries_on_lettering_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journal_entries_on_lettering_id ON public.accounting_journal_entries USING btree (lettering_id);
 
 
 --
@@ -6214,6 +6294,13 @@ CREATE INDEX index_api_requests_on_api_client_id_and_created_at ON public.api_re
 --
 
 CREATE UNIQUE INDEX index_consistency_acks_on_entity_and_fingerprint ON public.accounting_consistency_acknowledgements USING btree (entity_id, fingerprint);
+
+
+--
+-- Name: index_currencies_on_code; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_currencies_on_code ON public.currencies USING btree (code);
 
 
 --
@@ -7179,6 +7266,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 
 --
+-- Name: accounting_journal_entries fk_rails_8e4572ff8e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entries
+    ADD CONSTRAINT fk_rails_8e4572ff8e FOREIGN KEY (lettering_id) REFERENCES public.accounting_letterings(id) ON DELETE SET NULL;
+
+
+--
 -- Name: user_entities fk_rails_8e87e2e2aa; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7288,6 +7383,14 @@ ALTER TABLE ONLY public.dunning_item_lines
 
 ALTER TABLE ONLY public.accounting_payment_batch_lines
     ADD CONSTRAINT fk_rails_a27948dec1 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_exchange_rates fk_rails_a30d22f55e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_exchange_rates
+    ADD CONSTRAINT fk_rails_a30d22f55e FOREIGN KEY (created_by_id) REFERENCES public.users(id);
 
 
 --
@@ -7865,6 +7968,10 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261005160000'),
+('20261005150000'),
+('20261005140000'),
+('20261005130000'),
 ('20261005120000'),
 ('20261005100000'),
 ('20261004190000'),

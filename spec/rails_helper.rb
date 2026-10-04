@@ -39,11 +39,12 @@ RSpec.configure do |config|
   config.include Devise::Test::IntegrationHelpers, type: :system
 
   # VAT law reference data (Accounting::VatGrid reads it): seeded once, kept by every strategy below.
-  VAT_REFERENCE_TABLES = %w[accounting_vat_codes accounting_vat_grid_mappings accounting_vat_account_grid_rules].freeze
+  VAT_REFERENCE_TABLES = %w[accounting_vat_codes accounting_vat_grid_mappings accounting_vat_account_grid_rules currencies].freeze
 
   config.before(:suite) do
     DatabaseCleaner.clean_with(:truncation)
     Seeders::VatCodesSeeder.call
+    Seeders::CurrenciesSeeder.call # currencies and their decimals (F11): reference data too
   end
 
   config.before(:each) do

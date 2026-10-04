@@ -3,11 +3,11 @@
   <p class="mt-2 text-sm text-gray-500">
     Open receivables, open payables and foreign bank balances valued at the closing rate
     (<%= link_to "Exchange rates", accounting_settings_exchange_rates_path, class: "text-primary-600 hover:underline" %>).
-    Nothing is booked from here: a loss can be drafted below for you to check and post; a gain is not recognized before it is realized.
+    Nothing is booked from here: the draft below follows the treatment of unrealized differences chosen in the rates settings (by default a loss is booked and a gain is not), for you to check and post; its reversal is scheduled for the next day.
   </p>
 
-  <% if @rows.any? { |r| r.difference&.negative? } && policy(@fiscal_year).propose_revaluation? %>
-    <%= button_to "Draft the unrealized loss entry", propose_revaluation_accounting_fiscal_year_path(@fiscal_year), method: :post,
+  <% if @rows.any? { |r| r.difference.present? && !r.difference.zero? } && policy(@fiscal_year).propose_revaluation? %>
+    <%= button_to "Draft the unrealized differences entry", propose_revaluation_accounting_fiscal_year_path(@fiscal_year), method: :post,
           class: "mt-4 px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
   <% end %>
 
@@ -15,7 +15,7 @@
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
         <tr>
-          <% %w[Position Currency Foreign Booked(EUR) Rate Revalued(EUR) Difference(EUR)].each do |h| %>
+          <% %w[Position Currency Foreign Booked(EUR) Rate Revalued(EUR) Difference(EUR) Ledger].each do |h| %>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= h %></th>
           <% end %>
         </tr>
@@ -32,12 +32,17 @@
               <td class="px-4 py-3"><%= r.revalued_eur.to_s("F") %></td>
               <td class="px-4 py-3 <%= r.difference.negative? ? 'text-red-700' : 'text-emerald-700' %>"><%= r.difference.to_s("F") %></td>
             <% else %>
-              <td class="px-4 py-3 text-amber-700 font-sans" colspan="3">No rate on or before this date</td>
+              <td class="px-4 py-3 text-amber-700 font-sans" colspan="3">No closing rate for <%= r.currency %> on <%= Accounting::DatePresenter.new(@fiscal_year.end_date).format %></td>
             <% end %>
+            <td class="px-4 py-3 font-sans">
+              <% r.account_ids.each do |account_id| %>
+                <%= link_to "R02", accounting_reports_general_ledger_path(fiscal_year_id: @fiscal_year.id, account_id: account_id, date_to: @fiscal_year.end_date), class: "text-primary-600 hover:underline", title: "General ledger of this account" %>
+              <% end %>
+            </td>
           </tr>
         <% end %>
         <% if @rows.empty? %>
-          <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500 font-sans">No foreign-currency balance.</td></tr>
+          <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500 font-sans">No foreign-currency balance.</td></tr>
         <% end %>
       </tbody>
     </table>

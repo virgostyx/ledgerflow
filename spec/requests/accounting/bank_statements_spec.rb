@@ -180,6 +180,18 @@ RSpec.describe "Accounting::BankStatements", type: :request do
       expect(response.body).to include("DUPONT ET FILS SPRL", "FACTURE F-2026-0042")
     end
 
+    it "shows the amounts of an account kept in a foreign currency in that currency (F11)" do
+      usd = create(:bank_account, label_fr: "Dollar account").tap { |b| b.update_columns(currency: "USD") }
+      batch = Accounting::ImportBatch.create!(parser: "coda", file_sha256: "usd", result: "imported")
+      statement = Accounting::BankStatement.create!(bank_account: usd, import_batch: batch, old_balance: 0, new_balance: BigDecimal("1000"), new_balance_date: Date.current)
+      create(:bank_transaction, bank_account: usd, statement: statement, amount: BigDecimal("1000"), currency: "USD", reference: "USD-1")
+
+      get accounting_bank_statement_path(statement)
+      expect(response.body).to include("1 000,00 $").and not_include("1 000,00 €")
+      get accounting_bank_statements_path
+      expect(response.body).to include("$")
+    end
+
     it "does not show another entity's statement" do
       other = create(:entity)
       foreign = ActsAsTenant.with_tenant(other) do

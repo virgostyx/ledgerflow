@@ -160,7 +160,7 @@ RSpec.describe Accounting::ClosingChecklist do
       entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 5)
       ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
       create(:journal_entry_line, journal_entry: entry, account: bank, debit: booked, credit: 0)
-      create(:journal_entry_line, journal_entry: entry, account: supplier_account, debit: 0, credit: booked, currency: "USD", amount_currency: usd, exchange_rate: 0.9)
+      create(:journal_entry_line, journal_entry: entry, account: supplier_account, debit: 0, credit: booked, currency: "USD", amount_currency: -usd, exchange_rate: 1.11111111)
       entry.post!
     end
 
@@ -176,7 +176,7 @@ RSpec.describe Accounting::ClosingChecklist do
 
     it "warns with the unrealized loss when rates are known" do
       open_usd_payable
-      Accounting::ExchangeRate.create!(currency: "USD", rate_date: fiscal_year.end_date, rate: "0.95")
+      Accounting::ExchangeRate.create!(currency: "USD", rate_date: fiscal_year.end_date, rate: "1.05263158", rate_type: :closing, source: "manual")
 
       expect(check(:foreign_revaluation)).to have_attributes(status: :warning, count: 1, amount: BigDecimal("-50"))
     end

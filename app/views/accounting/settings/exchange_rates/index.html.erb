@@ -4,43 +4,138 @@
   <span class="text-gray-700 font-medium">Exchange rates</span>
 <% end %>
 
-<div class="max-w-3xl">
-  <%= render Ui::PageHeaderComponent.new(title: "Exchange rates") %>
-  <p class="mt-2 text-sm text-gray-500">EUR for 1 unit of the currency (same convention as invoices). The latest rate on or before a date is used.</p>
+<% can_type = Accounting::ExchangeRatePolicy.new(current_user, Accounting::ExchangeRate).create? %>
+<% input = "rounded-md border-gray-300 text-sm" %>
+<% button = "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
+<% outline = "px-3 py-2 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer" %>
 
-  <%= form_with model: @rate, url: accounting_settings_exchange_rates_path, class: "mt-4 flex flex-wrap gap-3 items-end" do |f| %>
-    <%= f.text_field :currency, maxlength: 3, placeholder: "USD", required: true, class: "rounded-md border-gray-300 text-sm uppercase w-24" %>
-    <%= f.date_field :rate_date, required: true, class: "rounded-md border-gray-300 text-sm" %>
-    <%= f.text_field :rate, placeholder: "0.951200", required: true, class: "rounded-md border-gray-300 text-sm font-mono w-32" %>
-    <%= f.submit "Add rate", class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
+<div class="max-w-5xl space-y-6">
+  <div>
+    <%= render Ui::PageHeaderComponent.new(title: "Exchange rates") %>
+    <p class="mt-2 text-sm text-gray-500">Units of the currency for 1 EUR (the ECB's convention, used everywhere: EUR = amount in currency ÷ rate). A document takes the rate of its date, as the rules below say; a rate that is missing refuses the posting, it is never guessed.</p>
+  </div>
+
+  <% if @missing.any? %>
+    <div class="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" data-section="missing-rates">
+      <p class="font-medium">Rates missing for the last 30 days</p>
+      <ul class="mt-1 list-disc pl-5">
+        <% @missing.each do |m| %>
+          <li><span class="font-mono"><%= m.currency %></span>: <%= m.dates.size %> <%= @entity.rates_monthly_average? ? "month(s)" : "working day(s)" %>
+            (<%= m.dates.first(6).map { |d| Accounting::DatePresenter.new(d).format }.join(", ") %><%= ", …" if m.dates.size > 6 %>)</li>
+        <% end %>
+      </ul>
+    </div>
   <% end %>
 
-  <div class="mt-6 bg-white rounded-lg border border-gray-200 overflow-x-clip">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <% %w[Date Currency Rate].each do |h| %>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= h %></th>
-          <% end %>
-          <th class="px-4 py-3"></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-100">
-        <% @rates.each do |rate| %>
-          <tr class="hover:bg-gray-50">
-            <td class="px-4 py-3 text-sm text-gray-700"><%= rate.rate_date %></td>
-            <td class="px-4 py-3 text-sm font-mono text-gray-900"><%= rate.currency %></td>
-            <td class="px-4 py-3 text-sm font-mono text-gray-700"><%= rate.rate.to_s("F") %></td>
-            <td class="px-4 py-3 text-right">
-              <%= button_to "Delete", accounting_settings_exchange_rate_path(rate), method: :delete,
-                    data: { turbo_confirm: "Delete this rate?" }, class: "text-xs text-red-600 hover:underline" %>
-            </td>
+  <% if can_type %>
+    <div class="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+      <h2 class="text-sm font-semibold text-gray-900">Enter a rate</h2>
+      <%= form_with model: @rate, url: accounting_settings_exchange_rates_path, class: "flex flex-wrap gap-3 items-end" do |f| %>
+        <%= f.text_field :currency, maxlength: 3, placeholder: "USD", required: true, class: "#{input} uppercase w-24" %>
+        <%= f.date_field :rate_date, required: true, class: input %>
+        <%= f.text_field :rate, placeholder: "1.08000000", required: true, class: "#{input} font-mono w-36" %>
+        <%= f.select :rate_type, [ [ "Typed (manual)", "manual" ], [ "Closing rate", "closing" ], [ "Daily", "daily" ], [ "Monthly average", "monthly_average" ] ], {}, class: input %>
+        <%= f.text_field :reason, placeholder: "Reason (required)", required: true, class: "#{input} w-64" %>
+        <%= f.submit "Add rate", class: button %>
+      <% end %>
+
+      <div class="flex flex-wrap gap-6 items-end border-t border-gray-100 pt-4">
+        <div class="flex gap-2">
+          <%= button_to "Load the ECB's latest rates", import_ecb_accounting_settings_exchange_rates_path, method: :post, class: outline %>
+          <%= button_to "ECB, last 90 days", import_ecb_accounting_settings_exchange_rates_path, method: :post, params: { history: 1 }, class: outline %>
+        </div>
+        <%= form_with url: import_inforeuro_accounting_settings_exchange_rates_path, method: :post, class: "flex gap-2 items-end" do %>
+          <%= month_field_tag :month, Date.current.prev_month.strftime("%Y-%m"), class: input, "aria-label": "InforEuro month" %>
+          <%= submit_tag "Load InforEuro (monthly)", class: outline %>
+        <% end %>
+        <%= form_with url: import_csv_accounting_settings_exchange_rates_path, method: :post, multipart: true, class: "flex gap-2 items-end" do %>
+          <%= file_field_tag :file, accept: ".csv,text/csv", required: true, class: "text-sm", "aria-label": "CSV file" %>
+          <%= submit_tag "Load a CSV file", class: outline %>
+        <% end %>
+      </div>
+      <p class="text-xs text-gray-500">A CSV file has the columns currency, date, rate and, if you want, type. The ECB gives about thirty currencies; InforEuro gives the monthly rate of the European Commission for many more (the Zambian kwacha among them). Nothing goes to the network except what you ask here and the daily import (feature F11).</p>
+    </div>
+  <% end %>
+
+  <%= form_with url: rules_accounting_settings_exchange_rates_path, scope: :entity, method: :patch, class: "bg-white rounded-lg border border-gray-200 p-4 space-y-4" do |f| %>
+    <h2 class="text-sm font-semibold text-gray-900">Rules</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+      <div>
+        <%= f.label :rate_policy, "Rate policy", class: "text-xs font-medium text-gray-500" %>
+        <%= f.select :rate_policy, [ [ "Rate of the day", "daily" ], [ "Monthly average", "monthly_average" ], [ "Typed by hand only", "manual" ] ], { selected: @entity.rate_policy }, class: "#{input} w-full" %>
+      </div>
+      <div>
+        <%= f.label :rate_date_basis, "Date the rate is taken at", class: "text-xs font-medium text-gray-500" %>
+        <%= f.select :rate_date_basis, [ [ "Date of the document", "document_date" ], [ "Accounting date", "accounting_date" ] ], { selected: @entity.rate_date_basis }, class: "#{input} w-full" %>
+      </div>
+      <div>
+        <%= f.label :rate_alert_pct, "Warn when a typed rate strays by more than (%)", class: "text-xs font-medium text-gray-500" %>
+        <%= f.number_field :rate_alert_pct, step: "0.01", min: 0, value: @entity.rate_alert_pct, class: "#{input} w-full" %>
+      </div>
+      <div class="md:col-span-3">
+        <%= f.label :rate_fallback_currencies, "Fallback to the last published rate (weekends and holidays, 7 days at most), for these currencies only", class: "text-xs font-medium text-gray-500" %>
+        <%= f.text_field :rate_fallback_currencies, value: @entity.rate_fallback_currencies.join(", "), placeholder: "none", class: "#{input} w-full" %>
+      </div>
+      <div>
+        <%= f.label :fx_loss_account_code, "Exchange loss account", class: "text-xs font-medium text-gray-500" %>
+        <%= f.text_field :fx_loss_account_code, value: @entity.fx_loss_account_code, class: "#{input} w-full font-mono" %>
+      </div>
+      <div>
+        <%= f.label :fx_gain_account_code, "Exchange gain account", class: "text-xs font-medium text-gray-500" %>
+        <%= f.text_field :fx_gain_account_code, value: @entity.fx_gain_account_code, class: "#{input} w-full font-mono" %>
+      </div>
+      <label class="flex items-center gap-2 pt-5"><%= f.check_box :fx_realized_as_draft, checked: @entity.fx_realized_as_draft %> Keep the realized exchange difference as a draft</label>
+      <div>
+        <%= f.label :fx_unrealized_loss, "Unrealized loss at closing", class: "text-xs font-medium text-gray-500" %>
+        <%= f.select :fx_unrealized_loss, [ [ "Book it as an expense", "expense" ], [ "Do not book it", "ignore" ] ], { selected: @entity.fx_unrealized_loss }, class: "#{input} w-full" %>
+      </div>
+      <div>
+        <%= f.label :fx_unrealized_gain, "Unrealized gain at closing", class: "text-xs font-medium text-gray-500" %>
+        <%= f.select :fx_unrealized_gain, [ [ "Do not book it (until realized)", "ignore" ], [ "Defer it (balance sheet only)", "defer" ], [ "Recognize it", "recognize" ] ], { selected: @entity.fx_unrealized_gain }, class: "#{input} w-full" %>
+      </div>
+    </div>
+    <%= f.submit "Save the rules", class: button %>
+  <% end %>
+
+  <div>
+    <%= form_with url: accounting_settings_exchange_rates_path, method: :get, class: "flex gap-3 items-end mb-3 text-sm" do %>
+      <%= text_field_tag :currency, params[:currency], placeholder: "Currency", maxlength: 3, class: "#{input} uppercase w-24", "aria-label": "Currency" %>
+      <%= select_tag :rate_type, options_for_select([ [ "All kinds", "" ], [ "Daily", "daily" ], [ "Monthly average", "monthly_average" ], [ "Closing", "closing" ], [ "Typed (manual)", "manual" ] ], params[:rate_type]), class: input, "aria-label": "Kind" %>
+      <%= submit_tag "Filter", name: nil, class: outline %>
+    <% end %>
+
+    <div class="bg-white rounded-lg border border-gray-200 overflow-x-clip">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <% %w[Date Currency Rate Kind Source Imported].each do |h| %>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= h %></th>
+            <% end %>
+            <th class="px-4 py-3"></th>
           </tr>
-        <% end %>
-        <% if @rates.empty? %>
-          <tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">No rate yet.</td></tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @rates.each do |rate| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 text-sm text-gray-700"><%= rate.rate_date %></td>
+              <td class="px-4 py-3 text-sm font-mono text-gray-900"><%= rate.currency %></td>
+              <td class="px-4 py-3 text-sm font-mono text-gray-700"><%= rate.rate.to_s("F") %></td>
+              <td class="px-4 py-3 text-sm text-gray-700"><%= rate.rate_type.humanize %><% if rate.reason.present? %><span class="block text-xs text-gray-400"><%= rate.reason %></span><% end %></td>
+              <td class="px-4 py-3 text-sm text-gray-700"><%= rate.source %></td>
+              <td class="px-4 py-3 text-sm text-gray-500"><%= rate.imported_at ? Accounting::DatePresenter.new(rate.imported_at.to_date).format : "—" %></td>
+              <td class="px-4 py-3 text-right">
+                <% if can_type %>
+                  <%= button_to "Delete", accounting_settings_exchange_rate_path(rate), method: :delete,
+                        data: { turbo_confirm: "Delete this rate?" }, class: "text-xs text-red-600 hover:underline" %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          <% if @rates.empty? %>
+            <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No rate yet.</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

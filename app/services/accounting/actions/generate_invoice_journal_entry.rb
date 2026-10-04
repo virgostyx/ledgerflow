@@ -99,7 +99,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
       if deductible.positive?
         create_line(entry, :debit, deductible, invoice: invoice, account: deductible_account,
                     label: "Recoverable VAT #{rate}%", vat_code: deductible_grid,
-                    vat_amount: (deductible * invoice.exchange_rate).round(2))
+                    vat_amount: Fx::Convert.to_eur(deductible, invoice.exchange_rate))
       end
 
       non_deductible = grouped_vat - deductible
@@ -108,7 +108,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
       non_deductible_account = Accounting::Account.find_by!(code: Accounting::AccountCodes::VAT_NON_DEDUCTIBLE)
       create_line(entry, :debit, non_deductible, invoice: invoice, account: non_deductible_account,
                   label: "Non-deductible VAT #{rate}%", vat_code: base_grid,
-                  vat_amount: base_grid && (non_deductible * invoice.exchange_rate).round(2))
+                  vat_amount: base_grid && Fx::Convert.to_eur(non_deductible, invoice.exchange_rate))
     end
   end
 
@@ -143,7 +143,7 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
     invoice.lines.each do |line|
       journal_line = create_line(entry, side, line.subtotal_excl_vat, invoice: invoice, account: line.account,
                                  label: line.description, vat_code: vat_grid.call(line),
-                                 vat_amount: (line.subtotal_excl_vat * invoice.exchange_rate).round(2))
+                                 vat_amount: Fx::Convert.to_eur(line.subtotal_excl_vat, invoice.exchange_rate))
       propagate_annotations(line, journal_line)
     end
   end
@@ -154,11 +154,12 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
       next if rate.zero?
       grouped_vat = lines.sum(&:vat_amount)
       create_line(entry, side, grouped_vat, invoice: invoice, account: account, label: "#{label} #{rate}%",
-                  vat_code: vat_code, vat_amount: (grouped_vat * invoice.exchange_rate).round(2))
+                  vat_code: vat_code, vat_amount: Fx::Convert.to_eur(grouped_vat, invoice.exchange_rate))
     end
   end
 
-  # `amount` is in the invoice's currency; debit/credit are always posted in EUR.
+  # `amount` is in the invoice's currency; debit/credit are always posted in EUR (amount / rate, the rate being units of currency for 1 EUR),
+  # and `amount_currency` is signed like the line: positive on a debit, negative on a credit.
   # A credit note mirrors its invoice: sides are swapped and grid amounts negated, so grids net out.
   def self.create_line(entry, side, amount, invoice:, **attrs)
     if invoice.credit_note?
@@ -166,13 +167,13 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
       attrs[:vat_amount] = -attrs[:vat_amount] if attrs[:vat_amount] && nets_grid?(invoice, attrs[:vat_code])
     end
     zero = BigDecimal("0")
-    eur_amount = (amount * invoice.exchange_rate).round(2)
+    eur_amount = Fx::Convert.to_eur(amount, invoice.exchange_rate)
     Accounting::JournalEntryLine.create!(
       journal_entry:   entry,
       debit:           side == :debit ? eur_amount : zero,
       credit:          side == :credit ? eur_amount : zero,
       currency:        invoice.currency,
-      amount_currency: amount,
+      amount_currency: side == :debit ? amount : -amount,
       exchange_rate:   invoice.exchange_rate,
       **attrs
     )

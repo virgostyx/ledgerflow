@@ -22,8 +22,10 @@ class Accounting::UnletterLines
       reopen_invoices(lettering)
       Accounting::LineAllocation.touching(line_ids).destroy_all
       Accounting::LetteringEvent.record!(lines: lines, action: "unletter", code: lettering.code, user: user, auto: false, reason: reason)
+      fx_entries = Accounting::JournalEntry.where(lettering_id: lettering.id).to_a
       lettering.destroy!
       Accounting::JournalEntryLine.resync_amount_residual!(line_ids)
+      undo_fx_adjustments(fx_entries, reason, user)
     end
     ctx
   rescue StandardError => e
@@ -39,6 +41,16 @@ class Accounting::UnletterLines
     I18n.t("accounting.lettering.locked_period")
   end
 
+  # The exchange difference the lettering generated goes with it (F11): a draft is deleted, a posted one is reversed (the reversal pair is lettered by itself).
+  def self.undo_fx_adjustments(entries, reason, user)
+    entries.each do |entry|
+      next entry.destroy! if entry.draft?
+
+      undone = Accounting::ReverseJournalEntry.call(entry: entry, from_source: true, reason: reason, user: user)
+      raise Accounting::PostRefused, undone.message if undone.failure?
+    end
+  end
+
   def self.reopen_invoices(lettering)
     return unless Accounting::Actions::PayLetteredInvoices::TRADE_ACCOUNTS.include?(lettering.account.code)
 
@@ -47,5 +59,5 @@ class Accounting::UnletterLines
       invoice.reopen! unless Accounting::PaymentBatchLine.active.exists?(invoice_id: invoice.id)
     end
   end
-  private_class_method :locked_period_problem, :reopen_invoices
+  private_class_method :locked_period_problem, :reopen_invoices, :undo_fx_adjustments
 end

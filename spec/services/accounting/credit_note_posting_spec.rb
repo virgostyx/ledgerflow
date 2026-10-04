@@ -182,7 +182,7 @@ RSpec.describe 'Posting credit notes', type: :service do
   describe 'credit note on a foreign-currency invoice' do
     let(:original) do
       inv = create(:invoice, invoice_type: :customer, partner: partner, fiscal_year: fiscal_year,
-                   journal: sale_journal, currency: 'USD', exchange_rate: BigDecimal('0.9'))
+                   journal: sale_journal, currency: 'USD', exchange_rate: BigDecimal('1.11111111'), exchange_rate_reason: 'Rate of the test')
       create(:invoice_line, invoice: inv, account: account_700, quantity: 1, unit_price: '1000.00',
              vat_rate: '21.00', position: 1)
       inv.compute_totals
@@ -193,7 +193,7 @@ RSpec.describe 'Posting credit notes', type: :service do
 
     it 'keeps the original currency and rate on the credit note lines' do
       note = create(:invoice, invoice_type: :customer, partner: partner, fiscal_year: fiscal_year,
-                    journal: sale_journal, currency: 'USD', exchange_rate: BigDecimal('0.9'),
+                    journal: sale_journal, currency: 'USD', exchange_rate: BigDecimal('1.11111111'), exchange_rate_reason: 'Rate of the test',
                     document_type: :credit_note, credited_invoice: original)
       create(:invoice_line, invoice: note, account: account_700, quantity: 1, unit_price: '100.00',
              vat_rate: '21.00', position: 1)

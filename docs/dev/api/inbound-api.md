@@ -122,7 +122,7 @@ Corps de réponse : `{id, external_ref, name, partner_type, vat_number, country,
 | `invoice_type` | Obligatoire : `supplier` ou `customer`. |
 | `invoice_date` | Obligatoire, ISO 8601. Doit tomber dans un **exercice ouvert**. |
 | `due_date`, `description`, `notes`, `project_id` | Facultatifs. `project_id` est l'identifiant BudgetFlow, sans clé étrangère. |
-| `currency`, `exchange_rate` | `EUR` et `1` par défaut. |
+| `currency`, `exchange_rate` | `EUR` et `1` par défaut. `exchange_rate` est le **nombre d'unités de la devise pour 1 EUR** (EUR = montant ÷ taux, 8 décimales), comme `exchange_rate_used` de BudgetFlow : il n'y a plus rien à inverser (changement de convention de F11, avant qu'un client existe). |
 | `vat_treatment` | `domestic` (défaut), `intracom_goods`, `intracom_services`, `construction_reverse_charge`, `export`, `exempt`. |
 | `lines[]` | Au moins une. L'ordre du tableau donne la position. |
 | `lines[].account_code` | **Code de compte PCMN** (ex. `604000`). **Facultatif** : une ligne sans code va sur le compte d'attente `499000` (le comptable la code), et la facture ne peut pas être comptabilisée tant qu'une ligne y reste (`422` si `post: true`). Code inconnu : `422` nommant la ligne. Si le plan comptable n'a pas de compte `499000` : `422`. |

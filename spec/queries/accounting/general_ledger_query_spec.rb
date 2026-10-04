@@ -34,6 +34,22 @@ RSpec.describe Accounting::GeneralLedgerQuery, type: :query do
                         amount: BigDecimal("200.00"), label: "Troisième écriture")
   end
 
+  describe "foreign currencies (F11)" do
+    it "carries the currency, the amount in currency (signed) and the rate of a line, and nothing for a line in EUR" do
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 30)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: account, debit: BigDecimal("909.09"), credit: 0, label: "USD cost", currency: "USD",
+             amount_currency: BigDecimal("1000"), exchange_rate: BigDecimal("1.1"))
+      create(:journal_entry_line, journal_entry: entry, account: other_account, debit: 0, credit: BigDecimal("909.09"))
+      entry.post!
+
+      rows = described_class.new(account: account, fiscal_year: fiscal_year).call
+      usd = rows.find { |r| r.label == "USD cost" }
+      expect(usd).to have_attributes(currency: "USD", amount_currency: BigDecimal("1000"), exchange_rate: BigDecimal("1.1"))
+      expect(rows.find { |r| r.label == "Première écriture" }).to have_attributes(currency: "EUR", amount_currency: nil, exchange_rate: nil)
+    end
+  end
+
   describe "#call" do
     subject(:results) do
       described_class.new(account: account, fiscal_year: fiscal_year).call

@@ -96,6 +96,7 @@ Rails.application.routes.draw do
 
       resources :recurring_invoices, except: [ :show ]
       resources :payment_reminders, only: [ :index, :create ]
+      get "exchange_rate_lookup", to: "exchange_rates#lookup", as: :exchange_rate_lookup # F11: the rate a form shows (JSON)
       # F09: customer dunning (replaces the manual reminders above once the feature is on)
       resources :dunning_runs, only: %i[index show create] do
         post :send_run, on: :member
@@ -272,7 +273,14 @@ Rails.application.routes.draw do
           member { patch :toggle_active }
         end
         resources :bank_accounts
-        resources :exchange_rates, only: [ :index, :create, :destroy ]
+        resources :exchange_rates, only: [ :index, :create, :destroy ] do
+          collection do
+            post  :import_ecb
+            post  :import_inforeuro
+            post  :import_csv
+            patch :rules
+          end
+        end
         resources :accounts, only: [ :index, :show, :new, :create, :edit, :update ]
         resources :analytical_axes do
           resources :analytical_accounts, shallow: true

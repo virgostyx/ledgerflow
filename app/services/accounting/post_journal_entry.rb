@@ -9,11 +9,13 @@ class Accounting::PostJournalEntry
       result = with(entry: entry, keep_reference: keep_reference).reduce(
         Accounting::Actions::ValidatePeriodOpen,
         Accounting::Actions::ValidateFourEyes,
+        Accounting::Actions::ApplyForeignCurrency,
         Accounting::Actions::ValidateBalance,
         Accounting::Actions::AssignSequenceNumber,
         Accounting::Actions::LockEntry,
         Accounting::Actions::UpdateAccountBalances,
         Accounting::Actions::WriteAuditLog,
+        Accounting::Actions::FinalizeFxAdjustment,
         Accounting::Actions::FinalizeBankMatch,
         Accounting::Actions::FinalizeLetteringWriteOff,
         Accounting::Actions::MarkReversedOriginal,

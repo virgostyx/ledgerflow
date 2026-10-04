@@ -8,6 +8,7 @@ class Accounting::AutoReverseEntriesJob < ApplicationJob
       ActsAsTenant.with_tenant(Entity.find(entity_id)) do
         entry = Accounting::JournalEntry.find(id)
         Accounting::ReverseJournalEntry.call(entry: entry, draft: true, from: entry.auto_reverse_on,
+                                             from_source: entry.source_type == Accounting::JournalEntry::REVALUATION_SOURCE, # the revaluation asks for its own reversal
                                              reason: I18n.t("accounting.journal_entries.scheduled_reversal_reason", date: entry.auto_reverse_on)).success?
       end
     end

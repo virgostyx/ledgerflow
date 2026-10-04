@@ -35,8 +35,8 @@ class Accounting::AnnualCustomerListingQuery
              status: %w[posted paid partially_paid], accounting_partners: { country: "BE" })
       .group("accounting_partners.id", "accounting_partners.name", "accounting_partners.vat_number")
       .pluck(Arel.sql("accounting_partners.id"), Arel.sql("accounting_partners.name"), Arel.sql("accounting_partners.vat_number"),
-             Arel.sql("SUM(#{sign} * accounting_invoices.subtotal_excl_vat * accounting_invoices.exchange_rate)"),
-             Arel.sql("SUM(#{sign} * accounting_invoices.vat_amount * accounting_invoices.exchange_rate)"))
+             Arel.sql("SUM(#{sign} * accounting_invoices.subtotal_excl_vat / accounting_invoices.exchange_rate)"),
+             Arel.sql("SUM(#{sign} * accounting_invoices.vat_amount / accounting_invoices.exchange_rate)"))
       .map { |id, name, vat_number, excl, vat| [ id, name, vat_number, BigDecimal(excl.to_s).round(2), BigDecimal(vat.to_s).round(2) ] }
   end
 

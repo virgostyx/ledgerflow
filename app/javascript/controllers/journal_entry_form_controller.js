@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["linesContainer", "lineTemplate", "debitInput", "creditInput",
                     "balanceIndicator", "submitButton", "line"]
-  static values  = { axes: Array }
+  static values  = { axes: Array, rateLookupUrl: String }
 
   connect() {
     this.computeBalance()
@@ -39,6 +39,35 @@ export default class extends Controller {
       }
       this.computeBalance()
     }
+  }
+
+  // A line in a foreign currency (F11): the amount in that currency, at the official rate of the entry date, becomes the euros of the debit or the credit.
+  // The rate is shown, never typed here; a missing rate says which, and nothing is guessed.
+  async onForeignChanged(event) {
+    const line = event.target.closest(".entry-lines")
+    if (!line) return
+    const field = (name) => line.querySelector(`[name$="[${name}]"]`)
+    const notice = line.querySelector("[data-journal-entry-form-target='foreignNotice']")
+    const code = field("currency").value
+    const debit = field("debit"), credit = field("credit"), rate = field("exchange_rate")
+    notice.textContent = ""
+    if (code === "EUR") { rate.value = ""; return }
+
+    const amount = parseFloat(field("amount_currency").value)
+    const date = this.element.querySelector("[name$='[entry_date]']")?.value
+    if (!date || !this.rateLookupUrlValue) return
+    const response = await fetch(`${this.rateLookupUrlValue}?currency=${encodeURIComponent(code)}&date=${encodeURIComponent(date)}`, { headers: { Accept: "application/json" } })
+    const data = await response.json()
+    if (!response.ok) { rate.value = ""; notice.textContent = data.error || "No rate"; return }
+
+    rate.value = data.rate
+    if (!(amount > 0)) return
+    const eur = Math.round(amount / parseFloat(data.rate) * 100) / 100
+    const side = field("side").value
+    ;(side === "credit" ? credit : debit).value = eur
+    ;(side === "credit" ? debit : credit).value = 0
+    notice.textContent = `${eur.toFixed(2)} EUR at ${data.rate}`
+    this.computeBalance()
   }
 
   // Called when an account is selected in a line (via account-search:selected custom event)

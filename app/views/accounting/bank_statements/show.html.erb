@@ -5,10 +5,10 @@
 <%= render Ui::PageHeaderComponent.new(title: "Statement ##{@statement.sequence || @statement.id}", description: "#{@statement.bank_account.label_fr}, imported #{l(@statement.import_batch.created_at, format: :short)}") %>
 
 <dl class="mb-6 grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
-  <div><dt class="text-gray-500">Opening balance</dt><dd class="font-mono"><%= Accounting::MoneyPresenter.new(@statement.old_balance).format %></dd></div>
-  <div><dt class="text-gray-500">Closing balance</dt><dd class="font-mono"><%= @statement.new_balance ? Accounting::MoneyPresenter.new(@statement.new_balance).format : "—" %></dd></div>
-  <div><dt class="text-gray-500">Integrity</dt><dd><%= @statement.to_review? ? "To review (gap #{Accounting::MoneyPresenter.new(@statement.integrity_gap).format})" : "Adds up" %></dd></div>
-  <div><dt class="text-gray-500">Chain</dt><dd><%= @statement.chain_gap.nil? ? "First statement" : (@statement.chain_broken? ? "Broken by #{Accounting::MoneyPresenter.new(@statement.chain_gap).format}" : "Follows the previous one") %></dd></div>
+  <div><dt class="text-gray-500">Opening balance</dt><dd class="font-mono"><%= Accounting::MoneyPresenter.new(@statement.old_balance, currency: @statement.bank_account.currency).format %></dd></div>
+  <div><dt class="text-gray-500">Closing balance</dt><dd class="font-mono"><%= @statement.new_balance ? Accounting::MoneyPresenter.new(@statement.new_balance, currency: @statement.bank_account.currency).format : "—" %></dd></div>
+  <div><dt class="text-gray-500">Integrity</dt><dd><%= @statement.to_review? ? "To review (gap #{Accounting::MoneyPresenter.new(@statement.integrity_gap, currency: @statement.bank_account.currency).format})" : "Adds up" %></dd></div>
+  <div><dt class="text-gray-500">Chain</dt><dd><%= @statement.chain_gap.nil? ? "First statement" : (@statement.chain_broken? ? "Broken by #{Accounting::MoneyPresenter.new(@statement.chain_gap, currency: @statement.bank_account.currency).format}" : "Follows the previous one") %></dd></div>
 </dl>
 
 <% if @statement.messages.any? %>
@@ -27,7 +27,7 @@
           <td class="px-4 py-3 text-gray-500"><%= Accounting::DatePresenter.new(tx.transaction_date).format %></td>
           <td class="px-4 py-3 text-gray-700"><%= tx.counterparty_name %></td>
           <td class="px-4 py-3 text-gray-700"><%= tx.description %></td>
-          <td class="px-4 py-3 text-right font-mono <%= tx.credit? ? "text-emerald-700" : "text-red-700" %>"><%= Accounting::MoneyPresenter.new(tx.amount).format %></td>
+          <td class="px-4 py-3 text-right font-mono <%= tx.credit? ? "text-emerald-700" : "text-red-700" %>"><%= Accounting::MoneyPresenter.new(tx.amount, currency: tx.currency).format %></td>
           <td class="px-4 py-3 text-xs text-gray-600"><%= tx.status.humanize %></td>
           <td class="px-4 py-3 text-xs"><%= task_badge(tx, count: task_counts.fetch(tx.id, 0)) %> <%= task_link(tx, label: "＋ task") %></td>
         </tr>

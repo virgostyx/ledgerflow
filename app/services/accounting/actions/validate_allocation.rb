@@ -12,6 +12,7 @@ class Accounting::Actions::ValidateAllocation
     elsif lines.map(&:account_id).uniq.size > 1                            then "Lines must be on the same account"
     elsif lines.map(&:partner_id).uniq.size > 1                            then "Lines must have the same partner"
     elsif lines.any? { |l| l.open_amount <= 0 }                            then "A line has nothing left to allocate"
+    elsif lines.any? { |l| l.currency != "EUR" && !l.journal_entry.fx_adjustment? } then "Lines in a foreign currency cannot be allocated by hand: a partial payment is booked through the bank reconciliation, which computes the exchange difference."
     end
     ctx.fail!(error) if error
   end

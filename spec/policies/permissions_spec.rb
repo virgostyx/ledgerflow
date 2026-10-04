@@ -26,6 +26,7 @@ RSpec.describe Permissions do
     "reconciliations.manage" => [ [ Accounting::BankReconciliationsPolicy, :show? ], [ Accounting::BankReconciliationsPolicy, :update? ] ],
     "vat.file"               => [ [ Accounting::VatDeclarationPolicy, :submit? ], [ Accounting::VatDeclarationPolicy, :accept? ], [ Accounting::FiscalYearPolicy, :vat_regularization? ] ],
     "payments.manage"        => [ [ Accounting::PaymentBatchPolicy, :generate? ], [ Accounting::PaymentBatchPolicy, :execute? ] ],
+    "rates.override"         => [ [ Accounting::ExchangeRatePolicy, :create? ] ],
     "dunning.prepare"        => [ [ Accounting::DunningRunPolicy, :create? ], [ Accounting::DunningRunPolicy, :update? ] ],
     "dunning.send"           => [ [ Accounting::PaymentReminderPolicy, :index? ], [ Accounting::DunningRunPolicy, :send_run? ] ],
     "dunning.configure"      => [ [ Accounting::DunningPolicyPolicy, :update? ] ],

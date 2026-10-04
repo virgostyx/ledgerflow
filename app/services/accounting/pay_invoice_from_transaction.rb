@@ -60,7 +60,8 @@ class Accounting::PayInvoiceFromTransaction
     trade = invoice_line.account
     part  = invoice_amount || invoice.total_incl_vat
     label = tx.description.presence || invoice.partner.name
-    foreign = ->(currency, amount) { currency == "EUR" ? {} : { currency: currency, amount_currency: amount, exchange_rate: (eur_amount / amount).round(6) } }
+    # signed like the line (debit positive, credit negative); the rate is units of currency for 1 EUR
+    foreign = ->(currency, amount, sign) { currency == "EUR" ? {} : { currency: currency, amount_currency: sign * amount, exchange_rate: (amount / eur_amount).round(8) } }
 
     ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
     entry = Accounting::JournalEntry.create!(
@@ -69,11 +70,11 @@ class Accounting::PayInvoiceFromTransaction
     )
     payment_line = Accounting::JournalEntryLine.create!(
       journal_entry: entry, account: trade, partner: invoice.partner, invoice: invoice, label: label,
-      debit: eur_amount, credit: 0, **foreign.(invoice.currency, part)
+      debit: eur_amount, credit: 0, **foreign.(invoice.currency, part, 1)
     )
     Accounting::JournalEntryLine.create!(
       journal_entry: entry, account: tx.bank_account.journal.default_account, label: label,
-      debit: 0, credit: eur_amount, **foreign.(tx.currency, tx.amount.abs)
+      debit: 0, credit: eur_amount, **foreign.(tx.currency, tx.amount.abs, -1)
     )
 
     if draft # validated later: Actions::FinalizeBankMatch settles the line and letters the payment with the invoice

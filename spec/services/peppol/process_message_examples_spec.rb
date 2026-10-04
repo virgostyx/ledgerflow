@@ -52,8 +52,8 @@ RSpec.describe Peppol::ProcessMessage, "on the official examples" do
     end
 
     it "is drafted in its own currency, with the rate on file for the issue date" do
-      Accounting::ExchangeRate.create!(currency: "GBP", rate_date: Date.new(2017, 1, 1), rate: BigDecimal("1.15"))
-      Accounting::ExchangeRate.create!(currency: "SEK", rate_date: Date.new(2017, 1, 1), rate: BigDecimal("0.10"))
+      Accounting::ExchangeRate.create!(currency: "GBP", rate_date: Date.new(2018, 8, 30), rate: BigDecimal("1.15"), rate_type: :daily, source: "ecb")
+      Accounting::ExchangeRate.create!(currency: "SEK", rate_date: Date.new(2018, 8, 30), rate: BigDecimal("0.10"), rate_type: :daily, source: "ecb")
 
       gbp = take(example("vat-category-Z.xml"))
       sek = take(example("vat-category-O.xml"))
@@ -89,7 +89,7 @@ RSpec.describe Peppol::ProcessMessage, "on the official examples" do
 
     it "can be worked on again once the cause is dealt with (the same message, a later try)" do
       message = take(example("vat-category-E.xml"))
-      Accounting::ExchangeRate.create!(currency: "GBP", rate_date: Date.new(2017, 1, 1), rate: BigDecimal("1.15"))
+      Accounting::ExchangeRate.create!(currency: "GBP", rate_date: Date.new(2018, 8, 30), rate: BigDecimal("1.15"), rate_type: :daily, source: "ecb")
 
       described_class.call(message: message)
 

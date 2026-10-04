@@ -5,6 +5,9 @@
 # user: who does it (nil: the system); auto: an automatic lettering; cross_partner: lines of different partners, which needs the right
 # `reconciliations.cross_partner` and a reason. The history of every line records it. settle: false lettering does not pay invoices
 # (a reversed entry lettered with its own reversal settles nothing).
+#
+# Lines in a foreign currency are lettered in that currency (Actions::ValidateLettering); the difference in EUR that the rates leave is an entry the
+# lettering generates (Actions::PostFxAdjustment, F11).
 class Accounting::LetterLines
   extend LightService::Organizer
 
@@ -13,9 +16,10 @@ class Accounting::LetterLines
     ApplicationRecord.transaction do
       locked = Accounting::JournalEntryLine.where(id: Array(lines).map(&:id)).order(:id).lock.includes(:journal_entry, :account).to_a
       result = with(lines: locked, user: user, reason: reason.to_s.strip.presence, cross_partner: cross_partner, auto: auto, kind: kind, settle: settle).reduce(
-        Accounting::Actions::PostFxAdjustment,
         Accounting::Actions::ValidateLettering,
+        Accounting::Actions::PostFxAdjustment,
         Accounting::Actions::CreateLettering,
+        Accounting::Actions::LinkFxAdjustment,
         Accounting::Actions::PayLetteredInvoices
       )
       raise ActiveRecord::Rollback if result.failure?

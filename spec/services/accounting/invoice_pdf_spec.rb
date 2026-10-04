@@ -21,7 +21,7 @@ RSpec.describe Accounting::InvoicePdf, type: :service do
     inv = create(:invoice, invoice_type: :customer, partner: invoice_partner, fiscal_year: fiscal_year,
                  journal: sale_journal, vat_treatment: vat_treatment, document_type: document_type,
                  credited_invoice: credited, currency: currency, exchange_rate: exchange_rate,
-                 due_date: Date.current + 30)
+                 exchange_rate_reason: (currency == 'EUR' ? nil : 'Rate of the test'), due_date: Date.current + 30)
     lines.each_with_index do |l, i|
       create(:invoice_line, invoice: inv, account: account_700, quantity: l[:quantity] || 1,
              description: l[:description], unit_price: l[:unit_price], vat_rate: l[:vat_rate], position: i + 1)
@@ -150,7 +150,7 @@ RSpec.describe Accounting::InvoicePdf, type: :service do
 
   describe 'robustness' do
     it 'uses the invoice currency symbol' do
-      invoice = post_invoice(currency: 'USD', exchange_rate: BigDecimal('0.9'))
+      invoice = post_invoice(currency: 'USD', exchange_rate: BigDecimal('1.11111111'))
       expect(pdf_text(invoice)).to include('1 210,00 $')
     end
 

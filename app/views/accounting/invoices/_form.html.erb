@@ -27,7 +27,9 @@
                                                           : accounting_purchases_path,
               html: { class: 'space-y-6',
                       data: { controller: 'invoice-form',
-                              invoice_form_axes_value: axes_json } } do |f| %>
+                              invoice_form_axes_value: axes_json,
+                              invoice_form_rate_lookup_url_value: accounting_exchange_rate_lookup_path,
+                              invoice_form_can_override_value: Accounting::ExchangeRatePolicy.new(current_user, Accounting::ExchangeRate).create? } } do |f| %>
   <% if invoice.errors.any? %>
     <div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
       <ul class="list-disc list-inside">
@@ -90,7 +92,7 @@
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
             data: { floating_label_target: 'input',
                     invoice_form_target: 'invoiceDate',
-                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#fillDueDate' } %>
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue change->invoice-form#fillDueDate change->invoice-form#refreshRate' } %>
       <%= f.label :invoice_date, 'Invoice date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
 
@@ -114,12 +116,19 @@
     </div>
 
     <div class="relative" data-controller="floating-label">
-      <%= f.number_field :exchange_rate, step: '0.000001', min: '0.000001',
+      <%= f.number_field :exchange_rate, step: '0.00000001', min: '0.00000001',
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
             data: { floating_label_target: 'input', invoice_form_target: 'exchangeRate',
-                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue input->invoice-form#computeInvoiceTotals' } %>
-      <%= f.label :exchange_rate, 'Exchange rate to EUR', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+                    action: 'focus->floating-label#focus blur->floating-label#blur input->floating-label#checkValue change->floating-label#checkValue input->invoice-form#onRateTyped' } %>
+      <%= f.label :exchange_rate, 'Units of currency for 1 EUR', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
     </div>
+
+    <div class="relative col-span-2 <%= 'hidden' unless invoice.exchange_rate_reason.present? %>" data-invoice-form-target="rateReason">
+      <%= f.text_field :exchange_rate_reason, placeholder: ' ', disabled: invoice.exchange_rate_reason.blank?,
+            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500' %>
+      <p class="mt-1 text-xs text-gray-500">This is not the official rate of the invoice date: say why it is used (it needs the right to override rates).</p>
+    </div>
+    <p class="col-span-2 text-xs text-amber-700" data-invoice-form-target="rateNotice"></p>
 
     <div class="relative col-span-2" data-controller="floating-label">
       <%# Each option carries the payment terms of the partner: the due date follows the partner chosen. %>

@@ -31,6 +31,8 @@ class Accounting::Account < ApplicationRecord
   validates :cash_flow_category, inclusion: { in: Accounting::CashFlowCategories::CATEGORIES }, allow_blank: true
   validates :normal_balance, presence: true
 
+  validates :currency, inclusion: { in: Accounting::MoneyPresenter::SUPPORTED_CURRENCIES }, allow_nil: true
+  validates :currency, presence: true, if: :revalue_at_closing
   validate :code_immutable_on_update, on: :update
   validate :custom_code_follows_parent_hierarchy
 

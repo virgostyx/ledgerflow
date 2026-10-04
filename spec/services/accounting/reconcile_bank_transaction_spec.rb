@@ -30,7 +30,7 @@ RSpec.describe Accounting::ReconcileBankTransaction, type: :service do
       expect(reconcile(eur_amount: BigDecimal('930'))).to be_success
 
       bank_line = usd_tx.reload.journal_entry.lines.find_by(credit: 930)
-      expect([ bank_line.currency, bank_line.amount_currency ]).to eq([ 'USD', BigDecimal('1000') ])
+      expect([ bank_line.currency, bank_line.amount_currency ]).to eq([ 'USD', BigDecimal('-1000') ]) # signed like the line: a credit is negative
       expect(usd_tx.journal_entry.lines.find_by(account: counterpart).debit).to eq(BigDecimal('930'))
     end
 

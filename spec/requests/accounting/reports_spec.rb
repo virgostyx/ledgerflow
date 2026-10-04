@@ -51,6 +51,24 @@ RSpec.describe "Accounting::Reports", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it "adds the currency and the balance in currency of the accounts kept in one, on screen and in the CSV, and only then (F11)" do
+      create_posted_entry
+      get accounting_reports_trial_balance_path(fiscal_year_id: fiscal_year.id)
+      expect(response.body).not_to include("Balance in currency")
+
+      held = create(:account, code: "467001", account_type: :asset, normal_balance: :debit, account_class: 4, currency: "USD")
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 2)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: held, debit: BigDecimal("909.09"), credit: 0, currency: "USD", amount_currency: BigDecimal("1000"), exchange_rate: BigDecimal("1.1"))
+      create(:journal_entry_line, journal_entry: entry, account: create(:account, code: "440998", account_type: :liability, normal_balance: :credit), debit: 0, credit: BigDecimal("909.09"))
+      entry.post!
+
+      get accounting_reports_trial_balance_path(fiscal_year_id: fiscal_year.id)
+      expect(response.body).to include("Balance in currency", "USD")
+      get accounting_reports_trial_balance_path(fiscal_year_id: fiscal_year.id, format: :csv)
+      expect(response.body).to include("Currency", "Balance in currency", "USD")
+    end
+
     it "retourne CSV avec ?format=csv" do
       create_posted_entry
       get accounting_reports_trial_balance_path(fiscal_year_id: fiscal_year.id, format: :csv)
@@ -138,6 +156,28 @@ RSpec.describe "Accounting::Reports", type: :request do
         fiscal_year_id: fiscal_year.id, account_id: expense_account.id, date_from: "invalid"
       )
       expect(response).to have_http_status(:ok)
+    end
+
+    it "shows the currency, the amount in currency and the rate of a foreign line, and the same columns in the CSV (F11)" do
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 3)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: expense_account, debit: BigDecimal("909.09"), credit: 0, currency: "USD",
+             amount_currency: BigDecimal("1000"), exchange_rate: BigDecimal("1.1"))
+      create(:journal_entry_line, journal_entry: entry, account: create(:account, code: "440999", account_type: :liability, normal_balance: :credit),
+             debit: 0, credit: BigDecimal("909.09"))
+      entry.post!
+
+      get accounting_reports_general_ledger_path(fiscal_year_id: fiscal_year.id, account_id: expense_account.id)
+      expect(response.body).to include("Amount in currency", "1000.00 USD", "1.1")
+
+      get accounting_reports_general_ledger_path(fiscal_year_id: fiscal_year.id, account_id: expense_account.id, format: :csv)
+      expect(response.body).to include("Currency", "Amount in currency", "Rate", "USD", "1000.0")
+    end
+
+    it "does not show the currency columns when every line is in EUR" do
+      create_posted_entry
+      get accounting_reports_general_ledger_path(fiscal_year_id: fiscal_year.id, account_id: expense_account.id)
+      expect(response.body).not_to include("Amount in currency")
     end
 
     it "retourne CSV avec ?format=csv" do
@@ -261,6 +301,31 @@ RSpec.describe "Accounting::Reports", type: :request do
       get accounting_reports_aged_balance_path(kind: "supplier", as_of: Date.current)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Acme Supplies")
+    end
+
+    it "groups the open balances by currency, with their value at the closing rate when asked (F11)" do
+      customer_account = create(:account, :customer, reconcilable: true)
+      partner = create(:partner, name: "Acme Ltd", payment_terms_days: 0)
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: Date.current - 3)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: customer_account, partner: partner, debit: BigDecimal("909.09"), credit: 0, currency: "USD",
+             amount_currency: BigDecimal("1000"), exchange_rate: BigDecimal("1.1"))
+      create(:journal_entry_line, journal_entry: entry, account: expense_account, debit: 0, credit: BigDecimal("909.09"), currency: "USD",
+             amount_currency: BigDecimal("-1000"), exchange_rate: BigDecimal("1.1"))
+      entry.post!
+      Accounting::ExchangeRate.create!(currency: "USD", rate_date: Date.current, rate: "1.25", rate_type: :closing, source: "manual")
+
+      get accounting_reports_aged_balance_path(by_currency: 1)
+      expect(response.body).to include('data-section="by-currency"', "USD", "Acme Ltd", "1000.00")
+      expect(response.body).not_to include("Closing rate (per 1 EUR)")
+
+      get accounting_reports_aged_balance_path(by_currency: 1, at_closing_rate: 1)
+      expect(response.body).to include("1.25", "800.00")
+    end
+
+    it "does not show the currency table unless asked" do
+      get accounting_reports_aged_balance_path
+      expect(response.body).not_to include('data-section="by-currency"')
     end
 
     it "falls back to customers on an unknown kind" do

@@ -19,10 +19,10 @@ class Accounting::FiscalYearsController < ApplicationController
     @rows = Accounting::ForeignRevaluationQuery.new(as_of: @fiscal_year.end_date).call
   end
 
-  # Drafts the unrealized loss (and its reversal) for the accountant to check and post; never posts anything itself.
+  # Drafts the unrealized exchange differences (Fx::Revalue, with the reversal scheduled) for the accountant to check and post; never posts anything itself.
   def propose_revaluation
     authorize @fiscal_year
-    result = Accounting::ProposeRevaluationEntry.call(fiscal_year: @fiscal_year)
+    result = Fx::Revalue.call(fiscal_year: @fiscal_year)
 
     if result.success?
       redirect_to accounting_journal_entry_path(result[:entry]), notice: t("accounting.revaluation.proposed")

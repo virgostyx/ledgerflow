@@ -112,7 +112,7 @@ RSpec.describe Accounting::FixedAsset, 'created from a purchase invoice line', t
     end
 
     it 'converts the amounts to EUR at the rate of the invoice' do
-      line = posted_purchase(currency: 'USD', exchange_rate: BigDecimal('0.9')).lines.first
+      line = posted_purchase(currency: 'USD', exchange_rate: BigDecimal('1.11111111')).lines.first
       asset = described_class.build_from_invoice_line(line)
 
       expect(asset.acquisition_value).to eq(BigDecimal('900.00'))

@@ -9,6 +9,12 @@ class Entity < ApplicationRecord
   # The Peppol Access Point of this entity (one adapter per provider, see Peppol::AccessPoint); nil = not set up.
   enum :peppol_access_point,  { simulator: 0, digiteal: 1, b2brouter: 2 }, prefix: :peppol_ap
 
+  # Multi-currency rules (F11): which rate, on which date, how an unrealized exchange difference is treated.
+  enum :rate_policy,        { daily: 0, monthly_average: 1, manual: 2 }, prefix: :rates
+  enum :rate_date_basis,    { document_date: 0, accounting_date: 1 }
+  enum :fx_unrealized_loss, { expense: 0, ignore: 1 }, prefix: :unrealized_loss
+  enum :fx_unrealized_gain, { defer: 0, recognize: 1, ignore: 2 }, prefix: :unrealized_gain
+
   serialize :peppol_credentials, type: Hash, coder: JSON
   encrypts  :peppol_credentials
   has_secure_token :peppol_webhook_token
@@ -23,6 +29,9 @@ class Entity < ApplicationRecord
   validates :legal_name, presence: true
   validates :country,    presence: true
   validates :vat_number, uniqueness: true, allow_blank: true
+  validates :rate_alert_pct, numericality: { greater_than_or_equal_to: 0 }
+  validates :fx_loss_account_code, :fx_gain_account_code, presence: true
+  validate  :rate_fallback_currencies_are_currencies
   validate  :vat_number_format
   validates :peppol_participant_id, uniqueness: true, allow_nil: true # routes the documents received to their entity
   validate  :peppol_participant_id_format, :simulator_allowed, :peppol_credentials_complete
@@ -33,12 +42,13 @@ class Entity < ApplicationRecord
 
   # The features of docs/dev/features/spec.md that are built, each shipped behind a per-entity flag. A function adds its
   # key here when it ships.
-  FEATURES = %w[f01 f02 f03 f08 f09].freeze
+  FEATURES = %w[f01 f02 f03 f08 f09 f11].freeze
   FEATURE_LABELS = {
     "f01" => [ "Roles, period locks and users", "Turns on the Periods and Users and roles screens and the four-eyes option. The safeguards (a locked period refuses entries, the last owner stays) stay active either way." ],
     "f02" => [ "Bank statements (CODA)", "Turns on the import of CODA bank statements and the automatic reconciliation of their lines." ],
     "f03" => [ "Documents", "Turns on the document inbox: upload, view, link to entries and archive supporting documents." ],
     "f08" => [ "Tasks and comments", "Turns on tasks and comment threads on entries, ledger lines, accounts, partners, documents and bank lines, with mentions and notifications." ],
+    "f11" => [ "Exchange rates import", "Turns on the daily import of the ECB rates and the monthly import of the InforEuro rates (the only thing that goes to the network). Entering rates, the rate rules and the revaluation are always available." ],
     "f09" => [ "Customer dunning", "Turns on the preparation of reminders from the open customer lines: levels, texts per language, preview, sending after validation, disputes and payment promises." ]
   }.freeze
 
@@ -87,5 +97,10 @@ class Entity < ApplicationRecord
 
   def vat_number_format
     errors.add(:vat_number, :invalid) unless vat_number.blank? || Accounting::Partner.valid_vat_number?(vat_number)
+  end
+
+  def rate_fallback_currencies_are_currencies
+    unknown = rate_fallback_currencies - Accounting::MoneyPresenter::SUPPORTED_CURRENCIES
+    errors.add(:rate_fallback_currencies, "contains unknown currencies: #{unknown.join(', ')}") if unknown.any?
   end
 end

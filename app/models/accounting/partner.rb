@@ -47,6 +47,8 @@ class Accounting::Partner < ApplicationRecord
   autofilter_column :vat_number,   sql: "accounting_partners.vat_number", type: :string, filter: false
   autofilter_column :country,      sql: "accounting_partners.country", type: :string
 
+  validates :currency, inclusion: { in: Accounting::MoneyPresenter::SUPPORTED_CURRENCIES }
+
   before_save { self.email_bounced_at = nil if persisted? && email_changed? } # a new address has not bounced (F09)
 
   validates :name,         presence: true

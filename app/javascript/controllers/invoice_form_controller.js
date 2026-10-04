@@ -5,7 +5,7 @@ export default class extends Controller {
     // Header fields (existing)
     "invoiceDate", "dueDate", "partnerSelect", "journalSelect", "entryNumberPreview",
     // Currency
-    "currencySelect", "exchangeRate", "currencyCode",
+    "currencySelect", "exchangeRate", "currencyCode", "rateReason", "rateNotice",
     // Lines management
     "linesContainer", "lineTemplate", "lineRow",
     // Per-line computed display (readonly)
@@ -16,10 +16,15 @@ export default class extends Controller {
     "vatTreatmentSelect", "vatNotice", "treatmentHelp"
   ]
   static values = {
-    axes:  { type: Array,  default: [] }
+    axes:  { type: Array,  default: [] },
+    rateLookupUrl: String,
+    canOverride: Boolean
   }
 
   connect() {
+    this.official = null
+    this.rateTouched = this.hasExchangeRateTarget && parseFloat(this.exchangeRateTarget.value) !== 1 // a rate already there (a saved invoice) is kept
+    if (this.hasExchangeRateTarget && this.currentCurrencyCode() !== "EUR" && this.rateLookupUrlValue) this.refreshRate()
     if (this.hasDueDateTarget && this.dueDateTarget.value) this.dueDateTarget.dataset.touched = "true" // an existing due date is kept
     this.recomputeAll()
     this.showTreatmentHelp()
@@ -112,6 +117,57 @@ export default class extends Controller {
     if (this.hasEurCounterpartTarget) this.eurCounterpartTarget.classList.toggle("hidden", code === "EUR")
     this.linesContainerTarget.querySelectorAll(".invoice-line-row").forEach(row => this.recomputeRow(row))
     this.computeInvoiceTotals()
+    this.rateTouched = false
+    this.refreshRate()
+  }
+
+  // The official rate of the invoice date (the entity's rules), shown in place of any other unless a rate was typed. A missing rate says which, never
+  // another one. Another rate than the official one asks for its reason (the server checks it again when the invoice is posted).
+  async refreshRate() {
+    if (!this.hasExchangeRateTarget) return
+    const code = this.currentCurrencyCode()
+    if (code === "EUR") {
+      this.exchangeRateTarget.value = "1"
+      this.official = "1"
+      this.showRateNotice("")
+      this.toggleRateReason()
+      this.computeInvoiceTotals()
+      return
+    }
+    const date = this.hasInvoiceDateTarget ? this.invoiceDateTarget.value : ""
+    if (!date || !this.rateLookupUrlValue) return
+
+    const response = await fetch(`${this.rateLookupUrlValue}?currency=${encodeURIComponent(code)}&date=${encodeURIComponent(date)}`, { headers: { Accept: "application/json" } })
+    const data = await response.json()
+    if (response.ok) {
+      this.official = data.rate
+      if (!this.rateTouched) this.exchangeRateTarget.value = data.rate
+      this.showRateNotice("")
+    } else {
+      this.official = null
+      this.showRateNotice(data.error || "No rate")
+    }
+    this.toggleRateReason()
+    this.computeInvoiceTotals()
+  }
+
+  onRateTyped() {
+    this.rateTouched = true
+    this.toggleRateReason()
+    this.computeInvoiceTotals()
+  }
+
+  toggleRateReason() {
+    if (!this.hasRateReasonTarget) return
+    const typed = parseFloat(this.exchangeRateTarget.value)
+    const manual = this.currentCurrencyCode() !== "EUR" && (this.official === null || typed !== parseFloat(this.official))
+    this.rateReasonTarget.classList.toggle("hidden", !manual)
+    const field = this.rateReasonTarget.querySelector("input")
+    if (field) field.disabled = !manual
+  }
+
+  showRateNotice(text) {
+    if (this.hasRateNoticeTarget) this.rateNoticeTarget.textContent = text
   }
 
   currentCurrencyCode() {
@@ -213,7 +269,7 @@ export default class extends Controller {
 
     if (this.hasInvoiceTotalEurTarget) {
       const rate = this.hasExchangeRateTarget ? parseFloat(this.exchangeRateTarget.value) || 0 : 1
-      this.invoiceTotalEurTarget.textContent = `${number(Math.round(totalTotal * rate * 100) / 100)} EUR`
+      this.invoiceTotalEurTarget.textContent = `${number(rate > 0 ? Math.round(totalTotal / rate * 100) / 100 : 0)} EUR`
     }
   }
 

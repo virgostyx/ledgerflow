@@ -177,7 +177,7 @@ RSpec.describe Accounting::Invoice, type: :model do
 
   describe 'currency and exchange_rate validations' do
     it 'is valid with a supported currency' do
-      expect(build(:invoice, currency: 'USD', exchange_rate: '0.92')).to be_valid
+      expect(build(:invoice, currency: 'USD', exchange_rate: '1.08695652')).to be_valid
     end
 
     it 'is valid with a currency that has no dedicated symbol (e.g. CHF)' do
@@ -210,7 +210,7 @@ RSpec.describe Accounting::Invoice, type: :model do
     end
 
     it 'converts a foreign-currency total to EUR using the exchange_rate' do
-      invoice = build(:invoice, currency: 'USD', exchange_rate: '0.92', total_incl_vat: '1000.00')
+      invoice = build(:invoice, currency: 'USD', exchange_rate: '1.08695652', total_incl_vat: '1000.00')
       expect(invoice.total_incl_vat_eur).to eq(BigDecimal('920.00'))
     end
   end

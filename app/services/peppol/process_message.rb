@@ -50,9 +50,10 @@ class Peppol::ProcessMessage
   def self.exchange_rate_for(canonical, problems)
     return BigDecimal("1") if canonical.currency == "EUR" || !Accounting::MoneyPresenter::SUPPORTED_CURRENCIES.include?(canonical.currency) || canonical.issue_date.nil?
 
-    Accounting::ExchangeRate.rate_for(canonical.currency, canonical.issue_date).tap do |rate|
-      problems << "No exchange rate for #{canonical.currency} on or before #{canonical.issue_date}: add it to the exchange rates, then work on the message again" unless rate
-    end
+    Fx::RateFor.call(canonical.currency, document_date: canonical.issue_date)
+  rescue Fx::MissingRate => e
+    problems << "#{e.message.delete_suffix(', then try again.')}, then work on the message again"
+    nil
   end
 
   def self.keep_in_document_store(message)

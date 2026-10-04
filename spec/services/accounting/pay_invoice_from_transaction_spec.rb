@@ -14,7 +14,7 @@ RSpec.describe Accounting::PayInvoiceFromTransaction, type: :service do
   let(:usd_invoice) do
     Accounting::ExternalInvoice.upsert(
       external_ref: 'USD-1', partner_external_ref: 'S1', invoice_type: 'supplier', invoice_date: Date.current.to_s,
-      currency: 'USD', exchange_rate: '0.9',
+      currency: 'USD', exchange_rate: '1.11111111',
       lines: [ { account_code: '604000', description: 'Work', quantity: '1', unit_price: '1000', vat_rate: '0' } ]
     ).invoice
   end
@@ -37,7 +37,7 @@ RSpec.describe Accounting::PayInvoiceFromTransaction, type: :service do
     expect(usd_invoice.reload).to be_paid
     expect(tx.reload).to be_reconciled
     bank_line = tx.journal_entry.lines.find_by(credit: 950)
-    expect([ bank_line.currency, bank_line.amount_currency ]).to eq([ 'USD', BigDecimal('1000') ])
+    expect([ bank_line.currency, bank_line.amount_currency ]).to eq([ 'USD', BigDecimal('-1000') ]) # signed like the line: a credit is negative
     fx = Accounting::JournalEntryLine.joins(:account).where(accounting_accounts: { code: '651200' })
     expect(fx.sum(:debit)).to eq(BigDecimal('50'))
 

@@ -42,7 +42,7 @@ class Accounting::Actions::CreateBankJournalEntry
     counterpart_side  = tx.credit? ? :credit : :debit
     zero              = BigDecimal("0")
 
-    foreign_attrs = foreign ? { currency: tx.currency, amount_currency: tx.amount.abs, exchange_rate: (abs_amount / tx.amount.abs).round(6) } : {}
+    foreign_attrs = foreign ? { currency: tx.currency, amount_currency: (bank_side == :debit ? 1 : -1) * tx.amount.abs, exchange_rate: (tx.amount.abs / abs_amount).round(8) } : {}
     Accounting::JournalEntryLine.create!(
       journal_entry: entry, account: bank_account_record, label: label || tx.description,
       bank_side => abs_amount, counterpart_side => zero, **foreign_attrs

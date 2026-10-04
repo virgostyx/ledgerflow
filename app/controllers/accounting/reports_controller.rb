@@ -118,6 +118,8 @@ class Accounting::ReportsController < ApplicationController
     @rows   = Accounting::AgedBalanceQuery.new(kind: @kind, as_of: @as_of).call
     @totals = Accounting::AgedBalanceQuery.totals(@rows)
 
+    @by_currency = Accounting::AgedBalanceByCurrencyQuery.new(kind: @kind, as_of: @as_of, at_closing_rate: params[:at_closing_rate].present?).call if params[:by_currency].present?
+
     @stale_days    = params[:stale_days].presence&.to_i || 90
     @stale_credits = Accounting::StaleCreditsQuery.new(kind: @kind, as_of: @as_of, min_age_days: @stale_days).call
 
@@ -355,6 +357,7 @@ class Accounting::ReportsController < ApplicationController
       { key: :closing_display_debit, label: "Closing Debit" },
       { key: :closing_display_credit, label: "Closing Credit" }
     ]
+    columns += [ { key: :currency, label: "Currency" }, { key: :balance_in_currency, label: "Balance in currency" } ] if @result&.rows&.any?(&:currency)
     return columns unless params[:comparative].present?
 
     columns + [
@@ -420,7 +423,8 @@ class Accounting::ReportsController < ApplicationController
     [
       [ "Date", :entry_date ], [ "Reference", :reference ], [ "Label", :label ],
       [ "Partner", :partner_name ], [ "Debit", :debit ], [ "Credit", :credit ],
-      [ "Running balance", :running_balance ], [ "Lettering", :lettering_code ]
+      [ "Running balance", :running_balance ], [ "Lettering", :lettering_code ],
+      [ "Currency", :currency ], [ "Amount in currency", :amount_currency ], [ "Rate", :exchange_rate ]
     ]
   end
 end

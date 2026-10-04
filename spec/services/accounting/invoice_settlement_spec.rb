@@ -127,14 +127,21 @@ RSpec.describe Accounting::InvoiceSettlement, type: :service do
     def usd_invoice
       Accounting::ExternalInvoice.upsert(
         external_ref: 'USD-1', partner_external_ref: 'BF-P-1', invoice_type: 'supplier', invoice_date: Date.current.to_s,
-        currency: 'USD', exchange_rate: '0.9',
+        currency: 'USD', exchange_rate: '1.11111111',
         lines: [ { account_code: '604000', description: 'X', quantity: '1', unit_price: '1000', vat_rate: '0' } ]
       ).invoice # booked 900 EUR
+    end
+
+    # The payment of a foreign invoice carries the invoice's currency (as Accounting::PayInvoiceFromTransaction books it): 1000 USD, for `eur` EUR.
+    def in_usd(debit, eur)
+      debit.update_columns(currency: 'USD', amount_currency: 1000, exchange_rate: (BigDecimal('1000') / BigDecimal(eur.to_s)).round(8))
+      debit.reload
     end
 
     it 'reports the EUR really paid and the exchange loss when more was debited than booked' do
       invoice = usd_invoice
       _tx, debit = reconciled_debit(950, transaction_date: Date.current, value_date: Date.current, reference: 'EUR-950')
+      in_usd(debit, 950)
       Accounting::LetterLines.call(lines: [ trade_line(invoice), debit ])
 
       settlement = described_class.call(invoice.reload)
@@ -147,6 +154,7 @@ RSpec.describe Accounting::InvoiceSettlement, type: :service do
     it 'reports an exchange gain when less was debited than booked, without counting the adjustment as a payment' do
       invoice = usd_invoice
       _tx, debit = reconciled_debit(850, transaction_date: Date.current, value_date: Date.current, reference: 'EUR-850')
+      in_usd(debit, 850)
       Accounting::LetterLines.call(lines: [ trade_line(invoice), debit ])
 
       settlement = described_class.call(invoice.reload)
