@@ -1,6 +1,6 @@
 # F06 — Facturation électronique Peppol : audit de l'existant (étape 0)
 
-Avancement : décisions 1 (B2Brouter, code commun modifiable), 4 (brouillon de **facture fournisseur** avec lignes) et 5 (devises traitées comme les autres) **validées le 2026-10-04** ; **étape 1 faite** (voir `QUESTIONS.md` § F06). Les décisions 2, 3, 6 et 7 restent ouvertes.
+Avancement : **F06 est livrée, voir `F06.md`** (étapes 1 à 6 faites). Décisions 1 (B2Brouter, code commun modifiable), 4 (brouillon de **facture fournisseur** avec lignes) et 5 (devises traitées comme les autres) **validées le 2026-10-04** ; **étape 1 faite** (voir `QUESTIONS.md` § F06). Les décisions 2, 3, 6 et 7 restent ouvertes.
 
 Statut à la date de l'audit : **audit seul, aucun code modifié.** La spec (§9, « Étape 0 ») demande de s'arrêter ici et d'attendre une validation avant de toucher à l'existant. Ce document dit ce qui est en place, ce qui manque par rapport à la spec, ce que j'ai vu de risqué, les décisions qui te reviennent et l'ordre de travaux proposé.
 
