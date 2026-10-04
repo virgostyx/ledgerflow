@@ -69,6 +69,9 @@
           <p class="block text-sm font-medium text-gray-700 mb-1">Webhook URL</p>
           <code class="block rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-700 break-all"><%= peppol_webhook_url(token: @entity.peppol_webhook_token) %></code>
           <p class="mt-1 text-xs text-gray-400">Give this address to your Access Point so it can report deliveries and send you invoices.</p>
+          <% if @entity.peppol_ap_b2brouter? %>
+            <p class="mt-1 text-xs text-gray-500">In B2Brouter (Settings, Webhooks) enable the events <code>issued_invoice.state_change</code> (deliveries) and <code>received_invoice.created</code> (invoices received). The received invoices are also listed every 15 minutes, in case a webhook is lost.</p>
+          <% end %>
         </div>
       <% end %>
 

@@ -22,6 +22,14 @@ class Peppol::AccessPoint::Base
 
   def registered?(_participant_id) = nil
 
+  # Received documents, for the Access Points that make us fetch them: the XML of one, and the list of those that came in (to catch what a
+  # webhook did not tell). => the UBL as a String; => [{ message_id:, remote_id:, number:, date: }]
+  def fetch_received(_remote_id) = raise(NotImplementedError, "#{self.class.name} does not fetch received documents")
+
+  def list_received(since: nil) = raise(NotImplementedError, "#{self.class.name} does not list received documents")
+
+  def fetches_received? = false
+
   def parse_webhook(headers:, body:) = raise(NotImplementedError)
 
   private

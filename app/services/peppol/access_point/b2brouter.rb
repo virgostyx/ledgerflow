@@ -3,6 +3,7 @@
 # the documentation only. Received invoices are not handled yet (their webhook is not documented in what was read).
 class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
   API_VERSION = "2026-03-02".freeze
+  LIST_PAGE = 100
   SIGNATURE_TOLERANCE = 5.minutes.to_i # seconds a webhook's timestamp may differ from ours
   # Sandbox scenarios (docs.b2brouter.net/en/developers/testing/sandbox): success = sent, registered; refused by the buyer =
   # sent, registered, refused; no receiver = sent, error. "registered" is the Peppol network accepting the message.
@@ -63,11 +64,41 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
     nil
   end
 
+  def fetches_received? = true
+
+  # The UBL BIS 3 of a received invoice (GET /invoices/{id}/as/xml.ubl.invoice.bis3: the same route as for an issued one).
+  def fetch_received(remote_id)
+    response = connection.get("/invoices/#{Integer(remote_id)}/as/xml.ubl.invoice.bis3") { |r| headers(r); r.headers["Accept"] = "*/*" }
+    response.body.to_s
+  rescue Faraday::TooManyRequestsError, Faraday::ServerError, Faraday::TimeoutError, Faraday::ConnectionFailed => e
+    raise Peppol::AccessPoint::TemporaryError, "B2Brouter cannot be reached: #{e.message}"
+  rescue Faraday::Error, ArgumentError => e
+    raise Peppol::AccessPoint::Error, "B2Brouter: the received document #{remote_id} cannot be fetched (#{e.message})"
+  end
+
+  # The received invoices of the account, newest first, from a date on (GET /accounts/{id}/invoices?type=ReceivedInvoice), all the pages.
+  def list_received(since: nil)
+    account_id = credential("account_id") or raise Peppol::AccessPoint::NotConfigured, "The B2Brouter account ID is not set"
+    found = []
+    offset = 0
+    loop do
+      params = { type: "ReceivedInvoice", limit: LIST_PAGE, offset: offset }
+      params[:date_from] = since.to_date.iso8601 if since
+      page = request(:get, "/accounts/#{account_id}/invoices", params: params)["invoices"].to_a
+      found.concat(page.map { |i| { message_id: "b2brouter-#{i['id']}", remote_id: i["id"].to_s, number: i["number"], date: i["date"] } })
+      break if page.size < LIST_PAGE
+
+      offset += LIST_PAGE
+    end
+    found
+  end
+
   # X-B2Brouter-Signature: "t=<unix time>,s=<hex HMAC-SHA256 of "<t>.<raw body>" with the webhook secret>"
   def parse_webhook(headers:, body:)
     verify_signature!(headers["X-B2Brouter-Signature"], body)
 
     payload = parsed_json(body)
+    return received_events(payload, body) if payload["code"] == "received_invoice.created"
     return [] unless payload["code"] == "issued_invoice.state_change"
 
     state = payload.dig("data", "state").to_s
@@ -80,6 +111,15 @@ class Peppol::AccessPoint::B2brouter < Peppol::AccessPoint::Base
   end
 
   private
+
+  # A received invoice is announced by its identifiers only (invoice_id, account_id, state): the document is fetched afterwards. An event about
+  # another account than the one set up for the entity is not ours.
+  def received_events(payload, body)
+    data = payload["data"].to_h
+    return [] if data["invoice_id"].blank? || (credential("account_id") && data["account_id"].to_s != credential("account_id").to_s)
+
+    [ Peppol::Event.new(kind: :received, message_id: "b2brouter-#{data['invoice_id']}", remote_id: data["invoice_id"].to_s, raw: body) ]
+  end
 
   def import(xml, account_id)
     imported = request(:post, "/accounts/#{account_id}/invoices/import", params: { send_after_import: false },

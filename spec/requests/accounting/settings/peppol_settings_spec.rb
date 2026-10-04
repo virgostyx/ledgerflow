@@ -12,6 +12,15 @@ RSpec.describe "Accounting::Settings::PeppolSettings", type: :request do
   before { sign_in admin }
 
   describe "GET /accounting/settings/peppol_settings/edit" do
+    it "tells a B2Brouter entity which events to enable on its side, and the simulator nothing of the kind" do
+      entity.update!(peppol_access_point: :b2brouter, peppol_participant_id: "0208:0123456749", peppol_credentials: { "api_key" => "test_k", "account_id" => "1", "webhook_secret" => "s" })
+      get edit_accounting_settings_peppol_settings_path
+      expect(response.body).to include("received_invoice.created").and include("issued_invoice.state_change")
+
+      entity.update!(peppol_access_point: :simulator, peppol_credentials: {})
+      get edit_accounting_settings_peppol_settings_path
+      expect(response.body).not_to include("received_invoice.created")
+    end
     it "returns 200 and shows the webhook URL of the entity once an Access Point is chosen" do
       entity.update!(peppol_access_point: :simulator)
       get edit_accounting_settings_peppol_settings_path

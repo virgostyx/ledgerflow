@@ -9,6 +9,10 @@ production:
     class: Accounting::ConsistencyCheckJob
     queue: default
     schedule: every day at 2am
+  pull_received_peppol:
+    class: Peppol::PullReceivedJob
+    queue: default
+    schedule: every 15 minutes
   generate_recurring_entries:
     class: Accounting::GenerateRecurringEntriesJob
     queue: default

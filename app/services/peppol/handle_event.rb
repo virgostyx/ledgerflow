@@ -5,12 +5,14 @@
 class Peppol::HandleEvent
   DEFAULT_MESSAGES = { delivered: "Delivered to the receiver", failed: "The Access Point reported a delivery failure" }.freeze
 
-  def self.call(event:)
+  # `entity`: given when the call is already known to be for it (the token of its webhook, a signature checked): a received document announced
+  # by an Access Point that does not name the receiver (B2Brouter) is then recorded in it.
+  def self.call(event:, entity: nil)
     ctx = LightService::Context.make(event: event, invoice: nil, ignored: false)
     kind = event.kind.to_s.to_sym
 
     if kind == :received
-      receive(ctx, event)
+      receive(ctx, event, entity)
     elsif DEFAULT_MESSAGES.key?(kind)
       deliver(ctx, event, kind)
     else
@@ -30,8 +32,8 @@ class Peppol::HandleEvent
   # A document addressed to one of our entities is recorded first, then worked on (Peppol::ReceiveMessage): it is never lost, and a
   # document that cannot be worked on waits for a person. An exception here (the database is down) reaches the webhook, which answers 500
   # so that the Access Point sends the document again.
-  def self.receive(ctx, event)
-    entity = event.receiver.present? && ActsAsTenant.without_tenant { Entity.find_by(peppol_participant_id: event.receiver) }
+  def self.receive(ctx, event, entity = nil)
+    entity ||= event.receiver.present? && ActsAsTenant.without_tenant { Entity.find_by(peppol_participant_id: event.receiver) }
     unless entity
       Rails.logger.warn("[Peppol] document received for #{event.receiver.presence || 'no receiver'}: no entity has that Peppol identifier, it is ignored")
       return ctx[:ignored] = true

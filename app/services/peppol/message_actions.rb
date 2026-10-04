@@ -4,7 +4,7 @@ module Peppol::MessageActions
   def self.reprocess(message:, user:)
     return failure(message, "Only a message that waits for review can be worked on again") unless message.needs_review? || message.received?
 
-    Peppol::ProcessMessage.call(message: message)
+    work_on(message)
     Accounting::AuditLog.record!(auditable: message, action: "peppol_message_reprocessed", user: user, payload: { status: message.status, problems: message.problems })
     LightService::Context.make(message: message)
   end
@@ -27,6 +27,15 @@ module Peppol::MessageActions
     LightService::Context.make(message: message)
   end
 
+  # A document that was announced but never fetched is fetched first; a technical error is told, the message stays as it is.
+  def self.work_on(message)
+    return Peppol::ProcessMessage.call(message: message) if message.xml.present? || message.remote_id.blank?
+
+    Peppol::FetchReceived.call(message: message)
+  rescue Peppol::AccessPoint::TemporaryError => e
+    message.update!(problems: [ "The Access Point cannot be reached: #{e.message}" ])
+  end
+
   def self.failure(message, text) = LightService::Context.make(message: message).tap { |ctx| ctx.fail!(text) }
-  private_class_method :failure
+  private_class_method :work_on, :failure
 end

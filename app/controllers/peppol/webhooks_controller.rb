@@ -10,7 +10,7 @@ class Peppol::WebhooksController < ApplicationController
 
     events = Peppol::AccessPoint.for(entity).parse_webhook(headers: request.headers, body: request.body.read)
     events.each do |event|
-      result = Peppol::HandleEvent.call(event: event)
+      result = Peppol::HandleEvent.call(event: event, entity: entity)
       Rails.logger.warn("[Peppol] #{event.kind} event not applied: #{result.message}") if result.failure?
     end
     head :ok
