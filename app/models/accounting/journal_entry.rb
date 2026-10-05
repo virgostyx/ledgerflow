@@ -48,6 +48,10 @@ class Accounting::JournalEntry < ApplicationRecord
   autofilter_column :entry_date, sql: "accounting_journal_entries.entry_date", type: :date
   autofilter_column :status,     sql: "accounting_journal_entries.status", type: :enum
 
+  # F13c: told to the subscriptions of the entity once the transaction that validated or reversed the entry has committed.
+  # (an entry a service writes as posted from the start, like a reversal, is told too)
+  after_commit :emit_status_webhook, if: -> { (saved_change_to_status? || previously_new_record?) && (posted? || reversed?) }
+
   validates :entry_date, presence: true
   validates :reference,  presence: true, unless: :draft?
   validates :reference,  uniqueness: { scope: :entity_id, case_sensitive: false }, allow_nil: true
@@ -79,4 +83,10 @@ class Accounting::JournalEntry < ApplicationRecord
   def in_ledger? = LEDGER_STATUSES.include?(status.to_sym)
 
   def skip_audit? = saved_change_to_status? && status.to_s.in?(%w[posted reversed])
+
+  def emit_status_webhook
+    Webhooks::Emit.call(posted? ? "entry.posted" : "entry.reversed", -> {
+      { id: id, reference: reference, status: status, entry_date: entry_date.iso8601, journal: journal.code, fiscal_year: fiscal_year.year, reversal_of_id: reversal_of_id }
+    }, entity: entity)
+  end
 end

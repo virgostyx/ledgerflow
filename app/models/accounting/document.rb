@@ -24,6 +24,10 @@ class Accounting::Document < ApplicationRecord
 
   attr_readonly :sha256, :byte_size
 
+  after_create_commit do # F13c
+    Webhooks::Emit.call("document.created", { id: id, name: name, kind: kind, origin: origin, sha256: sha256 }, entity: entity)
+  end
+
   validates :name, :byte_size, presence: true
   validates :sha256, presence: true, uniqueness: { scope: :entity_id }
   validates :legal_hold_reason, presence: true, if: :legal_hold

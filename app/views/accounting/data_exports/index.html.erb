@@ -1,0 +1,55 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Data exports" } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Data exports",
+      description: "Take your data out as CSV, JSON or XLSX. Every file carries its schema version; the columns are listed in docs/exports.md. Each export is recorded in the audit trail.") %>
+
+<%= form_with url: accounting_data_export_file_path, method: :get, class: "rounded-lg border border-gray-200 bg-white p-5 max-w-3xl grid gap-4 sm:grid-cols-2", data: { turbo: false } do %>
+  <div>
+    <%= label_tag :dataset, "Data", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= select_tag :dataset, options_for_select(@datasets.map { |d| [ d.humanize, d ] }, "entries"), class: "form-input" %>
+  </div>
+  <div>
+    <%= label_tag :as, "Format", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= select_tag :as, options_for_select([ [ "CSV", "csv" ], [ "JSON", "json" ], [ "XLSX (up to #{Exports::Standard::XLSX_MAX_ROWS} rows)", "xlsx" ] ]), class: "form-input" %>
+  </div>
+  <div>
+    <%= label_tag :from, "Entries from", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= date_field_tag :from, nil, class: "form-input" %>
+  </div>
+  <div>
+    <%= label_tag :to, "Entries to", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= date_field_tag :to, nil, class: "form-input" %>
+  </div>
+  <p class="sm:col-span-2 text-xs text-gray-500">The period only applies to entries (their entry date, bounds included).</p>
+  <div class="sm:col-span-2"><%= submit_tag "Download", class: "btn-primary" %></div>
+<% end %>
+
+<% if Accounting::DataExportPolicy.new(current_user, nil).backup? %>
+  <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">Full backup</h2>
+  <p class="mb-3 text-sm text-gray-600 max-w-3xl">All the data, the documents, the audit trail and a manifest with the SHA-256 of every file, in one ZIP. It is built in the background, kept <%= DataExport::KEEP_FOR.in_days.to_i %> days, and downloaded through a link that lasts one hour. For the owner only.</p>
+  <%= button_to "Build a backup", backup_accounting_data_exports_path, method: :post, class: "btn-primary cursor-pointer" %>
+
+  <% if @backups.any? %>
+    <div class="mt-4 bg-white rounded-lg border border-gray-200 overflow-x-auto max-w-3xl">
+      <table class="w-full text-sm" data-section="backups">
+        <thead class="bg-gray-50 border-b border-gray-200"><tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <th class="px-4 py-3 text-left">Asked</th><th class="px-4 py-3 text-left">By</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-right">Files</th><th class="px-4 py-3 text-right">Size</th><th class="px-4 py-3"></th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @backups.each do |backup| %>
+            <tr>
+              <td class="px-4 py-3"><%= l(backup.created_at, format: :short) %></td>
+              <td class="px-4 py-3"><%= backup.user&.full_name || "—" %></td>
+              <td class="px-4 py-3"><%= backup.status.humanize %><%= " — #{backup.error}" if backup.error %></td>
+              <td class="px-4 py-3 text-right"><%= backup.file_count %></td>
+              <td class="px-4 py-3 text-right"><%= number_to_human_size(backup.bytes) %></td>
+              <td class="px-4 py-3 text-right"><%= link_to "Download", download_accounting_data_exports_path(token: backup.link_token), class: "text-primary-700 hover:underline" if backup.ready? %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+<% end %>

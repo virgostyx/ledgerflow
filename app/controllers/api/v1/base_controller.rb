@@ -7,6 +7,8 @@ class Api::V1::BaseController < ActionController::API
   NOT_ENABLED = { error: "The BudgetFlow integration is not enabled for this entity" }.freeze
 
   class_attribute :action_scopes, default: {}
+  # :budgetflow (the integration, closed to entities that did not declare it) or :public (the public API of F13c, open to entities that turned it on)
+  class_attribute :surface, default: :budgetflow
 
   around_action :authenticate_and_log
 
@@ -31,23 +33,29 @@ class Api::V1::BaseController < ActionController::API
 
   def run_as_client(token)
     @api_client = ApiClient.authenticate(token)
-    return render(json: { error: "Unauthorized" }, status: :unauthorized) unless @api_client
+    return deny(:unauthorized, "Unauthorized") unless @api_client
 
     ActsAsTenant.current_tenant = @api_client.entity
     Current.api_client = @api_client
-    return render(json: NOT_ENABLED, status: :forbidden) unless @api_client.entity.budgetflow?
+    return deny(:forbidden, NOT_ENABLED[:error]) unless surface_enabled?(@api_client.entity)
+
     scope = action_scopes[action_name.to_sym]
-    return render(json: { error: "Forbidden", required_scope: scope }, status: :forbidden) unless scope == :any || (scope && @api_client.allows?(scope))
+    return deny(:forbidden, "Forbidden", required_scope: scope) unless scope == :any || (scope && @api_client.allows?(scope))
 
     yield
   end
 
+  def surface_enabled?(entity) = surface == :public ? entity.feature?(:f13) : entity.budgetflow?
+
+  # Every refusal of the authentication goes through here: the public API answers in problem+json (Api::V1::Public::BaseController).
+  def deny(status, error, **extra) = render(json: { error: error }.merge(extra), status: status)
+
   def run_as_jwt(token)
-    return render(json: { error: "Unauthorized" }, status: :unauthorized) unless Rails.configuration.x.legacy_jwt_enabled
+    return deny(:unauthorized, "Unauthorized") unless Rails.configuration.x.legacy_jwt_enabled && surface == :budgetflow
 
     payload = Api::JwtService.decode(token)
     ActsAsTenant.current_tenant = Entity.find_by(id: payload["entity_id"])
-    return render(json: NOT_ENABLED, status: :forbidden) unless ActsAsTenant.current_tenant&.budgetflow?
+    return deny(:forbidden, NOT_ENABLED[:error]) unless ActsAsTenant.current_tenant&.budgetflow?
 
     @legacy_entity = ActsAsTenant.current_tenant
     # fail closed, like a key: a route that declares no scope is not served
@@ -55,7 +63,7 @@ class Api::V1::BaseController < ActionController::API
 
     yield
   rescue Api::AuthenticationError
-    render json: { error: "Unauthorized" }, status: :unauthorized
+    deny(:unauthorized, "Unauthorized")
   end
 
   # The JWT has no api_requests row (no client): the entity's audit trail keeps the trace instead.

@@ -219,6 +219,22 @@ Rails.application.routes.draw do
       end
       resources :line_allocations, only: [ :create, :destroy ]
 
+      # F13a: guided imports of partners, accounts and entries
+      resources :imports, only: %i[index new create show update] do
+        member do
+          post :simulate
+          post :run
+          post :undo
+        end
+      end
+
+      # F13b: data exports (streamed) and the full backup
+      resources :data_exports, only: :index do
+        post :backup, on: :collection
+        get  "download/:token", action: :download, on: :collection, as: :download
+      end
+      get "data_exports/file", to: "data_exports#show", as: :data_export_file
+
       # F10: the guided closing of a fiscal year
       resources :closing_runs, only: %i[index show create] do
         patch :settings, on: :collection
@@ -319,6 +335,14 @@ Rails.application.routes.draw do
         end
         resources :custom_roles, only: %i[index create update destroy]
         resources :bank_rules, only: %i[index update destroy]
+        resources :webhook_subscriptions, except: :show do # F13c
+          member do
+            get  :deliveries
+            post :rotate_secret
+            post :resume
+            post "deliveries/:delivery_id/replay", action: :replay, as: :replay_delivery
+          end
+        end
         resources :api_clients, only: [ :index, :new, :create ] do
           member do
             post  :rotate
@@ -332,10 +356,27 @@ Rails.application.routes.draw do
     end
   end
 
-  # API BudgetFlow (JWT)
+  # The public API: its documentation (F13c)
+  get "/api/docs", to: "api/docs#show"
+  get "/api/v1/openapi.json", to: "api/docs#openapi"
+
+  # API BudgetFlow (JWT) and public API (personal tokens)
   namespace :api do
     namespace :v1 do
       get :ping, to: "ping#show"
+
+      # F13c: the public API (personal tokens, problem+json, cursor pagination): the read-only collections come from Api::V1::Resources
+      get "reports/:name", to: "public/reports#show", as: :public_report
+      resources :entries, only: %i[index show create update], controller: "public/entries", constraints: { id: /\d+/ } do
+        member do
+          post :post
+          post :reverse
+        end
+      end
+      Api::V1::Resources::REGISTRY.each_key do |name|
+        get name, to: "public/resources#index", defaults: { resource: name }, as: "public_#{name}"
+        get "#{name}/:id", to: "public/resources#show", defaults: { resource: name }, as: "public_#{name.singularize}", constraints: { id: /\d+/ }
+      end
       resources :invoice_events, only: [ :index ]
       resources :incoming_invoices, only: [] do
         member do

@@ -1,8 +1,17 @@
 class ApiClient < ApplicationRecord
-  SCOPES = %w[invoices:read invoices:write partners:write].freeze
+  # The first three are those of the BudgetFlow integration; the others are those of the public API (F13c).
+  BUDGETFLOW_SCOPES = %w[invoices:read invoices:write partners:write].freeze
 
   # What each scope lets a key do, as the permission its owner would need to do it by hand (Permissions::MATRIX).
-  SCOPE_PERMISSIONS = { "invoices:read" => "records.view", "invoices:write" => "records.write", "partners:write" => "records.write" }.freeze
+  SCOPE_PERMISSIONS = {
+    "invoices:read" => "records.view", "invoices:write" => "records.write", "partners:write" => "records.write",
+    "accounts:read" => "records.view", "partners:read" => "records.view", "journals:read" => "records.view", "entries:read" => "records.view",
+    "entries:write" => "records.write", "entries:post" => "entries.post", "entries:reverse" => "entries.reverse", "documents:read" => "documents.view",
+    "bank:read" => "records.view", "tasks:read" => "records.view", "periods:read" => "records.view", "reports:read" => "reports.view",
+    "letterings:read" => "records.view"
+  }.freeze
+  SCOPES = SCOPE_PERMISSIONS.keys.freeze
+  PUBLIC_SCOPES = (SCOPES - BUDGETFLOW_SCOPES).freeze
 
   # Not acts_as_tenant: the client designates the tenant, it is looked up before any tenant is set.
   belongs_to :entity
@@ -14,7 +23,9 @@ class ApiClient < ApplicationRecord
   validates :name, presence: true
   validates :key_digest, presence: true, uniqueness: true
   validate  :known_scopes
-  validate  :entity_uses_budgetflow, on: :create
+  validate  :entity_may_use_the_api, on: :create
+  validate  :owner_for_public_scopes, :expiry_ahead
+  validates :rate_limit_per_minute, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 6_000 }
   validate  :owner_has_access, :scopes_within_owner_rights, if: -> { owner && (new_record? || will_save_change_to_scopes? || will_save_change_to_owner_id?) }
 
   # Returns [client, plaintext_key]; the key can't be recovered afterwards.
@@ -27,7 +38,7 @@ class ApiClient < ApplicationRecord
   def self.authenticate(key)
     return if key.blank?
 
-    find_by(key_digest: digest(key), active: true)
+    where("expires_at IS NULL OR expires_at > ?", Time.current).find_by(key_digest: digest(key), active: true)
   end
 
   def self.generate_key = "lf_#{SecureRandom.urlsafe_base64(32)}"
@@ -54,8 +65,19 @@ class ApiClient < ApplicationRecord
 
   private
 
-  def entity_uses_budgetflow
-    errors.add(:entity, "did not declare the BudgetFlow integration") unless entity&.budgetflow?
+  # The BudgetFlow integration, or the public API once the entity turned it on (F13).
+  def entity_may_use_the_api
+    return if entity&.budgetflow? || entity&.feature?(:f13)
+
+    errors.add(:entity, "did not turn on the public API (imports, exports and API) or declare the BudgetFlow integration")
+  end
+
+  def owner_for_public_scopes
+    errors.add(:owner, "is required: a token belongs to a person") if owner.nil? && (scopes & PUBLIC_SCOPES).any? && (new_record? || will_save_change_to_scopes?)
+  end
+
+  def expiry_ahead
+    errors.add(:expires_at, "expiry must be in the future") if expires_at && will_save_change_to_expires_at? && expires_at <= Time.current
   end
 
   def owner_has_access

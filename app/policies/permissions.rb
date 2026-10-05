@@ -32,6 +32,9 @@ module Permissions
     "dunning.send"           => %i[admin accountant],           # validate and send them (F09)
     "dunning.configure"      => %i[admin accountant],           # levels, delays, texts, charges, sender of the reminders (F09)
     "dunning.auto_send"      => %i[admin],                      # let the first level go by itself: the owner only (F09)
+    "imports.manage"         => %i[admin accountant],           # guided imports of partners, accounts and entries, and taking a batch back (F13a)
+    "exports.data"           => %i[admin accountant],           # the standard data exports: chart, partners, journals, entries (F13b)
+    "exports.backup"         => %i[admin],                      # the full backup of the entity, with its documents and audit trail: the owner (F13b)
     "periods.lock"           => %i[admin accountant],
     "periods.unlock"         => %i[admin],
     "users.manage"           => %i[admin],

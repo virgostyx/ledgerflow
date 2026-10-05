@@ -19,6 +19,10 @@ class Accounting::ClosingRun < ApplicationRecord
   has_one_attached :bundle # the closing file (R20), kept with its manifest of hashes
   has_one :snapshot, class_name: "Accounting::ClosingSnapshot", foreign_key: :closing_run_id, inverse_of: :run, dependent: :destroy
 
+  after_commit(on: :update, if: -> { saved_change_to_status? && closed? }) do # F13c
+    Webhooks::Emit.call("closing.completed", -> { { id: id, fiscal_year: fiscal_year.year, closed_at: Time.current.utc.iso8601 } }, entity: entity)
+  end
+
   # The run being worked on: neither closed nor reopened.
   scope :active, -> { where(status: %i[draft in_progress ready]) }
 

@@ -11,6 +11,10 @@ class Accounting::PeriodLock < ApplicationRecord
   belongs_to :locked_by,   class_name: "User"
   belongs_to :unlocked_by, class_name: "User", optional: true
 
+  after_create_commit do # F13c
+    Webhooks::Emit.call("period.locked", { id: id, kind: kind, starts_on: starts_on.iso8601, ends_on: ends_on.iso8601 }, entity: entity)
+  end
+
   validates :starts_on, :ends_on, presence: true
   validate  :ends_on_not_before_starts_on
 

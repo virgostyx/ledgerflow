@@ -42,7 +42,7 @@ class Entity < ApplicationRecord
 
   # The features of docs/dev/features/spec.md that are built, each shipped behind a per-entity flag. A function adds its
   # key here when it ships.
-  FEATURES = %w[f01 f02 f03 f08 f09 f10 f11].freeze
+  FEATURES = %w[f01 f02 f03 f08 f09 f10 f11 f13].freeze
   FEATURE_LABELS = {
     "f01" => [ "Roles, period locks and users", "Turns on the Periods and Users and roles screens and the four-eyes option. The safeguards (a locked period refuses entries, the last owner stays) stay active either way." ],
     "f02" => [ "Bank statements (CODA)", "Turns on the import of CODA bank statements and the automatic reconciliation of their lines." ],
@@ -50,6 +50,7 @@ class Entity < ApplicationRecord
     "f08" => [ "Tasks and comments", "Turns on tasks and comment threads on entries, ledger lines, accounts, partners, documents and bank lines, with mentions and notifications." ],
     "f10" => [ "Guided year-end closing", "Turns on the closing assistant: 18 checked steps from the open fiscal year to the closed one, closing entries in draft, detailed carry-forward, lock, snapshot and bundle, approval and reopening. The direct Close button of the fiscal year is replaced by it." ],
     "f11" => [ "Exchange rates import", "Turns on the daily import of the ECB rates and the monthly import of the InforEuro rates (the only thing that goes to the network). Entering rates, the rate rules and the revaluation are always available." ],
+    "f13" => [ "Imports, exports and API", "Turns on the guided imports of partners, accounts and entries from CSV and XLSX files (drafts only, taken back by batch), the data exports and the public API." ],
     "f09" => [ "Customer dunning", "Turns on the preparation of reminders from the open customer lines: levels, texts per language, preview, sending after validation, disputes and payment promises." ]
   }.freeze
 

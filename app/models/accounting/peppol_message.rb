@@ -14,6 +14,10 @@ class Accounting::PeppolMessage < ApplicationRecord
   belongs_to :invoice,  class_name: "Accounting::Invoice", optional: true
   belongs_to :document, class_name: "Accounting::Document", optional: true
 
+  after_create_commit(if: :inbound?) do # F13c
+    Webhooks::Emit.call("peppol.received", { id: id, document_type: document_type, status: status, occurred_at: occurred_at.utc.iso8601 }, entity: entity)
+  end
+
   validates :message_id, presence: true, uniqueness: { scope: %i[entity_id direction] }
   validates :occurred_at, presence: true
 

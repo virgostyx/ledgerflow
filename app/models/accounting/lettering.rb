@@ -12,6 +12,10 @@ class Accounting::Lettering < ApplicationRecord
   has_many   :lines, class_name: "Accounting::JournalEntryLine",
              foreign_key: :lettering_id, inverse_of: :lettering, dependent: :nullify
 
+  after_create_commit do # F13c
+    Webhooks::Emit.call("reconciliation.created", { id: id, code: code, account_id: account_id, partner_id: partner_id, lettered_on: lettered_on.iso8601, kind: kind }, entity: entity)
+  end
+
   validates :code,        presence: true, uniqueness: { scope: %i[entity_id account_id] }
   validates :lettered_on, presence: true
 

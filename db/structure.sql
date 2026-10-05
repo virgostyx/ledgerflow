@@ -217,6 +217,7 @@ CREATE TABLE public.accounting_accounts (
     cash_flow_category character varying,
     currency character varying(3),
     revalue_at_closing boolean DEFAULT false NOT NULL,
+    import_batch_id bigint,
     CONSTRAINT chk_account_class CHECK (((account_class >= 1) AND (account_class <= 7)))
 );
 
@@ -1211,7 +1212,15 @@ CREATE TABLE public.accounting_import_batches (
     errors_list jsonb DEFAULT '[]'::jsonb NOT NULL,
     warnings_list jsonb DEFAULT '[]'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    kind character varying,
+    filename character varying,
+    mapping jsonb DEFAULT '{}'::jsonb NOT NULL,
+    options jsonb DEFAULT '{}'::jsonb NOT NULL,
+    summary jsonb DEFAULT '{}'::jsonb NOT NULL,
+    undo_reason character varying,
+    undone_by_id bigint,
+    undone_at timestamp(6) without time zone
 );
 
 
@@ -1549,7 +1558,9 @@ CREATE TABLE public.accounting_journal_entries (
     reversal_reason character varying,
     vat_regularisation boolean DEFAULT false NOT NULL,
     lettering_id bigint,
-    closing_run_id bigint
+    closing_run_id bigint,
+    import_batch_id bigint,
+    external_id character varying
 );
 
 
@@ -1921,7 +1932,8 @@ CREATE TABLE public.accounting_partners (
     do_not_dun boolean DEFAULT false NOT NULL,
     email_bounced_at timestamp(6) without time zone,
     language character varying DEFAULT 'fr'::character varying NOT NULL,
-    currency character varying(3) DEFAULT 'EUR'::character varying NOT NULL
+    currency character varying(3) DEFAULT 'EUR'::character varying NOT NULL,
+    import_batch_id bigint
 );
 
 
@@ -2751,7 +2763,9 @@ CREATE TABLE public.api_clients (
     last_used_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    owner_id bigint
+    owner_id bigint,
+    expires_at timestamp(6) without time zone,
+    rate_limit_per_minute integer DEFAULT 60 NOT NULL
 );
 
 
@@ -2772,6 +2786,43 @@ CREATE SEQUENCE public.api_clients_id_seq
 --
 
 ALTER SEQUENCE public.api_clients_id_seq OWNED BY public.api_clients.id;
+
+
+--
+-- Name: api_idempotency_keys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_idempotency_keys (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    api_client_id bigint NOT NULL,
+    key character varying NOT NULL,
+    request_fingerprint character varying NOT NULL,
+    response_status integer,
+    response_body jsonb,
+    response_headers jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: api_idempotency_keys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.api_idempotency_keys_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: api_idempotency_keys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.api_idempotency_keys_id_seq OWNED BY public.api_idempotency_keys.id;
 
 
 --
@@ -3006,6 +3057,45 @@ CREATE SEQUENCE public.custom_roles_id_seq
 --
 
 ALTER SEQUENCE public.custom_roles_id_seq OWNED BY public.custom_roles.id;
+
+
+--
+-- Name: data_exports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.data_exports (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint,
+    kind character varying DEFAULT 'backup'::character varying NOT NULL,
+    status character varying DEFAULT 'processing'::character varying NOT NULL,
+    params jsonb DEFAULT '{}'::jsonb NOT NULL,
+    file_count integer DEFAULT 0 NOT NULL,
+    bytes bigint DEFAULT 0 NOT NULL,
+    error character varying,
+    expires_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: data_exports_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.data_exports_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: data_exports_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.data_exports_id_seq OWNED BY public.data_exports.id;
 
 
 --
@@ -3251,6 +3341,41 @@ ALTER SEQUENCE public.entities_id_seq OWNED BY public.entities.id;
 
 
 --
+-- Name: import_templates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.import_templates (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    name character varying NOT NULL,
+    kind character varying NOT NULL,
+    mapping jsonb DEFAULT '{}'::jsonb NOT NULL,
+    options jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: import_templates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.import_templates_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: import_templates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.import_templates_id_seq OWNED BY public.import_templates.id;
+
+
+--
 -- Name: posted_lines; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -3479,6 +3604,93 @@ CREATE SEQUENCE public.webauthn_credentials_id_seq
 --
 
 ALTER SEQUENCE public.webauthn_credentials_id_seq OWNED BY public.webauthn_credentials.id;
+
+
+--
+-- Name: webhook_deliveries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.webhook_deliveries (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    webhook_subscription_id bigint NOT NULL,
+    replay_of_id bigint,
+    event character varying NOT NULL,
+    event_id character varying NOT NULL,
+    payload_version integer DEFAULT 1 NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    next_attempt_at timestamp(6) without time zone,
+    last_response_code integer,
+    last_error character varying,
+    delivered_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: webhook_deliveries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.webhook_deliveries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: webhook_deliveries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.webhook_deliveries_id_seq OWNED BY public.webhook_deliveries.id;
+
+
+--
+-- Name: webhook_subscriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.webhook_subscriptions (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    created_by_id bigint,
+    name character varying NOT NULL,
+    url character varying NOT NULL,
+    events text[] DEFAULT '{}'::text[] NOT NULL,
+    secret character varying NOT NULL,
+    previous_secret character varying,
+    secret_rotated_at timestamp(6) without time zone,
+    active boolean DEFAULT true NOT NULL,
+    suspended_at timestamp(6) without time zone,
+    suspended_reason character varying,
+    consecutive_failures integer DEFAULT 0 NOT NULL,
+    max_failures integer DEFAULT 10 NOT NULL,
+    last_delivery_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: webhook_subscriptions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.webhook_subscriptions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: webhook_subscriptions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.webhook_subscriptions_id_seq OWNED BY public.webhook_subscriptions.id;
 
 
 --
@@ -3937,6 +4149,13 @@ ALTER TABLE ONLY public.api_clients ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: api_idempotency_keys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_idempotency_keys ALTER COLUMN id SET DEFAULT nextval('public.api_idempotency_keys_id_seq'::regclass);
+
+
+--
 -- Name: api_requests id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3979,6 +4198,13 @@ ALTER TABLE ONLY public.custom_roles ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: data_exports id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.data_exports ALTER COLUMN id SET DEFAULT nextval('public.data_exports_id_seq'::regclass);
+
+
+--
 -- Name: dunning_item_lines id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4014,6 +4240,13 @@ ALTER TABLE ONLY public.entities ALTER COLUMN id SET DEFAULT nextval('public.ent
 
 
 --
+-- Name: import_templates id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_templates ALTER COLUMN id SET DEFAULT nextval('public.import_templates_id_seq'::regclass);
+
+
+--
 -- Name: recovery_codes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4046,6 +4279,20 @@ ALTER TABLE ONLY public.versions ALTER COLUMN id SET DEFAULT nextval('public.ver
 --
 
 ALTER TABLE ONLY public.webauthn_credentials ALTER COLUMN id SET DEFAULT nextval('public.webauthn_credentials_id_seq'::regclass);
+
+
+--
+-- Name: webhook_deliveries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_deliveries ALTER COLUMN id SET DEFAULT nextval('public.webhook_deliveries_id_seq'::regclass);
+
+
+--
+-- Name: webhook_subscriptions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_subscriptions ALTER COLUMN id SET DEFAULT nextval('public.webhook_subscriptions_id_seq'::regclass);
 
 
 --
@@ -4569,6 +4816,14 @@ ALTER TABLE ONLY public.api_clients
 
 
 --
+-- Name: api_idempotency_keys api_idempotency_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_idempotency_keys
+    ADD CONSTRAINT api_idempotency_keys_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: api_requests api_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4625,6 +4880,14 @@ ALTER TABLE ONLY public.custom_roles
 
 
 --
+-- Name: data_exports data_exports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.data_exports
+    ADD CONSTRAINT data_exports_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: dunning_item_lines dunning_item_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4662,6 +4925,14 @@ ALTER TABLE ONLY public.dunning_runs
 
 ALTER TABLE ONLY public.entities
     ADD CONSTRAINT entities_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: import_templates import_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_templates
+    ADD CONSTRAINT import_templates_pkey PRIMARY KEY (id);
 
 
 --
@@ -4710,6 +4981,22 @@ ALTER TABLE ONLY public.versions
 
 ALTER TABLE ONLY public.webauthn_credentials
     ADD CONSTRAINT webauthn_credentials_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: webhook_deliveries webhook_deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_deliveries
+    ADD CONSTRAINT webhook_deliveries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: webhook_subscriptions webhook_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_subscriptions
+    ADD CONSTRAINT webhook_subscriptions_pkey PRIMARY KEY (id);
 
 
 --
@@ -4794,6 +5081,13 @@ CREATE INDEX idx_entries_auto_reverse_on ON public.accounting_journal_entries US
 --
 
 CREATE INDEX idx_entries_entity_period ON public.accounting_journal_entries USING btree (entity_id, fiscal_year_id, entry_date) WHERE (status = 1);
+
+
+--
+-- Name: idx_entries_external_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_entries_external_id ON public.accounting_journal_entries USING btree (entity_id, external_id) WHERE (external_id IS NOT NULL);
 
 
 --
@@ -4972,6 +5266,13 @@ CREATE UNIQUE INDEX idx_on_recurring_entry_id_due_on_121642b48a ON public.accoun
 
 
 --
+-- Name: idx_on_webhook_subscription_id_created_at_199b16efdc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_webhook_subscription_id_created_at_199b16efdc ON public.webhook_deliveries USING btree (webhook_subscription_id, created_at);
+
+
+--
 -- Name: idx_peppol_messages_identity; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5025,6 +5326,13 @@ CREATE UNIQUE INDEX index_accounting_accounts_on_entity_and_code ON public.accou
 --
 
 CREATE INDEX index_accounting_accounts_on_entity_id ON public.accounting_accounts USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_accounts_on_import_batch_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_accounts_on_import_batch_id ON public.accounting_accounts USING btree (import_batch_id);
 
 
 --
@@ -5511,6 +5819,13 @@ CREATE INDEX index_accounting_import_batches_on_entity_id_and_file_sha256 ON pub
 
 
 --
+-- Name: index_accounting_import_batches_on_undone_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_import_batches_on_undone_by_id ON public.accounting_import_batches USING btree (undone_by_id);
+
+
+--
 -- Name: index_accounting_import_batches_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5791,6 +6106,13 @@ CREATE INDEX index_accounting_journal_entries_on_fiscal_year_id ON public.accoun
 
 
 --
+-- Name: index_accounting_journal_entries_on_import_batch_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_journal_entries_on_import_batch_id ON public.accounting_journal_entries USING btree (import_batch_id);
+
+
+--
 -- Name: index_accounting_journal_entries_on_journal_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6047,6 +6369,13 @@ CREATE UNIQUE INDEX index_accounting_partners_on_entity_and_vat_number ON public
 --
 
 CREATE INDEX index_accounting_partners_on_entity_id ON public.accounting_partners USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_partners_on_import_batch_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_partners_on_import_batch_id ON public.accounting_partners USING btree (import_batch_id);
 
 
 --
@@ -6470,6 +6799,34 @@ CREATE INDEX index_api_clients_on_owner_id ON public.api_clients USING btree (ow
 
 
 --
+-- Name: index_api_idempotency_keys_on_api_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_idempotency_keys_on_api_client_id ON public.api_idempotency_keys USING btree (api_client_id);
+
+
+--
+-- Name: index_api_idempotency_keys_on_api_client_id_and_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_api_idempotency_keys_on_api_client_id_and_key ON public.api_idempotency_keys USING btree (api_client_id, key);
+
+
+--
+-- Name: index_api_idempotency_keys_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_idempotency_keys_on_created_at ON public.api_idempotency_keys USING btree (created_at);
+
+
+--
+-- Name: index_api_idempotency_keys_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_idempotency_keys_on_entity_id ON public.api_idempotency_keys USING btree (entity_id);
+
+
+--
 -- Name: index_api_requests_on_api_client_id_and_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6596,6 +6953,20 @@ CREATE UNIQUE INDEX index_custom_roles_on_entity_id_and_name ON public.custom_ro
 
 
 --
+-- Name: index_data_exports_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_data_exports_on_entity_id ON public.data_exports USING btree (entity_id);
+
+
+--
+-- Name: index_data_exports_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_data_exports_on_user_id ON public.data_exports USING btree (user_id);
+
+
+--
 -- Name: index_depreciation_entries_on_asset_and_fiscal_year; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6708,6 +7079,20 @@ CREATE UNIQUE INDEX index_entities_on_vat_number_unique ON public.entities USING
 
 
 --
+-- Name: index_import_templates_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_import_templates_on_entity_id ON public.import_templates USING btree (entity_id);
+
+
+--
+-- Name: index_import_templates_on_entity_id_and_kind_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_import_templates_on_entity_id_and_kind_and_name ON public.import_templates USING btree (entity_id, kind, name);
+
+
+--
 -- Name: index_recovery_codes_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6810,6 +7195,48 @@ CREATE INDEX index_webauthn_credentials_on_user_id ON public.webauthn_credential
 --
 
 CREATE UNIQUE INDEX index_webauthn_credentials_on_user_id_and_nickname ON public.webauthn_credentials USING btree (user_id, nickname);
+
+
+--
+-- Name: index_webhook_deliveries_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_deliveries_on_entity_id ON public.webhook_deliveries USING btree (entity_id);
+
+
+--
+-- Name: index_webhook_deliveries_on_replay_of_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_deliveries_on_replay_of_id ON public.webhook_deliveries USING btree (replay_of_id);
+
+
+--
+-- Name: index_webhook_deliveries_on_status_and_next_attempt_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_deliveries_on_status_and_next_attempt_at ON public.webhook_deliveries USING btree (status, next_attempt_at);
+
+
+--
+-- Name: index_webhook_deliveries_on_webhook_subscription_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_deliveries_on_webhook_subscription_id ON public.webhook_deliveries USING btree (webhook_subscription_id);
+
+
+--
+-- Name: index_webhook_subscriptions_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_subscriptions_on_created_by_id ON public.webhook_subscriptions USING btree (created_by_id);
+
+
+--
+-- Name: index_webhook_subscriptions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_subscriptions_on_entity_id ON public.webhook_subscriptions USING btree (entity_id);
 
 
 --
@@ -7056,6 +7483,14 @@ ALTER TABLE ONLY public.accounting_invoice_events
 
 
 --
+-- Name: webhook_deliveries fk_rails_242bfb2cbe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_deliveries
+    ADD CONSTRAINT fk_rails_242bfb2cbe FOREIGN KEY (replay_of_id) REFERENCES public.webhook_deliveries(id);
+
+
+--
 -- Name: accounting_lettering_suggestions fk_rails_252f372366; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7168,6 +7603,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 
 --
+-- Name: accounting_partners fk_rails_36030e08bc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_partners
+    ADD CONSTRAINT fk_rails_36030e08bc FOREIGN KEY (import_batch_id) REFERENCES public.accounting_import_batches(id);
+
+
+--
 -- Name: accounting_recurring_entries fk_rails_363e936719; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7181,6 +7624,14 @@ ALTER TABLE ONLY public.accounting_recurring_entries
 
 ALTER TABLE ONLY public.accounting_accounts
     ADD CONSTRAINT fk_rails_3656d9eddb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: import_templates fk_rails_39b3c2fd35; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_templates
+    ADD CONSTRAINT fk_rails_39b3c2fd35 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -7304,6 +7755,14 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 
 
 --
+-- Name: data_exports fk_rails_4a2b3fc44a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.data_exports
+    ADD CONSTRAINT fk_rails_4a2b3fc44a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_payment_reminders fk_rails_4d0dea3e8f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7317,6 +7776,14 @@ ALTER TABLE ONLY public.accounting_payment_reminders
 
 ALTER TABLE ONLY public.accounting_peppol_messages
     ADD CONSTRAINT fk_rails_4ddfe0a4ec FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id) ON DELETE SET NULL;
+
+
+--
+-- Name: data_exports fk_rails_5408e45594; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.data_exports
+    ADD CONSTRAINT fk_rails_5408e45594 FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -7376,6 +7843,14 @@ ALTER TABLE ONLY public.accounting_controlled_windows
 
 
 --
+-- Name: accounting_accounts fk_rails_5f2e274f48; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_accounts
+    ADD CONSTRAINT fk_rails_5f2e274f48 FOREIGN KEY (import_batch_id) REFERENCES public.accounting_import_batches(id);
+
+
+--
 -- Name: accounting_documents fk_rails_5f348b6a57; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7405,6 +7880,14 @@ ALTER TABLE ONLY public.accounting_analytical_accounts
 
 ALTER TABLE ONLY public.accounting_invoices
     ADD CONSTRAINT fk_rails_67f38d74d3 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: api_idempotency_keys fk_rails_68ace95426; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_idempotency_keys
+    ADD CONSTRAINT fk_rails_68ace95426 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -7485,6 +7968,14 @@ ALTER TABLE ONLY public.accounting_recurring_entries
 
 ALTER TABLE ONLY public.accounting_bank_rules
     ADD CONSTRAINT fk_rails_77c6b626d4 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_import_batches fk_rails_77ebb8d9aa; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_import_batches
+    ADD CONSTRAINT fk_rails_77ebb8d9aa FOREIGN KEY (undone_by_id) REFERENCES public.users(id);
 
 
 --
@@ -7816,6 +8307,14 @@ ALTER TABLE ONLY public.accounting_comments
 
 
 --
+-- Name: accounting_journal_entries fk_rails_b5316aa988; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entries
+    ADD CONSTRAINT fk_rails_b5316aa988 FOREIGN KEY (import_batch_id) REFERENCES public.accounting_import_batches(id);
+
+
+--
 -- Name: accounting_line_allocations fk_rails_b66f2461eb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7872,11 +8371,27 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: webhook_subscriptions fk_rails_bfda39f37b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_subscriptions
+    ADD CONSTRAINT fk_rails_bfda39f37b FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_notifications fk_rails_c0402a52fb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_notifications
     ADD CONSTRAINT fk_rails_c0402a52fb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: webhook_deliveries fk_rails_c0876b906b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_deliveries
+    ADD CONSTRAINT fk_rails_c0876b906b FOREIGN KEY (webhook_subscription_id) REFERENCES public.webhook_subscriptions(id);
 
 
 --
@@ -7960,6 +8475,14 @@ ALTER TABLE ONLY public.accounting_lettering_suggestions
 
 
 --
+-- Name: webhook_deliveries fk_rails_ca77174d07; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_deliveries
+    ADD CONSTRAINT fk_rails_ca77174d07 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_ccc90aef29; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8040,6 +8563,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 
 --
+-- Name: api_idempotency_keys fk_rails_d411dbc5a9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_idempotency_keys
+    ADD CONSTRAINT fk_rails_d411dbc5a9 FOREIGN KEY (api_client_id) REFERENCES public.api_clients(id);
+
+
+--
 -- Name: accounting_controlled_windows fk_rails_d41f0525a4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8069,6 +8600,14 @@ ALTER TABLE ONLY public.accounting_recurring_runs
 
 ALTER TABLE ONLY public.accounting_journal_entries
     ADD CONSTRAINT fk_rails_daa313bbd9 FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: webhook_subscriptions fk_rails_dc4177600a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_subscriptions
+    ADD CONSTRAINT fk_rails_dc4177600a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -8358,6 +8897,10 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261005230000'),
+('20261005220000'),
+('20261005210000'),
+('20261005200000'),
 ('20261005180000'),
 ('20261005170000'),
 ('20261005160000'),

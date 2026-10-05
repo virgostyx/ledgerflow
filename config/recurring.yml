@@ -33,6 +33,14 @@ production:
     class: Accounting::SuggestLetteringsJob
     queue: default
     schedule: every day at 1am
+  purge_expired_backups:
+    class: Exports::PurgeExpiredJob
+    queue: default
+    schedule: every day at 3am
+  purge_idempotency_keys:
+    class: Api::PurgeIdempotencyKeysJob
+    queue: default
+    schedule: every day at 3:30am
   relock_periods:
     class: Accounting::RelockPeriodsJob
     queue: default

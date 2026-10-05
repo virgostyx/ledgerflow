@@ -26,12 +26,27 @@
 
     <fieldset>
       <legend class="block text-sm font-medium text-gray-700 mb-2">Permissions</legend>
-      <%= f.collection_check_boxes :scopes, ApiClient::SCOPES, :itself, :itself do |b| %>
+      <% offered = (budgetflow_enabled? ? ApiClient::BUDGETFLOW_SCOPES : []) + (feature?(:f13) ? ApiClient::PUBLIC_SCOPES : []) %>
+      <%= f.collection_check_boxes :scopes, offered, :itself, :itself do |b| %>
         <label class="flex items-center gap-2 text-sm font-mono text-gray-700 mb-1">
           <%= b.check_box(class: "rounded border-gray-300") %> <%= b.text %>
         </label>
       <% end %>
     </fieldset>
+
+    <% if feature?(:f13) %>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <%= f.label :expires_at, "Expires on (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.date_field :expires_at, value: @client.expires_at&.to_date, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+        </div>
+        <div>
+          <%= f.label :rate_limit_per_minute, "Requests a minute", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.number_field :rate_limit_per_minute, value: @client.rate_limit_per_minute, min: 1, max: 6000, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500">A token can do what you can do by hand, no more: a permission you do not have is refused. It is shown once.</p>
+    <% end %>
 
     <div class="flex gap-3">
       <%= f.submit "Create", class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700" %>

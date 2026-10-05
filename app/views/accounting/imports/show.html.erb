@@ -1,0 +1,108 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Imports", path: accounting_imports_path }, { label: @batch.filename } ]) %>
+<% end %>
+<% summary = @batch.summary %>
+<% if @batch.result == "processing" %><meta http-equiv="refresh" content="3"><% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Import of #{@batch.kind}",
+      description: "#{@batch.filename}: #{@batch.lines_read} rows, #{{ 'uploaded' => 'to map and check', 'processing' => 'running', 'imported' => 'imported', 'undone' => 'taken back' }.fetch(@batch.result)}.") %>
+
+<% if @batch.result == "processing" %>
+  <div class="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900" data-section="progress">
+    Running in the background: <%= @batch.lines_imported %> created so far.
+    <progress class="w-full mt-2" max="<%= [ @batch.lines_read, 1 ].max %>" value="<%= @batch.lines_imported %>"></progress>
+  </div>
+<% end %>
+
+<% if summary.present? %>
+  <div class="mb-6 rounded-md border border-gray-200 bg-white p-4 text-sm" data-section="summary">
+    <p class="font-medium text-gray-900"><%= summary["simulation"] ? "Simulation (nothing was written)" : "Result" %></p>
+    <p class="mt-1 text-gray-700"><%= summary["created"] %> to create or created, <%= summary["skipped"] %> already there, <%= summary["refused"] %> refused.</p>
+    <% if @batch.errors_list.any? %>
+      <table class="mt-3 w-full text-xs" data-section="errors">
+        <thead><tr class="text-left text-gray-500"><th class="py-1 pr-3">Piece or row</th><th class="py-1 pr-3">Lines</th><th class="py-1">Cause</th></tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @batch.errors_list.first(200).each do |error| %>
+            <tr><td class="py-1 pr-3 font-mono"><%= error["ref"] || "—" %></td><td class="py-1 pr-3"><%= error["lines"].to_a.to_sentence %></td><td class="py-1 text-red-800"><%= error["message"] %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+      <% if @batch.errors_list.size > 200 %><p class="mt-2 text-xs text-gray-500"><%= @batch.errors_list.size - 200 %> more.</p><% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @batch.result == "uploaded" && policy(@batch).update? %>
+  <%= form_with url: accounting_import_path(@batch), method: :patch, class: "rounded-lg border border-gray-200 bg-white p-5 space-y-5" do %>
+    <div>
+      <h2 class="text-sm font-semibold text-gray-700 mb-2">Columns</h2>
+      <table class="text-sm" data-section="mapping">
+        <% @kind.fields.each do |field, required| %>
+          <tr>
+            <td class="pr-4 py-1 text-gray-700"><%= label_tag "mapping_#{field}", field.humanize + (required ? " *" : "") %></td>
+            <td><%= select_tag "mapping[#{field}]", options_for_select(@headers, @batch.mapping[field]), include_blank: true, id: "mapping_#{field}", class: "form-input" %></td>
+          </tr>
+        <% end %>
+      </table>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 max-w-xl">
+      <div>
+        <%= label_tag :date_format, "Dates are written", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= select_tag :date_format, options_for_select([ [ "YYYY-MM-DD", "iso" ], [ "DD/MM/YYYY", "dmy" ], [ "MM/DD/YYYY", "mdy" ] ], @batch.options["date_format"]), class: "form-input" %>
+      </div>
+      <div>
+        <%= label_tag :decimal, "Decimal separator", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= select_tag :decimal, options_for_select([ [ "Point", "." ], [ "Comma", "," ] ], @batch.options["decimal"]), class: "form-input" %>
+      </div>
+    </div>
+
+    <% unknowns = summary["unknowns"].to_h.compact_blank %>
+    <% if unknowns.any? %>
+      <div data-section="unknowns">
+        <h2 class="text-sm font-semibold text-gray-700 mb-1">Values the file uses that do not exist yet</h2>
+        <p class="text-xs text-gray-600 mb-2">Nothing is created without your say: link each one to an existing account or partner, or confirm a new partner.</p>
+        <% resolutions = @batch.mapping["resolutions"].to_h %>
+        <% Array(unknowns["accounts"]).each do |code| %>
+          <div class="flex items-center gap-3 py-1 text-sm"><span class="font-mono w-32">Account <%= code %></span>
+            <%= text_field_tag "resolutions[accounts][#{code}]", resolutions.dig("accounts", code), placeholder: "code of the account to use", class: "form-input" %></div>
+        <% end %>
+        <% Array(unknowns["partners"]).each do |name| %>
+          <div class="flex items-center gap-3 py-1 text-sm"><span class="w-48 truncate">Partner <%= name %></span>
+            <%= select_tag "resolutions[partners][#{name}]", options_for_select([ [ "Create it (to validate afterwards)", "create" ] ] + Accounting::Partner.order(:name).limit(500).map { |p| [ "Use #{p.name}", p.id ] }, resolutions.dig("partners", name)), include_blank: "Not decided", class: "form-input" %></div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="flex items-end gap-3">
+      <div>
+        <%= label_tag :template_name, "Keep this mapping as", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= text_field_tag :template_name, nil, placeholder: "Name (optional)", class: "form-input" %>
+      </div>
+      <%= submit_tag "Save mapping", class: "px-4 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50 cursor-pointer" %>
+    </div>
+  <% end %>
+
+  <div class="mt-4 flex gap-3">
+    <%= button_to "Check (writes nothing)", simulate_accounting_import_path(@batch), method: :post, class: "px-4 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50 cursor-pointer" %>
+    <%= button_to "Import", run_accounting_import_path(@batch), method: :post, class: "btn-primary cursor-pointer", form: { data: { turbo_confirm: "Import the valid rows now?" } } %>
+  </div>
+
+  <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">First rows of the file</h2>
+  <div class="overflow-x-auto"><table class="text-xs" data-section="sample">
+    <thead><tr><% @headers.each do |header| %><th class="px-3 py-1 text-left text-gray-500"><%= header %></th><% end %></tr></thead>
+    <tbody><% @sample.each do |row| %><tr><% row.each do |cell| %><td class="px-3 py-1"><%= cell %></td><% end %></tr><% end %></tbody>
+  </table></div>
+<% end %>
+
+<% if @batch.result == "imported" && policy(@batch).undo? %>
+  <%= form_with url: undo_accounting_import_path(@batch), method: :post, class: "mt-6 rounded-lg border border-gray-200 bg-white p-5 space-y-3 max-w-xl", data: { turbo_confirm: "Take this batch back?" } do %>
+    <p class="text-sm text-gray-700">Taking the batch back deletes its drafts and what it created. Validated entries are reversed, never deleted, and then a reason is required.</p>
+    <%= text_field_tag :reason, nil, placeholder: "Reason (required when entries were validated)", class: "form-input w-full" %>
+    <%= submit_tag "Take the batch back", class: "px-4 py-2 border border-red-300 text-red-700 text-sm rounded-md hover:bg-red-50 cursor-pointer" %>
+  <% end %>
+<% end %>
+
+<% if @batch.result == "undone" %>
+  <p class="mt-4 text-sm text-gray-700">Taken back by <%= @batch.undone_by&.full_name %> on <%= l(@batch.undone_at, format: :short) %>: <%= @batch.undo_reason.presence || "drafts only, no reason needed" %>.</p>
+<% end %>

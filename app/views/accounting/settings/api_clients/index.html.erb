@@ -19,6 +19,7 @@
           <% %w[Name Owner Scopes Status].each do |h| %>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= h %></th>
           <% end %>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Expires</th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last used</th>
           <th class="px-4 py-3"></th>
         </tr>
@@ -30,12 +31,15 @@
             <td class="px-4 py-3 text-sm text-gray-600"><%= client.owner&.full_name || "none (rotate the key to assign you)" %></td>
             <td class="px-4 py-3 text-sm font-mono text-gray-600"><%= client.scopes.join(", ").presence || "—" %></td>
             <td class="px-4 py-3">
-              <% if client.active? %>
+              <% if client.active? && client.expires_at && client.expires_at <= Time.current %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Expired</span>
+              <% elsif client.active? %>
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">Active</span>
               <% else %>
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">Revoked</span>
               <% end %>
             </td>
+            <td class="px-4 py-3 text-sm text-gray-500"><%= client.expires_at ? l(client.expires_at.to_date, format: :long) : "Never" %></td>
             <td class="px-4 py-3 text-sm text-gray-500"><%= client.last_used_at ? l(client.last_used_at, format: :short) : "Never" %></td>
             <td class="px-4 py-3 text-right">
               <% if client.active? %>
@@ -52,7 +56,7 @@
           </tr>
         <% end %>
         <% if @clients.empty? %>
-          <tr><td colspan="5" class="px-4 py-12 text-center text-sm text-gray-400">No API clients yet.</td></tr>
+          <tr><td colspan="6" class="px-4 py-12 text-center text-sm text-gray-400">No API clients yet.</td></tr>
         <% end %>
       </tbody>
     </table>

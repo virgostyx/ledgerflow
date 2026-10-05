@@ -49,8 +49,11 @@ RSpec.describe "BudgetFlow integration gate", type: :request do
     end
   end
 
-  describe "an entity that does not use BudgetFlow" do
-    before { sign_in admin }
+  describe "an entity that does not use BudgetFlow (and did not turn the public API on)" do
+    before do
+      sign_in admin
+      entity.update!(features: { "f13" => false })
+    end
 
     it "has no API Clients link and no access to the screen" do
       get accounting_settings_root_path

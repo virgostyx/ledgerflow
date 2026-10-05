@@ -1,7 +1,7 @@
 # Third-party applications that push data through the API (docs/dev/api/inbound-api.md).
 # The plaintext key is rendered once, in the response to create/rotate, and never stored.
 class Accounting::Settings::ApiClientsController < Accounting::Settings::BaseController
-  before_action :require_budgetflow!
+  before_action :require_api!
   before_action :set_client, only: [ :rotate, :revoke ]
 
   def index
@@ -42,9 +42,9 @@ class Accounting::Settings::ApiClientsController < Accounting::Settings::BaseCon
 
   def current_entity = ActsAsTenant.current_tenant
 
-  # The screen does not exist for an entity that did not declare the BudgetFlow integration.
-  def require_budgetflow!
-    head :not_found unless budgetflow_enabled?
+  # The screen does not exist for an entity that neither declared the BudgetFlow integration nor turned the public API on (F13).
+  def require_api!
+    head :not_found unless budgetflow_enabled? || feature?(:f13)
   end
 
   def clients = ApiClient.where(entity: current_entity)
@@ -54,6 +54,10 @@ class Accounting::Settings::ApiClientsController < Accounting::Settings::BaseCon
   end
 
   def client_params
-    params.require(:api_client).permit(:name, scopes: []).tap { |p| p[:scopes] = Array(p[:scopes]).compact_blank }
+    params.require(:api_client).permit(:name, :expires_at, :rate_limit_per_minute, scopes: []).tap do |p|
+      p[:scopes] = Array(p[:scopes]).compact_blank
+      p[:expires_at] = p[:expires_at].presence&.then { |date| Date.iso8601(date).end_of_day } rescue nil
+      p.delete(:rate_limit_per_minute) if p[:rate_limit_per_minute].blank?
+    end
   end
 end

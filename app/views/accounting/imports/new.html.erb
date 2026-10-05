@@ -1,0 +1,39 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Imports", path: accounting_imports_path }, { label: "New" } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Import #{@kind}") %>
+
+<div class="max-w-2xl">
+  <p class="mb-4 text-sm text-gray-600">
+    <%= { "entries" => "A CSV or XLSX file with one line per entry line. The lines of a piece share a piece number. Pieces are created as drafts; one that does not balance is refused alone.",
+          "partners" => "A CSV or XLSX file with one partner per row. A partner already there (same reference, VAT number or name) is skipped, never overwritten.",
+          "accounts" => "A CSV or XLSX file with one account per row, created as custom accounts under an existing parent." }.fetch(@kind) %>
+    The first line holds the column titles.
+  </p>
+
+  <%= form_with url: accounting_imports_path, method: :post, multipart: true, class: "rounded-lg border border-gray-200 bg-white p-5 space-y-4" do %>
+    <%= hidden_field_tag :kind, @kind %>
+    <div>
+      <%= label_tag :file, "File (CSV or XLSX)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= file_field_tag :file, required: true, accept: ".csv,.txt,.xlsx", class: "block w-full text-sm text-gray-600" %>
+    </div>
+    <% if @templates.any? %>
+      <div>
+        <%= label_tag :template_id, "Saved mapping", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= select_tag :template_id, options_from_collection_for_select(@templates, :id, :name), include_blank: "None: propose from the column titles", class: "form-input" %>
+      </div>
+    <% end %>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <%= label_tag :date_format, "Dates are written", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= select_tag :date_format, options_for_select([ [ "YYYY-MM-DD", "iso" ], [ "DD/MM/YYYY", "dmy" ], [ "MM/DD/YYYY", "mdy" ] ]), class: "form-input" %>
+      </div>
+      <div>
+        <%= label_tag :decimal, "Decimal separator", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= select_tag :decimal, options_for_select([ [ "Point (1,234.50)", "." ], [ "Comma (1.234,50)", "," ] ]), class: "form-input" %>
+      </div>
+    </div>
+    <%= submit_tag "Read the file", class: "btn-primary" %>
+  <% end %>
+</div>

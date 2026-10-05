@@ -1,0 +1,49 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Imports" } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Imports",
+      description: "Bring partners, accounts and entries in from a CSV or XLSX file. Entries come in as drafts, and a batch can be taken back.") do |header| %>
+  <% header.with_actions do %>
+    <% if policy(Accounting::ImportBatch).create? %>
+      <% { "entries" => "Entries", "partners" => "Partners", "accounts" => "Accounts" }.each do |kind, label| %>
+        <%= link_to "Import #{label.downcase}", new_accounting_import_path(kind: kind), class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors" %>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% if @batches.empty? %>
+  <%= render Ui::EmptyStateComponent.new(title: "No imports yet", description: "Choose what to import: the file is read, its columns mapped, and checked before anything is written.", icon: :inbox) %>
+<% else %>
+  <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+    <table class="w-full text-sm" data-section="batches">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <th class="px-4 py-3 text-left">Date</th><th class="px-4 py-3 text-left">File</th><th class="px-4 py-3 text-left">What</th>
+          <th class="px-4 py-3 text-left">By</th><th class="px-4 py-3 text-right">Created</th><th class="px-4 py-3 text-right">Refused</th><th class="px-4 py-3 text-left">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @batches.each do |batch| %>
+          <tr>
+            <td class="px-4 py-3"><%= link_to l(batch.created_at, format: :short), accounting_import_path(batch), class: "text-primary-700 hover:underline" %></td>
+            <td class="px-4 py-3 text-gray-700"><%= batch.filename %></td>
+            <td class="px-4 py-3 text-gray-700"><%= batch.kind.humanize %></td>
+            <td class="px-4 py-3 text-gray-700"><%= batch.user&.full_name || "—" %></td>
+            <td class="px-4 py-3 text-right"><%= batch.summary["created"] || "—" %></td>
+            <td class="px-4 py-3 text-right"><%= batch.summary["refused"] || "—" %></td>
+            <td class="px-4 py-3 text-gray-700"><%= { "uploaded" => "To map", "processing" => "Running", "imported" => "Imported", "undone" => "Taken back" }.fetch(batch.result, batch.result) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
+
+<% if @templates.any? %>
+  <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">Saved mappings</h2>
+  <ul class="text-sm text-gray-700 list-disc pl-5" data-section="templates">
+    <% @templates.each do |template| %><li><%= template.name %> (<%= template.kind %>)</li><% end %>
+  </ul>
+<% end %>

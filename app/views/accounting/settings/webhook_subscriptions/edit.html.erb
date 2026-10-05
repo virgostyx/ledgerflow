@@ -1,0 +1,9 @@
+<% content_for :breadcrumb do %>
+  <%= link_to "Settings", accounting_settings_root_path, class: "text-gray-400 hover:text-gray-600" %><span class="mx-2 text-gray-300">/</span>
+  <%= link_to "Webhooks", accounting_settings_webhook_subscriptions_path, class: "text-gray-400 hover:text-gray-600" %><span class="mx-2 text-gray-300">/</span>
+  <span class="text-gray-700 font-medium"><%= @subscription.name %></span>
+<% end %>
+<div class="max-w-xl">
+  <%= render Ui::PageHeaderComponent.new(title: "Edit #{@subscription.name}") %>
+  <%= render "form", subscription: @subscription, url: accounting_settings_webhook_subscription_path(@subscription), method: :patch, submit: "Save" %>
+</div>

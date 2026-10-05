@@ -23,6 +23,8 @@ module Ledgerflow
     # The historic shared-secret JWT of BudgetFlow: closed unless the operator asks for it (see docs/dev/api/inbound-api.md).
     # A bank statement file with more records than this is imported in the background (F02).
     config.x.bank_import_background_lines = 10_000
+    config.x.webhooks_allow_http = ENV["WEBHOOKS_ALLOW_HTTP"] == "1"       # a webhook goes to https only, unless this is a test setup
+    config.x.webhooks_allow_private = ENV["WEBHOOKS_ALLOW_PRIVATE"] == "1" # ...and to a public address only (see Webhooks::UrlGuard)
     config.x.legacy_jwt_enabled = ENV["LEGACY_JWT_ENABLED"] == "1"
     config.x.documents_mail_domain = ENV.fetch("DOCUMENTS_MAIL_DOMAIN", "documents.ledgerflow.example")
     # F03: an antivirus for uploaded documents, off unless a command is given (it reads the file on its standard input).
