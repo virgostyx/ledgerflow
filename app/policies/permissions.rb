@@ -20,7 +20,7 @@ module Permissions
     "recurring.approve_post" => %i[admin],             # lets a recurring entry post by itself (F07)
     "peppol.review"          => %i[admin accountant assistant], # received invoices: look, work on again, pick the supplier, dismiss (F06)
     "peppol.send"            => %i[admin accountant],           # send an invoice through Peppol, send it again
-    "peppol.configure"       => %i[admin accountant],           # Access Point, credentials, VAT category mappings, account proposals
+    "peppol.configure"       => %i[admin],                      # Access Point, credentials, VAT category mappings, account proposals: the owner (decided 2026-10-05)
     "tasks.manage"           => %i[admin accountant assistant], # create, assign, change and close tasks (F08)
     "comments.write"         => %i[admin accountant assistant], # comment on what one can see (F08)
     "vat.file"               => %i[admin accountant],

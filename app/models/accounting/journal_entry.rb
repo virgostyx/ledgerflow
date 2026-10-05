@@ -13,6 +13,9 @@ class Accounting::JournalEntry < ApplicationRecord
   # one by one.
   CARRY_FORWARD_SOURCE = "Accounting::CarryForward".freeze
 
+  # source_type of the draft that appropriates the result of a closed year (the legal reserve), written in the next year (F10, decided 2026-10-05); source_id is the closing run.
+  APPROPRIATION_SOURCE = "Closing::Appropriation".freeze
+
   # source_type of the exchange difference a lettering generates (F11): posted by itself, linked to the lettering, undone with it.
   FX_SOURCE = "Accounting::FxAdjustment".freeze
 

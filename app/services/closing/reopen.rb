@@ -13,9 +13,13 @@ class Closing::Reopen
     following = Accounting::FiscalYear.find_by(start_date: fiscal_year.end_date + 1)
     return ctx.tap { |c| c.fail!("The next fiscal year is already closed: reopen it first.") } if following&.closed?
 
+    appropriation = Closing::Appropriation.entry_of(run)
+    return ctx.tap { |c| c.fail!("The appropriation of the result was booked (entry #{appropriation.reference}): reverse it before reopening the year.") } if appropriation&.posted?
+
     reopened = false
     ApplicationRecord.transaction do
       Accounting::PeriodLock.serialize_for_entity!
+      appropriation&.destroy! if appropriation&.draft? # a draft of the appropriation goes with the closing it was prepared for
       unlock(run, user, reason)
       following&.update!(status: :pre_closing) # only one year is open at a time: the next one waits again, then this one opens
       fiscal_year.update!(status: :open, closed_at: nil, closed_by_id: nil)

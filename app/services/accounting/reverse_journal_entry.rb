@@ -57,7 +57,8 @@ class Accounting::ReverseJournalEntry
   # A correction of a validated entry needs a reason (R18); reversals born from a source document carry theirs.
   def self.refusal_for(entry, from_source, reason)
     return I18n.t("accounting.errors.reverse_not_posted")  unless entry.posted?
-    return I18n.t("accounting.errors.reverse_has_source")  if entry.source_type.present? && !from_source
+    # (the appropriation of the result is a person's decision of the meeting: it is reversed like any entry, with a reason)
+    return I18n.t("accounting.errors.reverse_has_source")  if entry.source_type.present? && !from_source && entry.source_type != Accounting::JournalEntry::APPROPRIATION_SOURCE
     return I18n.t("accounting.errors.reverse_reason_required") if reason.blank? && !from_source
     I18n.t("accounting.errors.reverse_already") if Accounting::JournalEntry.where(reversal_of_id: entry.id).where.not(status: :reversed).exists?
   end

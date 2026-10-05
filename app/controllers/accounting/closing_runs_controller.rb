@@ -2,7 +2,7 @@
 # closing file, and the reopening.
 class Accounting::ClosingRunsController < ApplicationController
   before_action { require_feature!(:f10) }
-  before_action :set_run, only: %i[show validate_entries approve reopen bundle]
+  before_action :set_run, only: %i[show validate_entries approve appropriate reopen bundle]
 
   def index
     authorize Accounting::ClosingRun
@@ -29,6 +29,10 @@ class Accounting::ClosingRunsController < ApplicationController
     @steps = @run.steps.reload
     @drafts = Accounting::JournalEntry.where(closing_run_id: @run.id, status: :draft).includes(lines: %i[account partner]).order(:entry_date, :id)
     @summary = summary
+    return unless @run.closed?
+
+    @appropriation = Closing::Appropriation.proposal(@run)
+    @appropriation_entry = Closing::Appropriation.entry_of(@run)
   end
 
   # The accounts the closing entries use and the thresholds of the analytical review: the owner's choice, as they decide what the books will say.
@@ -43,6 +47,17 @@ class Accounting::ClosingRunsController < ApplicationController
       redirect_to accounting_closing_runs_path, notice: "Closing settings saved."
     else
       redirect_to accounting_closing_runs_path, alert: entity.errors.full_messages.to_sentence
+    end
+  end
+
+  # The appropriation of the result (legal reserve): a DRAFT of the next year, dated the day of the general meeting.
+  def appropriate
+    authorize @run, :update?
+    result = Closing::Appropriation.call_prepare(run: @run, user: current_user, params: params)
+    if result.success?
+      redirect_to accounting_closing_run_path(@run), notice: "The appropriation is prepared as a draft of #{result[:entry].fiscal_year.year}: validate it when the meeting has decided."
+    else
+      redirect_to accounting_closing_run_path(@run), alert: result.message
     end
   end
 

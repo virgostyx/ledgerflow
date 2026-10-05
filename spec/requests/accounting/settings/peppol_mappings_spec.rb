@@ -5,12 +5,14 @@ RSpec.describe "Peppol mappings", type: :request do
   include_context "with_open_fiscal_year"
   include_context "with_pcmn_accounts"
 
+  let(:owner)      { create(:user, role: :admin) }
   let(:accountant) { create(:user, role: :accountant) }
   let(:assistant)  { create(:user, role: :auditor) }
+  let!(:owner_membership)      { create(:user_entity, :admin, user: owner, entity: entity) }
   let!(:accountant_membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
   let!(:assistant_membership)  { create(:user_entity, :assistant, user: assistant, entity: entity) }
 
-  before { sign_in accountant }
+  before { sign_in owner } # the Peppol configuration is the owner's (decided 2026-10-05)
 
   it "shows the categories, S, Z, E and O ready and the others not mapped" do
     get edit_accounting_settings_peppol_mappings_path
@@ -23,7 +25,7 @@ RSpec.describe "Peppol mappings", type: :request do
     patch accounting_settings_peppol_mappings_path, params: { mappings: { "AE" => { vat_treatment: "construction_reverse_charge", vat_rate: "21" } } }
 
     expect(Accounting::VatCategoryMapping.find_by(category: "AE")).to have_attributes(vat_treatment: "construction_reverse_charge", vat_rate: 21)
-    expect(Accounting::AuditLog.where(auditable_type: "Accounting::VatCategoryMapping", user_id: accountant.id)).to exist
+    expect(Accounting::AuditLog.where(auditable_type: "Accounting::VatCategoryMapping", user_id: owner.id)).to exist
   end
 
   it "unmaps a category left empty, and it does not come back" do
@@ -60,7 +62,13 @@ RSpec.describe "Peppol mappings", type: :request do
     expect(default.reload.account).to eq(other)
   end
 
-  it "is closed to a role that cannot configure" do
+  it "is closed to an accountant and to an assistant: only the owner configures" do
+    sign_in accountant
+    get edit_accounting_settings_peppol_settings_path
+    expect(response).not_to have_http_status(:ok)
+    patch accounting_settings_peppol_mappings_path, params: { mappings: { "AE" => { vat_treatment: "domestic" } } }
+    expect(Accounting::VatCategoryMapping.find_by(category: "AE")).to be_nil
+
     sign_in assistant
     get edit_accounting_settings_peppol_mappings_path
 

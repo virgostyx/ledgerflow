@@ -136,6 +136,32 @@
   <% if @run.bundle.attached? %>
     <p class="mt-3 text-sm"><%= link_to 'Download the closing file (ZIP, with its manifest of hashes)', bundle_accounting_closing_run_path(@run), class: 'text-primary-700 hover:underline' %></p>
   <% end %>
+  <% if @run.closed? && @appropriation %>
+    <div class="mt-6 border-t border-gray-200 pt-4" data-section="appropriation">
+      <h3 class="text-sm font-semibold text-gray-900">Appropriation of the result</h3>
+      <p class="mt-1 text-xs text-gray-600 max-w-3xl">The general meeting decides after the closing. The legal reserve (5 % of the profit, until it holds 10 % of the capital) is proposed here and written as a <strong>draft of the next year</strong>, dated the day of the meeting; the rest of the profit stays carried forward. Dividends and other reserves are not covered yet.</p>
+      <dl class="mt-2 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+        <div><dt class="text-xs text-gray-500">Profit of the year</dt><dd class="font-mono"><%= Accounting::MoneyPresenter.new(@appropriation[:profit]).format %></dd></div>
+        <div><dt class="text-xs text-gray-500">Capital</dt><dd class="font-mono"><%= Accounting::MoneyPresenter.new(@appropriation[:capital]).format %></dd></div>
+        <div><dt class="text-xs text-gray-500">Legal reserve now</dt><dd class="font-mono"><%= Accounting::MoneyPresenter.new(@appropriation[:reserve]).format %></dd></div>
+        <div><dt class="text-xs text-gray-500">Room up to 10 %</dt><dd class="font-mono"><%= Accounting::MoneyPresenter.new(@appropriation[:ceiling]).format %></dd></div>
+        <div><dt class="text-xs text-gray-500">Proposed</dt><dd class="font-mono"><%= Accounting::MoneyPresenter.new(@appropriation[:proposed]).format %></dd></div>
+      </dl>
+      <% if @appropriation[:problem] %><p class="mt-2 text-sm text-amber-800"><%= @appropriation[:problem] %></p><% end %>
+      <% if @appropriation_entry %>
+        <p class="mt-2 text-sm">Entry: <%= link_to(@appropriation_entry.reference || "draft of #{@appropriation_entry.fiscal_year.year}", accounting_journal_entry_path(@appropriation_entry), class: 'text-primary-700 hover:underline') %>
+          (<%= @appropriation_entry.status %>, dated <%= Accounting::DatePresenter.new(@appropriation_entry.entry_date).format %>).</p>
+      <% end %>
+      <% if policy(@run).update? && !@appropriation_entry&.posted? %>
+        <%= form_with url: appropriate_accounting_closing_run_path(@run), method: :post, class: 'mt-3 flex flex-wrap gap-2 items-end' do %>
+          <%= number_field_tag :amount, @appropriation_entry ? @appropriation_entry.lines.sum(:debit) : @appropriation[:proposed], step: '0.01', min: 0.01, class: "#{field} w-36", 'aria-label': 'Amount for the legal reserve' %>
+          <%= date_field_tag :date, @appropriation_entry&.entry_date, class: "#{field}", 'aria-label': 'Date of the general meeting' %>
+          <%= text_field_tag :comment, nil, placeholder: 'Reference of the meeting', class: "#{field} w-64", 'aria-label': 'Reference of the meeting' %>
+          <%= submit_tag(@appropriation_entry ? 'Prepare it again' : 'Prepare the draft', class: small_button) %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
   <% if @run.closed? && policy(@run).reopen? %>
     <%= form_with url: reopen_accounting_closing_run_path(@run), method: :post, class: 'mt-3 flex gap-2 items-end' do %>
       <%= text_field_tag :reason, nil, placeholder: 'Reason to reopen (required)', class: "#{field} w-72", 'aria-label': 'Reason to reopen' %>

@@ -279,6 +279,7 @@ Rails.application.routes.draw do
         member do
           post :validate_entries
           post :approve
+          post :appropriate
           post :reopen
           get  :bundle
         end
