@@ -52,9 +52,18 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100 bg-white">
+        <% partner_refs  = Accounting::Partner.where(id: @rows.filter_map(&:partner_id)).index_by(&:id) %>
+        <% partner_tasks = feature?(:f08) ? Accounting::TaskBadges.counts(Accounting::Partner, partner_refs.keys) : {} %>
         <% @rows.each do |row| %>
           <tr>
-            <td class="px-4 py-2"><%= row.partner_name || t_ab.(:no_partner) %></td>
+            <td class="px-4 py-2">
+              <%= row.partner_name || t_ab.(:no_partner) %>
+              <% if row.partner_id %>
+                <%= task_badge(partner_refs[row.partner_id], count: partner_tasks.fetch(row.partner_id, 0)) %>
+                <%= task_link(partner_refs[row.partner_id], label: "＋ Task") %>
+                <% if @kind == :customer && feature?(:f09) && dunning_can?(:index?) %><%= link_to "Reminders", accounting_dunning_runs_path, class: "ml-2 text-primary-700 hover:underline text-sm" %><% end %>
+              <% end %>
+            </td>
             <% (Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated]).each do |col| %>
               <td class="px-4 py-2 text-right"><%= number_to_currency(row[col], unit: "€") %></td>
             <% end %>

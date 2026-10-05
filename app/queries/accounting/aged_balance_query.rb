@@ -6,7 +6,7 @@
 class Accounting::AgedBalanceQuery
   BUCKETS = %i[not_due days_1_30 days_31_60 days_61_90 over_90].freeze
   PREFIX  = Accounting::OpenLineSql::PREFIX
-  Row = Struct.new(:partner_name, *BUCKETS, :unallocated, :total, keyword_init: true) do
+  Row = Struct.new(:partner_id, :partner_name, *BUCKETS, :unallocated, :total, keyword_init: true) do
     # "Dont échu" / "% échu" (docs/dev/reports/spec.md §7): every bucket but not_due.
     def overdue = (BUCKETS - [ :not_due ]).sum { |b| public_send(b) }
 
@@ -18,7 +18,7 @@ class Accounting::AgedBalanceQuery
   end
 
   def self.totals(rows)
-    Row.new(**Row.members.index_with { |m| m == :partner_name ? nil : rows.sum(BigDecimal("0")) { |r| r[m] } })
+    Row.new(**Row.members.index_with { |m| %i[partner_id partner_name].include?(m) ? nil : rows.sum(BigDecimal("0")) { |r| r[m] } })
   end
 
   def initialize(kind:, as_of: Date.current)
@@ -27,9 +27,9 @@ class Accounting::AgedBalanceQuery
   end
 
   def call
-    open_lines.reject { |(_, amount, _)| amount.zero? }.group_by(&:first).map do |name, lines|
-      row = Row.new(partner_name: name, **Row.members.excluding(:partner_name).index_with { BigDecimal("0") })
-      lines.each do |(_, amount, due_date)|
+    open_lines.reject { |(_, _, amount, _)| amount.zero? }.group_by(&:second).map do |name, lines|
+      row = Row.new(partner_id: lines.first.first, partner_name: name, **Row.members.excluding(:partner_id, :partner_name).index_with { BigDecimal("0") })
+      lines.each do |(_, _, amount, due_date)|
         slot = amount.negative? ? :unallocated : bucket(@as_of - due_date)
         row[slot] += amount
         row.total  += amount
@@ -40,10 +40,11 @@ class Accounting::AgedBalanceQuery
 
   private
 
-  # => [[partner_name, amount, due_date], ...]
+  # => [[partner_id, partner_name, amount, due_date], ...]
   def open_lines
     Accounting::OpenLineSql.open_scope(kind: @kind, as_of: @as_of)
       .pluck(
+        Arel.sql("p.id"),
         Arel.sql("p.name"),
         Arel.sql("(#{Accounting::OpenLineSql.residual(kind: @kind, as_of: @as_of)})"),
         Arel.sql(Accounting::OpenLineSql.due_date)

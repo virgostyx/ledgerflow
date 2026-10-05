@@ -303,6 +303,24 @@ RSpec.describe "Accounting::Reports", type: :request do
       expect(response.body).to include("Acme Supplies")
     end
 
+    it "lets a customer row start a task about the partner, show its tasks, and leads to the reminders (P2 exit criterion)" do
+      customer_account = create(:account, :customer, reconcilable: true)
+      partner = create(:partner, name: "Late Payer", payment_terms_days: 0)
+      entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: Date.current - 40)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: customer_account, partner: partner, debit: BigDecimal("100"), credit: 0)
+      create(:journal_entry_line, journal_entry: entry, account: expense_account, debit: 0, credit: BigDecimal("100"))
+      entry.post!
+
+      get accounting_reports_aged_balance_path
+      expect(response.body).to include(ERB::Util.h(new_accounting_task_path(target_type: "Accounting::Partner", target_id: partner.id))).and include(accounting_dunning_runs_path)
+      expect(response.body).not_to include("1 task")
+
+      Accounting::Task.create!(title: "Call them", target: partner)
+      get accounting_reports_aged_balance_path
+      expect(response.body).to include(ERB::Util.h(accounting_tasks_path(scope: "all", target_type: "Accounting::Partner", target_id: partner.id)))
+    end
+
     it "groups the open balances by currency, with their value at the closing rate when asked (F11)" do
       customer_account = create(:account, :customer, reconcilable: true)
       partner = create(:partner, name: "Acme Ltd", payment_terms_days: 0)
