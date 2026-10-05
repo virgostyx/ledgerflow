@@ -40,6 +40,7 @@ class Accounting::Partner < ApplicationRecord
   # ISO-3166 country codes of EU member states (Greece is "GR" here, "EL" in EU_VAT_FORMATS)
   EU_COUNTRIES = %w[AT BE BG CY CZ DE DK EE GR ES FI FR HR HU IE IT LT LU LV MT NL PL PT RO SE SI SK].freeze
 
+  belongs_to :intercompany_company, class_name: "Entity", optional: true # F12b: this partner is a company of the group
   enum :partner_type, { customer: 0, supplier: 1, both: 2 }
 
   autofilter_column :name,         sql: "accounting_partners.name", type: :string, filter: false

@@ -89,7 +89,7 @@ class ApplicationController < ActionController::Base
 
   def set_current_entity
     return unless current_user
-    entity_id = session[:current_entity_id]
+    entity_id = session[:current_entity_id] || current_user.last_entity_id # the last dossier worked in is remembered (F12a)
     entity = entity_id ? current_user.current_entities.find_by(id: entity_id) : nil
     entity ||= current_user.current_entities.active.first
     set_current_tenant(entity)

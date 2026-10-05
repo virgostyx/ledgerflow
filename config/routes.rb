@@ -32,6 +32,20 @@ Rails.application.routes.draw do
     resource :entity, only: %i[new create]
   end
 
+  # F12a: the portfolio of the dossiers a person works in, and the organizations that gather them
+  get   "portfolio", to: "portfolio#index"
+  post  "portfolio/refresh", to: "portfolio#refresh", as: :portfolio_refresh
+  post  "portfolio/bulk", to: "portfolio#bulk", as: :portfolio_bulk
+  patch "portfolio/:entity_id/responsible", to: "portfolio#responsible", as: :portfolio_responsible
+  resources :organizations, only: %i[index new create show update] do
+    member do
+      post   :add_entity
+      delete "entities/:entity_id", action: :remove_entity, as: :remove_entity
+      post   :add_member
+      delete "members/:membership_id", action: :remove_member, as: :remove_member
+    end
+  end
+
   # Gestion des entités (tenant switching)
   resources :entities, only: %i[index new create] do
     member { post :switch }
@@ -218,6 +232,30 @@ Rails.application.routes.draw do
         end
       end
       resources :line_allocations, only: [ :create, :destroy ]
+
+      # F12b: consolidation of a group of companies
+      resources :consolidation_groups, only: %i[index new create show] do
+        member do
+          post   :add_member
+          delete "members/:member_id", action: :remove_member, as: :remove_member
+          post   "members/:member_id/stakes", action: :add_stake, as: :add_stake
+          post   :add_mapping
+          delete "mappings/:mapping_id", action: :remove_mapping, as: :remove_mapping
+          post   :add_validation
+          post   "validations/:validation_id/revoke", action: :revoke_validation, as: :revoke_validation
+        end
+      end
+      resources :consolidation_runs, only: %i[show create] do
+        member do
+          post :compute
+          post :validate
+          post :freeze
+          get  "entries/new", action: :new_entry, as: :new_entry
+          post :create_entry
+          delete "entries/:entry_id", action: :destroy_entry, as: :destroy_entry
+          get :export
+        end
+      end
 
       # F13a: guided imports of partners, accounts and entries
       resources :imports, only: %i[index new create show update] do

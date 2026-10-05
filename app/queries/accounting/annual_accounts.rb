@@ -31,8 +31,10 @@ class Accounting::AnnualAccounts
     def monthly_income = Accounting::AnnualAccounts.new(fiscal_year: fiscal_year).monthly_income_rows(previous_year)
   end
 
-  def initialize(fiscal_year:)
+  # as_of: an intermediate situation of the year (R07), the balances at that day instead of at the end of the year (used by the consolidation, F12b).
+  def initialize(fiscal_year:, as_of: nil)
     @fiscal_year = fiscal_year
+    @as_of = as_of
   end
 
   def call
@@ -68,7 +70,7 @@ class Accounting::AnnualAccounts
   def definition = @definition ||= YAML.safe_load_file(MODEL)
 
   def balances_of(fiscal_year)
-    Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, exclude_closing: true).call
+    Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, exclude_closing: true, as_of: (@as_of if fiscal_year == @fiscal_year)).call
   end
 
   def balances_of_month(n)

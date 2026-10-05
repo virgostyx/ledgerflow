@@ -1,0 +1,23 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Consolidation", path: accounting_consolidation_groups_path }, { label: "At #{@run.reporting_date}", path: accounting_consolidation_run_path(@run) }, { label: "Entry" } ]) %>
+<% end %>
+<%= render Ui::PageHeaderComponent.new(title: "Consolidation entry: #{@entry.kind.humanize}", description: "An entry on the headings of the consolidated statements. It balances, it is justified, and it changes the books of no company. Review the proposed lines before you record it.") %>
+<%= form_with url: create_entry_accounting_consolidation_run_path(@run), method: :post, class: "max-w-3xl space-y-4" do %>
+  <%= hidden_field_tag :kind, @entry.kind %>
+  <% @entry.context.each { |key, value| concat hidden_field_tag("context[#{key}]", value) } %>
+  <div><%= label_tag :comment, "Reason", class: "block text-sm font-medium text-gray-700 mb-1" %><%= text_field_tag :comment, @entry.comment, class: "form-input w-full" %></div>
+  <div><%= label_tag :document_id, "Supporting document#{' (compulsory)' if Consolidation::Entry::DOCUMENT_REQUIRED.include?(@entry.kind)}", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= select_tag :document_id, options_from_collection_for_select(@documents, :id, :name), include_blank: "None", class: "form-input" %></div>
+  <table class="text-sm" data-section="lines">
+    <% lines = @entry.lines.to_a + Array.new([ 4 - @entry.lines.size, 2 ].max) { Consolidation::EntryLine.new } %>
+    <% lines.each_with_index do |line, i| %>
+      <tr>
+        <td><%= select_tag "lines[#{i}][statement]", options_for_select(Consolidation::Statements::STATEMENTS, line.statement), class: "form-input", "aria-label": "Statement #{i + 1}" %></td>
+        <td><%= text_field_tag "lines[#{i}][code]", line.code, placeholder: "heading", class: "form-input w-28", "aria-label": "Heading #{i + 1}" %></td>
+        <td><%= select_tag "lines[#{i}][side]", options_for_select(Consolidation::EntryLine::SIDES, line.side), class: "form-input", "aria-label": "Side #{i + 1}" %></td>
+        <td><%= text_field_tag "lines[#{i}][amount]", line.amount, placeholder: "amount", class: "form-input w-32", "aria-label": "Amount #{i + 1}" %></td>
+      </tr>
+    <% end %>
+  </table>
+  <%= submit_tag "Record the entry", class: "btn-primary" %>
+<% end %>

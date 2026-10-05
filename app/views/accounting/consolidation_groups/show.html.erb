@@ -1,0 +1,91 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Consolidation", path: accounting_consolidation_groups_path }, { label: @group.name } ]) %>
+<% end %>
+<%= render Ui::PageHeaderComponent.new(title: @group.name, description: "Parent: #{@group.entity.name}. Statements in #{@group.currency}.") %>
+
+<h2 class="mt-2 mb-2 text-sm font-semibold text-gray-700">Perimeter</h2>
+<div class="bg-white rounded-lg border border-gray-200 overflow-x-auto"><table class="w-full text-sm" data-section="members">
+  <thead class="bg-gray-50"><tr class="text-xs text-gray-500 uppercase"><th class="px-3 py-2 text-left">Company</th><th class="px-3 py-2 text-left">Method</th><th class="px-3 py-2 text-left">Currency</th><th class="px-3 py-2 text-left">Held (history)</th><th class="px-3 py-2 text-left">In the scope</th><th class="px-3 py-2"></th></tr></thead>
+  <tbody class="divide-y divide-gray-100">
+    <% @members.each do |member| %>
+      <tr>
+        <td class="px-3 py-2"><%= member.member_entity.name %><%= " (parent)" if member.parent? %></td>
+        <td class="px-3 py-2"><%= member.full? ? "Global integration" : "Equity method" %></td>
+        <td class="px-3 py-2"><%= member.currency %></td>
+        <td class="px-3 py-2"><%= member.stakes.map { |s| "#{s.percentage.to_s('F')} % from #{s.effective_on}" }.join(", ") %>
+          <% if consolidation_can?(:update?) %>
+            <%= form_with url: add_stake_accounting_consolidation_group_path(@group, member_id: member.id), method: :post, class: "inline-flex gap-1 ml-2" do %>
+              <%= number_field_tag :percentage, nil, step: "0.01", min: 0.01, max: 100, placeholder: "%", class: "form-input w-20 text-xs", "aria-label": "New percentage" %>
+              <%= date_field_tag :effective_on, nil, class: "form-input text-xs", "aria-label": "Effective on" %>
+              <%= submit_tag "Change", class: "text-xs text-primary-700 cursor-pointer" %>
+            <% end %>
+          <% end %></td>
+        <td class="px-3 py-2"><%= [ member.joined_on && "from #{member.joined_on}", member.left_on && "until #{member.left_on}" ].compact.join(" ").presence || "always" %></td>
+        <td class="px-3 py-2 text-right"><%= button_to "Remove", remove_member_accounting_consolidation_group_path(@group, member_id: member.id), method: :delete, class: "text-xs text-red-700 cursor-pointer" if !member.parent? && consolidation_can?(:update?) %></td>
+      </tr>
+    <% end %>
+  </tbody></table></div>
+<% if @addable.any? && consolidation_can?(:update?) %>
+  <%= form_with url: add_member_accounting_consolidation_group_path(@group), method: :post, class: "mt-3 flex flex-wrap gap-2 items-end text-sm" do %>
+    <%= select_tag :entity_id, options_from_collection_for_select(@addable, :id, :name), class: "form-input", "aria-label": "Company to add" %>
+    <%= select_tag :method, options_for_select([ [ "Global integration", "full" ], [ "Equity method", "equity" ] ]), class: "form-input", "aria-label": "Method" %>
+    <%= select_tag :currency, options_for_select(Accounting::MoneyPresenter::SUPPORTED_CURRENCIES, @group.currency), class: "form-input", "aria-label": "Currency of its accounts" %>
+    <%= number_field_tag :percentage, nil, step: "0.01", min: 0.01, max: 100, placeholder: "% held", class: "form-input w-24", "aria-label": "Percentage held" %>
+    <%= date_field_tag :joined_on, nil, class: "form-input", "aria-label": "Joined on" %>
+    <%= submit_tag "Add to the group", class: "btn-primary" %>
+  <% end %>
+<% end %>
+
+<h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">Rules and their validation by an accountant</h2>
+<p class="mb-2 text-xs text-gray-600 max-w-3xl">The application applies a consolidation rule only while a validation by an accountant is recorded here, and only with the parameters that were validated. The parameters shown are the application's proposal, not a validated choice.</p>
+<div class="bg-white rounded-lg border border-gray-200 overflow-x-auto"><table class="w-full text-sm" data-section="rules">
+  <thead class="bg-gray-50"><tr class="text-xs text-gray-500 uppercase"><th class="px-3 py-2 text-left">Rule</th><th class="px-3 py-2 text-left">Needed when</th><th class="px-3 py-2 text-left">Validation</th></tr></thead>
+  <tbody class="divide-y divide-gray-100">
+    <% @rules.each do |key, rule| %>
+      <% validation = @validations.find { |v| v.rule_key == key && v.revoked_at.nil? } %>
+      <tr>
+        <td class="px-3 py-2 font-medium"><%= rule[:title] %><div class="text-xs font-normal text-gray-500 font-mono"><%= key %></div></td>
+        <td class="px-3 py-2 text-gray-600"><%= rule[:needed_for] %></td>
+        <td class="px-3 py-2">
+          <% if validation %>
+            <span class="text-emerald-700">Validated</span> by <%= validation.validated_by_name %>, <%= validation.validated_by_title %>, on <%= validation.validated_on %> (<%= validation.reference %>)
+            <div class="text-xs font-mono text-gray-500"><%= validation.parameters.to_json %></div>
+            <%= button_to "Revoke", revoke_validation_accounting_consolidation_group_path(@group, validation_id: validation.id), method: :post, class: "text-xs text-red-700 cursor-pointer", form: { data: { turbo_confirm: "Revoke this validation? The rule is no longer applied." } } if consolidation_can?(:approve?) %>
+          <% else %>
+            <span class="text-amber-700">Not applied: no validation recorded</span>
+            <% if consolidation_can?(:approve?) %>
+              <%= form_with url: add_validation_accounting_consolidation_group_path(@group), method: :post, class: "mt-2 grid gap-1 max-w-xl text-xs" do %>
+                <%= hidden_field_tag :rule_key, key %>
+                <%= text_field_tag :validated_by_name, nil, placeholder: "Name of the accountant", class: "form-input", "aria-label": "Name of the accountant for #{key}" %>
+                <%= text_field_tag :validated_by_title, nil, placeholder: "Capacity (e.g. chartered accountant, firm)", class: "form-input", "aria-label": "Capacity for #{key}" %>
+                <%= date_field_tag :validated_on, Date.current, class: "form-input", "aria-label": "Date of the validation for #{key}" %>
+                <%= text_field_tag :reference, nil, placeholder: "Where it is written (QUESTIONS.md section, letter, ticket)", class: "form-input", "aria-label": "Reference for #{key}" %>
+                <%= text_area_tag :parameters, JSON.pretty_generate(rule[:parameters]), rows: 4, class: "form-input font-mono", "aria-label": "Parameters validated for #{key}" %>
+                <%= submit_tag "Record the validation", class: "btn-primary" %>
+              <% end %>
+            <% end %>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody></table></div>
+
+<h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">Mappings of headings</h2>
+<p class="mb-2 text-xs text-gray-600">By default a heading of a company is the same heading of the group. A mapping sends a heading of one company (or of all) to another.</p>
+<ul class="text-sm text-gray-700 mb-2" data-section="mappings">
+  <% @mappings.each do |mapping| %><li><%= mapping.member&.member_entity&.name || "All" %>: <%= mapping.statement %> <%= mapping.source_code %> → <%= mapping.consolidated_code %>
+    <%= button_to "Remove", remove_mapping_accounting_consolidation_group_path(@group, mapping_id: mapping.id), method: :delete, class: "inline text-xs text-red-700 cursor-pointer", form: { class: "inline" } if consolidation_can?(:update?) %></li><% end %>
+</ul>
+
+<h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">Runs</h2>
+<% if consolidation_can?(:create?) %>
+  <%= form_with url: accounting_consolidation_runs_path, method: :post, class: "mb-3 flex gap-2 items-end text-sm" do %>
+    <%= hidden_field_tag :group_id, @group.id %>
+    <%= date_field_tag :reporting_date, Date.current.end_of_year, class: "form-input", "aria-label": "Reporting date" %>
+    <%= submit_tag "Start a consolidation", class: "btn-primary" %>
+  <% end %>
+<% end %>
+<ul class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm" data-section="runs">
+  <% @runs.each do |run| %><li class="px-4 py-3"><%= link_to "At #{run.reporting_date}", accounting_consolidation_run_path(run), class: "text-primary-700 hover:underline" %> — <%= run.status %><%= ", provisional" if run.provisional %></li><% end %>
+  <% if @runs.empty? %><li class="px-4 py-4 text-gray-500">None yet.</li><% end %>
+</ul>

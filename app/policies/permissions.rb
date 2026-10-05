@@ -35,6 +35,9 @@ module Permissions
     "imports.manage"         => %i[admin accountant],           # guided imports of partners, accounts and entries, and taking a batch back (F13a)
     "exports.data"           => %i[admin accountant],           # the standard data exports: chart, partners, journals, entries (F13b)
     "exports.backup"         => %i[admin],                      # the full backup of the entity, with its documents and audit trail: the owner (F13b)
+    "consolidation.view"     => %i[admin accountant manager auditor], # read a consolidation (F12b); and the right to see every member company
+    "consolidation.run"      => %i[admin accountant],           # prepare a consolidation: members, entries, the run (F12b)
+    "consolidation.approve"  => %i[admin],                      # validate and freeze a run, record an accountant's validation of a rule: the owner (F12b)
     "periods.lock"           => %i[admin accountant],
     "periods.unlock"         => %i[admin],
     "users.manage"           => %i[admin],

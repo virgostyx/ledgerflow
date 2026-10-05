@@ -14,7 +14,7 @@
     <div class="px-4 py-3 flex items-center justify-between <%= 'font-semibold' unless n.read_at %>">
       <span>
         <% task = n.subject.is_a?(Accounting::Task) ? n.subject : (n.subject.commentable if n.subject.respond_to?(:commentable) && n.subject.commentable.is_a?(Accounting::Task)) %>
-        <%= { 'task_assigned' => 'Task assigned to you', 'mention' => 'You were mentioned', 'task_due' => 'Task due tomorrow', 'digest' => 'Daily summary', 'external_reply' => 'A third party answered' }.fetch(n.event.split(':').first, n.event.humanize) %><%= " by #{n.data['by']}" if n.data['by'] %><%= ": #{task.title}" if task %>
+        <%= { 'task_assigned' => 'Task assigned to you', 'mention' => 'You were mentioned', 'task_due' => 'Task due tomorrow', 'digest' => 'Daily summary', 'external_reply' => 'A third party answered', 'portfolio_message' => 'A message from the portfolio', 'webhook_suspended' => 'A webhook was suspended' }.fetch(n.event.split(':').first, n.event.humanize) %><%= " by #{n.data['by']}" if n.data['by'] %><%= ": #{task.title}" if task %><%= ": #{n.data['message']}" if n.data['message'] %>
         <span class="text-gray-400 font-normal"><%= l n.created_at, format: :short %></span>
       </span>
       <%= button_to (n.read_at ? 'Open' : 'Read and open'), read_accounting_notification_path(n), method: :post, form: { class: 'shrink-0' }, class: 'text-primary-700 hover:underline cursor-pointer' %>

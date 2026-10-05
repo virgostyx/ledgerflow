@@ -41,6 +41,10 @@ production:
     class: Api::PurgeIdempotencyKeysJob
     queue: default
     schedule: every day at 3:30am
+  portfolio_snapshots:
+    class: Portfolio::SnapshotAllJob
+    queue: default
+    schedule: every day at 1:30am
   relock_periods:
     class: Accounting::RelockPeriodsJob
     queue: default

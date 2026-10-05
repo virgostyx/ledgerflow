@@ -1933,7 +1933,8 @@ CREATE TABLE public.accounting_partners (
     email_bounced_at timestamp(6) without time zone,
     language character varying DEFAULT 'fr'::character varying NOT NULL,
     currency character varying(3) DEFAULT 'EUR'::character varying NOT NULL,
-    import_batch_id bigint
+    import_batch_id bigint,
+    intercompany_company_id bigint
 );
 
 
@@ -2995,6 +2996,300 @@ ALTER SEQUENCE public.closing_steps_id_seq OWNED BY public.closing_steps.id;
 
 
 --
+-- Name: consolidation_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consolidation_entries (
+    id bigint NOT NULL,
+    consolidation_run_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    kind character varying NOT NULL,
+    rule_key character varying,
+    comment character varying NOT NULL,
+    document_id bigint,
+    created_by_id bigint,
+    context jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: consolidation_entries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.consolidation_entries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: consolidation_entries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.consolidation_entries_id_seq OWNED BY public.consolidation_entries.id;
+
+
+--
+-- Name: consolidation_entry_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consolidation_entry_lines (
+    id bigint NOT NULL,
+    consolidation_entry_id bigint NOT NULL,
+    statement character varying NOT NULL,
+    code character varying NOT NULL,
+    side character varying NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: consolidation_entry_lines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.consolidation_entry_lines_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: consolidation_entry_lines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.consolidation_entry_lines_id_seq OWNED BY public.consolidation_entry_lines.id;
+
+
+--
+-- Name: consolidation_groups; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consolidation_groups (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    name character varying NOT NULL,
+    currency character varying(3) DEFAULT 'EUR'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: consolidation_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.consolidation_groups_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: consolidation_groups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.consolidation_groups_id_seq OWNED BY public.consolidation_groups.id;
+
+
+--
+-- Name: consolidation_mappings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consolidation_mappings (
+    id bigint NOT NULL,
+    consolidation_group_id bigint NOT NULL,
+    consolidation_member_id bigint,
+    statement character varying NOT NULL,
+    source_code character varying NOT NULL,
+    consolidated_code character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: consolidation_mappings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.consolidation_mappings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: consolidation_mappings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.consolidation_mappings_id_seq OWNED BY public.consolidation_mappings.id;
+
+
+--
+-- Name: consolidation_members; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consolidation_members (
+    id bigint NOT NULL,
+    consolidation_group_id bigint NOT NULL,
+    member_entity_id bigint NOT NULL,
+    method character varying DEFAULT 'full'::character varying NOT NULL,
+    currency character varying(3) DEFAULT 'EUR'::character varying NOT NULL,
+    joined_on date,
+    left_on date,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: consolidation_members_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.consolidation_members_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: consolidation_members_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.consolidation_members_id_seq OWNED BY public.consolidation_members.id;
+
+
+--
+-- Name: consolidation_rule_validations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consolidation_rule_validations (
+    id bigint NOT NULL,
+    consolidation_group_id bigint NOT NULL,
+    rule_key character varying NOT NULL,
+    validated_by_name character varying NOT NULL,
+    validated_by_title character varying NOT NULL,
+    validated_on date NOT NULL,
+    reference character varying NOT NULL,
+    note text,
+    parameters jsonb DEFAULT '{}'::jsonb NOT NULL,
+    recorded_by_id bigint,
+    revoked_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: consolidation_rule_validations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.consolidation_rule_validations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: consolidation_rule_validations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.consolidation_rule_validations_id_seq OWNED BY public.consolidation_rule_validations.id;
+
+
+--
+-- Name: consolidation_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consolidation_runs (
+    id bigint NOT NULL,
+    consolidation_group_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    reporting_date date NOT NULL,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    provisional boolean DEFAULT false NOT NULL,
+    created_by_id bigint,
+    validated_by_id bigint,
+    frozen_by_id bigint,
+    previous_run_id bigint,
+    figures jsonb DEFAULT '{}'::jsonb NOT NULL,
+    snapshot jsonb,
+    snapshot_sha256 character varying,
+    validated_at timestamp(6) without time zone,
+    frozen_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: consolidation_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.consolidation_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: consolidation_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.consolidation_runs_id_seq OWNED BY public.consolidation_runs.id;
+
+
+--
+-- Name: consolidation_stakes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consolidation_stakes (
+    id bigint NOT NULL,
+    consolidation_member_id bigint NOT NULL,
+    percentage numeric(5,2) NOT NULL,
+    effective_on date NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: consolidation_stakes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.consolidation_stakes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: consolidation_stakes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.consolidation_stakes_id_seq OWNED BY public.consolidation_stakes.id;
+
+
+--
 -- Name: currencies; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3096,6 +3391,56 @@ CREATE SEQUENCE public.data_exports_id_seq
 --
 
 ALTER SEQUENCE public.data_exports_id_seq OWNED BY public.data_exports.id;
+
+
+--
+-- Name: dossier_health_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dossier_health_snapshots (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    taken_on date NOT NULL,
+    computed_at timestamp(6) without time zone NOT NULL,
+    closing_status character varying,
+    closing_progress integer,
+    closing_year integer,
+    next_vat_due_on date,
+    vat_overdue boolean DEFAULT false NOT NULL,
+    blocking_count integer,
+    warning_count integer,
+    consistency_run_at timestamp(6) without time zone,
+    unreconciled_bank_lines integer DEFAULT 0 NOT NULL,
+    oldest_unreconciled_days integer,
+    peppol_pending integer DEFAULT 0 NOT NULL,
+    peppol_anomalies integer DEFAULT 0 NOT NULL,
+    inbox_documents integer DEFAULT 0 NOT NULL,
+    overdue_tasks integer DEFAULT 0 NOT NULL,
+    overdue_receivables numeric(15,2) DEFAULT 0.0 NOT NULL,
+    last_posted_on date,
+    details jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: dossier_health_snapshots_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.dossier_health_snapshots_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: dossier_health_snapshots_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.dossier_health_snapshots_id_seq OWNED BY public.dossier_health_snapshots.id;
 
 
 --
@@ -3317,7 +3662,9 @@ CREATE TABLE public.entities (
     closing_result_account_code character varying DEFAULT '699000'::character varying NOT NULL,
     closing_carry_account_code character varying DEFAULT '130000'::character varying NOT NULL,
     review_threshold_pct numeric(6,2) DEFAULT 20.0 NOT NULL,
-    review_threshold_amount numeric(15,2) DEFAULT 1000.0 NOT NULL
+    review_threshold_amount numeric(15,2) DEFAULT 1000.0 NOT NULL,
+    organization_id bigint,
+    responsible_id bigint
 );
 
 
@@ -3373,6 +3720,71 @@ CREATE SEQUENCE public.import_templates_id_seq
 --
 
 ALTER SEQUENCE public.import_templates_id_seq OWNED BY public.import_templates.id;
+
+
+--
+-- Name: organization_memberships; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.organization_memberships (
+    id bigint NOT NULL,
+    organization_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    role character varying DEFAULT 'member'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: organization_memberships_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.organization_memberships_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: organization_memberships_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.organization_memberships_id_seq OWNED BY public.organization_memberships.id;
+
+
+--
+-- Name: organizations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.organizations (
+    id bigint NOT NULL,
+    name character varying NOT NULL,
+    created_by_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: organizations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.organizations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: organizations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.organizations_id_seq OWNED BY public.organizations.id;
 
 
 --
@@ -3512,7 +3924,8 @@ CREATE TABLE public.users (
     webauthn_id character varying,
     totp_secret character varying,
     totp_enabled_at timestamp(6) without time zone,
-    totp_last_step bigint
+    totp_last_step bigint,
+    last_entity_id bigint
 );
 
 
@@ -4184,6 +4597,62 @@ ALTER TABLE ONLY public.closing_steps ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
+-- Name: consolidation_entries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_entries ALTER COLUMN id SET DEFAULT nextval('public.consolidation_entries_id_seq'::regclass);
+
+
+--
+-- Name: consolidation_entry_lines id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_entry_lines ALTER COLUMN id SET DEFAULT nextval('public.consolidation_entry_lines_id_seq'::regclass);
+
+
+--
+-- Name: consolidation_groups id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_groups ALTER COLUMN id SET DEFAULT nextval('public.consolidation_groups_id_seq'::regclass);
+
+
+--
+-- Name: consolidation_mappings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_mappings ALTER COLUMN id SET DEFAULT nextval('public.consolidation_mappings_id_seq'::regclass);
+
+
+--
+-- Name: consolidation_members id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_members ALTER COLUMN id SET DEFAULT nextval('public.consolidation_members_id_seq'::regclass);
+
+
+--
+-- Name: consolidation_rule_validations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_rule_validations ALTER COLUMN id SET DEFAULT nextval('public.consolidation_rule_validations_id_seq'::regclass);
+
+
+--
+-- Name: consolidation_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_runs ALTER COLUMN id SET DEFAULT nextval('public.consolidation_runs_id_seq'::regclass);
+
+
+--
+-- Name: consolidation_stakes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_stakes ALTER COLUMN id SET DEFAULT nextval('public.consolidation_stakes_id_seq'::regclass);
+
+
+--
 -- Name: currencies id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4202,6 +4671,13 @@ ALTER TABLE ONLY public.custom_roles ALTER COLUMN id SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public.data_exports ALTER COLUMN id SET DEFAULT nextval('public.data_exports_id_seq'::regclass);
+
+
+--
+-- Name: dossier_health_snapshots id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dossier_health_snapshots ALTER COLUMN id SET DEFAULT nextval('public.dossier_health_snapshots_id_seq'::regclass);
 
 
 --
@@ -4244,6 +4720,20 @@ ALTER TABLE ONLY public.entities ALTER COLUMN id SET DEFAULT nextval('public.ent
 --
 
 ALTER TABLE ONLY public.import_templates ALTER COLUMN id SET DEFAULT nextval('public.import_templates_id_seq'::regclass);
+
+
+--
+-- Name: organization_memberships id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organization_memberships ALTER COLUMN id SET DEFAULT nextval('public.organization_memberships_id_seq'::regclass);
+
+
+--
+-- Name: organizations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizations ALTER COLUMN id SET DEFAULT nextval('public.organizations_id_seq'::regclass);
 
 
 --
@@ -4864,6 +5354,70 @@ ALTER TABLE ONLY public.closing_steps
 
 
 --
+-- Name: consolidation_entries consolidation_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_entries
+    ADD CONSTRAINT consolidation_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: consolidation_entry_lines consolidation_entry_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_entry_lines
+    ADD CONSTRAINT consolidation_entry_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: consolidation_groups consolidation_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_groups
+    ADD CONSTRAINT consolidation_groups_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: consolidation_mappings consolidation_mappings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_mappings
+    ADD CONSTRAINT consolidation_mappings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: consolidation_members consolidation_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_members
+    ADD CONSTRAINT consolidation_members_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: consolidation_rule_validations consolidation_rule_validations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_rule_validations
+    ADD CONSTRAINT consolidation_rule_validations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: consolidation_runs consolidation_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_runs
+    ADD CONSTRAINT consolidation_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: consolidation_stakes consolidation_stakes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_stakes
+    ADD CONSTRAINT consolidation_stakes_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: currencies currencies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4885,6 +5439,14 @@ ALTER TABLE ONLY public.custom_roles
 
 ALTER TABLE ONLY public.data_exports
     ADD CONSTRAINT data_exports_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: dossier_health_snapshots dossier_health_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dossier_health_snapshots
+    ADD CONSTRAINT dossier_health_snapshots_pkey PRIMARY KEY (id);
 
 
 --
@@ -4933,6 +5495,22 @@ ALTER TABLE ONLY public.entities
 
 ALTER TABLE ONLY public.import_templates
     ADD CONSTRAINT import_templates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: organization_memberships organization_memberships_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organization_memberships
+    ADD CONSTRAINT organization_memberships_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: organizations organizations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizations
+    ADD CONSTRAINT organizations_pkey PRIMARY KEY (id);
 
 
 --
@@ -5025,6 +5603,27 @@ CREATE UNIQUE INDEX idx_bank_transactions_fingerprint ON public.accounting_bank_
 --
 
 CREATE UNIQUE INDEX idx_bank_transactions_on_account_and_ref ON public.accounting_bank_transactions USING btree (bank_account_id, reference) WHERE (reference IS NOT NULL);
+
+
+--
+-- Name: idx_consolidation_members_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_consolidation_members_unique ON public.consolidation_members USING btree (consolidation_group_id, member_entity_id);
+
+
+--
+-- Name: idx_consolidation_stakes_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_consolidation_stakes_unique ON public.consolidation_stakes USING btree (consolidation_member_id, effective_on);
+
+
+--
+-- Name: idx_consolidation_validation_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_consolidation_validation_active ON public.consolidation_rule_validations USING btree (consolidation_group_id, rule_key) WHERE (revoked_at IS NULL);
 
 
 --
@@ -6379,6 +6978,13 @@ CREATE INDEX index_accounting_partners_on_import_batch_id ON public.accounting_p
 
 
 --
+-- Name: index_accounting_partners_on_intercompany_company_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_partners_on_intercompany_company_id ON public.accounting_partners USING btree (intercompany_company_id);
+
+
+--
 -- Name: index_accounting_partners_on_partner_type; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6932,6 +7538,139 @@ CREATE UNIQUE INDEX index_consistency_acks_on_entity_and_fingerprint ON public.a
 
 
 --
+-- Name: index_consolidation_entries_on_consolidation_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_entries_on_consolidation_run_id ON public.consolidation_entries USING btree (consolidation_run_id);
+
+
+--
+-- Name: index_consolidation_entries_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_entries_on_created_by_id ON public.consolidation_entries USING btree (created_by_id);
+
+
+--
+-- Name: index_consolidation_entries_on_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_entries_on_document_id ON public.consolidation_entries USING btree (document_id);
+
+
+--
+-- Name: index_consolidation_entries_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_entries_on_entity_id ON public.consolidation_entries USING btree (entity_id);
+
+
+--
+-- Name: index_consolidation_entry_lines_on_consolidation_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_entry_lines_on_consolidation_entry_id ON public.consolidation_entry_lines USING btree (consolidation_entry_id);
+
+
+--
+-- Name: index_consolidation_groups_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_groups_on_entity_id ON public.consolidation_groups USING btree (entity_id);
+
+
+--
+-- Name: index_consolidation_mappings_on_consolidation_group_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_mappings_on_consolidation_group_id ON public.consolidation_mappings USING btree (consolidation_group_id);
+
+
+--
+-- Name: index_consolidation_mappings_on_consolidation_member_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_mappings_on_consolidation_member_id ON public.consolidation_mappings USING btree (consolidation_member_id);
+
+
+--
+-- Name: index_consolidation_members_on_consolidation_group_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_members_on_consolidation_group_id ON public.consolidation_members USING btree (consolidation_group_id);
+
+
+--
+-- Name: index_consolidation_members_on_member_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_members_on_member_entity_id ON public.consolidation_members USING btree (member_entity_id);
+
+
+--
+-- Name: index_consolidation_rule_validations_on_consolidation_group_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_rule_validations_on_consolidation_group_id ON public.consolidation_rule_validations USING btree (consolidation_group_id);
+
+
+--
+-- Name: index_consolidation_rule_validations_on_recorded_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_rule_validations_on_recorded_by_id ON public.consolidation_rule_validations USING btree (recorded_by_id);
+
+
+--
+-- Name: index_consolidation_runs_on_consolidation_group_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_runs_on_consolidation_group_id ON public.consolidation_runs USING btree (consolidation_group_id);
+
+
+--
+-- Name: index_consolidation_runs_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_runs_on_created_by_id ON public.consolidation_runs USING btree (created_by_id);
+
+
+--
+-- Name: index_consolidation_runs_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_runs_on_entity_id ON public.consolidation_runs USING btree (entity_id);
+
+
+--
+-- Name: index_consolidation_runs_on_frozen_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_runs_on_frozen_by_id ON public.consolidation_runs USING btree (frozen_by_id);
+
+
+--
+-- Name: index_consolidation_runs_on_previous_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_runs_on_previous_run_id ON public.consolidation_runs USING btree (previous_run_id);
+
+
+--
+-- Name: index_consolidation_runs_on_validated_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_runs_on_validated_by_id ON public.consolidation_runs USING btree (validated_by_id);
+
+
+--
+-- Name: index_consolidation_stakes_on_consolidation_member_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consolidation_stakes_on_consolidation_member_id ON public.consolidation_stakes USING btree (consolidation_member_id);
+
+
+--
 -- Name: index_currencies_on_code; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6971,6 +7710,20 @@ CREATE INDEX index_data_exports_on_user_id ON public.data_exports USING btree (u
 --
 
 CREATE UNIQUE INDEX index_depreciation_entries_on_asset_and_fiscal_year ON public.accounting_depreciation_entries USING btree (fixed_asset_id, fiscal_year_id);
+
+
+--
+-- Name: index_dossier_health_snapshots_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dossier_health_snapshots_on_entity_id ON public.dossier_health_snapshots USING btree (entity_id);
+
+
+--
+-- Name: index_dossier_health_snapshots_on_entity_id_and_taken_on; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_dossier_health_snapshots_on_entity_id_and_taken_on ON public.dossier_health_snapshots USING btree (entity_id, taken_on);
 
 
 --
@@ -7058,6 +7811,13 @@ CREATE UNIQUE INDEX index_entities_on_documents_mail_token ON public.entities US
 
 
 --
+-- Name: index_entities_on_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entities_on_organization_id ON public.entities USING btree (organization_id);
+
+
+--
 -- Name: index_entities_on_peppol_participant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7069,6 +7829,13 @@ CREATE UNIQUE INDEX index_entities_on_peppol_participant_id ON public.entities U
 --
 
 CREATE UNIQUE INDEX index_entities_on_peppol_webhook_token ON public.entities USING btree (peppol_webhook_token);
+
+
+--
+-- Name: index_entities_on_responsible_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entities_on_responsible_id ON public.entities USING btree (responsible_id);
 
 
 --
@@ -7090,6 +7857,34 @@ CREATE INDEX index_import_templates_on_entity_id ON public.import_templates USIN
 --
 
 CREATE UNIQUE INDEX index_import_templates_on_entity_id_and_kind_and_name ON public.import_templates USING btree (entity_id, kind, name);
+
+
+--
+-- Name: index_organization_memberships_on_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_organization_memberships_on_organization_id ON public.organization_memberships USING btree (organization_id);
+
+
+--
+-- Name: index_organization_memberships_on_organization_id_and_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_organization_memberships_on_organization_id_and_user_id ON public.organization_memberships USING btree (organization_id, user_id);
+
+
+--
+-- Name: index_organization_memberships_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_organization_memberships_on_user_id ON public.organization_memberships USING btree (user_id);
+
+
+--
+-- Name: index_organizations_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_organizations_on_created_by_id ON public.organizations USING btree (created_by_id);
 
 
 --
@@ -7299,6 +8094,14 @@ ALTER TABLE ONLY public.accounting_invoice_emails
 
 
 --
+-- Name: consolidation_runs fk_rails_00b99ec0f8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_runs
+    ADD CONSTRAINT fk_rails_00b99ec0f8 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_recurring_runs fk_rails_020f47ceee; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7312,6 +8115,22 @@ ALTER TABLE ONLY public.accounting_recurring_runs
 
 ALTER TABLE ONLY public.accounting_tasks
     ADD CONSTRAINT fk_rails_025d6cad98 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: consolidation_entries fk_rails_030b167d54; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_entries
+    ADD CONSTRAINT fk_rails_030b167d54 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: consolidation_rule_validations fk_rails_0320fcf175; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_rule_validations
+    ADD CONSTRAINT fk_rails_0320fcf175 FOREIGN KEY (recorded_by_id) REFERENCES public.users(id);
 
 
 --
@@ -7344,6 +8163,22 @@ ALTER TABLE ONLY public.accounting_payment_batches
 
 ALTER TABLE ONLY public.accounting_invoice_lines
     ADD CONSTRAINT fk_rails_0ef5226c55 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
+-- Name: consolidation_runs fk_rails_0fac02bb36; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_runs
+    ADD CONSTRAINT fk_rails_0fac02bb36 FOREIGN KEY (previous_run_id) REFERENCES public.consolidation_runs(id);
+
+
+--
+-- Name: consolidation_runs fk_rails_0fb7ccd0ac; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_runs
+    ADD CONSTRAINT fk_rails_0fb7ccd0ac FOREIGN KEY (frozen_by_id) REFERENCES public.users(id);
 
 
 --
@@ -7595,6 +8430,14 @@ ALTER TABLE ONLY public.accounting_comments
 
 
 --
+-- Name: accounting_partners fk_rails_35259f4967; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_partners
+    ADD CONSTRAINT fk_rails_35259f4967 FOREIGN KEY (intercompany_company_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoice_line_annotations fk_rails_35cd3761f9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7651,6 +8494,14 @@ ALTER TABLE ONLY public.closing_snapshots
 
 
 --
+-- Name: consolidation_entries fk_rails_3b6e9311c9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_entries
+    ADD CONSTRAINT fk_rails_3b6e9311c9 FOREIGN KEY (document_id) REFERENCES public.accounting_documents(id);
+
+
+--
 -- Name: accounting_lettering_suggestions fk_rails_3b7eb4f554; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7664,6 +8515,14 @@ ALTER TABLE ONLY public.accounting_lettering_suggestions
 
 ALTER TABLE ONLY public.accounting_document_links
     ADD CONSTRAINT fk_rails_3df36a68ba FOREIGN KEY (document_id) REFERENCES public.accounting_documents(id);
+
+
+--
+-- Name: consolidation_mappings fk_rails_3f0a27447d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_mappings
+    ADD CONSTRAINT fk_rails_3f0a27447d FOREIGN KEY (consolidation_group_id) REFERENCES public.consolidation_groups(id);
 
 
 --
@@ -7747,11 +8606,27 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: consolidation_rule_validations fk_rails_4815d76045; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_rule_validations
+    ADD CONSTRAINT fk_rails_4815d76045 FOREIGN KEY (consolidation_group_id) REFERENCES public.consolidation_groups(id);
+
+
+--
 -- Name: accounting_analytical_annotations fk_rails_4883ca45d6; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_analytical_annotations
     ADD CONSTRAINT fk_rails_4883ca45d6 FOREIGN KEY (journal_entry_line_id) REFERENCES public.accounting_journal_entry_lines(id);
+
+
+--
+-- Name: consolidation_runs fk_rails_49f7b530b1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_runs
+    ADD CONSTRAINT fk_rails_49f7b530b1 FOREIGN KEY (validated_by_id) REFERENCES public.users(id);
 
 
 --
@@ -7803,6 +8678,14 @@ ALTER TABLE ONLY public.accounting_bank_rules
 
 
 --
+-- Name: organization_memberships fk_rails_57cf70d280; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organization_memberships
+    ADD CONSTRAINT fk_rails_57cf70d280 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_analytical_accounts fk_rails_59baa8ed4d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7840,6 +8723,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 ALTER TABLE ONLY public.accounting_controlled_windows
     ADD CONSTRAINT fk_rails_5d9749f6a8 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: entities fk_rails_5e31fb5b82; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entities
+    ADD CONSTRAINT fk_rails_5e31fb5b82 FOREIGN KEY (responsible_id) REFERENCES public.users(id);
 
 
 --
@@ -7891,6 +8782,14 @@ ALTER TABLE ONLY public.api_idempotency_keys
 
 
 --
+-- Name: consolidation_entries fk_rails_69ef69e3ba; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_entries
+    ADD CONSTRAINT fk_rails_69ef69e3ba FOREIGN KEY (consolidation_run_id) REFERENCES public.consolidation_runs(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_6f6e1949f4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7931,11 +8830,35 @@ ALTER TABLE ONLY public.accounting_vat_category_mappings
 
 
 --
+-- Name: organization_memberships fk_rails_715ab7f4fe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organization_memberships
+    ADD CONSTRAINT fk_rails_715ab7f4fe FOREIGN KEY (organization_id) REFERENCES public.organizations(id);
+
+
+--
+-- Name: consolidation_stakes fk_rails_7191575469; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_stakes
+    ADD CONSTRAINT fk_rails_7191575469 FOREIGN KEY (consolidation_member_id) REFERENCES public.consolidation_members(id);
+
+
+--
 -- Name: accounting_intracom_listings fk_rails_720bd52763; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_intracom_listings
     ADD CONSTRAINT fk_rails_720bd52763 FOREIGN KEY (fiscal_year_id) REFERENCES public.accounting_fiscal_years(id);
+
+
+--
+-- Name: consolidation_entry_lines fk_rails_72748bdf1c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_entry_lines
+    ADD CONSTRAINT fk_rails_72748bdf1c FOREIGN KEY (consolidation_entry_id) REFERENCES public.consolidation_entries(id);
 
 
 --
@@ -7984,6 +8907,14 @@ ALTER TABLE ONLY public.accounting_import_batches
 
 ALTER TABLE ONLY public.accounting_comments
     ADD CONSTRAINT fk_rails_7807ac8a6b FOREIGN KEY (parent_id) REFERENCES public.accounting_comments(id);
+
+
+--
+-- Name: consolidation_mappings fk_rails_7a5ee835b7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_mappings
+    ADD CONSTRAINT fk_rails_7a5ee835b7 FOREIGN KEY (consolidation_member_id) REFERENCES public.consolidation_members(id);
 
 
 --
@@ -8187,6 +9118,14 @@ ALTER TABLE ONLY public.accounting_journals
 
 
 --
+-- Name: consolidation_runs fk_rails_9d7f9d2ebe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_runs
+    ADD CONSTRAINT fk_rails_9d7f9d2ebe FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_depreciation_entries fk_rails_9e0e230664; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8224,6 +9163,14 @@ ALTER TABLE ONLY public.accounting_exchange_rates
 
 ALTER TABLE ONLY public.webauthn_credentials
     ADD CONSTRAINT fk_rails_a4355aef77 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: dossier_health_snapshots fk_rails_a47419db3b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dossier_health_snapshots
+    ADD CONSTRAINT fk_rails_a47419db3b FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -8344,6 +9291,14 @@ ALTER TABLE ONLY public.accounting_lettering_write_offs
 
 ALTER TABLE ONLY public.closing_runs
     ADD CONSTRAINT fk_rails_b8b7468d50 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: consolidation_groups fk_rails_ba9fb62262; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_groups
+    ADD CONSTRAINT fk_rails_ba9fb62262 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -8579,6 +9534,22 @@ ALTER TABLE ONLY public.accounting_controlled_windows
 
 
 --
+-- Name: consolidation_runs fk_rails_d4a219bf3d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_runs
+    ADD CONSTRAINT fk_rails_d4a219bf3d FOREIGN KEY (consolidation_group_id) REFERENCES public.consolidation_groups(id);
+
+
+--
+-- Name: consolidation_entries fk_rails_d50b49f26b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_entries
+    ADD CONSTRAINT fk_rails_d50b49f26b FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_intracom_listings fk_rails_d6237e4acb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8600,6 +9571,14 @@ ALTER TABLE ONLY public.accounting_recurring_runs
 
 ALTER TABLE ONLY public.accounting_journal_entries
     ADD CONSTRAINT fk_rails_daa313bbd9 FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: entities fk_rails_dc402a0917; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.entities
+    ADD CONSTRAINT fk_rails_dc402a0917 FOREIGN KEY (organization_id) REFERENCES public.organizations(id);
 
 
 --
@@ -8656,6 +9635,14 @@ ALTER TABLE ONLY public.accounting_peppol_events
 
 ALTER TABLE ONLY public.accounting_invoice_lines
     ADD CONSTRAINT fk_rails_df9325f489 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: consolidation_members fk_rails_e2003c529d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_members
+    ADD CONSTRAINT fk_rails_e2003c529d FOREIGN KEY (consolidation_group_id) REFERENCES public.consolidation_groups(id);
 
 
 --
@@ -8731,11 +9718,27 @@ ALTER TABLE ONLY public.accounting_letterings
 
 
 --
+-- Name: organizations fk_rails_edec76c076; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizations
+    ADD CONSTRAINT fk_rails_edec76c076 FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: closing_runs fk_rails_ee6bb7d745; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.closing_runs
     ADD CONSTRAINT fk_rails_ee6bb7d745 FOREIGN KEY (reopened_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: consolidation_members fk_rails_eff76b7e8a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consolidation_members
+    ADD CONSTRAINT fk_rails_eff76b7e8a FOREIGN KEY (member_entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -8897,6 +9900,8 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261005234000'),
+('20261005233000'),
 ('20261005230000'),
 ('20261005220000'),
 ('20261005210000'),

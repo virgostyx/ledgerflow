@@ -2,6 +2,9 @@ class Entity < ApplicationRecord
   belongs_to :created_by, class_name: "User"
   has_many :user_entities, dependent: :destroy
   has_many :users, through: :user_entities
+  belongs_to :organization, optional: true # F12a: the firm or the group this entity belongs to
+  belongs_to :responsible, class_name: "User", optional: true # F12a: the person in charge of the dossier
+  has_many :health_snapshots, class_name: "DossierHealthSnapshot", dependent: :delete_all
 
   enum :vat_filing_frequency, { monthly: 0, quarterly: 1 }
   enum :vat_regime,           { normal: 0, franchise: 1 }
@@ -42,7 +45,7 @@ class Entity < ApplicationRecord
 
   # The features of docs/dev/features/spec.md that are built, each shipped behind a per-entity flag. A function adds its
   # key here when it ships.
-  FEATURES = %w[f01 f02 f03 f08 f09 f10 f11 f13].freeze
+  FEATURES = %w[f01 f02 f03 f08 f09 f10 f11 f12 f13].freeze
   FEATURE_LABELS = {
     "f01" => [ "Roles, period locks and users", "Turns on the Periods and Users and roles screens and the four-eyes option. The safeguards (a locked period refuses entries, the last owner stays) stay active either way." ],
     "f02" => [ "Bank statements (CODA)", "Turns on the import of CODA bank statements and the automatic reconciliation of their lines." ],
@@ -50,6 +53,7 @@ class Entity < ApplicationRecord
     "f08" => [ "Tasks and comments", "Turns on tasks and comment threads on entries, ledger lines, accounts, partners, documents and bank lines, with mentions and notifications." ],
     "f10" => [ "Guided year-end closing", "Turns on the closing assistant: 18 checked steps from the open fiscal year to the closed one, closing entries in draft, detailed carry-forward, lock, snapshot and bundle, approval and reopening. The direct Close button of the fiscal year is replaced by it." ],
     "f11" => [ "Exchange rates import", "Turns on the daily import of the ECB rates and the monthly import of the InforEuro rates (the only thing that goes to the network). Entering rates, the rate rules and the revaluation are always available." ],
+    "f12" => [ "Portfolio and consolidation", "Puts this entity in the portfolio dashboard of the people who work in several entities (a nightly health snapshot, read from its own books only) and lets it be a member of a consolidation group. Each member of a group needs it." ],
     "f13" => [ "Imports, exports and API", "Turns on the guided imports of partners, accounts and entries from CSV and XLSX files (drafts only, taken back by batch), the data exports and the public API." ],
     "f09" => [ "Customer dunning", "Turns on the preparation of reminders from the open customer lines: levels, texts per language, preview, sending after validation, disputes and payment promises." ]
   }.freeze

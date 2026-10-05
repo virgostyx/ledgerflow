@@ -31,6 +31,7 @@ class EntitiesController < ApplicationController
     entity = current_user.current_entities.find_by(id: params[:id])
     if entity
       session[:current_entity_id] = entity.id
+      current_user.update_column(:last_entity_id, entity.id)
       redirect_to accounting_root_path, notice: t("entities.switched", name: entity.name)
     else
       redirect_to entities_path, alert: t("entities.not_found")

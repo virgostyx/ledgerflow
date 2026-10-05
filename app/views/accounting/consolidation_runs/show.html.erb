@@ -1,0 +1,108 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Consolidation", path: accounting_consolidation_groups_path }, { label: @group.name, path: accounting_consolidation_group_path(@group) }, { label: "At #{@run.reporting_date}" } ]) %>
+<% end %>
+<%= render Ui::PageHeaderComponent.new(title: "#{@group.name} at #{@run.reporting_date}", description: "Status: #{@run.status}. Each step is worked out from the books of every company, each read on its own; nothing here writes in any of them.") do |header| %>
+  <% header.with_actions do %>
+    <%= link_to "Excel", export_accounting_consolidation_run_path(@run, format: :xlsx), class: "px-3 py-2 border border-gray-300 text-sm rounded-md" %>
+    <%= link_to "PDF", export_accounting_consolidation_run_path(@run, format: :pdf), class: "px-3 py-2 border border-gray-300 text-sm rounded-md" %>
+  <% end %>
+<% end %>
+
+<% if @run.provisional %><div class="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-section="provisional">PROVISIONAL: at least one company has a fiscal year that is not closed, or that ends on another day than the reporting date. Every export says so.</div><% end %>
+<% if @run.frozen? %>
+  <div class="mb-4 rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900" data-section="frozen">Frozen on <%= l(@run.frozen_at, format: :short) %>. Fingerprint (SHA-256): <code class="break-all"><%= @run.snapshot_sha256 %></code>
+    — <%= @run.intact? ? "the content is intact" : "THE CONTENT DOES NOT MATCH ITS FINGERPRINT" %>.</div>
+<% end %>
+
+<h2 class="mt-4 mb-2 text-sm font-semibold text-gray-700">1. Perimeter and collection</h2>
+<table class="w-full text-sm bg-white rounded-lg border border-gray-200" data-section="perimeter">
+  <thead class="bg-gray-50"><tr class="text-xs text-gray-500 uppercase"><th class="px-3 py-2 text-left">Company</th><th class="px-3 py-2 text-left">Method</th><th class="px-3 py-2 text-right">Held %</th><th class="px-3 py-2 text-left">Currency</th><th class="px-3 py-2 text-left">Fiscal year</th></tr></thead>
+  <tbody class="divide-y divide-gray-100">
+    <% @view.members.each do |m| %><tr><td class="px-3 py-2"><%= m["name"] %></td><td class="px-3 py-2"><%= m["method"] == "full" ? "Global integration" : "Equity method" %></td><td class="px-3 py-2 text-right"><%= m["stake"] %></td><td class="px-3 py-2"><%= m["currency"] %></td>
+      <td class="px-3 py-2"><%= m["fiscal_year"] %> (<%= m["fiscal_year_status"] %><%= ", situation at the date" if m["intermediate"] %>)</td></tr><% end %>
+  </tbody>
+</table>
+
+<h2 class="mt-6 mb-2 text-sm font-semibold text-gray-700">2. Translation</h2>
+<% translated = @view.members.select { |m| m["translation"] } %>
+<% if translated.any? %>
+  <ul class="text-sm text-gray-700" data-section="translation"><% translated.each do |m| %><li><%= m["name"] %> (<%= m["currency"] %>): closing rate <%= m["translation"]["closing_rate"] %>, average rate <%= m["translation"]["average_rate"] %>, difference <%= m["translation"]["difference"] %> placed in <%= m["translation"]["difference_heading"] %>.</li><% end %></ul>
+<% else %>
+  <p class="text-sm text-gray-500"><%= @view.members.any? { |m| m["currency"] != @group.currency } ? "A member keeps its accounts in a foreign currency and the rule is not validated: nothing is translated." : "No member in a foreign currency." %></p>
+<% end %>
+
+<h2 class="mt-6 mb-2 text-sm font-semibold text-gray-700">3. Intragroup reconciliation and eliminations</h2>
+<% rows = @view.intragroup["balances"] + @view.intragroup["flows"] %>
+<table class="w-full text-sm bg-white rounded-lg border border-gray-200" data-section="intragroup">
+  <thead class="bg-gray-50"><tr class="text-xs text-gray-500 uppercase"><th class="px-3 py-2 text-left">What</th><th class="px-3 py-2 text-left">Between</th><th class="px-3 py-2 text-right">Says the creditor / seller</th><th class="px-3 py-2 text-right">Says the debtor / buyer</th><th class="px-3 py-2 text-right">Difference</th><th class="px-3 py-2"></th></tr></thead>
+  <tbody class="divide-y divide-gray-100">
+    <% rows.each do |r| %>
+      <tr><td class="px-3 py-2"><%= r["kind"] == "balances" ? "Receivable / payable" : "Sales / purchases" %> (<%= r["heading_creditor"] %> / <%= r["heading_debtor"] %>)</td><td class="px-3 py-2"><%= r["creditor"] %> → <%= r["debtor"] %></td>
+        <td class="px-3 py-2 text-right"><%= r["amount_creditor"] %></td><td class="px-3 py-2 text-right"><%= r["amount_debtor"] %></td>
+        <td class="px-3 py-2 text-right <%= 'text-red-700 font-medium' if BigDecimal(r['difference']).nonzero? %>"><%= r["difference"] %></td>
+        <td class="px-3 py-2 text-right"><% if @run.draft? && BigDecimal(r["difference"]).nonzero? && consolidation_can?(:update?) %>
+          <%= link_to "Propose an adjustment", new_entry_accounting_consolidation_run_path(@run, kind: "intercompany_adjustment", amount: BigDecimal(r["difference"]).abs.to_s("F"), comment: "Difference between #{r['creditor']} and #{r['debtor']}: ", context: { kind: r["kind"], creditor_id: r["creditor_id"], debtor_id: r["debtor_id"], heading_creditor: r["heading_creditor"], heading_debtor: r["heading_debtor"] }), class: "text-primary-700 hover:underline" %><% end %></td></tr>
+    <% end %>
+    <% if rows.empty? %><tr><td colspan="6" class="px-3 py-3 text-gray-500">Nothing between the companies of the group.</td></tr><% end %>
+  </tbody>
+</table>
+<p class="mt-1 text-xs text-gray-500"><% if @view.run.figures["defaults_used"].present? && @run.draft? %>The pairs of headings compared are the application's proposal (rule not validated); no elimination is made until an accountant's validation is recorded.<% end %></p>
+
+<h3 class="mt-4 mb-1 text-xs font-semibold text-gray-600 uppercase">Consolidation entries</h3>
+<ul class="text-sm text-gray-700 space-y-1" data-section="entries">
+  <% @view.entries.each do |e| %>
+    <li><span class="font-medium"><%= e["kind"].humanize %></span> — <%= e["comment"] %><%= " (rule #{e['rule_key']})" if e["rule_key"] %>:
+      <%= e["lines"].map { |l| "#{l['side']} #{l['code']} #{l['amount']}" }.join(", ") %>
+      <%= button_to "Delete", destroy_entry_accounting_consolidation_run_path(@run, entry_id: e["id"]), method: :delete, class: "inline text-xs text-red-700 cursor-pointer", form: { class: "inline" } if @run.draft? && e["rule_key"].nil? && consolidation_can?(:update?) %></li>
+  <% end %>
+  <% if @view.entries.empty? %><li class="text-gray-500">None.</li><% end %>
+</ul>
+<% if @run.draft? && consolidation_can?(:update?) %>
+  <p class="mt-2 text-sm"><%= link_to "Guided entry: dividend", new_entry_accounting_consolidation_run_path(@run, kind: "dividends"), class: "text-primary-700 hover:underline" %> ·
+    <%= link_to "Guided entry: participation against equity", new_entry_accounting_consolidation_run_path(@run, kind: "participation"), class: "text-primary-700 hover:underline" %> ·
+    <%= link_to "Adjustment", new_entry_accounting_consolidation_run_path(@run, kind: "adjustment"), class: "text-primary-700 hover:underline" %> (a supporting document is compulsory for the first two)</p>
+<% end %>
+
+<h2 class="mt-6 mb-2 text-sm font-semibold text-gray-700">4. Minority interests and equity method</h2>
+<% minority = @view.minority %>
+<% if minority["applied"] %>
+  <ul class="text-sm text-gray-700" data-section="minority"><% minority["members"].each do |m| %><li><%= m["name"] %> held at <%= m["stake"] %> %: minority share of equity <%= m["equity"] %>, of result <%= m["result"] %>.</li><% end %>
+    <li class="font-medium">Group share of equity <%= minority["group_equity"] %>; of result <%= minority["group_result"] %>.</li></ul>
+<% else %><p class="text-sm text-gray-500" data-section="minority">Not applied (no fully consolidated member held for less than 100 %, or the rule is not validated).</p><% end %>
+<% if @view.equity_method.any? %>
+  <ul class="text-sm text-gray-700 mt-1" data-section="equity-method"><% @view.equity_method.each do |e| %><li><%= e["name"] %> at <%= e["stake"] %> %: share of equity <%= e["equity"] %>, of result <%= e["result"] %> (the entry is made by a person, with its document).</li><% end %></ul>
+<% end %>
+
+<h2 class="mt-6 mb-2 text-sm font-semibold text-gray-700">5. Consolidated statements</h2>
+<% @view.statements.each do |statement, list| %>
+  <h3 class="mt-3 mb-1 text-xs font-semibold text-gray-600 uppercase"><%= statement.humanize %></h3>
+  <table class="w-full text-sm bg-white rounded-lg border border-gray-200" data-section="statement-<%= statement %>"><tbody class="divide-y divide-gray-100">
+    <% list.each do |row| %><tr class="<%= 'font-semibold' if row['level'].to_i <= 1 %>"><td class="px-3 py-1 w-24 font-mono"><%= row["code"] %></td><td class="px-3 py-1" style="padding-left: <%= (2 - row['level'].to_i).clamp(0, 2) * 1.25 + 0.75 %>rem"><%= row["label"] %></td><td class="px-3 py-1 text-right"><%= row["amount"] %></td></tr><% end %>
+  </tbody></table>
+<% end %>
+<h3 class="mt-3 mb-1 text-xs font-semibold text-gray-600 uppercase">The balance sheet at each step</h3>
+<ul class="text-sm text-gray-700" data-section="steps"><% @view.balance_steps.each do |s| %><li><%= s["label"] %>: difference <%= s["difference"] %></li><% end %></ul>
+
+<h2 class="mt-6 mb-2 text-sm font-semibold text-gray-700">6. Review</h2>
+<% issues = @view.issues %>
+<ul class="text-sm space-y-1" data-section="review">
+  <% issues.each do |i| %><li class="<%= i['severity'] == 'blocking' ? 'text-red-700' : 'text-amber-700' %>"><%= i["severity"] == "blocking" ? "Blocks:" : "Warns:" %> <%= i["message"] %></li><% end %>
+  <% if issues.empty? %><li class="text-emerald-700"><%= @run.draft? ? "Nothing blocks." : "Nothing blocked this run." %></li><% end %>
+</ul>
+
+<% if @diff %>
+  <h2 class="mt-6 mb-2 text-sm font-semibold text-gray-700">What changed since the run it replaces (#<%= @diff["previous_run_id"] %>)</h2>
+  <ul class="text-sm text-gray-700" data-section="diff">
+    <% @diff["headings"].each do |h| %><li><%= h["statement"] %> <%= h["code"] %> <%= h["label"] %>: <%= h["previous"] %> → <%= h["current"] %> (<%= h["delta"] %>)</li><% end %>
+    <li>Entries: <%= @diff["entries"]["previous"] %> → <%= @diff["entries"]["current"] %><%= "; companies added: #{@diff['members_added'].join(', ')}" if @diff["members_added"].any? %><%= "; removed: #{@diff['members_removed'].join(', ')}" if @diff["members_removed"].any? %></li>
+  </ul>
+<% end %>
+
+<div class="mt-6 flex gap-3">
+  <% if @run.draft? %>
+    <%= button_to "Work it out again", compute_accounting_consolidation_run_path(@run), method: :post, class: "px-4 py-2 border border-gray-300 text-sm rounded-md cursor-pointer" if consolidation_can?(:update?) %>
+    <%= button_to "Validate", validate_accounting_consolidation_run_path(@run), method: :post, class: "btn-primary cursor-pointer" if consolidation_can?(:approve?) %>
+  <% elsif @run.validated? %>
+    <%= button_to "Freeze", freeze_accounting_consolidation_run_path(@run), method: :post, class: "btn-primary cursor-pointer", form: { data: { turbo_confirm: "Freeze this run? Its content is written once and never changes." } } if consolidation_can?(:approve?) %>
+  <% end %>
+</div>

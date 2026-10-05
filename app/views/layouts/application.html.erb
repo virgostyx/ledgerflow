@@ -305,6 +305,15 @@
           </summary>
           <div class="space-y-0.5">
 
+        <% if feature?(:f12) && Accounting::ConsolidationPolicy.new(current_user, nil).index? %>
+          <%= link_to accounting_consolidation_groups_path, class: nav_class(accounting_consolidation_groups_path) do %>
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
+            </svg>
+            Consolidation
+          <% end %>
+        <% end %>
+
         <% if feature?(:f13) && policy(Accounting::ImportBatch).index? %>
           <%= link_to accounting_imports_path, class: nav_class(accounting_imports_path) do %>
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -404,9 +413,21 @@
             </svg>
             <span class="text-xs font-medium text-indigo-700 truncate"><%= ActsAsTenant.current_tenant.name %></span>
           </div>
+          <% others = current_user.current_entities.active.where.not(id: ActsAsTenant.current_tenant.id).order(:name).limit(10).to_a %>
+          <% if others.any? %>
+            <ul class="px-2 mb-2 space-y-0.5" data-section="entity-switcher" aria-label="Switch dossier">
+              <% others.each do |other| %>
+                <li><%= button_to other.name, switch_entity_path(other), method: :post, class: "w-full text-left text-xs text-gray-500 hover:text-indigo-600 truncate cursor-pointer" %></li>
+              <% end %>
+            </ul>
+          <% end %>
           <div class="flex gap-2 px-2">
             <% if current_user.current_entities.count > 1 %>
-              <%= link_to "Switch", entities_path, class: "text-xs text-gray-400 hover:text-indigo-600" %>
+              <%= link_to "All", entities_path, class: "text-xs text-gray-400 hover:text-indigo-600" %>
+              <span class="text-gray-200">·</span>
+            <% end %>
+            <% if feature?(:f12) %>
+              <%= link_to "Portfolio", portfolio_path, class: "text-xs text-gray-400 hover:text-indigo-600" %>
               <span class="text-gray-200">·</span>
             <% end %>
             <%= link_to "New entity", new_entity_path, class: "text-xs text-gray-400 hover:text-emerald-600" %>

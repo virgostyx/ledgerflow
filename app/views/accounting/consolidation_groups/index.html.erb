@@ -1,0 +1,10 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Consolidation" } ]) %>
+<% end %>
+<%= render Ui::PageHeaderComponent.new(title: "Consolidation", description: "Groups of companies seen from their parent. A consolidation needs access to every company of the group, or it is refused whole. A rule with no recorded validation by an accountant is not applied.") do |header| %>
+  <% header.with_actions do %><%= link_to "New group", new_accounting_consolidation_group_path, class: "btn-primary" if consolidation_can?(:create?) %><% end %>
+<% end %>
+<ul class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm" data-section="groups">
+  <% @groups.each do |group| %><li class="px-4 py-3"><%= link_to group.name, accounting_consolidation_group_path(group), class: "text-primary-700 hover:underline" %> <span class="text-gray-500">(<%= group.currency %>)</span></li><% end %>
+  <% if @groups.empty? %><li class="px-4 py-6 text-center text-gray-500">No group yet.</li><% end %>
+</ul>
