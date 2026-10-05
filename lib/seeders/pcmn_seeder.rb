@@ -13,9 +13,13 @@ module Seeders
       new(entity).call
     end
 
+    # The accounts that carry the result of a closed year, in the chart of the associations (the companies' ones are the defaults of the entity)
+    ASBL_CARRY = { closing_carry_account_code: "120100", closing_loss_account_code: "120200" }.freeze
+
     def initialize(entity)
-      type = ASBL_LEGAL_FORMS.include?(entity&.legal_form) ? :asbl : :commercial
-      @file = SEED_FILES[type]
+      @entity = entity
+      @type = ASBL_LEGAL_FORMS.include?(entity&.legal_form) ? :asbl : :commercial
+      @file = SEED_FILES[@type]
     end
 
     def call
@@ -35,7 +39,18 @@ module Seeders
         end
       end
 
+      use_the_carry_accounts_of_the_chart
       puts "[PCMN] #{counts[:created]} comptes créés, #{counts[:skipped]} déjà présents."
+    end
+
+    private
+
+    # An association carries its result to 120100 / 120200, not to the 140100 / 140200 of the companies: only while the entity still has the defaults.
+    def use_the_carry_accounts_of_the_chart
+      return unless @type == :asbl && @entity&.persisted?
+      return unless @entity.closing_carry_account_code == "140100" && @entity.closing_loss_account_code == "140200"
+
+      @entity.update!(ASBL_CARRY)
     end
   end
 end

@@ -2,7 +2,7 @@
 # Written from knowledge of the BNB scheme and NOT validated by an accountant or against the official model: check it
 # before any real filing. A row either groups accounts (`prefixes`, read on the `side` where its balance is positive)
 # or adds up other rows (`sum`, a leading - subtracts). Rows are listed in the order they are shown.
-# 130000 (carry forward, see Accounting::AccountCodes) is shown with the profit carried forward (14), and the result of
+# 140100 / 140200 (carry forward of a profit / of a loss) are in the heading 14 by their prefix; 130000, the carry account of the entities that closed before 2026-10-05, is shown with it too (14), and the result of
 # the year is added to it by Accounting::AnnualAccounts. Class 0, 69 and 79 (appropriations) are left out on purpose.
 assets:
   - { code: "20", label: "Formation expenses", level: 2, side: debit, prefixes: ["20"] }

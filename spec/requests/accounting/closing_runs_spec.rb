@@ -17,7 +17,7 @@ RSpec.describe "Closing assistant (F10)", type: :request do
   let!(:capital)   { create(:account, code: "100000", label_fr: "Capital", account_class: 1, account_type: :equity, normal_balance: :credit) }
   let!(:revenue)   { create(:account, code: "700000", label_fr: "Sales", account_class: 7, account_type: :revenue, normal_balance: :credit) }
   let!(:result_account) { create(:account, code: "699000", label_fr: "Result", account_class: 6, account_type: :expense, normal_balance: :debit) }
-  let!(:carry_account)  { create(:account, code: "130000", label_fr: "Carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
+  let!(:carry_account)  { create(:account, code: "140100", label_fr: "Carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
   let(:year_end) { fiscal_year.end_date }
 
   before do
@@ -217,7 +217,7 @@ RSpec.describe "Closing assistant (F10)", type: :request do
   describe "the closing settings" do
     it "are shown, and changed by an owner only, for accounts that exist" do
       get accounting_closing_runs_path
-      expect(response.body).to include('data-section="settings"', "699000", "130000")
+      expect(response.body).to include('data-section="settings"', "699000", "140100")
 
       patch settings_accounting_closing_runs_path, params: { entity: { closing_result_account_code: "699000", review_threshold_amount: "5" } }
       expect(entity.reload.review_threshold_amount).to eq(1000) # an accountant may not
@@ -232,7 +232,7 @@ RSpec.describe "Closing assistant (F10)", type: :request do
       sign_in owner
       patch settings_accounting_closing_runs_path, params: { entity: { closing_carry_account_code: "999999" } }
       expect(flash[:alert]).to include("999999")
-      expect(entity.reload.closing_carry_account_code).to eq("130000")
+      expect(entity.reload.closing_carry_account_code).to eq("140100")
     end
   end
 

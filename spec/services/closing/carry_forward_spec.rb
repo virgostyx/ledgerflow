@@ -18,7 +18,7 @@ RSpec.describe "Closing: carry-forward" do
   let!(:revenue)   { create(:account, code: "700000", label_fr: "Sales", account_class: 7, account_type: :revenue, normal_balance: :credit) }
   let!(:expense)   { create(:account, code: "604000", label_fr: "Services", account_class: 6, account_type: :expense, normal_balance: :debit) }
   let!(:result_account) { create(:account, code: "699000", label_fr: "Result", account_class: 6, account_type: :expense, normal_balance: :debit) }
-  let!(:carry_account)  { create(:account, code: "130000", label_fr: "Profit carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
+  let!(:carry_account)  { create(:account, code: "140100", label_fr: "Profit carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
   let(:alice) { create(:partner, name: "Alice", payment_terms_days: 30) }
   let(:bob)   { create(:partner, name: "Bob", payment_terms_days: 15) }
   let(:acme)  { create(:partner, :supplier, name: "Acme", payment_terms_days: 30) }
@@ -56,6 +56,37 @@ RSpec.describe "Closing: carry-forward" do
     result = carry.perform(user: accountant)
     expect(result).to be_failure
     expect(result.message).to match(/closing entr/i)
+  end
+
+  context "in a year with a loss (decided 2026-10-05: a loss goes to 140200, a profit to 140100)" do
+    let!(:loss_account) { create(:account, code: "140200", label_fr: "Loss carried forward", account_class: 1, account_type: :equity, normal_balance: :debit) }
+
+    before do
+      post(fiscal_year.start_date + 80, [ expense, :debit, 2_000 ], [ bank, :credit, 2_000 ]) # 600 + 250 - 300 - 2 000: a loss of 1 450
+      close_income
+    end
+
+    it "carries the loss into the loss account, as a debit, and nothing into the account of the profits" do
+      entry = carry.perform(user: accountant)[:entry]
+      expect(entry.lines.find_by(account: loss_account)).to have_attributes(debit: 1_450, credit: 0)
+      expect(entry.lines.where(account: carry_account)).to be_empty
+      expect(entry.lines.sum(:debit)).to eq(entry.lines.sum(:credit))
+    end
+
+    it "reads back as correct once validated: opening balances against closing balances" do
+      carry.perform(user: accountant)
+      Closing::ValidateEntries.call(run: run, user: accountant)
+      expect(carry.evaluate.status).to eq(:ok)
+    end
+
+    it "carries the loss into the carry account itself when the chart has no loss account (a debit balance on it)" do
+      entity.update!(closing_loss_account_code: "999999")
+      run.reload # (the run keeps the entity it read)
+      entry = carry.perform(user: accountant)[:entry]
+      expect(entry.lines.find_by(account: carry_account)).to have_attributes(debit: 1_450, credit: 0)
+      Closing::ValidateEntries.call(run: run, user: accountant)
+      expect(carry.evaluate.status).to eq(:ok)
+    end
   end
 
   context "once the income accounts are closed" do
@@ -110,7 +141,7 @@ RSpec.describe "Closing: carry-forward" do
       carry_account.destroy!
       result = carry.perform(user: accountant)
       expect(result).to be_failure
-      expect(result.message).to include("130000")
+      expect(result.message).to include("140100")
     end
 
     it "refuses when the next year does not exist" do
@@ -129,7 +160,7 @@ RSpec.describe "Closing: carry-forward" do
         opening = Accounting::TrialBalanceQuery.new(fiscal_year: next_year, as_of: next_year.start_date).call.index_by(&:code)
 
         %w[550000 100000 400000 440000].each { |code| expect(opening[code].closing_net).to eq(closing[code].closing_net), code }
-        expect(opening["130000"].closing_net).to eq(closing["699000"].closing_net) # the result, a credit
+        expect(opening["140100"].closing_net).to eq(closing["699000"].closing_net) # the result, a credit
         expect(opening.keys & %w[700000 604000 699000]).to eq([])
       end
 

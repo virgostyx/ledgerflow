@@ -14,7 +14,7 @@ RSpec.describe Accounting::CarryForwardBalances do
     create(:journal, code: "OUV", label_fr: "Ouverture", journal_type: :misc, sequence_prefix: "OUV")
   end
   let!(:carry_account) do
-    create(:account, code: "130000", label_fr: "Résultat reporté",
+    create(:account, code: "140100", label_fr: "Résultat reporté",
            account_type: :equity, normal_balance: :credit, account_class: 1)
   end
   let!(:result_account) do
@@ -64,7 +64,7 @@ RSpec.describe Accounting::CarryForwardBalances do
     end
   end
 
-  context "when account 130000 is missing" do
+  context "when account 140100 is missing" do
     before do
       create_balance_sheet_entry(
         debit_acct: asset_account, credit_acct: payable_account,
@@ -78,7 +78,7 @@ RSpec.describe Accounting::CarryForwardBalances do
     end
 
     it "includes a descriptive error message" do
-      expect(result.message).to include("130000")
+      expect(result.message).to include("140100")
     end
   end
 
@@ -159,7 +159,7 @@ RSpec.describe Accounting::CarryForwardBalances do
       )
     end
 
-    it "maps 699000 balance to 130000 (not 699000) in the opening entry" do
+    it "maps 699000 balance to 140100 (not 699000) in the opening entry" do
       result
       entry = Accounting::JournalEntry.last
       line_699 = entry.lines.find_by(account: result_account)
@@ -228,6 +228,28 @@ RSpec.describe Accounting::CarryForwardBalances do
 
     it "returns a failed context" do
       expect(result).to be_failure
+    end
+  end
+
+  context "when the previous year ended with a loss (decided 2026-10-05)" do
+    let!(:loss_account) { create(:account, code: "140200", label_fr: "Perte reportée", account_type: :equity, normal_balance: :debit, account_class: 1) }
+
+    before do
+      create_balance_sheet_entry(debit_acct: result_account, credit_acct: asset_account, amount: BigDecimal("300.00")) # 699000 debited: a loss
+    end
+
+    it "carries the loss to 140200 as a debit, and nothing to 140100" do
+      result
+      entry = Accounting::JournalEntry.last
+      expect(entry.lines.find_by(account: loss_account)).to have_attributes(debit: 300, credit: 0)
+      expect(entry.lines.find_by(account: carry_account)).to be_nil
+      expect(entry.lines.find_by(account: result_account)).to be_nil
+    end
+
+    it "carries it to 140100 itself, as a debit, when the entity has no loss account in its chart" do
+      entity.update!(closing_loss_account_code: "999999")
+      result
+      expect(Accounting::JournalEntry.last.lines.find_by(account: carry_account)).to have_attributes(debit: 300, credit: 0)
     end
   end
 end

@@ -39,8 +39,8 @@ class Accounting::ClosingRunsController < ApplicationController
   def settings
     authorize Accounting::ClosingRun, :approve?
     entity = ActsAsTenant.current_tenant
-    permitted = params.require(:entity).permit(:closing_result_account_code, :closing_carry_account_code, :review_threshold_pct, :review_threshold_amount)
-    missing = %i[closing_result_account_code closing_carry_account_code].filter_map { |key| permitted[key] if permitted[key].present? && !Accounting::Account.exists?(code: permitted[key]) }
+    permitted = params.require(:entity).permit(:closing_result_account_code, :closing_carry_account_code, :closing_loss_account_code, :review_threshold_pct, :review_threshold_amount)
+    missing = %i[closing_result_account_code closing_carry_account_code closing_loss_account_code].filter_map { |key| permitted[key] if permitted[key].present? && !Accounting::Account.exists?(code: permitted[key]) }
     return redirect_to(accounting_closing_runs_path, alert: "Account #{missing.to_sentence} does not exist in the chart of accounts.") if missing.any?
 
     if entity.update(permitted)

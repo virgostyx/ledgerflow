@@ -103,7 +103,7 @@ RSpec.describe "Closing the reference ledger", type: :invariant do
       closing_after = balances(fiscal_year, year_end)
       classes = Accounting::Account.where(code: closing_after.keys | opening.keys).to_h { |a| [ a.code, a.account_class ] }
       closing_after.each do |code, row|
-        next unless (0..5).cover?(classes[code]) && code != "130000"
+        next unless (0..5).cover?(classes[code]) && code != "140100"
 
         expect(opening[code]&.closing_net.to_d).to eq(row.closing_net), "#{code}: closing #{row.closing_net}, opening #{opening[code]&.closing_net}"
       end

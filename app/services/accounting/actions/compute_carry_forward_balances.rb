@@ -8,7 +8,6 @@ class Accounting::Actions::ComputeCarryForwardBalances
   ].freeze
 
   RESULT_ACCOUNT_CODE       = Accounting::AccountCodes::RESULT
-  CARRY_FORWARD_ACCOUNT_CODE = Accounting::AccountCodes::CARRY_FORWARD
 
   expects :previous_fiscal_year
   promises :carry_forward_lines, :carry_account
@@ -20,12 +19,15 @@ class Accounting::Actions::ComputeCarryForwardBalances
       next ctx
     end
 
-    carry_account = Accounting::Account.find_by(code: CARRY_FORWARD_ACCOUNT_CODE)
+    entity = ActsAsTenant.current_tenant
+    carry_account = Accounting::Account.find_by(code: entity.closing_carry_account_code)
     unless carry_account
       ctx.fail!(I18n.t("accounting.fiscal_years.errors.missing_carry_account",
-                       code: CARRY_FORWARD_ACCOUNT_CODE))
+                       code: entity.closing_carry_account_code))
       next ctx
     end
+    # a loss goes to the loss account of the entity when its chart has it, else to the carry account itself
+    loss_account = Accounting::Account.find_by(code: entity.closing_loss_account_code) || carry_account
 
     result_account = Accounting::Account.find_by(code: RESULT_ACCOUNT_CODE)
 
@@ -56,8 +58,11 @@ class Accounting::Actions::ComputeCarryForwardBalances
       net = BigDecimal(row.total_debit.to_s) - BigDecimal(row.total_credit.to_s)
       next if net.zero?
 
-      target_id = (result_account && row.account_id == result_account.id) ?
-                    carry_account.id : row.account_id
+      target_id = if result_account && row.account_id == result_account.id
+                    (net > 0 ? loss_account : carry_account).id
+      else
+                    row.account_id
+      end
 
       if net > 0
         carry_forward_lines << { account_id: target_id, debit: net,      credit: BigDecimal("0") }

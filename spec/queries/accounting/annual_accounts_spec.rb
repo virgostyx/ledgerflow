@@ -67,6 +67,15 @@ RSpec.describe Accounting::AnnualAccounts, type: :query do
       expect(amount(:liabilities, "14")).to eq(2_370)
     end
 
+    it "shows the retained-earnings accounts of the PCMN, 140100 (profit) and 140200 (loss), under the heading 14 too, a loss reducing it" do
+      retained = account("140100", :equity, :credit)
+      lost = account("140200", :equity, :debit)
+      post(bank, retained, 900)
+      post(lost, bank, 250)
+      expect(amount(:liabilities, "13")).to eq(0)
+      expect(amount(:liabilities, "14")).to eq(1_970 + 900 - 250) # 1 970 is the result of the year
+    end
+
     it "is balanced" do
       expect(report).to be_balanced
       expect(report.difference).to eq(0)

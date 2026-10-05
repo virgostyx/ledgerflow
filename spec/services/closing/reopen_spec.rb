@@ -17,7 +17,7 @@ RSpec.describe "Closing: reopening" do
   let!(:customers) { create(:account, code: "400000", label_fr: "Customers", account_class: 4, account_type: :asset, normal_balance: :debit, reconcilable: true) }
   let!(:revenue)   { create(:account, code: "700000", label_fr: "Sales", account_class: 7, account_type: :revenue, normal_balance: :credit) }
   let!(:result_account) { create(:account, code: "699000", label_fr: "Result", account_class: 6, account_type: :expense, normal_balance: :debit) }
-  let!(:carry_account)  { create(:account, code: "130000", label_fr: "Carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
+  let!(:carry_account)  { create(:account, code: "140100", label_fr: "Carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
   let(:alice) { create(:partner, name: "Alice", payment_terms_days: 30) }
   let!(:next_year) { create(:fiscal_year, status: :pre_closing, year: fiscal_year.year + 1, start_date: year_end + 1, end_date: ((year_end + 1) >> 12) - 1) }
 
@@ -140,7 +140,7 @@ RSpec.describe "Closing: reopening" do
 
       differences = carry.differences.index_by { |d| d["code"] }
       expect(differences["400000"]).to include("old" => "600.0", "new" => "1000.0", "difference" => "400.0")
-      expect(differences["130000"]).to include("difference" => "-400.0") # a credit: the result is bigger
+      expect(differences["140100"]).to include("difference" => "-400.0") # a credit: the result is bigger
       expect(differences.keys).not_to include("550000") # unchanged
       expect(differences["400000"]["lines"]).to include("added" => 1, "removed" => 0)
     end
@@ -171,7 +171,7 @@ RSpec.describe "Closing: reopening" do
 
       opening = Accounting::TrialBalanceQuery.new(fiscal_year: next_year.reload, as_of: next_year.start_date).call.index_by(&:code)
       expect(opening["400000"].closing_net).to eq(1000)
-      expect(opening["130000"].closing_net).to eq(-1000)
+      expect(opening["140100"].closing_net).to eq(-1000)
       expect(Accounting::AgedBalanceQuery.new(kind: :customer, as_of: next_year.start_date).call.sole.total).to eq(1000)
     end
 

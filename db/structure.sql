@@ -3660,11 +3660,12 @@ CREATE TABLE public.entities (
     fx_unrealized_loss integer DEFAULT 0 NOT NULL,
     fx_unrealized_gain integer DEFAULT 2 NOT NULL,
     closing_result_account_code character varying DEFAULT '699000'::character varying NOT NULL,
-    closing_carry_account_code character varying DEFAULT '130000'::character varying NOT NULL,
+    closing_carry_account_code character varying DEFAULT '140100'::character varying NOT NULL,
     review_threshold_pct numeric(6,2) DEFAULT 20.0 NOT NULL,
     review_threshold_amount numeric(15,2) DEFAULT 1000.0 NOT NULL,
     organization_id bigint,
-    responsible_id bigint
+    responsible_id bigint,
+    closing_loss_account_code character varying DEFAULT '140200'::character varying NOT NULL
 );
 
 
@@ -9900,6 +9901,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261005235000'),
 ('20261005234000'),
 ('20261005233000'),
 ('20261005230000'),

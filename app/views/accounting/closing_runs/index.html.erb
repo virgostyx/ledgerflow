@@ -37,9 +37,10 @@
   <%= form_with url: settings_accounting_closing_runs_path, scope: :entity, method: :patch, class: 'bg-white rounded-lg border border-gray-200 p-4 space-y-3', data: { section: 'settings' } do |f| %>
     <h2 class="text-sm font-semibold text-gray-900">Closing settings</h2>
     <p class="text-xs text-gray-500">The accounts the closing entries use and the thresholds of the analytical review (step 14). Only an owner changes them.</p>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm">
       <div><%= f.label :closing_result_account_code, 'Result account', class: 'text-xs font-medium text-gray-500' %><%= f.text_field :closing_result_account_code, value: entity.closing_result_account_code, class: 'block w-full rounded-md border border-gray-300 px-2 py-1 font-mono' %></div>
-      <div><%= f.label :closing_carry_account_code, 'Carry-forward account', class: 'text-xs font-medium text-gray-500' %><%= f.text_field :closing_carry_account_code, value: entity.closing_carry_account_code, class: 'block w-full rounded-md border border-gray-300 px-2 py-1 font-mono' %></div>
+      <div><%= f.label :closing_carry_account_code, 'Carry-forward account (profit)', class: 'text-xs font-medium text-gray-500' %><%= f.text_field :closing_carry_account_code, value: entity.closing_carry_account_code, class: 'block w-full rounded-md border border-gray-300 px-2 py-1 font-mono' %></div>
+      <div><%= f.label :closing_loss_account_code, 'Carry-forward account (loss)', class: 'text-xs font-medium text-gray-500' %><%= f.text_field :closing_loss_account_code, value: entity.closing_loss_account_code, class: 'block w-full rounded-md border border-gray-300 px-2 py-1 font-mono' %></div>
       <div><%= f.label :review_threshold_pct, 'Review: variation over (%)', class: 'text-xs font-medium text-gray-500' %><%= f.number_field :review_threshold_pct, value: entity.review_threshold_pct, step: '0.01', class: 'block w-full rounded-md border border-gray-300 px-2 py-1' %></div>
       <div><%= f.label :review_threshold_amount, 'Review: and over (EUR)', class: 'text-xs font-medium text-gray-500' %><%= f.number_field :review_threshold_amount, value: entity.review_threshold_amount, step: '0.01', class: 'block w-full rounded-md border border-gray-300 px-2 py-1' %></div>
     </div>

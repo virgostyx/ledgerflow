@@ -22,4 +22,25 @@ RSpec.describe Seeders::PcmnSeeder do
       expect(wanted - Accounting::Account.pluck(:code)).to be_empty
     end
   end
+
+  it "gives an association the carry accounts of its own chart (120100 / 120200), and a company the defaults (140100 / 140200)" do
+    asbl = create(:entity, legal_form: "ASBL").tap { |e| ActsAsTenant.current_tenant = e }
+    described_class.call(entity: asbl)
+    expect(asbl.reload).to have_attributes(closing_carry_account_code: "120100", closing_loss_account_code: "120200")
+    expect(Accounting::Account.where(code: %w[120100 120200]).count).to eq(2)
+
+    company = create(:entity, legal_form: "SRL").tap { |e| ActsAsTenant.current_tenant = e }
+    described_class.call(entity: company)
+    expect(company.reload).to have_attributes(closing_carry_account_code: "140100", closing_loss_account_code: "140200")
+    expect(Accounting::Account.where(code: %w[140100 140200]).count).to eq(2)
+  end
+
+  it "does not move an association whose owner chose other accounts" do
+    asbl = create(:entity, legal_form: "ASBL", closing_carry_account_code: "120100").tap { |e| ActsAsTenant.current_tenant = e }
+    described_class.call(entity: asbl)
+    expect(asbl.reload.closing_carry_account_code).to eq("120100")
+    asbl.update!(closing_carry_account_code: "129999")
+    described_class.call(entity: asbl)
+    expect(asbl.reload.closing_carry_account_code).to eq("129999")
+  end
 end

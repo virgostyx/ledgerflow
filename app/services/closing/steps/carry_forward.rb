@@ -2,7 +2,8 @@
 # (Closing::ValidateEntries): the closing balances of classes 0 to 5, one line per account; the open lines of the customer and supplier accounts one by one,
 # with their partner, their due date and the line they come from (`origin_line_id`: Accounting::OpenLineSql counts the carried line and no longer the
 # original, so the aged balance of the first day of the new year is the one of the last day of the old); the result of the year, which the closing entry
-# gathered in the result account, into the carry account (`closing_carry_account_code`, 130000 by default). The income accounts open at zero.
+# gathered in the result account, into the carry account (`closing_carry_account_code`, 140100 "Bénéfice reporté" by default) when it is a profit, into the loss account (`closing_loss_account_code`, 140200 "Perte
+# reportée" by default) when it is a loss. The income accounts open at zero.
 # Read once posted: opening balances against closing balances, and R04 against R04, or it blocks.
 class Closing::Steps::CarryForward < Closing::Step
   self.position = 16
@@ -32,6 +33,7 @@ class Closing::Steps::CarryForward < Closing::Step
 
     carry = Accounting::Account.find_by(code: run.entity.closing_carry_account_code)
     return ctx.tap { |c| c.fail!("The carry account #{run.entity.closing_carry_account_code} does not exist: create it or choose another in the closing settings.") } unless carry
+    loss = loss_account(carry)
 
     journal = Accounting::Journal.where(journal_type: :misc, active: true).first
     return ctx.tap { |c| c.fail!("No active miscellaneous journal.") } unless journal
@@ -41,7 +43,7 @@ class Closing::Steps::CarryForward < Closing::Step
       next ctx.fail!(problem) && raise(ActiveRecord::Rollback) if problem
 
       ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
-      ctx[:entry] = draft(journal, carry)
+      ctx[:entry] = draft(journal, carry, loss)
       Accounting::ClosingRun.where(fiscal_year: fiscal_year, carry_forward_stale: true).update_all(carry_forward_stale: false)
       Accounting::AuditLog.record!(auditable: run, action: "closing_carry_forward_drafted", user: user, payload: { entry_id: ctx[:entry].id, recalculated: stale_entries.any? })
     end
@@ -54,10 +56,11 @@ class Closing::Steps::CarryForward < Closing::Step
     carry = Accounting::Account.find_by(code: run.entity.closing_carry_account_code)
     return [] unless carry
 
+    loss = loss_account(carry)
     old_lines = Accounting::JournalEntryLine.where(journal_entry_id: stale_entries.map(&:id)).to_a
     old_nets = old_lines.group_by(&:account_id).transform_values { |lines| lines.sum { |l| l.debit - l.credit } }
     old_origins = old_lines.group_by(&:account_id).transform_values { |lines| lines.filter_map(&:origin_line_id) }
-    new_nets = balances(carry)
+    new_nets = balances(carry, loss)
     new_origins = open_lines.group_by(&:account_id).transform_values { |lines| lines.map { |l| l.line.id } }
     accounts = Accounting::Account.where(id: old_nets.keys | new_nets.keys).index_by(&:id)
 
@@ -101,26 +104,29 @@ class Closing::Steps::CarryForward < Closing::Step
   def income_closed? = Closing::Registry.fetch("closing_entries").new(run).evaluate.status == :ok
 
   # [account, closing net (debit − credit)] of the balance sheet accounts (classes 0 to 5) that hold a balance, the result account's net added to the carry account's.
-  def balances(carry)
+  # The account that takes a loss: the loss account of the entity when the chart has it, else the carry account itself (a debit balance on it).
+  def loss_account(carry) = Accounting::Account.find_by(code: run.entity.closing_loss_account_code) || carry
+
+  def balances(carry, loss)
     rows = Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, as_of: year_end).call
     accounts = Accounting::Account.where(id: rows.map(&:id)).index_by(&:id)
     result_code = run.entity.closing_result_account_code
     nets = Hash.new(BigDecimal("0"))
     rows.each do |row|
       account = accounts.fetch(row.id)
-      if row.code == result_code then nets[carry.id] += row.closing_net
+      if row.code == result_code then nets[row.closing_net.positive? ? loss.id : carry.id] += row.closing_net
       elsif (0..5).cover?(account.account_class) then nets[account.id] += row.closing_net
       end
     end
     nets.reject { |_, net| net.zero? }
   end
 
-  def draft(journal, carry)
+  def draft(journal, carry, loss)
     entry = Accounting::JournalEntry.create!(journal: journal, fiscal_year: next_year, entry_date: next_year.start_date, status: :draft, closing_run_id: run.id,
                                              source_type: Accounting::JournalEntry::CARRY_FORWARD_SOURCE,
                                              description: I18n.t("accounting.fiscal_years.opening_entry_description", year: fiscal_year.year))
     label = I18n.t("accounting.fiscal_years.opening_entry_label")
-    nets = balances(carry)
+    nets = balances(carry, loss)
     detailed = open_lines
     nets.each do |account_id, net|
       lines = detailed.select { |line| line.account_id == account_id }
@@ -164,7 +170,9 @@ class Closing::Steps::CarryForward < Closing::Step
   # The opening entry is posted: criterion 2 (opening = closing for classes 0 to 5, the income accounts open at zero) and criterion 3 (R04 unchanged).
   def verify(entry)
     carry_code = run.entity.closing_carry_account_code
+    loss_code = loss_account(Accounting::Account.find_by(code: carry_code))&.code # (the carry account itself when the chart has no loss account)
     result_code = run.entity.closing_result_account_code
+    result_net = nil
     closing = Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, as_of: year_end).call.index_by(&:code)
     opening = Accounting::TrialBalanceQuery.new(fiscal_year: next_year, as_of: next_year.start_date).call.index_by(&:code)
     classes = Accounting::Account.where(id: (closing.values + opening.values).map(&:id)).index_by(&:id)
@@ -173,7 +181,9 @@ class Closing::Steps::CarryForward < Closing::Step
       account = classes[(closing[code] || opening[code]).id]
       next unless (0..5).cover?(account.account_class) || code == result_code
 
-      expected = code == result_code ? BigDecimal("0") : closing[code]&.closing_net.to_d + (code == carry_code ? closing[result_code]&.closing_net.to_d : 0)
+      result_net ||= closing[result_code]&.closing_net.to_d || BigDecimal("0")
+      takes_result = code == (result_net.positive? ? loss_code : carry_code) # a profit goes to the carry account, a loss to the loss account
+      expected = code == result_code ? BigDecimal("0") : closing[code]&.closing_net.to_d + (takes_result ? result_net : 0)
       actual = opening[code]&.closing_net.to_d
       { "code" => code, "closing" => money(expected), "opening" => money(actual) } unless expected == actual
     end

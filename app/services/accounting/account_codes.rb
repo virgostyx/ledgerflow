@@ -4,8 +4,8 @@ module Accounting::AccountCodes
   VAT_DEDUCTIBLE     = "410100"
   VAT_PAYABLE        = "450100"
   VAT_NON_DEDUCTIBLE = "640400" # prorata: the non-recoverable share of purchase VAT
-  CARRY_FORWARD   = "130000"
-  LEGAL_RESERVE   = "130100" # the legal reserve, fed by the appropriation of the result after a closing (F10)
+  # (the accounts that carry the result of a closed year are settings of the entity, closing_carry_account_code and closing_loss_account_code: 140100 / 140200 in the
+  # PCMN of the companies, 120100 / 120200 in the one of the associations)
   # Suspense account: nets to zero once an opening balance import is complete; also holds the lines of an API invoice
   # still to be coded by the accountant (posting is refused meanwhile).
   TRANSIT         = "499000"

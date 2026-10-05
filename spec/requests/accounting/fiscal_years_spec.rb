@@ -156,7 +156,7 @@ RSpec.describe "Accounting::FiscalYears", type: :request do
                journal_type: :misc, sequence_prefix: "OUV")
       end
       let!(:carry_account) do
-        create(:account, code: "130000", label_fr: "Résultat reporté",
+        create(:account, code: "140100", label_fr: "Résultat reporté",
                account_type: :equity, normal_balance: :credit, account_class: 1)
       end
       let!(:asset_account) do

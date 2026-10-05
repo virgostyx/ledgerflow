@@ -13,7 +13,7 @@ RSpec.describe "Closing: appropriation of the result", type: :request do
   let!(:capital) { create(:account, code: "100000", label_fr: "Capital", account_class: 1, account_type: :equity, normal_balance: :credit) }
   let!(:revenue) { create(:account, code: "700000", label_fr: "Sales", account_class: 7, account_type: :revenue, normal_balance: :credit) }
   let!(:result_account) { create(:account, code: "699000", label_fr: "Result", account_class: 6, account_type: :expense, normal_balance: :debit) }
-  let!(:carry_account)  { create(:account, code: "130000", label_fr: "Carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
+  let!(:carry_account)  { create(:account, code: "140100", label_fr: "Carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
   let!(:legal_reserve)  { create(:account, code: "130100", label_fr: "Legal reserve", account_class: 1, account_type: :equity, normal_balance: :credit) }
   let!(:next_year) { create(:fiscal_year, status: :pre_closing, year: fiscal_year.year + 1, start_date: year_end + 1, end_date: ((year_end + 1) >> 12) - 1) }
   let(:meeting) { (year_end + 90).iso8601 }
@@ -26,7 +26,7 @@ RSpec.describe "Closing: appropriation of the result", type: :request do
   end
 
   let!(:run) do
-    entity.update!(vat_regime: :franchise)
+    entity.update!(vat_regime: :franchise, legal_form: "SRL") # (the factory makes an ASBL, which has no legal reserve)
     post_entry(fiscal_year.start_date + 1, [ bank, :debit, 100_000 ], [ capital, :credit, 100_000 ])
     post_entry(fiscal_year.start_date + 10, [ bank, :debit, 10_000 ], [ revenue, :credit, 10_000 ])
     open = Closing::OpenRun.call(fiscal_year: fiscal_year.reload, user: accountant)[:run]

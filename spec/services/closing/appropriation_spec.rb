@@ -16,7 +16,7 @@ RSpec.describe Closing::Appropriation do
   let!(:revenue)   { create(:account, code: "700000", label_fr: "Sales", account_class: 7, account_type: :revenue, normal_balance: :credit) }
   let!(:expense)   { create(:account, code: "610000", label_fr: "Services", account_class: 6, account_type: :expense, normal_balance: :debit) }
   let!(:result_account) { create(:account, code: "699000", label_fr: "Result", account_class: 6, account_type: :expense, normal_balance: :debit) }
-  let!(:carry_account)  { create(:account, code: "130000", label_fr: "Carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
+  let!(:carry_account)  { create(:account, code: "140100", label_fr: "Carried forward", account_class: 1, account_type: :equity, normal_balance: :credit) }
   let!(:legal_reserve)  { create(:account, code: "130100", label_fr: "Legal reserve", account_class: 1, account_type: :equity, normal_balance: :credit) }
   let!(:next_year) { create(:fiscal_year, status: :pre_closing, year: fiscal_year.year + 1, start_date: year_end + 1, end_date: ((year_end + 1) >> 12) - 1) }
   let(:meeting) { year_end + 90 }
@@ -34,7 +34,7 @@ RSpec.describe Closing::Appropriation do
   let(:existing_reserve) { 0 }
 
   def close_with_profit!
-    entity.update!(vat_regime: :franchise)
+    entity.update!(vat_regime: :franchise, legal_form: "SRL") # (the factory makes an ASBL, which has no legal reserve)
     post(fiscal_year.start_date + 1, [ bank, :debit, 100_000 ], [ capital, :credit, 100_000 ])
     post(fiscal_year.start_date + 5, [ bank, :debit, existing_reserve ], [ legal_reserve, :credit, existing_reserve ]) if existing_reserve.positive?
     post(fiscal_year.start_date + 10, [ bank, :debit, sales ], [ revenue, :credit, sales ])
@@ -49,7 +49,7 @@ RSpec.describe Closing::Appropriation do
     it "proposes 5 % of the profit for the legal reserve, with how it was worked out" do
       proposal = described_class.proposal(run)
       expect(proposal).to include(profit: BigDecimal("10000"), capital: BigDecimal("100000"), reserve: BigDecimal("0"), ceiling: BigDecimal("10000"), proposed: BigDecimal("500"),
-                                  carry_account: "130000", reserve_account: "130100")
+                                  carry_account: "140100", reserve_account: "130100")
       expect(proposal[:problem]).to be_nil
     end
 
@@ -78,6 +78,12 @@ RSpec.describe Closing::Appropriation do
       end
     end
 
+    it "does not apply to an association: its chart has no legal reserve" do
+      closed = run
+      entity.update!(legal_form: "ASBL")
+      expect(described_class.proposal(closed.reload)).to include(proposed: BigDecimal("0"), problem: "The legal reserve does not apply to an association: its chart has no such account.")
+    end
+
     it "is only for a closed year" do
       open_run = Closing::OpenRun.call(fiscal_year: fiscal_year.reload, user: accountant)[:run]
       expect(described_class.proposal(open_run)[:problem]).to eq("The year is not closed yet.")
@@ -91,7 +97,7 @@ RSpec.describe Closing::Appropriation do
       entry = result[:entry]
       expect(entry).to be_draft
       expect(entry).to have_attributes(fiscal_year: next_year, entry_date: meeting, source_type: Accounting::JournalEntry::APPROPRIATION_SOURCE, source_id: run.id, created_by: accountant)
-      expect(entry.lines.map { |l| [ l.account.code, l.debit, l.credit ] }).to match_array([ [ "130000", 500, 0 ], [ "130100", 0, 500 ] ])
+      expect(entry.lines.map { |l| [ l.account.code, l.debit, l.credit ] }).to match_array([ [ "140100", 500, 0 ], [ "130100", 0, 500 ] ])
       expect(entry.description).to include("Appropriation of the result of #{fiscal_year.year}", "General meeting")
       expect(Accounting::AuditLog.where(action: "result_appropriation_prepared").last.payload).to include("amount" => "500.0", "fiscal_year" => fiscal_year.year)
     end

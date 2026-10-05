@@ -4,20 +4,22 @@
 # withholding tax on dividends are not covered yet. Debit the carried profit (the carry account of the entity), credit the legal reserve (130100, which must exist).
 # The legal rule (the base of the 5 %, the effect of a loss brought forward) is a proposal to be checked by an accountant: see QUESTIONS.md.
 module Closing::Appropriation
+  LEGAL_RESERVE = "130100" # "Réserve légale" of the PCMN of the companies
   RATE = BigDecimal("0.05")
   CEILING = BigDecimal("0.10")
 
   # => { profit:, capital:, reserve:, ceiling:, proposed:, carry_account:, reserve_account:, problem: }
   def self.proposal(run)
     base = { profit: BigDecimal("0"), capital: BigDecimal("0"), reserve: BigDecimal("0"), ceiling: BigDecimal("0"), proposed: BigDecimal("0"),
-             carry_account: run.entity.closing_carry_account_code, reserve_account: Accounting::AccountCodes::LEGAL_RESERVE, problem: nil }
+             carry_account: run.entity.closing_carry_account_code, reserve_account: LEGAL_RESERVE, problem: nil }
     return base.merge(problem: "The year is not closed yet.") unless run.closed?
+    return base.merge(problem: "The legal reserve does not apply to an association: its chart has no such account.") if Seeders::PcmnSeeder::ASBL_LEGAL_FORMS.include?(run.entity.legal_form)
 
     year = run.fiscal_year
     profit = Accounting::AnnualAccounts.new(fiscal_year: year).call.rows(:income).find { |row| row.code == "9904" }.amount
     balances = Accounting::TrialBalanceQuery.new(fiscal_year: year, exclude_closing: true).call
     credit_of = ->(prefix) { balances.select { |b| b.code.start_with?(prefix) }.sum(BigDecimal("0")) { |b| b.total_credit - b.total_debit } }
-    capital, reserve = credit_of.("100"), credit_of.(Accounting::AccountCodes::LEGAL_RESERVE)
+    capital, reserve = credit_of.("100"), credit_of.(LEGAL_RESERVE)
     ceiling = [ (CEILING * capital) - reserve, BigDecimal("0") ].max
     figures = base.merge(profit: profit, capital: capital, reserve: reserve, ceiling: ceiling)
     return figures.merge(problem: "There is no profit to appropriate.") unless profit.positive?
