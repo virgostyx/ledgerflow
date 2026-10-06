@@ -47,3 +47,10 @@ Décisions prises pendant l'audit (`00-audit.md`), validées par l'utilisateur l
 - **Audit de l'agent** : chaque appel d'outil est une ligne de la piste d'audit, ce qui l'allonge vite (15 outils, plusieurs appels par question). À surveiller ; une agrégation par message est possible si la piste devient trop bavarde.
 - **`get_audit_trail`** donne l'adresse e-mail de l'auteur (classe `personal`), pas le détail des changements.
 - **Lecture seule en base** : le savepoint annulé après chaque outil suppose qu'aucun outil n'a d'effet de bord utile en base (c'est le cas : `Rails.cache` est sur une autre base en production).
+
+## A03 — décisions à valider
+- **Noms de tiers traités comme du texte non fiable** : balayés et coupés à 500 caractères comme les libellés. Quand A04 masquera les noms de personnes physiques par des jetons, ce risque diminue pour elles, pas pour les sociétés.
+- **Seuil d'alerte** : 5 signes d'attaque en 24 heures (`Agent::SecurityEvent::ALERT_THRESHOLD`), à régler après un pilote.
+- **Faux positifs du détecteur** : un libellé réel qui contiendrait une adresse web (« voir https://… ») est signalé (badge et événement), sans autre effet. Acceptable ? Sinon, retirer le motif `url` du signalement.
+- **`question` et `comment` filtrés des journaux** pour toute l'application (le filtre porte sur le nom du paramètre) : cela masque aussi les commentaires de tâches dans les journaux de requêtes.
+- **Restrictions par journal** : voir A03.md ; si la spec veut qu'elles bornent aussi les rapports, il faut d'abord que les écrans le fassent.

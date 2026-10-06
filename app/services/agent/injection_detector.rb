@@ -12,8 +12,8 @@ module Agent::InjectionDetector
       /\bnegeer\b.{0,30}\b(instructies|regels|opdrachten)\b/i,
       /\bvergeet\b.{0,20}\b(je|alle|de)\b/i
     ],
-    role_marker: [ /^\s*(system|assistant|human|developer)\s*:/i, %r{</?\s*(system|instructions?|tool_data|tool_result|im_start|im_end)\b}i, /\[\/?INST\]/ ],
-    addressed_to_ai: [ /\b(notes?|messages?|instructions?|attention|note)\s+(to|for|[àa]|pour|voor)\s+(the\s+|l['’]\s*|de\s+)?(ai|assistant|llm|model|agent|ia)\b/i ],
+    role_marker: [ /^\s*(system|assistant|human|developer)\s*:/i, /\b(system|assistant|developer)\s*:\s*(you|i will|obey|ignore|disregard|grant|disable|the user|new)\b/i, %r{</?\s*(system|instructions?|tool_data|tool_result|im_start|im_end)\b}i, /\[\/?INST\]/ ],
+    addressed_to_ai: [ /\b(notes?|messages?|instructions?|attention|note)\s+(to|for|[àa]|pour|voor)\s+(the\s+|l['’]\s*|de\s+)?(ai|assist[ae]nt|llm|model|agent|ia)\b/i ],
     exfiltration: [ /\b(send|email|mail|post|forward|upload|envoie[rz]?|stuur|verstuur)\b.{0,60}\b(to|[àa]|naar)\b.{0,40}(@|https?:)/i ],
     url: [ %r{https?://|\bwww\.}i ],
     encoded_block: [ %r{[A-Za-z0-9+/]{80,}={0,2}} ],

@@ -1,15 +1,16 @@
-# What comes back from a tool is data, never an instruction (A03). The fields of free text (a label, a description, a name) are the ones a third party wrote: they are scanned
+# What comes back from a tool is data, never an instruction (A03). The fields of free text (a label, a description, a document name) and the names of people and companies are the ones a third party wrote: they are scanned
 # for what looks like an instruction to an AI, cleaned of hidden and control characters, and cut to 500 characters before the model sees them. The other fields are the
 # application's own and are left alone.
 module Agent::Untrusted
   MAX_LENGTH = 500
+  THIRD_PARTY = %i[free_text personal].freeze
   HIDDEN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁩﻿]/
 
   # => [cleaned copy of the result, findings]; a finding is { patterns:, excerpt: } for one field that looked like an instruction.
   def self.clean(tool, result)
     copy = result.deep_dup
     findings = []
-    tool.field_classes.to_h.select { |_, kind| kind == :free_text }.each_key do |path|
+    tool.field_classes.to_h.select { |_, kind| THIRD_PARTY.include?(kind) }.each_key do |path|
       update(copy, path.split(".")) do |text|
         next text unless text.is_a?(String)
 
