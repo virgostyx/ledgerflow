@@ -32,3 +32,11 @@ Décisions prises pendant l'audit (`00-audit.md`), validées par l'utilisateur l
 - Migration `partners.is_natural_person` (nullable, inconnu = personne physique) et `journal_entries.created_via`: validées sur le principe, à écrire en A04 et A07.
 - Extraction d'un service `Accounting::CreateDraftEntry` du contrôleur: avant A07.
 - Gems à ajouter: un rendu Markdown assaini (A01), mutant et i18n-tasks (avant la première « définition de terminé »).
+
+## A01 — écarts avec la spec, à valider
+- **Emplacement du code** : `app/services/agent/` et `app/models/agent/`, pas `app/agent/` (voir A01.md).
+- **Aucun lien dans les réponses** avant A05 : les liens vers la comptabilité seront construits par l'application à partir de références vérifiées. Plus strict que la spec (qui tolérait un lien externe signalé).
+- **Gem `commonmarker`** ajouté (Markdown à tables, HTML brut écarté par l'analyseur) puis assaini par `rails-html-sanitizer`.
+- **API** : « flux » remplacé par un `202` et une lecture de la conversation (D8), non faite à ce jour.
+- **Mémoire des rapports et quotas** : les quotas se comptent sur les questions enregistrées. Une question supprimée avec sa conversation ne compte plus : un utilisateur pourrait contourner la limite en supprimant. À durcir avec `agent_usage` (A04/§16).
+- **Interrupteur d'urgence** : variable d'environnement relue à chaque requête, donc effective « en moins d'une minute » seulement si l'hébergement permet de la changer sans redémarrer. Sinon, ajouter un réglage de plateforme en base.
