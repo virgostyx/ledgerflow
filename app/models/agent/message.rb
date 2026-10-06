@@ -6,7 +6,7 @@ class Agent::Message < ApplicationRecord
   has_many :feedbacks, class_name: "Agent::Feedback", dependent: :destroy
   has_many :tool_calls, class_name: "Agent::ToolCall", dependent: :destroy
 
-  encrypts :content
+  encrypts :content, :sent_payload
 
   enum :role,   { user: "user", assistant: "assistant", tool: "tool" }, validate: false
   enum :status, { complete: "complete", stopped: "stopped", failed: "failed" }, default: "complete"

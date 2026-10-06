@@ -145,6 +145,17 @@ RSpec.describe "The agent's conversations (A01)", type: :request do
       expect(response.body).to include("Ask a question", "What the agent knows", "R04")
     end
 
+    it "shows the tokens of an answer as the names they stand for, to the person who asked" do
+      conversation = mine
+      conversation.pseudonym_table.token_for("Alice Dupont", "person")
+      conversation.messages.create!(role: "assistant", content: "PERSONNE_001 owes **10.00 EUR**; PERSONNE_099 is unknown.")
+
+      get agent_conversation_path(conversation)
+
+      expect(response.body).to include("Alice Dupont owes", "PERSONNE_099 is unknown")
+      expect(response.body).not_to include("PERSONNE_001")
+    end
+
     it "shows the answers as safe HTML: nothing the model wrote runs" do
       conversation = mine
       conversation.messages.create!(role: "assistant", content: "Total **12,00 EUR** <script>alert(1)</script> ![x](http://evil.example/p.png)")

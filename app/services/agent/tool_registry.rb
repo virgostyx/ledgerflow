@@ -14,6 +14,8 @@ class Agent::ToolRegistry
     @timeout = timeout
   end
 
+  def tool(name) = @tools[name]
+
   def definitions = @tools.values.map(&:definition)
 
   # `security` (Agent::Security) is told of what a defence should notice: a refusal, an argument the tool does not have, a tool that does not exist, free text that looks like

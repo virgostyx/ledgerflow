@@ -15,9 +15,17 @@ class Agent::Runner
   end
 
   def ask(question, stop: -> { false }, &on_event)
+    ActsAsTenant.with_tenant(@context.entity) { answer(question, stop, on_event) }
+  end
+
+  private
+
+  def answer(question, stop, on_event)
     Agent::Access.check!(@context)
     @on_event = on_event
     @stop = stop
+    @redactor = Agent::Redactor.new(setting: Agent::Setting.find_by(entity: @context.entity) || Agent::Setting.new(entity: @context.entity), conversation: @conversation)
+    @redaction = Hash.new { |hash, data_class| hash[data_class] = Hash.new(0) }
     @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors, @tool_log = [], Hash.new(0), nil, 0, 0, 0, []
     @security = Agent::Security.new(conversation: @conversation, context: @context)
     messages = history + [ { role: "user", content: question } ]
@@ -25,8 +33,6 @@ class Agent::Runner
 
     finish(*run(messages))
   end
-
-  private
 
   # Returns [status, notice]: how the answer ends, and a notice to add to the text when it did not end by itself.
   def run(messages)
@@ -50,9 +56,11 @@ class Agent::Runner
 
   def ask_model(messages)
     began = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    response = @gateway.call(system: Agent::SystemPrompt.build(@context), messages: messages.deep_dup, tools: @registry.definitions) { |piece| emit(type: :text, text: Agent::ResponseGuard.clean(piece).first) }
+    response = @gateway.call(system: Agent::SystemPrompt.build(@context), messages: messages.deep_dup, tools: @registry.definitions, redactor: @redactor) { |piece| emit(type: :text, text: Agent::ResponseGuard.clean(piece).first) }
     @latency_ms += ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round
     @model = response.model
+    @sent = response.sent
+    response.redaction.each { |data_class, counts| counts.each { |how, number| @redaction[data_class.to_s][how.to_s] += number } }
     @usage[:input_tokens]  += response.usage[:input_tokens].to_i
     @usage[:output_tokens] += response.usage[:output_tokens].to_i
     response
@@ -73,7 +81,7 @@ class Agent::Runner
   end
 
   def run_tool(call)
-    input = call[:input].to_h.deep_stringify_keys
+    input = reveal(call[:input].to_h.deep_stringify_keys) # the model only knows tokens: the tool needs the real value
     emit(type: :tool_start, name: call[:name], input: input)
     began = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     result = @registry.execute(call[:name], input, @context, security: @security)
@@ -91,7 +99,9 @@ class Agent::Runner
     removed.each { |kind| @security.event(kind) }
     @security.flag("content_removed") if removed.any?
     @security.event(:limit_reached) if notice == LIMIT_NOTICE
+    @conversation.pseudonym_table.unknown_tokens(content).each { |token| @security.event(:invented_token, excerpt: token) }
     message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms, flags: @security.flags,
+                                             redaction_stats: @redaction.transform_values(&:to_h), sent_payload: @sent&.to_json,
                                              input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])
     record_tool_calls(message)
     emit(type: :done, message: message)
@@ -113,6 +123,15 @@ class Agent::Runner
 
   def normalise(block)
     block[:type].to_s == "tool_use" ? block.merge(input: block[:input].to_h.deep_stringify_keys) : block
+  end
+
+  def reveal(value)
+    case value
+    when Hash   then value.transform_values { |inner| reveal(inner) }
+    when Array  then value.map { |inner| reveal(inner) }
+    when String then @conversation.reveal(value)
+    else value
+    end
   end
 
   def emit(event) = @on_event&.call(event)

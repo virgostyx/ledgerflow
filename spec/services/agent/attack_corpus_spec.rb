@@ -112,7 +112,13 @@ RSpec.describe "The attack corpus replayed against the agent" do
       # what the model saw of the planted text: cleaned of hidden characters, and unchanged when it was a real label
       seen = strings_in(gateway.requests[1][:messages].last[:content].map { |block| JSON.parse(block[:content]) })
       expect(seen.join).not_to match(/[​-‏‪-‮]/)
-      expect(seen.any? { |text| text.include?(entry["payload"]) }).to be(true) if entry["kind"] == "legit"
+      if entry["kind"] == "legit" && CARRIERS.fetch(entry["source"]) == :partner
+        # a partner that is not known to be a company is a person to the redactor: the model sees a token, the person reads the name again
+        expect(seen.join).to match(/PERSONNE_\d{3}/)
+        expect(seen.join).not_to include(entry["payload"])
+      elsif entry["kind"] == "legit"
+        expect(seen.any? { |text| text.include?(entry["payload"]) }).to be(true)
+      end
       # nothing of another entity anywhere
       everything = [ answer.content, calls.map(&:arguments), Agent::SecurityEvent.all.map(&:excerpt), gateway.requests.flat_map { |request| strings_in(request[:messages]) } ].flatten.compact
       expect(everything.join).not_to include("FOREIGN-SECRET")

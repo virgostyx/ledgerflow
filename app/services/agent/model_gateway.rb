@@ -11,17 +11,19 @@ class Agent::ModelGateway
     @client = client
   end
 
-  def call(system:, messages:, tools:, task: :chat_default, &on_text)
+  def call(system:, messages:, tools:, task: :chat_default, redactor: nil, &on_text)
     raise Agent::LiveProviderRefused unless self.class.live_allowed?
 
-    params = { model: Agent::Config.model_for(task), max_tokens: Agent::Config.provider.fetch(:max_tokens), system_: system, messages: messages }
+    redaction = redactor&.redact(system: system, messages: messages)
+    params = { model: Agent::Config.model_for(task), max_tokens: Agent::Config.provider.fetch(:max_tokens), system_: redaction&.system || system, messages: redaction&.messages || messages }
     params[:tools] = tools if tools.any?
     stream = client.messages.stream(**params)
     stream.text.each { |piece| on_text&.call(piece) }
     message = stream.accumulated_message
 
     Agent::Response.new(stop_reason: message.stop_reason.to_s, content: message.content.map(&:to_h),
-                        usage: { input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens }, model: message.model.to_s)
+                        usage: { input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens }, model: message.model.to_s,
+                        redaction: redaction&.stats || {}, sent: (redaction && { system: redaction.system, messages: redaction.messages }))
   end
 
   private

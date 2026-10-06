@@ -6,7 +6,7 @@
     <% if message.flags.include?("content_removed") %><p class="mb-1 text-xs text-amber-700">A link or a key was removed from this answer.</p><% end %>
     <% if message.stopped? %><p class="mb-1 text-xs font-medium text-amber-700">Stopped before the end</p><% end %>
     <div class="[&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_table]:w-full [&_table]:text-xs [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_code]:rounded [&_code]:bg-gray-100 [&_code]:px-1">
-      <%= Agent::MarkdownRenderer.html(message.content) %>
+      <%= Agent::MarkdownRenderer.html(message.conversation.reveal(message.content)) %>
     </div>
     <div id="agent_message_<%= message.id %>_feedback" class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
       <%= button_to "Useful", agent_conversation_message_feedback_path(message.conversation_id, message), params: { rating: "useful" }, class: "rounded border border-gray-300 px-2 py-0.5 hover:bg-gray-50" %>

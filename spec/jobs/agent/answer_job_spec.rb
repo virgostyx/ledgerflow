@@ -32,6 +32,16 @@ RSpec.describe Agent::AnswerJob do
     expect(conversation.messages.order(:id).pluck(:role)).to eq(%w[user assistant])
   end
 
+  it "streams the names back in: the person reads the answer as it is, the model only had tokens" do
+    create(:partner, name: "Alice Dupont", is_natural_person: true, city: "Namur")
+    search = Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: [ { type: "tool_use", id: "1", name: "search_partners", input: { "q" => "Namur" } } ])
+
+    run_with([ search, reply("PERSONNE_001 lives in Namur.") ])
+
+    streamed = sent.select { |method, _| method == :broadcast_append_to }.map { |_, o| o[:html] }
+    expect(streamed).to include("Alice Dupont lives in Namur.")
+  end
+
   it "escapes what it streams: the text of the model is never markup" do
     run_with([ reply("<script>x</script>") ])
 

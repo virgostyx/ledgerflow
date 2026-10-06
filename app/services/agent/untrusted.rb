@@ -11,7 +11,7 @@ module Agent::Untrusted
     copy = result.deep_dup
     findings = []
     tool.field_classes.to_h.select { |_, kind| THIRD_PARTY.include?(kind) }.each_key do |path|
-      update(copy, path.split(".")) do |text|
+      Agent::FieldPath.update(copy, path) do |text|
         next text unless text.is_a?(String)
 
         patterns = Agent::InjectionDetector.scan(text)
@@ -23,17 +23,4 @@ module Agent::Untrusted
   end
 
   def self.shorten(text) = text.length > MAX_LENGTH ? "#{text[0, MAX_LENGTH]}…" : text
-
-  # Replaces, by the block's answer, the value at the path: "data.*.label" is the label of every element of the list "data" ("*" stands for each element of a list).
-  def self.update(node, path, &block)
-    key, *rest = path
-    case node
-    when Array then node.each { |item| update(item, rest, &block) } if key == "*"
-    when Hash
-      return unless node.key?(key)
-
-      rest.empty? ? node[key] = yield(node[key]) : update(node[key], rest, &block)
-    end
-  end
-  private_class_method :update
 end

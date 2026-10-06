@@ -2,7 +2,7 @@
 class Agent::SecurityEvent < ApplicationRecord
   self.table_name = "agent_security_events"
 
-  KINDS = %w[forbidden_argument forbidden_tool repeated_forbidden unknown_tool suspicious_content secret_removed url_removed invalid_citation limit_reached].freeze
+  KINDS = %w[forbidden_argument forbidden_tool repeated_forbidden unknown_tool suspicious_content secret_removed url_removed invalid_citation limit_reached invented_token].freeze
 
   # More than this many signs of an attack in the last day is worth the owners' attention. Reaching a limit is not one.
   ALERT_THRESHOLD = 5

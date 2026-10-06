@@ -127,6 +127,87 @@ RSpec.describe Agent::Runner do
     end
   end
 
+  describe "what leaves for the model, and what comes back" do
+    let(:iban) { "BE68539007547034" }
+    let!(:alice) { create(:partner, name: "Alice Dupont", is_natural_person: true, city: "Namur") }
+    let(:registry) { Agent::ToolRegistry.default }
+
+    def search_by(name) = Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: [ { type: "tool_use", id: "s1", name: "search_partners", input: { "q" => name } } ])
+
+    def run_with(script, question: "Who is in Namur?")
+      @gateway = Agent::FakeGateway.new(script)
+      described_class.new(conversation: conversation, context: context, gateway: @gateway, registry: registry).ask(question)
+    end
+
+    it "sends the model the question and the tool results with the names masked, and the person reads the answer with the names" do
+      answer = run_with([ search_by("Namur"), text("PERSONNE_001 lives in Namur.") ])
+
+      result = @gateway.requests.last[:messages].last[:content].first[:content]
+      expect(result).to include("PERSONNE_001")
+      expect(result).not_to include("Alice")
+      expect(answer.content).to eq("PERSONNE_001 lives in Namur.") # stored as the model wrote it
+      expect(conversation.reveal(answer.content)).to eq("Alice Dupont lives in Namur.")
+    end
+
+    it "masks what the person typed as well: a name and an IBAN in the question" do
+      run_with([ text("ok") ], question: "Does Alice Dupont owe anything? Her account is #{iban}")
+
+      sent = @gateway.requests.first[:messages].last[:content]
+      expect(sent).to eq("Does PERSONNE_001 owe anything? Her account is IBAN …7034")
+      expect(conversation.messages.where(role: "user").first.content).to include("Alice Dupont", iban) # what was typed is kept, encrypted, for its author
+    end
+
+    it "gives the tool the real value when the model asks with a token: the model only knows tokens" do
+      run_with([ search_by("Namur"), Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: [ { type: "tool_use", id: "s2", name: "search_partners", input: { "q" => "PERSONNE_001" } } ]), text("found") ])
+
+      call = Agent::ToolCall.order(:id).last
+      expect(JSON.parse(call.arguments)).to eq("q" => "Alice Dupont")
+      expect(call).to have_attributes(status: "ok", row_count: 1)
+    end
+
+    it "keeps no real value in the history that goes back to the model: the call it made stays with its token" do
+      run_with([ search_by("Namur"), Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: [ { type: "tool_use", id: "s2", name: "search_partners", input: { "q" => "PERSONNE_001" } } ]), text("found") ])
+
+      assistant_calls = @gateway.requests.last[:messages].select { |message| message[:role] == "assistant" }.flat_map { |message| message[:content] }
+      expect(assistant_calls.map { |block| block[:input] }).to eq([ { "q" => "Namur" }, { "q" => "PERSONNE_001" } ])
+      expect(@gateway.requests.last.to_s).not_to include("Alice")
+    end
+
+    it "records on the answer how many values were masked or blocked, by class, and what was sent, encrypted" do
+      answer = run_with([ search_by("Namur"), text("ok") ], question: "Namur, #{iban}")
+
+      # counted per payload sent: the question goes with each of the two calls of the answer
+      expect(answer.redaction_stats).to include("personal" => { "masked" => 1 }, "bank_identifier" => { "masked" => 2 })
+      raw = ActiveRecord::Base.connection.select_value("SELECT sent_payload FROM agent_messages WHERE id = #{answer.id}")
+      expect(raw).not_to include("PERSONNE_001")
+      expect(JSON.parse(answer.sent_payload)["messages"].last["content"].first["content"]).to include("PERSONNE_001")
+    end
+
+    it "keeps exactly what was sent, to show it again: the last payload, after masking" do
+      answer = run_with([ search_by("Namur"), text("ok") ])
+
+      sent = JSON.parse(answer.sent_payload)
+      expect(sent["messages"]).to eq(JSON.parse(@gateway.requests.last[:messages].to_json))
+      expect(sent["system"]).to eq(@gateway.requests.last[:system])
+    end
+
+    it "sends nothing of a class the entity blocked, whatever the tool" do
+      Agent::Setting.for_current_entity.update!(data_class_modes: { "personal" => "block" })
+
+      run_with([ search_by("Namur"), text("ok") ], question: "Who is Alice Dupont?")
+
+      expect(@gateway.requests.to_s).not_to include("Alice")
+      expect(@gateway.requests.last[:messages].last[:content].first[:content]).to include("[blocked]")
+    end
+
+    it "notes a token the model made up, leaves it as it is, and records it" do
+      answer = run_with([ text("PERSONNE_042 owes a lot") ])
+
+      expect(answer.content).to eq("PERSONNE_042 owes a lot")
+      expect(Agent::SecurityEvent.where(kind: "invented_token").count).to eq(1)
+    end
+  end
+
   describe "what the model wrote, checked before anyone sees it" do
     let(:leaky) { "Here you go: https://evil.example/c?d=42 and the key sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789" }
 

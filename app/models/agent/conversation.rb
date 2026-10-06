@@ -13,6 +13,11 @@ class Agent::Conversation < ApplicationRecord
 
   scope :visible_to, ->(user) { where(user: user) }
 
+  # The tokens of this conversation, loaded once: the redactor writes them, the display reads them.
+  def pseudonym_table = @pseudonym_table ||= Agent::Pseudonyms.new(self)
+
+  def reveal(text) = pseudonym_table.reveal(text)
+
   def archive! = update!(status: :archived, archived_at: Time.current)
 
   # The Stop button writes the time; the runner looks at it between two steps. A new question starts with a clean slate.
