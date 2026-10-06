@@ -57,6 +57,12 @@ RSpec.describe Permissions do
     "reports.view"           => [ [ Accounting::ReportPolicy, :trial_balance? ] ],
     "reports.export"         => [ [ Accounting::ReportPolicy, :export? ] ],
     "reports.export_readonly" => [ [ Accounting::ReportPolicy, :export_readonly? ] ],
+    "agent.use"              => [ [ AgentPolicy, :use? ] ],
+    "agent.propose"          => [ [ AgentPolicy, :propose? ] ],
+    "agent.memory.manage"    => [ [ AgentPolicy, :manage_memory? ] ],
+    "knowledge.manage"       => [ [ AgentPolicy, :manage_knowledge? ] ],
+    "agent.configure"        => [ [ AgentPolicy, :configure? ] ],
+    "agent.conversations.review" => [ [ AgentPolicy, :review_conversations? ] ],
     "audit.view"             => [ [ Accounting::AuditLogPolicy, :index? ], [ Accounting::ClosingBundlePolicy, :show? ], [ Accounting::ConsistencyRunPolicy, :index? ] ]
   }.freeze
 

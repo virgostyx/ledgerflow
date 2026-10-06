@@ -55,6 +55,13 @@ module Permissions
     "reports.export"         => %i[admin accountant assistant],
     # the read-only roles export only when the entity allows it (Entity#read_only_export), see ApplicationPolicy#can_export?
     "reports.export_readonly" => %i[manager auditor],
+    # The AI agent (A03). The external auditor is refused `agent.use` until an owner grants it through a custom role.
+    "agent.use"              => %i[admin accountant assistant manager],
+    "agent.propose"          => %i[admin accountant assistant],
+    "agent.memory.manage"    => %i[admin accountant],
+    "knowledge.manage"       => %i[admin accountant],
+    "agent.configure"        => %i[admin],
+    "agent.conversations.review" => %i[admin],
     "audit.view"             => %i[admin accountant auditor]
   }.freeze
 

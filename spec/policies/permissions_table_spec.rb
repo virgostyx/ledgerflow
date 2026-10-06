@@ -19,6 +19,10 @@ RSpec.describe "Permissions::MATRIX against the F01 capability table" do
     "Export, when the entity allows it" => { roles: [ READER, EXTERNAL_AUDITOR ], permissions: %w[reports.export_readonly] },
     "Import a bank statement (F02)"     => { roles: [ OWNER, ACCOUNTANT ], permissions: %w[bank.import] },
     "Match bank lines (F02)"            => { roles: [ OWNER, ACCOUNTANT, ASSISTANT ], permissions: %w[bank.match] },
+    "Ask the AI agent (the external auditor only when an owner grants it, by a custom role)" => { roles: [ OWNER, ACCOUNTANT, ASSISTANT, READER ], permissions: %w[agent.use] },
+    "Have the AI agent prepare proposals" => { roles: [ OWNER, ACCOUNTANT, ASSISTANT ], permissions: %w[agent.propose] },
+    "Manage the file notes and the knowledge base of the AI agent" => { roles: [ OWNER, ACCOUNTANT ], permissions: %w[agent.memory.manage knowledge.manage] },
+    "Configure the AI agent and review a conversation (exceptional access)" => { roles: [ OWNER ], permissions: %w[agent.configure agent.conversations.review] },
     "Consult the audit trail"           => { roles: [ OWNER, ACCOUNTANT, EXTERNAL_AUDITOR ], permissions: %w[audit.view] }
   }.freeze
 

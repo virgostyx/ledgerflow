@@ -251,6 +251,13 @@ RSpec.describe Entity, type: :model do
       expect(build(:entity, features: { 'f99' => true })).not_to be_valid
     end
 
+    it 'knows the agent feature, with a label for the settings screen' do
+      expect(Entity::FEATURES).to include('agent')
+      expect(Entity::FEATURE_LABELS).to have_key('agent')
+      expect(Entity.new.feature?(:agent)).to be false
+      expect(build(:entity, features: { 'agent' => true }).feature?(:agent)).to be true
+    end
+
     it 'refuses to ask about a feature that does not exist, instead of answering no' do
       expect { Entity.new.feature?(:f99) }.to raise_error(ArgumentError)
     end
