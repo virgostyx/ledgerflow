@@ -49,7 +49,7 @@ class Agent::Tools::Base
     found || raise(Agent::ToolError.new("not_found", year ? "There is no fiscal year #{year} for this entity." : "This entity has no fiscal year yet."))
   end
 
-  def date_from(args, key, default) = args[key] ? Date.iso8601(args[key]) : default
+  def date_arg(args, key, default) = args[key] ? Date.iso8601(args[key]) : default
 
   def money(amount) = Agent::ToolResult.money(amount)
 

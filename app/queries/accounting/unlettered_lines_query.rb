@@ -4,7 +4,7 @@
 # R04's total for that partner (critère d'acceptation #4).
 class Accounting::UnletteredLinesQuery
   Row = Struct.new(:line_id, :account_id, :account_code, :partner_id, :partner_name, :entry_date, :journal_code,
-                    :reference, :due_date, :debit, :credit, :residual, :age_days, :lettering_code, keyword_init: true)
+                    :reference, :due_date, :debit, :credit, :residual, :age_days, :lettering_code, :journal_entry_id, keyword_init: true)
   Group = Struct.new(:partner_id, :partner_name, :account_id, :account_code, :lines, keyword_init: true)
 
   def initialize(kind:, as_of: Date.current, min_age_days: nil)
@@ -50,17 +50,17 @@ class Accounting::UnletteredLinesQuery
         Arel.sql("e.reference"), Arel.sql(Accounting::OpenLineSql.due_date),
         Arel.sql("accounting_journal_entry_lines.debit"), Arel.sql("accounting_journal_entry_lines.credit"),
         Arel.sql("(#{Accounting::OpenLineSql.residual(kind: kind, as_of: @as_of)})"),
-        Arel.sql("lt.code")
+        Arel.sql("lt.code"), Arel.sql("e.id")
       )
       .filter_map do |line_id, account_id, account_code, partner_id, partner_name, entry_date, journal_code,
-                       reference, due_date, debit, credit, residual, lettering_code|
+                       reference, due_date, debit, credit, residual, lettering_code, journal_entry_id|
         next if residual.zero?
         next if @min_age_days && (@as_of - due_date).to_i < @min_age_days
 
         Row.new(line_id: line_id, account_id: account_id, account_code: account_code, partner_id: partner_id,
                 partner_name: partner_name, entry_date: entry_date, journal_code: journal_code, reference: reference,
                 due_date: due_date, debit: debit, credit: credit, residual: residual,
-                age_days: (@as_of - due_date).to_i, lettering_code: lettering_code)
+                age_days: (@as_of - due_date).to_i, lettering_code: lettering_code, journal_entry_id: journal_entry_id)
       end
   end
 end

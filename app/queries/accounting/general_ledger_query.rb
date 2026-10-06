@@ -20,14 +20,18 @@ class Accounting::GeneralLedgerQuery
     @opening_balance = BigDecimal("0")
   end
 
+  # How many lines the period holds, and what they add up to (debit, credit): in SQL, for the callers that must not load the lines to know (the agent's ledger tool).
+  def line_count = in_period.count
+
+  def totals
+    debit, credit = in_period.pick(Arel.sql("COALESCE(SUM(accounting_journal_entry_lines.debit), 0)"), Arel.sql("COALESCE(SUM(accounting_journal_entry_lines.credit), 0)"))
+    [ BigDecimal(debit.to_s), BigDecimal(credit.to_s) ]
+  end
+
   def call
     @opening_balance = compute_opening_balance
 
-    lines = base_scope
-      .where(
-        "accounting_journal_entries.entry_date BETWEEN ? AND ?",
-        @date_from, @date_to
-      )
+    lines = in_period
       .order(
         "accounting_journal_entries.entry_date ASC",
         "accounting_journal_entry_lines.id ASC"
@@ -58,6 +62,8 @@ class Accounting::GeneralLedgerQuery
   end
 
   private
+
+  def in_period = base_scope.where("accounting_journal_entries.entry_date BETWEEN ? AND ?", @date_from, @date_to)
 
   def compute_opening_balance
     prior = base_scope.where("accounting_journal_entries.entry_date < ?", @date_from)
