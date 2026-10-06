@@ -23,7 +23,7 @@ class Agent::Tools::ListUnreconciled < Agent::Tools::Base
       data: page_rows.map { |row| row_for(row) },
       totals: { "residual" => money(rows.sum(&:residual)), "lines" => rows.size.to_s, "ref" => Agent::Refs.build("R05", as_of, kind) },
       currency: "EUR", as_of: as_of, next_cursor: next_cursor,
-      filters_applied: { "kind" => kind, "as_of" => as_of.iso8601, "min_age_days" => args["min_age_days"], "partner_id" => args["partner_id"], "entries" => "validated only" }.compact
+      filters_applied: { "kind" => kind.to_s, "as_of" => as_of.iso8601, "min_age_days" => args["min_age_days"], "partner_id" => args["partner_id"], "entries" => "validated only" }.compact
     )
   end
 

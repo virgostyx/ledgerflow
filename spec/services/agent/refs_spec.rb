@@ -15,6 +15,7 @@ RSpec.describe Agent::Refs do
     "R06:3:2026-09-26"                      => "/accounting/reports/bank_reconciliation_report?as_of=2026-09-26&bank_account_id=3",
     "R07:2"                                 => "/accounting/reports/balance_sheet?fiscal_year_id=2",
     "R08:2"                                 => "/accounting/reports/income_statement?fiscal_year_id=2",
+    "R09:2:2026-07-01..2026-09-30"          => "/accounting/vat_declarations",
     "R19:1"                                 => "/accounting/consistency"
   }.each do |ref, expected|
     it "opens #{ref} on #{expected.split('?').first}" do

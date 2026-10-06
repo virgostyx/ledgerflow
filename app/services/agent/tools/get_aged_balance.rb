@@ -26,7 +26,7 @@ class Agent::Tools::GetAgedBalance < Agent::Tools::Base
     Agent::ToolResult.build(
       data: page_rows.map { |row| row_for(row, as_of, kind) },
       totals: totals_for(rows, as_of, kind), currency: "EUR", as_of: as_of, next_cursor: next_cursor,
-      filters_applied: { "kind" => kind, "as_of" => as_of.iso8601, "partner_id" => args["partner_id"], "sort" => args["sort"] || "total", "entries" => "validated only" }.compact,
+      filters_applied: { "kind" => args["kind"], "as_of" => as_of.iso8601, "partner_id" => args["partner_id"], "sort" => args["sort"] || "total", "entries" => "validated only" }.compact,
       warnings: warnings(rows)
     )
   end

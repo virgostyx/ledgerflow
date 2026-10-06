@@ -15,6 +15,7 @@ module Agent::Refs
     "R06"     => ->(routes, bank_account, as_of, *)    { routes.accounting_reports_bank_reconciliation_report_path(bank_account_id: bank_account, as_of: as_of) },
     "R07"     => ->(routes, fiscal_year, *)            { routes.accounting_reports_balance_sheet_path(fiscal_year_id: fiscal_year) },
     "R08"     => ->(routes, fiscal_year, *)            { routes.accounting_reports_income_statement_path(fiscal_year_id: fiscal_year) },
+    "R09"     => ->(routes, *)                         { routes.accounting_vat_declarations_path },
     "R19"     => ->(routes, *)             { routes.accounting_consistency_runs_path },
     "kpi"     => ->(routes, *)             { routes.accounting_root_path }
   }.freeze
