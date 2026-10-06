@@ -14,7 +14,7 @@ RSpec.describe "The agent under concurrency", :concurrency do
       Agent::Setting.for_current_entity.update!(enabled: true)
       accept_agent_consent!(entity_record)
       create(:user_entity, :accountant, user: user, entity: entity_record)
-      create(:partner, name: partner_name, city: "Sharedcity")
+      create(:partner, name: partner_name, city: "Sharedcity", is_natural_person: false) # a company: its name is not masked, so the test can see whose it is
     end
   end
 
