@@ -19,6 +19,8 @@ class Agent::ToolRegistry
 
     # ponytail: Timeout interrupts the thread, not a query already sent to the database; a statement_timeout per tool if a report ever runs that long.
     Timeout.timeout(@timeout) { tool.new.call(args, context) }
+  rescue Agent::ToolError => e
+    { "error" => e.code, "message" => e.message }
   rescue Timeout::Error
     { "error" => "timeout", "message" => "The tool took too long. Narrow the period or the filters and try again." }
   rescue StandardError => e

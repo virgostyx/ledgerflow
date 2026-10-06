@@ -4,10 +4,11 @@ module Agent::ToolResult
   MAX_BYTES = 20_000
   CUT_WARNING = "The result was cut to fit: narrow the filters (period, partner, account) to see the rest.".freeze
 
-  def self.build(data:, totals: nil, currency: nil, as_of: nil, filters_applied: {}, truncated: false, warnings: [])
+  def self.build(data:, totals: nil, currency: nil, as_of: nil, filters_applied: {}, truncated: false, warnings: [], next_cursor: nil)
     kept = fit(data, totals, currency, as_of, filters_applied, warnings)
-    cut = truncated || kept.size < data.size
-    envelope(kept, totals, currency, as_of, filters_applied, cut, cut && kept.size < data.size ? warnings + [ CUT_WARNING ] : warnings)
+    cut = truncated || kept.size < data.size || next_cursor.present?
+    result = envelope(kept, totals, currency, as_of, filters_applied, cut, kept.size < data.size ? warnings + [ CUT_WARNING ] : warnings)
+    kept.size < data.size || next_cursor.blank? ? result : result.merge("next_cursor" => next_cursor)
   end
 
   # "1234.50" for what a person would write 1 234,50. A Float is refused: it would carry a rounding error into a ledger.
