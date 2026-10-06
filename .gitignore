@@ -35,3 +35,6 @@
 /config/*.key
 
 docs/dev/features/standard-coda-fr_-2025.pdf
+
+# Agent: provider API key, never committed (the real key goes in the Rails credentials)
+/docs/dev/agent/agent-api-key
