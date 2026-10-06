@@ -2,6 +2,7 @@
 # finished message replaces it. The panel never calls the model itself; a stop request is read between two steps of the runner.
 class Agent::AnswerJob < ApplicationJob
   queue_as :agent_interactive
+  self.log_arguments = false # the question is among the arguments: it is not for the logs (A03)
 
   def perform(conversation, question, locale)
     ActsAsTenant.with_tenant(conversation.entity) do

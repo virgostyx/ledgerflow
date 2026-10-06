@@ -4,6 +4,10 @@ class Agent::SecurityEvent < ApplicationRecord
 
   KINDS = %w[forbidden_argument forbidden_tool repeated_forbidden unknown_tool suspicious_content secret_removed url_removed invalid_citation limit_reached].freeze
 
+  # More than this many signs of an attack in the last day is worth the owners' attention. Reaching a limit is not one.
+  ALERT_THRESHOLD = 5
+  NOT_AN_ATTACK = %w[limit_reached].freeze
+
   acts_as_tenant :entity
 
   belongs_to :conversation, class_name: "Agent::Conversation", optional: true
@@ -13,5 +17,6 @@ class Agent::SecurityEvent < ApplicationRecord
 
   validates :kind, inclusion: { in: KINDS }
 
+  scope :signs_of_attack, -> { where.not(kind: NOT_AN_ATTACK) }
   scope :recent, -> { order(created_at: :desc, id: :desc) }
 end

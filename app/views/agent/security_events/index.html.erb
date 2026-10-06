@@ -1,0 +1,39 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium">Assistant security events</span><% end %>
+<%
+  meanings = {
+    "forbidden_argument" => "Argument not allowed (an entity, a user or an unknown field)", "forbidden_tool" => "Tool refused: no right to it",
+    "repeated_forbidden" => "Refused again and again in one conversation", "unknown_tool" => "A tool that does not exist was asked for",
+    "suspicious_content" => "Data that looks like an instruction to an AI", "secret_removed" => "A key or a token was removed from an answer",
+    "url_removed" => "A link was removed from an answer", "invalid_citation" => "A source that does not exist was cited", "limit_reached" => "The limit of a question was reached"
+  }
+%>
+<div class="space-y-4">
+  <p class="text-sm text-gray-600">What the assistant's defences noticed in this entity. Nothing here changed any book: these are signs, not damage. Excerpts are short and masked.</p>
+
+  <% if @alert %>
+    <p role="alert" class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">Unusual activity: more than <%= Agent::SecurityEvent::ALERT_THRESHOLD %> signs of an attack in the last 24 hours. Look at the list below, and consider switching the assistant off in its settings.</p>
+  <% end %>
+
+  <% if @events.empty? %>
+    <p class="text-sm text-gray-500">Nothing to report.</p>
+  <% else %>
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+          <tr><th class="px-3 py-2">When</th><th class="px-3 py-2">What</th><th class="px-3 py-2">Tool</th><th class="px-3 py-2">Person</th><th class="px-3 py-2">Excerpt</th></tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @events.each do |event| %>
+            <tr>
+              <td class="whitespace-nowrap px-3 py-2 text-gray-500"><%= l(event.created_at, format: :short) %></td>
+              <td class="px-3 py-2"><%= meanings.fetch(event.kind, event.kind) %></td>
+              <td class="px-3 py-2 font-mono text-xs"><%= event.tool %></td>
+              <td class="px-3 py-2"><%= event.user&.email %></td>
+              <td class="px-3 py-2 text-gray-600"><%= event.excerpt %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</div>

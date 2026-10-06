@@ -49,6 +49,7 @@ Rails.application.routes.draw do
   # A01: the AI agent's panel. A conversation is its author's alone; the answer is written in the background and streamed back (Turbo Streams).
   namespace :agent do
     resource :setting, only: %i[show update]
+    resources :security_events, only: :index
     resources :conversations, only: %i[index show create update destroy] do
       resource :stop, only: :create
       resources :messages, only: :create do
