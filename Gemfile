@@ -102,3 +102,5 @@ gem "rqrcode", "~> 3.2"
 
 # F03: checks that an uploaded PDF is readable (and reads back generated PDFs in specs)
 gem "pdf-reader"
+
+gem "anthropic", "~> 1.76"

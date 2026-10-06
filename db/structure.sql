@@ -2751,6 +2751,150 @@ ALTER SEQUENCE public.active_storage_variant_records_id_seq OWNED BY public.acti
 
 
 --
+-- Name: agent_conversations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_conversations (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    title character varying,
+    origin_screen character varying,
+    context_ref jsonb DEFAULT '{}'::jsonb NOT NULL,
+    status character varying DEFAULT 'active'::character varying NOT NULL,
+    archived_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_conversations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_conversations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_conversations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_conversations_id_seq OWNED BY public.agent_conversations.id;
+
+
+--
+-- Name: agent_feedback; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_feedback (
+    id bigint NOT NULL,
+    message_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    rating character varying NOT NULL,
+    category character varying,
+    comment text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_feedback_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_feedback_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_feedback_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_feedback_id_seq OWNED BY public.agent_feedback.id;
+
+
+--
+-- Name: agent_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_messages (
+    id bigint NOT NULL,
+    conversation_id bigint NOT NULL,
+    role character varying NOT NULL,
+    content text,
+    status character varying DEFAULT 'complete'::character varying NOT NULL,
+    model character varying,
+    manifest_hash character varying,
+    input_tokens integer,
+    output_tokens integer,
+    latency_ms integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_messages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_messages_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_messages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_messages_id_seq OWNED BY public.agent_messages.id;
+
+
+--
+-- Name: agent_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_settings (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    retention_days integer DEFAULT 90 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_settings_id_seq OWNED BY public.agent_settings.id;
+
+
+--
 -- Name: api_clients; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4556,6 +4700,34 @@ ALTER TABLE ONLY public.active_storage_variant_records ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: agent_conversations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversations ALTER COLUMN id SET DEFAULT nextval('public.agent_conversations_id_seq'::regclass);
+
+
+--
+-- Name: agent_feedback id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_feedback ALTER COLUMN id SET DEFAULT nextval('public.agent_feedback_id_seq'::regclass);
+
+
+--
+-- Name: agent_messages id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_messages ALTER COLUMN id SET DEFAULT nextval('public.agent_messages_id_seq'::regclass);
+
+
+--
+-- Name: agent_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_settings ALTER COLUMN id SET DEFAULT nextval('public.agent_settings_id_seq'::regclass);
+
+
+--
 -- Name: api_clients id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5299,6 +5471,38 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: agent_conversations agent_conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversations
+    ADD CONSTRAINT agent_conversations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_feedback agent_feedback_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_feedback
+    ADD CONSTRAINT agent_feedback_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_messages agent_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_messages
+    ADD CONSTRAINT agent_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_settings agent_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_settings
+    ADD CONSTRAINT agent_settings_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: api_clients api_clients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5849,6 +6053,13 @@ CREATE INDEX idx_on_entity_id_status_next_due_on_ca6acf9cb4 ON public.accounting
 --
 
 CREATE INDEX idx_on_entity_id_status_score_3232f53987 ON public.accounting_lettering_suggestions USING btree (entity_id, status, score);
+
+
+--
+-- Name: idx_on_entity_id_user_id_updated_at_9a2540cceb; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_entity_id_user_id_updated_at_9a2540cceb ON public.agent_conversations USING btree (entity_id, user_id, updated_at);
 
 
 --
@@ -7371,6 +7582,55 @@ CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.ac
 
 
 --
+-- Name: index_agent_conversations_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_conversations_on_entity_id ON public.agent_conversations USING btree (entity_id);
+
+
+--
+-- Name: index_agent_conversations_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_conversations_on_user_id ON public.agent_conversations USING btree (user_id);
+
+
+--
+-- Name: index_agent_feedback_on_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_feedback_on_message_id ON public.agent_feedback USING btree (message_id);
+
+
+--
+-- Name: index_agent_feedback_on_message_id_and_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_agent_feedback_on_message_id_and_user_id ON public.agent_feedback USING btree (message_id, user_id);
+
+
+--
+-- Name: index_agent_feedback_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_feedback_on_user_id ON public.agent_feedback USING btree (user_id);
+
+
+--
+-- Name: index_agent_messages_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_messages_on_conversation_id ON public.agent_messages USING btree (conversation_id);
+
+
+--
+-- Name: index_agent_settings_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_agent_settings_on_entity_id ON public.agent_settings USING btree (entity_id);
+
+
+--
 -- Name: index_analytical_accounts_on_axis_and_code; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8180,6 +8440,14 @@ ALTER TABLE ONLY public.consolidation_runs
 
 ALTER TABLE ONLY public.consolidation_runs
     ADD CONSTRAINT fk_rails_0fb7ccd0ac FOREIGN KEY (frozen_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: agent_conversations fk_rails_10a03a536e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversations
+    ADD CONSTRAINT fk_rails_10a03a536e FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -9207,6 +9475,14 @@ ALTER TABLE ONLY public.api_clients
 
 
 --
+-- Name: agent_conversations fk_rails_abb244c035; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversations
+    ADD CONSTRAINT fk_rails_abb244c035 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoice_emails fk_rails_ac5f94ed94; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9559,6 +9835,14 @@ ALTER TABLE ONLY public.accounting_intracom_listings
 
 
 --
+-- Name: agent_messages fk_rails_d86808b0c3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_messages
+    ADD CONSTRAINT fk_rails_d86808b0c3 FOREIGN KEY (conversation_id) REFERENCES public.agent_conversations(id);
+
+
+--
 -- Name: accounting_recurring_runs fk_rails_da9af52fce; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9823,6 +10107,14 @@ ALTER TABLE ONLY public.accounting_supplier_defaults
 
 
 --
+-- Name: agent_feedback fk_rails_f77a291668; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_feedback
+    ADD CONSTRAINT fk_rails_f77a291668 FOREIGN KEY (message_id) REFERENCES public.agent_messages(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_f790bc9bfe; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9863,6 +10155,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: agent_feedback fk_rails_f9118c016d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_feedback
+    ADD CONSTRAINT fk_rails_f9118c016d FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_depreciation_entries fk_rails_f91c2bc427; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9876,6 +10176,14 @@ ALTER TABLE ONLY public.accounting_depreciation_entries
 
 ALTER TABLE ONLY public.dunning_runs
     ADD CONSTRAINT fk_rails_fb346d725c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: agent_settings fk_rails_fceb5a5a67; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_settings
+    ADD CONSTRAINT fk_rails_fceb5a5a67 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -9901,6 +10209,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261006100000'),
 ('20261005235000'),
 ('20261005234000'),
 ('20261005233000'),
