@@ -66,6 +66,15 @@ RSpec.describe Agent::AnswerJob do
     expect(conversation.messages.last.status).to eq("complete")
   end
 
+  it "is no longer 'answering' once it is over, whatever happened" do
+    conversation.start_answering!
+    allow(Agent::ModelGateway).to receive(:default).and_return(Class.new { def call(**) = raise("boom") }.new)
+
+    described_class.perform_now(conversation, "Question?", "en")
+
+    expect(conversation.reload.answering_since).to be_nil
+  end
+
   it "runs in the interactive queue, which batches never wait behind" do
     expect(described_class.new.queue_name).to eq("agent_interactive")
   end

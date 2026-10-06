@@ -10,7 +10,11 @@ class Agent::MessagesController < Agent::BaseController
     return refuse("Write a question first.") if @question.blank?
     return refuse("Your question is too long: #{MAX_LENGTH} characters at most. Shorten it, or split it in two.") if @question.length > MAX_LENGTH
 
+    quota = Agent::Quota.check(user: current_user, entity: ActsAsTenant.current_tenant)
+    return refuse(Agent::Quota.message(quota)) if quota
+
     @conversation.update!(title: @question.truncate(60)) if @conversation.title.blank?
+    @conversation.start_answering!
     # ponytail: a one second head start, so that the live bubble is on the page before the first piece of text is sent; a reload shows the answer if it is missed.
     Agent::AnswerJob.set(wait: 1.second).perform_later(@conversation, @question, I18n.locale.to_s)
     respond_to do |format|

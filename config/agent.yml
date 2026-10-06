@@ -10,6 +10,10 @@ default: &default
     max_tool_calls: 20
     max_seconds: 60
     max_tool_errors: 3
+  quotas:                             # decision D7; per person, and per entity for the generations at the same time
+    per_hour: 20
+    per_day: 100
+    concurrent_per_entity: 3
   provider:
     timeout_seconds: 30
     max_retries: 2

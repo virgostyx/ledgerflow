@@ -2765,7 +2765,8 @@ CREATE TABLE public.agent_conversations (
     archived_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    stop_requested_at timestamp(6) without time zone
+    stop_requested_at timestamp(6) without time zone,
+    answering_since timestamp(6) without time zone
 );
 
 
@@ -7590,6 +7591,13 @@ CREATE INDEX index_agent_conversations_on_entity_id ON public.agent_conversation
 
 
 --
+-- Name: index_agent_conversations_on_entity_id_and_answering_since; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_conversations_on_entity_id_and_answering_since ON public.agent_conversations USING btree (entity_id, answering_since) WHERE (answering_since IS NOT NULL);
+
+
+--
 -- Name: index_agent_conversations_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10210,6 +10218,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261006102000'),
 ('20261006101000'),
 ('20261006100000'),
 ('20261005235000'),

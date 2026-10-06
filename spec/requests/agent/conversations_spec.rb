@@ -186,6 +186,26 @@ RSpec.describe "The agent's conversations (A01)", type: :request do
       end.not_to have_enqueued_job(Agent::AnswerJob)
     end
 
+    it "refuses a question over the limit, says which limit, and sends nothing" do
+      conversation = mine
+      stub_const("Agent::Config", Agent::Config.dup) # keep the real configuration for the other examples
+      allow(Agent::Config).to receive(:quotas).and_return({ per_hour: 1, per_day: 100, concurrent_per_entity: 3 })
+      conversation.messages.create!(role: "user", content: "earlier")
+
+      expect { post agent_conversation_messages_path(conversation), params: { question: "One too many" }, as: :turbo_stream }.not_to have_enqueued_job(Agent::AnswerJob)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include("1 questions per hour")
+    end
+
+    it "marks the conversation as being answered until the answer is over" do
+      conversation = mine
+
+      post agent_conversation_messages_path(conversation), params: { question: "Hello" }, as: :turbo_stream
+
+      expect(conversation.reload.answering_since).to be_present
+    end
+
     it "does not answer a conversation that is archived" do
       conversation = mine.tap(&:archive!)
 

@@ -17,5 +17,7 @@ class Agent::Conversation < ApplicationRecord
   # The Stop button writes the time; the runner looks at it between two steps. A new question starts with a clean slate.
   def request_stop! = update_columns(stop_requested_at: Time.current)
   def clear_stop!   = update_columns(stop_requested_at: nil)
+  def start_answering! = update_columns(answering_since: Time.current)
+  def done_answering!  = update_columns(answering_since: nil)
   def stop_requested? = self.class.where(id: id).where.not(stop_requested_at: nil).exists?
 end

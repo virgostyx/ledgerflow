@@ -5,5 +5,6 @@ module Agent::Config
 
   def self.model_for(task) = settings.fetch(:models).fetch(task.to_sym)
   def self.limits = settings.fetch(:limits)
+  def self.quotas = settings.fetch(:quotas)
   def self.provider = settings.fetch(:provider)
 end

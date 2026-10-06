@@ -15,6 +15,8 @@ class Agent::AnswerJob < ApplicationJob
   rescue StandardError => e
     Rails.logger.error("[agent] answer failed: #{e.class}")
     notice(conversation, :failed)
+  ensure
+    conversation.done_answering!
   end
 
   private
