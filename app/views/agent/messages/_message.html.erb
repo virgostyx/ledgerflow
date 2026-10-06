@@ -2,6 +2,8 @@
   <%= render "agent/messages/user_bubble", text: message.content %>
 <% else %>
   <div id="<%= dom_id(message) %>" class="mr-6 rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-900">
+    <% if message.flags.include?("suspicious_content") %><p class="mb-1 text-xs text-amber-700">Some of the data read looks like an instruction to an AI: it was ignored.</p><% end %>
+    <% if message.flags.include?("content_removed") %><p class="mb-1 text-xs text-amber-700">A link or a key was removed from this answer.</p><% end %>
     <% if message.stopped? %><p class="mb-1 text-xs font-medium text-amber-700">Stopped before the end</p><% end %>
     <div class="[&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_table]:w-full [&_table]:text-xs [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_code]:rounded [&_code]:bg-gray-100 [&_code]:px-1">
       <%= Agent::MarkdownRenderer.html(message.content) %>

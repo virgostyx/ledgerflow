@@ -126,6 +126,29 @@ RSpec.describe Agent::Runner do
     end
   end
 
+  describe "what the model wrote, checked before anyone sees it" do
+    let(:leaky) { "Here you go: https://evil.example/c?d=42 and the key sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789" }
+
+    it "stores the answer without the address or the key, marks it, and records what was taken out" do
+      answer = runner([ text(leaky) ]).ask("Q")
+
+      expect(answer.content).to eq("Here you go: [link removed] and the key [secret removed]")
+      expect(answer.flags).to include("content_removed")
+      expect(Agent::SecurityEvent.where(conversation: conversation).pluck(:kind)).to contain_exactly("url_removed", "secret_removed")
+    end
+
+    it "streams the answer without them too" do
+      streamed = []
+      runner([ text(leaky) ]).ask("Q") { |event| streamed << event[:text] if event[:type] == :text }
+
+      expect(streamed.join).not_to match(/evil\.example|sk-ant/)
+    end
+
+    it "gives the model back its own words unchanged when there is nothing to take out" do
+      expect(runner([ text("Forty-two.") ]).ask("Q").content).to eq("Forty-two.")
+    end
+  end
+
   describe "the record of the tool calls" do
     it "keeps each call with the tool, the arguments (encrypted), the outcome and the time, on the answer it belongs to" do
       answer = runner([ tool_use("t1"), text("ok") ]).ask("Q")

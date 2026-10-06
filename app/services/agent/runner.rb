@@ -50,7 +50,7 @@ class Agent::Runner
 
   def ask_model(messages)
     began = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    response = @gateway.call(system: Agent::SystemPrompt.build(@context), messages: messages.deep_dup, tools: @registry.definitions) { |piece| emit(type: :text, text: piece) }
+    response = @gateway.call(system: Agent::SystemPrompt.build(@context), messages: messages.deep_dup, tools: @registry.definitions) { |piece| emit(type: :text, text: Agent::ResponseGuard.clean(piece).first) }
     @latency_ms += ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round
     @model = response.model
     @usage[:input_tokens]  += response.usage[:input_tokens].to_i
@@ -87,7 +87,9 @@ class Agent::Runner
   end
 
   def finish(status, notice)
-    content = (@texts + [ notice ]).compact.join("\n\n")
+    content, removed = Agent::ResponseGuard.clean((@texts + [ notice ]).compact.join("\n\n"))
+    removed.each { |kind| @security.event(kind) }
+    @security.flag("content_removed") if removed.any?
     @security.event(:limit_reached) if notice == LIMIT_NOTICE
     message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms, flags: @security.flags,
                                              input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])

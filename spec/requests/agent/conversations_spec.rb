@@ -155,6 +155,19 @@ RSpec.describe "The agent's conversations (A01)", type: :request do
     end
   end
 
+  describe "the badges of an answer" do
+    it "tells discreetly that data looked like an instruction, or that something was taken out of the answer" do
+      conversation = mine
+      conversation.messages.create!(role: "assistant", content: "Done.", flags: %w[suspicious_content content_removed])
+      conversation.messages.create!(role: "assistant", content: "Plain.")
+
+      get agent_conversation_path(conversation)
+
+      expect(response.body.scan("looks like an instruction").size).to eq(1)
+      expect(response.body.scan("was removed from this answer").size).to eq(1)
+    end
+  end
+
   describe "a question" do
     it "starts the answer in the background and shows the question and the live bubble" do
       conversation = mine
