@@ -91,6 +91,9 @@
             <% end %>
           </div>
         <% end %>
+        <% if @entity.feature?(:agent) && policy(:agent).configure? %>
+          <p class="pt-1 pl-6 text-xs"><%= link_to "Assistant settings: turn it on, retention of the conversations", agent_setting_path, class: "text-indigo-700 hover:underline" %></p>
+        <% end %>
         <% if @entity.feature?(:f02) %>
         <div class="flex items-start gap-2 pt-2">
           <%= f.check_box :auto_post_exact_bank_matches, class: "mt-1 rounded border-gray-300" %>
