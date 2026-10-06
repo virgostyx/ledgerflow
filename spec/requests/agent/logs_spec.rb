@@ -11,6 +11,7 @@ RSpec.describe "The agent and the logs (A03)", type: :request do
   before do
     entity.update!(features: entity.features.merge("agent" => true))
     Agent::Setting.for_current_entity.update!(enabled: true)
+    accept_agent_consent!
     sign_in accountant
   end
 

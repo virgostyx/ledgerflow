@@ -30,6 +30,7 @@ RSpec.describe "The attack corpus replayed against the agent" do
   before do
     entity.update!(features: entity.features.merge("agent" => true))
     Agent::Setting.for_current_entity.update!(enabled: true)
+    accept_agent_consent!
   end
 
   def books = BOOKS.map { |table| ActiveRecord::Base.connection.select_value("SELECT count(*) FROM #{table}") }

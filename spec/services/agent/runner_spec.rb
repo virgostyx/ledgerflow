@@ -32,6 +32,7 @@ RSpec.describe Agent::Runner do
   before do
     entity.update!(features: entity.features.merge("agent" => true))
     Agent::Setting.for_current_entity.update!(enabled: true)
+    accept_agent_consent!
   end
 
   describe "a question answered without a tool" do

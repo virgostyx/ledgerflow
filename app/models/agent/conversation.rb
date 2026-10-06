@@ -6,6 +6,7 @@ class Agent::Conversation < ApplicationRecord
   acts_as_tenant :entity
 
   belongs_to :user
+  has_many :pseudonyms, class_name: "Agent::Pseudonym", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :delete_all
   has_many :messages, class_name: "Agent::Message", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :destroy
 
   enum :status, { active: "active", archived: "archived" }, default: "active"

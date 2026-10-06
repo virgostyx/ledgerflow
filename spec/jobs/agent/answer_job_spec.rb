@@ -13,6 +13,7 @@ RSpec.describe Agent::AnswerJob do
   before do
     entity.update!(features: entity.features.merge("agent" => true))
     Agent::Setting.for_current_entity.update!(enabled: true)
+    accept_agent_consent!
     %i[broadcast_append_to broadcast_replace_to].each do |method|
       allow(Turbo::StreamsChannel).to receive(method) { |_stream, **opts| sent << [ method, opts ] }
     end

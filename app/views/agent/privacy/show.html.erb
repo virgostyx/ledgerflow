@@ -1,0 +1,37 @@
+<% mode_words = { "send" => "Sent as it is", "mask" => "Masked", "block" => "Never sent" } %>
+<% labels = { "public_ref" => "Technical references and codes", "financial" => "Amounts, balances, dates", "personal" => "Names of people and companies", "bank_identifier" => "Bank account numbers",
+              "tax_identifier" => "VAT and company numbers", "free_text" => "Free text (labels, descriptions)" } %>
+<turbo-frame id="agent_panel">
+  <div class="space-y-4 p-4 text-sm text-gray-700">
+    <div class="flex items-center justify-between">
+      <h2 class="text-base font-semibold text-gray-900">Privacy of the assistant</h2>
+      <%= link_to "← Conversations", agent_conversations_path, class: "text-sm text-indigo-700 hover:underline" %>
+    </div>
+
+    <section>
+      <h3 class="font-medium text-gray-900">What is sent to the language model</h3>
+      <% if @setting.restricted? %><p class="mt-1 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">Restricted mode: only aggregates are sent.</p><% end %>
+      <ul class="mt-1 divide-y divide-gray-100 rounded border border-gray-200">
+        <% @setting.modes.each do |data_class, mode| %>
+          <li class="flex justify-between px-3 py-1.5"><span><%= labels.fetch(data_class) %></span><span class="font-medium"><%= mode_words.fetch(mode) %></span></li>
+        <% end %>
+      </ul>
+      <p class="mt-1 text-xs text-gray-500">The contents of documents are never sent. Nothing is sent unless you ask a question.</p>
+    </section>
+
+    <section>
+      <h3 class="font-medium text-gray-900">Who receives it</h3>
+      <p>Anthropic (the Claude models): <%= Agent::Config.settings[:models].map { |task, model| "#{model} for #{task.to_s.humanize.downcase}" }.to_sentence %>.</p>
+    </section>
+
+    <section>
+      <h3 class="font-medium text-gray-900">How long conversations are kept</h3>
+      <p><%= @setting.retention_days %> days, then deleted. A conversation is visible to you only. You can delete it, or export it, at any time.</p>
+    </section>
+
+    <section>
+      <h3 class="font-medium text-gray-900">Terms accepted by the owner</h3>
+      <p><%= @consent ? "Version #{@consent.version}, accepted on #{l(@consent.accepted_at, format: :short)}." : "Not accepted yet." %></p>
+    </section>
+  </div>
+</turbo-frame>

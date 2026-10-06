@@ -10,6 +10,7 @@ RSpec.describe "The agent's panel", type: :system, js: true do
   before do
     entity.update!(features: entity.features.merge("agent" => true))
     Agent::Setting.for_current_entity.update!(enabled: true)
+    accept_agent_consent!
     login_as accountant, scope: :user
     visit accounting_root_path
   end

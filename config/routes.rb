@@ -50,6 +50,7 @@ Rails.application.routes.draw do
   namespace :agent do
     resource :setting, only: %i[show update]
     resources :security_events, only: :index
+    resource :privacy, only: :show, controller: "privacy"
     resources :conversations, only: %i[index show create update destroy] do
       resource :stop, only: :create
       resources :messages, only: :create do

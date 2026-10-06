@@ -5,6 +5,7 @@ module Agent::Access
     return :disabled_platform if ENV["AGENT_KILL_SWITCH"].present?
     return :feature_off unless context.entity.feature?(:agent)
     return :not_enabled unless ActsAsTenant.with_tenant(context.entity) { Agent::Setting.find_by(entity: context.entity)&.enabled? }
+    return :consent_missing unless ActsAsTenant.with_tenant(context.entity) { Agent::Consent.current? }
     return :forbidden unless context.allows?("agent.use")
 
     nil

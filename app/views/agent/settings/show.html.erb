@@ -1,27 +1,67 @@
 <% content_for :breadcrumb do %><span class="text-gray-900 font-medium">Assistant settings</span><% end %>
+<% consent = Agent::Consent.find_by(version: Agent::Consent::VERSION) %>
+<% labels = { "public_ref" => "Technical references and codes", "financial" => "Amounts, balances, dates", "personal" => "Names of people and companies", "bank_identifier" => "Bank account numbers",
+              "tax_identifier" => "VAT and company numbers", "free_text" => "Free text (labels, descriptions)" } %>
 
-<div class="max-w-xl space-y-6">
-  <p class="text-sm"><%= link_to "Security events of the assistant", agent_security_events_path, class: "text-indigo-700 hover:underline" %></p>
+<div class="max-w-2xl space-y-6">
   <p class="text-sm text-gray-600">The assistant reads the books of this entity through the reports and answers questions. It never validates, sends or posts anything: it prepares, a person decides.</p>
+  <p class="text-sm"><%= link_to "Security events of the assistant", agent_security_events_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "What the assistant does with the data", agent_privacy_path, class: "text-indigo-700 hover:underline" %></p>
 
-  <%= form_with model: @setting, url: agent_setting_path, method: :patch, scope: :agent_setting, class: "space-y-4 rounded-lg border border-gray-200 bg-white p-4" do |f| %>
+  <%= form_with model: @setting, url: agent_setting_path, method: :patch, scope: :agent_setting, class: "space-y-6" do |f| %>
     <% if @setting.errors.any? %>
       <p role="alert" class="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700"><%= @setting.errors.full_messages.to_sentence %></p>
     <% end %>
 
-    <div class="flex items-start gap-2">
-      <%= f.check_box :enabled, class: "mt-1 rounded border-gray-300" %>
-      <%= f.label :enabled, class: "text-sm text-gray-700" do %>
-        Turn the assistant on for this entity
-        <span class="block text-xs text-gray-400">People who have the right to use it see the assistant tab on every page. An emergency switch on the platform can still switch it off everywhere.</span>
+    <section class="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+      <h2 class="text-sm font-semibold text-gray-900">Data processing terms</h2>
+      <%= render "agent/settings/consent" %>
+      <% if consent %>
+        <p class="text-xs text-green-700">Accepted on <%= l(consent.accepted_at, format: :short) %> by <%= consent.accepted_by.email %> (terms of <%= consent.version %>).</p>
+      <% else %>
+        <div class="flex items-start gap-2">
+          <%= check_box_tag :accept_consent, "1", false, class: "mt-1 rounded border-gray-300" %>
+          <%= label_tag :accept_consent, "I have read these terms and I accept them for this entity (version #{Agent::Consent::VERSION}).", class: "text-sm text-gray-700" %>
+        </div>
       <% end %>
-    </div>
+    </section>
 
-    <div>
+    <section class="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+      <div class="flex items-start gap-2">
+        <%= f.check_box :enabled, class: "mt-1 rounded border-gray-300" %>
+        <%= f.label :enabled, class: "text-sm text-gray-700" do %>
+          Turn the assistant on for this entity
+          <span class="block text-xs text-gray-400">People who have the right to use it see the assistant tab on every page. An emergency switch on the platform can still switch it off everywhere.</span>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+      <h2 class="text-sm font-semibold text-gray-900">What goes to the language model</h2>
+      <div class="flex items-start gap-2">
+        <%= f.check_box :restricted, class: "mt-1 rounded border-gray-300" %>
+        <%= f.label :restricted, class: "text-sm text-gray-700" do %>
+          Restricted mode: aggregates only
+          <span class="block text-xs text-gray-400">No free text, no name, no bank or VAT number leaves LedgerFlow, whatever is chosen below.</span>
+        <% end %>
+      </div>
+      <table class="min-w-full text-sm">
+        <% Agent::Setting::DATA_CLASSES.each do |data_class| %>
+          <tr>
+            <td class="py-1 pr-3 text-gray-700"><label for="agent_setting_data_class_modes_<%= data_class %>"><%= labels.fetch(data_class) %></label></td>
+            <td class="py-1">
+              <%= select_tag "agent_setting[data_class_modes][#{data_class}]", options_for_select([ [ "As it is", "send" ], [ "Masked", "mask" ], [ "Never sent", "block" ] ], @setting.data_class_modes[data_class] || Agent::Setting::DEFAULT_MODES[data_class]),
+                    id: "agent_setting_data_class_modes_#{data_class}", class: "rounded-md border-gray-300 text-sm" %>
+            </td>
+          </tr>
+        <% end %>
+      </table>
+    </section>
+
+    <section class="rounded-lg border border-gray-200 bg-white p-4">
       <%= f.label :retention_days, "Keep conversations for", class: "block text-sm text-gray-700" %>
       <%= f.select :retention_days, Agent::Setting::RETENTION_CHOICES.map { |days| [ "#{days} days", days ] }, {}, class: "mt-1 rounded-md border-gray-300 text-sm" %>
-      <p class="mt-1 text-xs text-gray-400">After that, the content of a conversation is deleted. (The automatic deletion arrives with the privacy settings.)</p>
-    </div>
+      <p class="mt-1 text-xs text-gray-400">After that, the content of a conversation is deleted. Only the audit trail remains.</p>
+    </section>
 
     <%= f.submit "Save", class: "rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700" %>
   <% end %>

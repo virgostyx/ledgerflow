@@ -1934,7 +1934,8 @@ CREATE TABLE public.accounting_partners (
     language character varying DEFAULT 'fr'::character varying NOT NULL,
     currency character varying(3) DEFAULT 'EUR'::character varying NOT NULL,
     import_batch_id bigint,
-    intercompany_company_id bigint
+    intercompany_company_id bigint,
+    is_natural_person boolean
 );
 
 
@@ -2751,6 +2752,40 @@ ALTER SEQUENCE public.active_storage_variant_records_id_seq OWNED BY public.acti
 
 
 --
+-- Name: agent_consents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_consents (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    version character varying NOT NULL,
+    accepted_by_id bigint NOT NULL,
+    accepted_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_consents_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_consents_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_consents_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_consents_id_seq OWNED BY public.agent_consents.id;
+
+
+--
 -- Name: agent_conversations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2841,7 +2876,9 @@ CREATE TABLE public.agent_messages (
     latency_ms integer,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    flags jsonb DEFAULT '[]'::jsonb NOT NULL
+    flags jsonb DEFAULT '[]'::jsonb NOT NULL,
+    redaction_stats jsonb DEFAULT '{}'::jsonb NOT NULL,
+    sent_payload text
 );
 
 
@@ -2862,6 +2899,40 @@ CREATE SEQUENCE public.agent_messages_id_seq
 --
 
 ALTER SEQUENCE public.agent_messages_id_seq OWNED BY public.agent_messages.id;
+
+
+--
+-- Name: agent_pseudonyms; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_pseudonyms (
+    id bigint NOT NULL,
+    conversation_id bigint NOT NULL,
+    token character varying NOT NULL,
+    kind character varying NOT NULL,
+    real_value text NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_pseudonyms_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_pseudonyms_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_pseudonyms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_pseudonyms_id_seq OWNED BY public.agent_pseudonyms.id;
 
 
 --
@@ -2910,7 +2981,9 @@ CREATE TABLE public.agent_settings (
     enabled boolean DEFAULT false NOT NULL,
     retention_days integer DEFAULT 90 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    data_class_modes jsonb DEFAULT '{}'::jsonb NOT NULL,
+    restricted boolean DEFAULT false NOT NULL
 );
 
 
@@ -4777,6 +4850,13 @@ ALTER TABLE ONLY public.active_storage_variant_records ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: agent_consents id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_consents ALTER COLUMN id SET DEFAULT nextval('public.agent_consents_id_seq'::regclass);
+
+
+--
 -- Name: agent_conversations id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4795,6 +4875,13 @@ ALTER TABLE ONLY public.agent_feedback ALTER COLUMN id SET DEFAULT nextval('publ
 --
 
 ALTER TABLE ONLY public.agent_messages ALTER COLUMN id SET DEFAULT nextval('public.agent_messages_id_seq'::regclass);
+
+
+--
+-- Name: agent_pseudonyms id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_pseudonyms ALTER COLUMN id SET DEFAULT nextval('public.agent_pseudonyms_id_seq'::regclass);
 
 
 --
@@ -5562,6 +5649,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: agent_consents agent_consents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_consents
+    ADD CONSTRAINT agent_consents_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: agent_conversations agent_conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5583,6 +5678,14 @@ ALTER TABLE ONLY public.agent_feedback
 
 ALTER TABLE ONLY public.agent_messages
     ADD CONSTRAINT agent_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_pseudonyms agent_pseudonyms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_pseudonyms
+    ADD CONSTRAINT agent_pseudonyms_pkey PRIMARY KEY (id);
 
 
 --
@@ -7689,6 +7792,27 @@ CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.ac
 
 
 --
+-- Name: index_agent_consents_on_accepted_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_consents_on_accepted_by_id ON public.agent_consents USING btree (accepted_by_id);
+
+
+--
+-- Name: index_agent_consents_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_consents_on_entity_id ON public.agent_consents USING btree (entity_id);
+
+
+--
+-- Name: index_agent_consents_on_entity_id_and_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_agent_consents_on_entity_id_and_version ON public.agent_consents USING btree (entity_id, version);
+
+
+--
 -- Name: index_agent_conversations_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7735,6 +7859,27 @@ CREATE INDEX index_agent_feedback_on_user_id ON public.agent_feedback USING btre
 --
 
 CREATE INDEX index_agent_messages_on_conversation_id ON public.agent_messages USING btree (conversation_id);
+
+
+--
+-- Name: index_agent_pseudonyms_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_pseudonyms_on_conversation_id ON public.agent_pseudonyms USING btree (conversation_id);
+
+
+--
+-- Name: index_agent_pseudonyms_on_conversation_id_and_real_value; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_agent_pseudonyms_on_conversation_id_and_real_value ON public.agent_pseudonyms USING btree (conversation_id, real_value);
+
+
+--
+-- Name: index_agent_pseudonyms_on_conversation_id_and_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_agent_pseudonyms_on_conversation_id_and_token ON public.agent_pseudonyms USING btree (conversation_id, token);
 
 
 --
@@ -9071,6 +9216,14 @@ ALTER TABLE ONLY public.data_exports
 
 
 --
+-- Name: agent_consents fk_rails_4bf1188a6c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_consents
+    ADD CONSTRAINT fk_rails_4bf1188a6c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_payment_reminders fk_rails_4d0dea3e8f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9695,6 +9848,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 
 --
+-- Name: agent_consents fk_rails_b36a971165; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_consents
+    ADD CONSTRAINT fk_rails_b36a971165 FOREIGN KEY (accepted_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_lettering_events fk_rails_b37f1265d5; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9756,6 +9917,14 @@ ALTER TABLE ONLY public.closing_runs
 
 ALTER TABLE ONLY public.consolidation_groups
     ADD CONSTRAINT fk_rails_ba9fb62262 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: agent_pseudonyms fk_rails_bb73eeb20a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_pseudonyms
+    ADD CONSTRAINT fk_rails_bb73eeb20a FOREIGN KEY (conversation_id) REFERENCES public.agent_conversations(id);
 
 
 --
@@ -10397,6 +10566,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261006130000'),
 ('20261006120000'),
 ('20261006110000'),
 ('20261006102000'),

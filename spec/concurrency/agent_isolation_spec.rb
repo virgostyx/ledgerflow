@@ -12,6 +12,7 @@ RSpec.describe "The agent under concurrency", :concurrency do
     ActsAsTenant.with_tenant(entity_record) do
       entity_record.update!(features: entity_record.features.merge("agent" => true))
       Agent::Setting.for_current_entity.update!(enabled: true)
+      accept_agent_consent!(entity_record)
       create(:user_entity, :accountant, user: user, entity: entity_record)
       create(:partner, name: partner_name, city: "Sharedcity")
     end

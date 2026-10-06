@@ -1,0 +1,9 @@
+<%# The terms an owner accepts to turn the assistant on (A04). When this text changes, Agent::Consent::VERSION changes, and the assistant stays off until an owner accepts again. %>
+<div class="space-y-2 text-sm text-gray-700">
+  <p><strong>Who receives the data.</strong> The questions asked and the data the assistant reads to answer them are sent to Anthropic, which runs the Claude language models (<%= Agent::Config.settings[:models].values.uniq.to_sentence %>). Nothing is sent unless a person asks the assistant a question.</p>
+  <p><strong>What is sent.</strong> The question, the earlier turns of the conversation, and the results of the reports the assistant consulted, according to the settings below: figures and technical references as they are, names of people, bank numbers and VAT numbers masked, free text cleaned. The contents of documents are not sent. The assistant never writes in the books, never sends an e-mail and has no access to the Internet.</p>
+  <p><strong>What for.</strong> Answering questions about this entity's books and preparing explanations. Nothing is used to train a model by LedgerFlow.</p>
+  <p><strong>Masking.</strong> A natural person's name is replaced by a token such as PERSONNE_017 for the model; the person who asks reads the real name again in the answer. An IBAN keeps its last four characters. A VAT number is replaced by a token.</p>
+  <p><strong>Kept by the provider.</strong> The retention at the provider, any use for training, the region of processing and the subcontractors depend on the contract between this entity and the provider and are not decided here: the owner must have them validated by the entity's data protection officer or counsel before accepting.</p>
+  <p><strong>Kept in LedgerFlow.</strong> Conversations are stored encrypted, visible to their author only, and deleted after the retention chosen below. The audit trail keeps only that a tool was consulted, never what was said.</p>
+</div>
