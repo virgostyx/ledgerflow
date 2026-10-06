@@ -2764,7 +2764,8 @@ CREATE TABLE public.agent_conversations (
     status character varying DEFAULT 'active'::character varying NOT NULL,
     archived_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    stop_requested_at timestamp(6) without time zone
 );
 
 
@@ -10209,6 +10210,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261006101000'),
 ('20261006100000'),
 ('20261005235000'),
 ('20261005234000'),

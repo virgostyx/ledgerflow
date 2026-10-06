@@ -41,6 +41,17 @@ RSpec.describe Agent::Conversation do
     expect(mine.archived_at).to be_present
   end
 
+  it "remembers a stop request until the next question clears it, and reads it from the database" do
+    mine = conversation
+    stale = described_class.find(mine.id)
+
+    mine.request_stop!
+
+    expect(stale.stop_requested?).to be true
+    mine.clear_stop!
+    expect(stale.stop_requested?).to be false
+  end
+
   it "takes its messages with it when deleted" do
     mine = conversation
     mine.messages.create!(role: "user", content: "Hello")

@@ -13,4 +13,9 @@ class Agent::Conversation < ApplicationRecord
   scope :visible_to, ->(user) { where(user: user) }
 
   def archive! = update!(status: :archived, archived_at: Time.current)
+
+  # The Stop button writes the time; the runner looks at it between two steps. A new question starts with a clean slate.
+  def request_stop! = update_columns(stop_requested_at: Time.current)
+  def clear_stop!   = update_columns(stop_requested_at: nil)
+  def stop_requested? = self.class.where(id: id).where.not(stop_requested_at: nil).exists?
 end

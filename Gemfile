@@ -104,3 +104,5 @@ gem "rqrcode", "~> 3.2"
 gem "pdf-reader"
 
 gem "anthropic", "~> 1.76"
+
+gem "commonmarker", "~> 2.10"
