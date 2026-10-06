@@ -1,0 +1,47 @@
+<turbo-frame id="agent_panel">
+  <%= turbo_stream_from @conversation %>
+  <div class="flex h-full flex-col" data-controller="agent-composer" data-agent-composer-messages-id-value="agent_conversation_<%= @conversation.id %>_messages">
+    <div class="flex items-center justify-between border-b border-gray-200 px-4 py-2">
+      <%= link_to "← Conversations", agent_conversations_path, class: "text-sm text-indigo-700 hover:underline" %>
+      <h2 class="mx-2 min-w-0 flex-1 truncate text-center text-sm font-semibold text-gray-900"><%= @conversation.title.presence || "New conversation" %></h2>
+    </div>
+
+    <details class="border-b border-gray-100 px-4 py-2 text-xs text-gray-600">
+      <summary class="cursor-pointer font-medium text-gray-700">What the agent knows</summary>
+      <dl class="mt-2 space-y-1">
+        <div><dt class="inline font-medium">Entity:</dt> <dd class="inline"><%= @context.entity.name %></dd></div>
+        <div><dt class="inline font-medium">Today:</dt> <dd class="inline"><%= @context.today.iso8601 %></dd></div>
+        <div><dt class="inline font-medium">Screen:</dt> <dd class="inline"><%= @context.screen.presence || "none" %></dd></div>
+        <div><dt class="inline font-medium">Object open:</dt> <dd class="inline"><%= @context.subject_ref.presence ? "#{@context.subject_ref['type']} #{@context.subject_ref['id']}" : "none" %></dd></div>
+      </dl>
+      <p class="mt-2">Nothing else is sent: not the screen's text, and not your other conversations. To start without this, <%= button_to "open a blank conversation", agent_conversations_path, method: :post, class: "inline text-indigo-700 underline" %>.</p>
+    </details>
+
+    <div id="agent_conversation_<%= @conversation.id %>_messages" role="log" aria-live="polite" aria-label="Conversation" class="flex-1 space-y-3 overflow-y-auto px-4 py-3" data-agent-composer-target="messages">
+      <% if @messages.empty? %>
+        <div class="text-sm text-gray-500">
+          <p class="mb-2">Ask a question about the books of this entity. For example:</p>
+          <ul class="list-disc space-y-1 pl-5">
+            <li>What is the balance of account 400?</li>
+            <li>Which customers are more than 60 days late?</li>
+            <li>Are there anomalies to fix before the closing?</li>
+          </ul>
+        </div>
+      <% end %>
+      <%= render partial: "agent/messages/message", collection: @messages, as: :message %>
+    </div>
+
+    <div id="agent_conversation_<%= @conversation.id %>_error" class="px-4 text-sm text-red-600" role="alert"></div>
+
+    <%= form_with url: agent_conversation_messages_path(@conversation), class: "border-t border-gray-200 p-3", data: { agent_composer_target: "form", action: "turbo:submit-end->agent-composer#reset" } do %>
+      <label for="agent_question_<%= @conversation.id %>" class="sr-only">Your question</label>
+      <textarea id="agent_question_<%= @conversation.id %>" name="question" rows="2" maxlength="4000" required
+                placeholder="Ask a question…" data-agent-composer-target="input" data-action="keydown->agent-composer#keydown"
+                class="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
+      <div class="mt-2 flex items-center justify-between">
+        <span class="text-xs text-gray-400">Enter to send, Shift+Enter for a new line</span>
+        <button type="submit" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">Send</button>
+      </div>
+    <% end %>
+  </div>
+</turbo-frame>

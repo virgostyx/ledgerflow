@@ -77,3 +77,9 @@ application.register("dropzone", DropzoneController)
 
 import BankKeysController from "controllers/bank_keys_controller"
 application.register("bank-keys", BankKeysController)
+
+import AgentPanelController from "controllers/agent_panel_controller"
+application.register("agent-panel", AgentPanelController)
+
+import AgentComposerController from "controllers/agent_composer_controller"
+application.register("agent-composer", AgentComposerController)

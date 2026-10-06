@@ -1,0 +1,32 @@
+# Opening, resuming, renaming, archiving and deleting one's conversations with the agent (A01).
+class Agent::ConversationsController < Agent::BaseController
+  def index
+    @screen = params[:screen].to_s[SCREEN]
+    @conversations = conversations.active.order(updated_at: :desc).limit(50)
+  end
+
+  def show
+    @conversation = find_conversation
+    @messages = @conversation.messages.where(role: %w[user assistant]).order(:id)
+    @context = agent_context(screen: @conversation.origin_screen, subject_ref: @conversation.context_ref)
+  end
+
+  # A reference to the object the panel is opened on is kept only if it is shaped like one (a type and an identifier), never as text copied from the screen.
+  def create
+    reference = { "type" => params[:subject_type].to_s[REFERENCE], "id" => params[:subject_id].to_s[REFERENCE] }
+    conversation = conversations.create!(user: current_user, origin_screen: params[:screen].to_s[SCREEN], context_ref: reference.values.all? ? reference : {})
+    redirect_to agent_conversation_path(conversation), status: :see_other
+  end
+
+  def update
+    conversation = find_conversation
+    conversation.update!(title: params.dig(:agent_conversation, :title).to_s.strip.first(120).presence || conversation.title) if params.dig(:agent_conversation, :title)
+    conversation.archive! if params.dig(:agent_conversation, :archived) == "1"
+    redirect_to agent_conversations_path, status: :see_other
+  end
+
+  def destroy
+    find_conversation.destroy!
+    redirect_to agent_conversations_path, status: :see_other
+  end
+end

@@ -1,0 +1,22 @@
+<% if message.user? %>
+  <%= render "agent/messages/user_bubble", text: message.content %>
+<% else %>
+  <div id="<%= dom_id(message) %>" class="mr-6 rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-900">
+    <% if message.stopped? %><p class="mb-1 text-xs font-medium text-amber-700">Stopped before the end</p><% end %>
+    <div class="[&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_table]:w-full [&_table]:text-xs [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_code]:rounded [&_code]:bg-gray-100 [&_code]:px-1">
+      <%= Agent::MarkdownRenderer.html(message.content) %>
+    </div>
+    <div id="agent_message_<%= message.id %>_feedback" class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+      <%= button_to "Useful", agent_conversation_message_feedback_path(message.conversation_id, message), params: { rating: "useful" }, class: "rounded border border-gray-300 px-2 py-0.5 hover:bg-gray-50" %>
+      <details>
+        <summary class="cursor-pointer rounded border border-gray-300 px-2 py-0.5 hover:bg-gray-50">Not useful</summary>
+        <%= form_with url: agent_conversation_message_feedback_path(message.conversation_id, message), class: "mt-2 space-y-2" do %>
+          <%= hidden_field_tag :rating, "not_useful" %>
+          <%= select_tag :category, options_for_select([ [ "Wrong figure", "wrong_figure" ], [ "Off topic", "off_topic" ], [ "Incomplete", "incomplete" ], [ "Too long", "too_long" ], [ "Other", "other" ] ]), aria: { label: "What was wrong" }, class: "block rounded border-gray-300 text-xs" %>
+          <%= text_area_tag :comment, nil, rows: 2, placeholder: "Comment (optional)", aria: { label: "Comment" }, class: "block w-full rounded border-gray-300 text-xs" %>
+          <%= submit_tag "Send", class: "rounded bg-gray-800 px-2 py-0.5 text-white" %>
+        <% end %>
+      </details>
+    </div>
+  </div>
+<% end %>

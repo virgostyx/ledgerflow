@@ -46,6 +46,16 @@ Rails.application.routes.draw do
     end
   end
 
+  # A01: the AI agent's panel. A conversation is its author's alone; the answer is written in the background and streamed back (Turbo Streams).
+  namespace :agent do
+    resources :conversations, only: %i[index show create update destroy] do
+      resource :stop, only: :create
+      resources :messages, only: :create do
+        resource :feedback, only: :create
+      end
+    end
+  end
+
   # Gestion des entités (tenant switching)
   resources :entities, only: %i[index new create] do
     member { post :switch }

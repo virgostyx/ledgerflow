@@ -1,0 +1,6 @@
+<%= turbo_stream.remove "agent_conversation_#{@conversation.id}_live" %>
+<%= turbo_stream.append "agent_conversation_#{@conversation.id}_messages" do %>
+  <%= render "agent/messages/user_bubble", text: @question %>
+  <%= render "agent/messages/live", conversation: @conversation %>
+<% end %>
+<%= turbo_stream.update "agent_conversation_#{@conversation.id}_error", "" %>
