@@ -32,6 +32,17 @@ RSpec.describe Agent::ModelGateway do
       expect(response).to have_attributes(stop_reason: "end_turn", content: [ { type: :text, text: "Hello" } ], usage: { input_tokens: 12, output_tokens: 3 }, model: "claude-x")
     end
 
+    it "sends the provider what the redactor left, never the original: the payload that really goes is inspected" do
+      allow(client.messages).to receive(:stream).and_return(stream)
+      redactor = instance_double(Agent::Redactor, redact: Agent::Redactor::Result.new(system: "masked system", messages: [ { role: "user", content: "IBAN …7034" } ], stats: { "bank_identifier" => { "masked" => 1 } }))
+
+      response = described_class.new(client: client).call(system: "system BE68539007547034", messages: [ { role: "user", content: "BE68539007547034" } ], tools: [], redactor: redactor)
+
+      expect(client.messages).to have_received(:stream).with(hash_including(system_: "masked system", messages: [ { role: "user", content: "IBAN …7034" } ]))
+      expect(response.redaction).to eq("bank_identifier" => { "masked" => 1 })
+      expect(response.sent).to eq(system: "masked system", messages: [ { role: "user", content: "IBAN …7034" } ])
+    end
+
     it "leaves the tools out when there are none, since the API refuses an empty list" do
       allow(client.messages).to receive(:stream).and_return(stream)
 

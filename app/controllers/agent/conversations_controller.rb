@@ -18,6 +18,12 @@ class Agent::ConversationsController < Agent::BaseController
     redirect_to agent_conversation_path(conversation), status: :see_other
   end
 
+  # Everything the person has said to the agent in this entity, as a file.
+  def export
+    data = Agent::Export.conversations(conversations)
+    send_data JSON.pretty_generate(data), type: "application/json", disposition: "attachment", filename: "agent-conversations-#{Date.current.iso8601}.json"
+  end
+
   def update
     conversation = find_conversation
     conversation.update!(title: params.dig(:agent_conversation, :title).to_s.strip.first(120).presence || conversation.title) if params.dig(:agent_conversation, :title)

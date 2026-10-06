@@ -5,7 +5,7 @@
 
 <div class="max-w-2xl space-y-6">
   <p class="text-sm text-gray-600">The assistant reads the books of this entity through the reports and answers questions. It never validates, sends or posts anything: it prepares, a person decides.</p>
-  <p class="text-sm"><%= link_to "Security events of the assistant", agent_security_events_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "What the assistant does with the data", agent_privacy_path, class: "text-indigo-700 hover:underline" %></p>
+  <p class="text-sm"><%= link_to "Security events of the assistant", agent_security_events_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "What the assistant does with the data", agent_privacy_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "Access and erasure", new_agent_subject_request_path, class: "text-indigo-700 hover:underline" %></p>
 
   <%= form_with model: @setting, url: agent_setting_path, method: :patch, scope: :agent_setting, class: "space-y-6" do |f| %>
     <% if @setting.errors.any? %>

@@ -51,7 +51,9 @@ Rails.application.routes.draw do
     resource :setting, only: %i[show update]
     resources :security_events, only: :index
     resource :privacy, only: :show, controller: "privacy"
+    resources :subject_requests, only: %i[new create]
     resources :conversations, only: %i[index show create update destroy] do
+      get :export, on: :collection
       resource :stop, only: :create
       resources :messages, only: :create do
         get :sent, on: :member

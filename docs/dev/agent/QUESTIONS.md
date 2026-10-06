@@ -54,3 +54,16 @@ Décisions prises pendant l'audit (`00-audit.md`), validées par l'utilisateur l
 - **Faux positifs du détecteur** : un libellé réel qui contiendrait une adresse web (« voir https://… ») est signalé (badge et événement), sans autre effet. Acceptable ? Sinon, retirer le motif `url` du signalement.
 - **`question` et `comment` filtrés des journaux** pour toute l'application (le filtre porte sur le nom du paramètre) : cela masque aussi les commentaires de tâches dans les journaux de requêtes.
 - **Restrictions par journal** : voir A03.md ; si la spec veut qu'elles bornent aussi les rapports, il faut d'abord que les écrans le fassent.
+
+## A04 — questions juridiques (à faire valider par le délégué à la protection des données ou le conseil du propriétaire)
+Voir la liste complète dans `DATA_PROCESSING.md` : conservation chez le fournisseur, usage pour l'entraînement, région de traitement, transferts hors Union européenne, sous-traitants, secret professionnel du cabinet, base légale, AIPD, relecture du texte de consentement.
+
+## A04 — décisions techniques à valider
+- **« Voir ce qui a été envoyé » garde la charge utile** (masquée, chiffrée) sur chaque réponse, alors que la spec dit de ne pas la conserver pour ne pas dupliquer des données sensibles. Sans elle, la reproduction « exacte » est impossible (les résultats d'outils ne sont pas conservés). Elle ne contient que du masqué, est chiffrée et part avec la conversation ; à valider.
+- **Les questions tapées sont conservées telles quelles** (chiffrées), avec les vrais noms et numéros de la personne : c'est ce qui permet de retrouver une personne dans les conversations, et à l'auteur de se relire. Elles partent masquées.
+- **Mode `mask` pour les montants, dates et références** : sans sens de masquage utile, il se comporte comme `block`.
+- **Montants et dates** sont reconnus par leur forme (chaîne à deux décimales, date ISO), pas par une classe déclarée champ par champ : le contrat de sortie des outils (A02) l'assure.
+- **Un tiers dont la nature est inconnue est masqué** : tous les tiers existants le sont tant que le champ n'est pas rempli. Les réponses restent lisibles pour la personne (les noms reviennent), mais le modèle raisonne sur des jetons ; remplir `is_natural_person` des sociétés améliore ses réponses.
+- **Chiffrement déterministe** de la table des pseudonymes : même valeur, même chiffré, pour retrouver une personne ; c'est un compromis assumé (un attaquant avec la base mais sans la clé ne lit rien, mais voit quelles conversations partagent un nom).
+- **Notes de dossier et propositions** (A10, A07) : le droit d'accès et d'effacement ne les couvre pas encore, elles n'existent pas.
+- **Document mode** (A09) : non réglable pour le moment (aucune capacité n'envoie de document).

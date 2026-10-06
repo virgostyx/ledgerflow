@@ -5,11 +5,16 @@ class Agent::Conversation < ApplicationRecord
 
   acts_as_tenant :entity
 
+  encrypts :title # the first words of the first question: it can hold a name
+
   belongs_to :user
   has_many :pseudonyms, class_name: "Agent::Pseudonym", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :delete_all
   has_many :messages, class_name: "Agent::Message", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :destroy
 
   enum :status, { active: "active", archived: "archived" }, default: "active"
+
+  # What was said goes with the conversation; of its security events only the metadata stays (the excerpt could hold what was said).
+  before_destroy { Agent::SecurityEvent.where(conversation_id: id).update_all(excerpt: nil) }
 
   scope :visible_to, ->(user) { where(user: user) }
 
