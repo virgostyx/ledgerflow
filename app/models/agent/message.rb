@@ -4,6 +4,7 @@ class Agent::Message < ApplicationRecord
 
   belongs_to :conversation, class_name: "Agent::Conversation", inverse_of: :messages
   has_many :feedbacks, class_name: "Agent::Feedback", dependent: :destroy
+  has_many :tool_calls, class_name: "Agent::ToolCall", dependent: :destroy
 
   encrypts :content
 

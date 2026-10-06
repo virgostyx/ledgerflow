@@ -36,6 +36,20 @@ RSpec.describe Agent::ToolRegistry do
     expect(registry.execute("echo", { "text" => "hi" }, context)).to eq("error" => "forbidden", "message" => "You do not have access to this information.")
   end
 
+  it "turns away arguments that do not keep to the schema, without running the tool, and says what is wrong" do
+    result = registry.execute("echo", { "text" => "hi", "company_id" => 7 }, context)
+
+    expect(result).to eq("error" => "invalid_arguments", "message" => "company_id is not an argument of this tool")
+  end
+
+  it "answers timeout when a tool takes longer than it may, instead of keeping the person waiting" do
+    slow = Class.new(tool) { def call(*) = sleep(2) }
+
+    result = described_class.new([ slow ], timeout: 0.05).execute("echo", { "text" => "x" }, context)
+
+    expect(result).to include("error" => "timeout")
+  end
+
   it "answers not_found for a tool it does not have" do
     expect(registry.execute("drop_table", {}, context)).to include("error" => "not_found")
   end

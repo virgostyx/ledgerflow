@@ -98,6 +98,40 @@ RSpec.describe Agent::Runner do
     end
   end
 
+  describe "the record of the tool calls" do
+    it "keeps each call with the tool, the arguments (encrypted), the outcome and the time, on the answer it belongs to" do
+      answer = runner([ tool_use("t1"), text("ok") ]).ask("Q")
+
+      expect(answer.tool_calls).to contain_exactly(have_attributes(tool: "echo", arguments: { "text" => "hi" }.to_json, status: "ok", error: nil, duration_ms: be >= 0))
+      raw = ActiveRecord::Base.connection.select_value("SELECT arguments FROM agent_tool_calls LIMIT 1")
+      expect(raw).not_to include("hi")
+    end
+
+    it "keeps a refused or failed call as an error, with the code the model was given" do
+      runner([ tool_use("t1", {}, name: "missing"), text("ok") ]).ask("Q")
+
+      expect(Agent::ToolCall.last).to have_attributes(tool: "missing", status: "error", error: "not_found")
+    end
+
+    it "takes the size of the result from the tool: rows and whether it was partial" do
+      sized = Class.new(echo) { def call(*) = { "data" => [ 1, 2 ], "row_count" => 2, "truncated" => true } }
+      tooled = described_class.new(conversation: conversation, context: context, gateway: Agent::FakeGateway.new([ tool_use("t1"), text("ok") ]), registry: Agent::ToolRegistry.new([ sized ]))
+
+      tooled.ask("Q")
+
+      expect(Agent::ToolCall.last).to have_attributes(row_count: 2, truncated: true)
+    end
+
+    it "writes each call in the audit trail of the entity, as a call of the agent for the person who asked" do
+      answer = runner([ tool_use("t1"), text("ok") ]).ask("Q")
+
+      log = Accounting::AuditLog.where(action: "agent_tool_call").last
+      expect(log).to have_attributes(auditable_type: "Agent::Message", auditable_id: answer.id, user_id: user.id)
+      expect(log.payload).to include("tool" => "echo", "status" => "ok")
+      expect(log.payload.to_s).not_to include("hi")
+    end
+  end
+
   describe "the limits of a question" do
     it "stops after the turns it is allowed and says what it could not check" do
       answer = runner([ tool_use("1"), tool_use("2"), tool_use("3") ], limits: { max_turns: 2 }).ask("Q")

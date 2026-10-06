@@ -18,7 +18,7 @@ class Agent::Runner
     Agent::Access.check!(@context)
     @on_event = on_event
     @stop = stop
-    @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors = [], Hash.new(0), nil, 0, 0, 0
+    @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors, @tool_log = [], Hash.new(0), nil, 0, 0, 0, []
     messages = history + [ { role: "user", content: question } ]
     @conversation.messages.create!(role: "user", content: question)
 
@@ -79,7 +79,9 @@ class Agent::Runner
     error = result["error"]
     @tool_calls += 1
     @tool_errors = error ? @tool_errors + 1 : 0
-    emit(type: :tool_end, name: call[:name], error: error, duration_ms: ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round)
+    duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round
+    @tool_log << { tool: call[:name], arguments: input.to_json, status: error ? "error" : "ok", error: error, row_count: result["row_count"], truncated: result["truncated"] == true, duration_ms: duration_ms }
+    emit(type: :tool_end, name: call[:name], error: error, duration_ms: duration_ms)
     { type: "tool_result", tool_use_id: call[:id], content: result.to_json, is_error: error.present? }
   end
 
@@ -87,8 +89,17 @@ class Agent::Runner
     content = (@texts + [ notice ]).compact.join("\n\n")
     message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms,
                                              input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])
+    record_tool_calls(message)
     emit(type: :done, message: message)
     message
+  end
+
+  # Each call is kept on the answer it served and written in the entity's audit trail: the tool and the outcome, never the arguments (they are in the encrypted table).
+  def record_tool_calls(message)
+    @tool_log.each do |call|
+      message.tool_calls.create!(call)
+      Accounting::AuditLog.record!(auditable: message, action: "agent_tool_call", user: @context.user, payload: { tool: call[:tool], status: call[:status], error: call[:error] }.compact)
+    end
   end
 
   # Earlier turns of the talk, as plain text. An answer that was stopped or failed is not sent back to the model.

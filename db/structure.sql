@@ -2897,6 +2897,44 @@ ALTER SEQUENCE public.agent_settings_id_seq OWNED BY public.agent_settings.id;
 
 
 --
+-- Name: agent_tool_calls; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_tool_calls (
+    id bigint NOT NULL,
+    message_id bigint NOT NULL,
+    tool character varying NOT NULL,
+    arguments text,
+    status character varying NOT NULL,
+    error character varying,
+    row_count integer,
+    truncated boolean DEFAULT false NOT NULL,
+    duration_ms integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_tool_calls_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_tool_calls_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_tool_calls_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_tool_calls_id_seq OWNED BY public.agent_tool_calls.id;
+
+
+--
 -- Name: api_clients; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4730,6 +4768,13 @@ ALTER TABLE ONLY public.agent_settings ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: agent_tool_calls id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_tool_calls ALTER COLUMN id SET DEFAULT nextval('public.agent_tool_calls_id_seq'::regclass);
+
+
+--
 -- Name: api_clients id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5502,6 +5547,14 @@ ALTER TABLE ONLY public.agent_messages
 
 ALTER TABLE ONLY public.agent_settings
     ADD CONSTRAINT agent_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_tool_calls agent_tool_calls_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_tool_calls
+    ADD CONSTRAINT agent_tool_calls_pkey PRIMARY KEY (id);
 
 
 --
@@ -7640,6 +7693,13 @@ CREATE UNIQUE INDEX index_agent_settings_on_entity_id ON public.agent_settings U
 
 
 --
+-- Name: index_agent_tool_calls_on_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_tool_calls_on_message_id ON public.agent_tool_calls USING btree (message_id);
+
+
+--
 -- Name: index_analytical_accounts_on_axis_and_code; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8964,6 +9024,14 @@ ALTER TABLE ONLY public.organization_memberships
 
 
 --
+-- Name: agent_tool_calls fk_rails_5808379b8f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_tool_calls
+    ADD CONSTRAINT fk_rails_5808379b8f FOREIGN KEY (message_id) REFERENCES public.agent_messages(id);
+
+
+--
 -- Name: accounting_analytical_accounts fk_rails_59baa8ed4d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10218,6 +10286,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261006110000'),
 ('20261006102000'),
 ('20261006101000'),
 ('20261006100000'),

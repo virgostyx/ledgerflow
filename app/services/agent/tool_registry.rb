@@ -3,8 +3,9 @@
 class Agent::ToolRegistry
   FORBIDDEN = { "error" => "forbidden", "message" => "You do not have access to this information." }.freeze
 
-  def initialize(tools = [])
+  def initialize(tools = [], timeout: Agent::Config.limits[:max_tool_seconds])
     @tools = tools.index_by(&:tool_name)
+    @timeout = timeout
   end
 
   def definitions = @tools.values.map(&:definition)
@@ -13,7 +14,13 @@ class Agent::ToolRegistry
     tool = @tools[name] or return { "error" => "not_found", "message" => "Unknown tool." }
     return FORBIDDEN unless context.allows?(tool.permission)
 
-    tool.new.call(args, context)
+    problems = Agent::ArgumentValidator.problems(tool.input_schema, args)
+    return { "error" => "invalid_arguments", "message" => problems.to_sentence } if problems.any?
+
+    # ponytail: Timeout interrupts the thread, not a query already sent to the database; a statement_timeout per tool if a report ever runs that long.
+    Timeout.timeout(@timeout) { tool.new.call(args, context) }
+  rescue Timeout::Error
+    { "error" => "timeout", "message" => "The tool took too long. Narrow the period or the filters and try again." }
   rescue StandardError => e
     Rails.logger.error("[agent] tool #{name} failed: #{e.class}")
     { "error" => "internal_error", "message" => "The tool could not answer. Try again, or use the report directly." }
