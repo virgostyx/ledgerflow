@@ -10,6 +10,9 @@ class Agent::MessagesController < Agent::BaseController
     return refuse("Write a question first.") if @question.blank?
     return refuse("Your question is too long: #{MAX_LENGTH} characters at most. Shorten it, or split it in two.") if @question.length > MAX_LENGTH
 
+    review = Agent::SensitiveInput.review(@question, Agent::Setting.find_by(entity: ActsAsTenant.current_tenant) || Agent::Setting.new)
+    return warn_about(review) if !review.clear? && (review.blocked? || params[:confirm_sensitive] != "1")
+
     quota = Agent::Quota.check(user: current_user, entity: ActsAsTenant.current_tenant)
     return refuse(Agent::Quota.message(quota)) if quota
 
@@ -23,7 +26,21 @@ class Agent::MessagesController < Agent::BaseController
     end
   end
 
+  # What was sent to the model for an answer, after masking: the tokens it saw, never the names.
+  def sent
+    @message = find_conversation.messages.assistant.find(params[:id])
+    @payload = @message.sent_payload.present? ? JSON.parse(@message.sent_payload) : nil
+  end
+
   private
+
+  # A message that holds what must not leave as it is: the person is told, and chooses (unless it can never go).
+  def warn_about(review)
+    respond_to do |format|
+      format.turbo_stream { render turbo_stream: turbo_stream.update("agent_conversation_#{@conversation.id}_error", partial: "agent/messages/sensitive_warning", locals: { review: review, question: @question, conversation: @conversation }), status: :unprocessable_entity }
+      format.html { redirect_to agent_conversation_path(@conversation), alert: "Your message holds data that cannot be sent as it is: remove it first.", status: :see_other }
+    end
+  end
 
   def refuse(message)
     respond_to do |format|

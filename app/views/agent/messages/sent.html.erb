@@ -1,0 +1,26 @@
+<turbo-frame id="agent_panel">
+  <div class="space-y-3 p-4 text-sm text-gray-700">
+    <div class="flex items-center justify-between">
+      <h2 class="text-base font-semibold text-gray-900">What was sent for this answer</h2>
+      <%= link_to "← Conversation", agent_conversation_path(@message.conversation_id), class: "text-sm text-indigo-700 hover:underline" %>
+    </div>
+
+    <% if @payload.nil? %>
+      <p>Nothing was sent to the language model for this answer.</p>
+    <% else %>
+      <p class="text-xs text-gray-500">This is the payload as it left LedgerFlow, after masking: names are tokens, IBANs keep their last four characters, VAT numbers are tokens. The instructions of the assistant come first, then the conversation.</p>
+      <% if @message.redaction_stats.present? %>
+        <p class="text-xs"><%= @message.redaction_stats.map { |data_class, counts| "#{data_class}: #{counts.map { |how, number| "#{number} #{how}" }.join(', ')}" }.join(" · ") %></p>
+      <% end %>
+      <details class="rounded border border-gray-200 bg-white p-2"><summary class="cursor-pointer font-medium">Instructions of the assistant</summary><pre class="mt-2 whitespace-pre-wrap text-xs"><%= @payload["system"] %></pre></details>
+      <% @payload["messages"].each do |message| %>
+        <div class="rounded border border-gray-200 bg-white p-2">
+          <p class="text-xs font-medium uppercase text-gray-500"><%= message["role"] %></p>
+          <% Array(message["content"].is_a?(String) ? [ { "text" => message["content"] } ] : message["content"]).each do |block| %>
+            <pre class="mt-1 whitespace-pre-wrap text-xs"><%= block["text"] || block["content"] || block.to_json %></pre>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</turbo-frame>

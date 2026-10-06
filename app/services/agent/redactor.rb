@@ -29,7 +29,8 @@ class Agent::Redactor
 
   # The text of a message of the person, for what it holds that must not leave as it is.
   def scrub(text)
-    text = mask_ibans(text.to_s.dup)
+    text = remove_secrets(text.to_s.dup)
+    text = mask_ibans(text)
     text = mask_national_numbers(text)
     text = mask_vat_numbers(text)
     mask_names(text)
@@ -123,6 +124,12 @@ class Agent::Redactor
   end
 
   def financial?(text) = text.match?(MONEY) || text.match?(DATE)
+
+  # A bank card number and a password do not go, whatever the settings.
+  def remove_secrets(text)
+    text = text.gsub(Agent::Identifiers::CARD) { |raw| Agent::Identifiers.card?(raw) ? blocked_text(:secret, "[card number blocked]") : raw }
+    text.gsub(Agent::SensitiveInput::PASSWORD) { |raw| blocked_text(:secret, "#{raw[/\A\S+\s*[:=]/]} [secret blocked]") }
+  end
 
   def mask_ibans(text)
     return text if mode(:bank_identifier) == "send"

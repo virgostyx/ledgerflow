@@ -54,6 +54,7 @@ Rails.application.routes.draw do
     resources :conversations, only: %i[index show create update destroy] do
       resource :stop, only: :create
       resources :messages, only: :create do
+        get :sent, on: :member
         resource :feedback, only: :create
       end
     end

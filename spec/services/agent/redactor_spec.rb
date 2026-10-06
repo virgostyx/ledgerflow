@@ -62,6 +62,20 @@ RSpec.describe Agent::Redactor do
     end
   end
 
+  describe "a bank card number or a password, which never go" do
+    it "are removed whatever the settings" do
+      with_modes("bank_identifier" => "send", "personal" => "send", "tax_identifier" => "send")
+
+      expect(redact("card 4111 1111 1111 1111 and password: hunter2")).to eq("card [card number blocked] and password: [secret blocked]")
+    end
+
+    it "are removed from what a tool returned as well" do
+      leaky = [ { role: "user", content: [ { type: "tool_result", tool_use_id: "x", content: { "data" => [ { "description" => "paid with 4111111111111111" } ] }.to_json, is_error: false } ] } ]
+
+      expect(redactor.redact(system: "s", messages: leaky).messages.first[:content].first[:content]).to include("[card number blocked]")
+    end
+  end
+
   describe "the name of a partner, class personal" do
     let!(:alice)   { create(:partner, name: "Alice Dupont", is_natural_person: true) }
     let!(:unknown) { create(:partner, name: "Bob Martin", is_natural_person: nil) }

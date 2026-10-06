@@ -239,6 +239,104 @@ RSpec.describe "The agent's conversations (A01)", type: :request do
     end
   end
 
+  describe "what a person types, which may hold what must not leave (A04)" do
+    let(:iban) { "BE68539007547034" }
+    let(:conversation) { mine }
+
+    def ask(text, confirm: false)
+      post agent_conversation_messages_path(conversation), params: { question: text }.merge(confirm ? { confirm_sensitive: "1" } : {}), as: :turbo_stream
+    end
+
+    it "warns before sending an IBAN, says what will happen to it, and sends nothing yet" do
+      expect { ask("Pay #{iban}") }.not_to have_enqueued_job(Agent::AnswerJob)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include("bank account number", "last four characters", "Send anyway", "Edit")
+    end
+
+    it "does not repeat the number in the warning, only in the form that sends it again" do
+      ask("Pay #{iban}")
+
+      expect(response.body.scan(iban).size).to eq(1) # the hidden field that carries the question back
+      expect(response.body).not_to include("IBAN #{iban}")
+    end
+
+    it "sends it, masked, once the person confirmed" do
+      expect { ask("Pay #{iban}", confirm: true) }.to have_enqueued_job(Agent::AnswerJob)
+    end
+
+    it "says it goes as it is when the entity chose so, and sends once confirmed" do
+      Agent::Setting.for_current_entity.update!(data_class_modes: { "bank_identifier" => "send" })
+
+      ask("Pay #{iban}")
+      expect(response.body).to include("sent as it is")
+      expect { ask("Pay #{iban}", confirm: true) }.to have_enqueued_job(Agent::AnswerJob)
+    end
+
+    it "refuses, even when confirmed, what the entity never lets go" do
+      Agent::Setting.for_current_entity.update!(data_class_modes: { "bank_identifier" => "block" })
+
+      expect { ask("Pay #{iban}", confirm: true) }.not_to have_enqueued_job(Agent::AnswerJob)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include("cannot be sent")
+      expect(response.body).not_to include("Send anyway")
+    end
+
+    it "refuses a card number and a password, whatever the settings" do
+      expect { ask("card 4111 1111 1111 1111", confirm: true) }.not_to have_enqueued_job(Agent::AnswerJob)
+      expect(response.body).to include("can never be sent")
+      expect { ask("mot de passe: hunter2", confirm: true) }.not_to have_enqueued_job(Agent::AnswerJob)
+      expect(response.body).to include("can never be sent")
+    end
+
+    it "lets an ordinary question through without a word" do
+      expect { ask("Who owes me the most?") }.to have_enqueued_job(Agent::AnswerJob)
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe "what was sent, to see again (A04)" do
+    let(:conversation) { mine }
+    let(:payload) { { system: "You are the assistant", messages: [ { role: "user", content: "Does PERSONNE_001 owe anything?" }, { role: "user", content: [ { type: "tool_result", tool_use_id: "1", content: "{\"name\":\"PERSONNE_001\"}" } ] } ] }.to_json }
+
+    it "shows the payload as it left, with the tokens and not the names" do
+      conversation.pseudonym_table.token_for("Alice Dupont", "person")
+      answer = conversation.messages.create!(role: "assistant", content: "ok", sent_payload: payload, redaction_stats: { "personal" => { "masked" => 2 } })
+
+      get sent_agent_conversation_message_path(conversation, answer)
+
+      expect(response.body).to include("Does PERSONNE_001 owe anything?", "You are the assistant", "personal: 2 masked")
+      expect(response.body).not_to include("Alice")
+    end
+
+    it "offers it under an answer that has one, and not under one that has none" do
+      conversation.messages.create!(role: "assistant", content: "with", sent_payload: payload)
+      conversation.messages.create!(role: "assistant", content: "without")
+
+      get agent_conversation_path(conversation)
+
+      expect(response.body.scan("See what was sent").size).to eq(1)
+    end
+
+    it "says so when nothing was sent for an answer" do
+      answer = conversation.messages.create!(role: "assistant", content: "stopped early", status: "stopped")
+
+      get sent_agent_conversation_message_path(conversation, answer)
+
+      expect(response.body).to include("Nothing was sent")
+    end
+
+    it "is its author's alone" do
+      other = theirs.messages.create!(role: "assistant", content: "x", sent_payload: payload)
+
+      get sent_agent_conversation_message_path(other.conversation, other)
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   describe "the buttons" do
     it "stops: the request is written, nothing else happens" do
       conversation = mine

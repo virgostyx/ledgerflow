@@ -6,7 +6,7 @@ module Agent::Identifiers
   BELGIAN_VAT = /\bBE\s?[01]\d{3}[.\s]?\d{3}[.\s]?\d{3}\b/i
   COMPANY_NUMBER = /(?<![\d.])[01]\d{3}[.\s]\d{3}[.\s]\d{3}(?![\d])/
   FOREIGN_VAT = /\b(?:AT|BG|CY|CZ|DE|DK|EE|EL|ES|FI|FR|GB|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK)[A-Z0-9]{8,12}\b/
-  CARD = /(?<![\d])(?:\d[ -]?){13,19}(?![\d])/
+  CARD = /(?<![\d])(?:\d[ -]?){12,18}\d(?![\d])/
 
   # => [[matched text, normalized value]] of the valid ones, in order of appearance
   def self.ibans(text) = text.scan(IBAN).filter_map { |raw| [ raw, raw.delete(" ") ] if iban?(raw.delete(" ")) }
