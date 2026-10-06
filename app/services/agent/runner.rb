@@ -1,0 +1,104 @@
+# Answers one question (A01): builds the messages, asks the model, runs the tools it asks for through the registry, and loops until it answers or a limit is
+# reached. The loop is written out, not left to the SDK, so that the rights, the stop button and the limits are checked at every step. It reports what happens
+# through the block it is given: :text, :tool_start, :tool_end, :done.
+class Agent::Runner
+  LIMIT_NOTICE  = "I stopped before finishing: the limit of this question was reached. What I established is above; I could not verify the rest.".freeze
+  TOOLS_NOTICE  = "I stopped because the tools are not answering. Try again in a moment, or use the reports directly.".freeze
+  ACCESS_NOTICE = "I stopped because you no longer have access to the agent.".freeze
+
+  def initialize(conversation:, context:, gateway: Agent::ModelGateway.default, registry: Agent::ToolRegistry.new, limits: {})
+    @conversation = conversation
+    @context      = context
+    @gateway      = gateway
+    @registry     = registry
+    @limits       = Agent::Config.limits.merge(limits)
+  end
+
+  def ask(question, stop: -> { false }, &on_event)
+    Agent::Access.check!(@context)
+    @on_event = on_event
+    @stop = stop
+    @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors = [], Hash.new(0), nil, 0, 0, 0
+    messages = history + [ { role: "user", content: question } ]
+    @conversation.messages.create!(role: "user", content: question)
+
+    finish(*run(messages))
+  end
+
+  private
+
+  # Returns [status, notice]: how the answer ends, and a notice to add to the text when it did not end by itself.
+  def run(messages)
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    turns = 0
+    loop do
+      return [ :stopped, nil ] if @stop.call
+      return [ :complete, LIMIT_NOTICE ] if turns >= @limits[:max_turns] || Process.clock_gettime(Process::CLOCK_MONOTONIC) - started >= @limits[:max_seconds]
+      return [ :complete, ACCESS_NOTICE ] if Agent::Access.check(@context)
+
+      response = ask_model(messages)
+      turns += 1
+      @texts << response.text if response.text.present?
+      return [ :complete, nil ] unless response.stop_reason == "tool_use"
+
+      messages << { role: "assistant", content: response.content.map { |block| normalise(block) } }
+      outcome = run_tools(response.tool_uses, messages)
+      return outcome if outcome
+    end
+  end
+
+  def ask_model(messages)
+    began = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    response = @gateway.call(system: Agent::SystemPrompt.build(@context), messages: messages.deep_dup, tools: @registry.definitions) { |piece| emit(type: :text, text: piece) }
+    @latency_ms += ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round
+    @model = response.model
+    @usage[:input_tokens]  += response.usage[:input_tokens].to_i
+    @usage[:output_tokens] += response.usage[:output_tokens].to_i
+    response
+  end
+
+  # All the results of one turn go back in a single message, in the order of the calls. Returns an outcome to end the answer, or nil to go on.
+  def run_tools(calls, messages)
+    results = []
+    calls.each do |call|
+      return [ :stopped, nil ] if @stop.call
+      return [ :complete, LIMIT_NOTICE ] if @tool_calls >= @limits[:max_tool_calls]
+
+      results << run_tool(call)
+      return [ :complete, TOOLS_NOTICE ] if @tool_errors >= @limits[:max_tool_errors]
+    end
+    messages << { role: "user", content: results }
+    nil
+  end
+
+  def run_tool(call)
+    input = call[:input].to_h.deep_stringify_keys
+    emit(type: :tool_start, name: call[:name], input: input)
+    began = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    result = @registry.execute(call[:name], input, @context)
+    error = result["error"]
+    @tool_calls += 1
+    @tool_errors = error ? @tool_errors + 1 : 0
+    emit(type: :tool_end, name: call[:name], error: error, duration_ms: ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round)
+    { type: "tool_result", tool_use_id: call[:id], content: result.to_json, is_error: error.present? }
+  end
+
+  def finish(status, notice)
+    content = (@texts + [ notice ]).compact.join("\n\n")
+    message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms,
+                                             input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])
+    emit(type: :done, message: message)
+    message
+  end
+
+  # Earlier turns of the talk, as plain text. An answer that was stopped or failed is not sent back to the model.
+  def history
+    @conversation.messages.where(role: %w[user assistant], status: "complete").order(:id).map { |message| { role: message.role, content: message.content } }
+  end
+
+  def normalise(block)
+    block[:type].to_s == "tool_use" ? block.merge(input: block[:input].to_h.deep_stringify_keys) : block
+  end
+
+  def emit(event) = @on_event&.call(event)
+end

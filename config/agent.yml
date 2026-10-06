@@ -1,0 +1,20 @@
+# The AI agent (A01). Model identifiers, limits and provider settings live here, never in the code (decision D1). Confirm the identifiers against the provider's
+# documentation before changing them, and pass the evaluation suite (A12) before using another model.
+default: &default
+  models:
+    chat_default: claude-sonnet-5-5   # the general model
+    chat_hard: claude-opus-5-5        # complex questions and explanations of gaps
+    light: claude-haiku-4-5           # titles, classification, summaries of old history
+  limits:                             # per question
+    max_turns: 8
+    max_tool_calls: 20
+    max_seconds: 60
+    max_tool_errors: 3
+  provider:
+    timeout_seconds: 30
+    max_retries: 2
+    max_tokens: 4096
+
+development: *default
+test: *default
+production: *default
