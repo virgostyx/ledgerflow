@@ -1,0 +1,34 @@
+# Questions ouvertes et décisions — Agent IA
+
+Décisions prises pendant l'audit (`00-audit.md`), validées par l'utilisateur le 2026-10-06 en suivant les recommandations. Les points juridiques et comptables restent à faire valider par un professionnel.
+
+## Décisions validées (D1 à D11)
+- **D1 — Fournisseur et modèles.** Un seul point d'appel, `Agent::ModelGateway`, derrière une interface. Client HTTP via Faraday (déjà présent) sauf si la documentation officielle de l'API montre qu'un SDK Ruby officiel gère proprement le flux et les outils: à vérifier au démarrage d'A01, avant d'écrire le client. Identifiants de modèles et prix dans la configuration ou les credentials, jamais dans le code.
+- **D2 — Langues.** L'agent répond dans la langue de l'utilisateur (fr ou en). Le panneau et ses libellés sont en anglais (règle du projet). Le néerlandais est reporté.
+- **D3 — Cache de prompts.** Désactivé en P0. Activation après lecture de la documentation officielle et mesure; seulement pour la partie statique (consigne, définitions d'outils).
+- **D4 — Embeddings (A06).** Recherche plein texte PostgreSQL d'abord. pgvector et le fournisseur d'embeddings: décision reportée à P1, avec les conséquences sur la confidentialité.
+- **D5 — Mode de document (A09).** `text_only` par défaut. `full_document` seulement avec l'accord explicite de l'utilisateur.
+- **D6 — Rétention.** 90 jours par défaut pour les conversations (30, 90 ou 365 au choix du propriétaire). Les métadonnées d'audit suivent la durée d'audit de la société.
+- **D7 — Quotas.** 20 questions par heure et 100 par jour par utilisateur, 3 générations simultanées par société. Le budget mensuel est fixé après un pilote, pas avant.
+- **D8 — Flux.** Turbo Streams et Solid Cable (existants), pas de SSE. La charge côté Puma est à mesurer.
+- **D9 — Interrupteur d'urgence.** Réglage de plateforme lu à chaque requête de l'agent (variable d'environnement `AGENT_KILL_SWITCH`, relue sans redémarrage de l'application quand l'hébergement le permet). Pas de table pour l'instant.
+- **D10 — Limites de débit.** Pas de `MemoryStore` par processus pour l'agent: les quotas se calculent sur `agent_usage` en base.
+- **D11 — `get_budget_vs_actual`.** Retiré du P0: LedgerFlow n'a pas de budget et BudgetFlow n'est qu'entrant. Il revient avec R11.
+
+## Correspondance des permissions (C0.3)
+- Les noms de la spec (`accounts.view`, `partners.view`, `entries.view`) n'existent pas dans `Permissions::MATRIX`. Les outils de lecture utilisent les permissions existantes: `records.view` et `records.list` (comptes, tiers, écritures), `reports.view`, `documents.view`, `audit.view`.
+- Six permissions ajoutées: `agent.use`, `agent.propose`, `agent.memory.manage`, `knowledge.manage`, `agent.configure`, `agent.conversations.review`.
+- **Auditeur externe et `agent.use`**: la spec dit « configurable ». Par défaut, refusé (comportement le plus prudent). Un propriétaire peut l'accorder par un rôle personnalisé.
+- **Lecteur** (`manager`): `agent.use` accordé, `agent.propose` refusé, comme la spec.
+- `agent.configure` et `agent.conversations.review` sont réservés au propriétaire. Ils restent assignables à un rôle personnalisé, comme les autres permissions de propriétaire déjà dans la matrice. À valider: faut-il les réserver comme `users.manage`?
+- Aucune restriction par compte n'existe dans F01 (seulement par journal), contrairement à ce que dit le §6 de la spec. Les outils appliquent la restriction par journal.
+
+## Écarts de la spec avec le code (à corriger dans la spec ou à assumer)
+- Contrôles R19: 15 contrôles réels (C01 à C07, C09, C11 à C14, C16 à C18), pas 17. Les protocoles d'A08 suivent le code.
+- `Ledger::PostEntry` s'appelle `Accounting::PostJournalEntry`. Il n'existe pas de service de création de brouillon.
+- L'API de l'agent utilisera les clés `lf_…` (ApiClient et `action_scopes`), pas de JWT.
+
+## Points qui attendent encore une réponse
+- Migration `partners.is_natural_person` (nullable, inconnu = personne physique) et `journal_entries.created_via`: validées sur le principe, à écrire en A04 et A07.
+- Extraction d'un service `Accounting::CreateDraftEntry` du contrôleur: avant A07.
+- Gems à ajouter: un rendu Markdown assaini (A01), mutant et i18n-tasks (avant la première « définition de terminé »).
