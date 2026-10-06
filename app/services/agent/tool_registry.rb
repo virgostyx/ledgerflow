@@ -16,15 +16,28 @@ class Agent::ToolRegistry
 
   def definitions = @tools.values.map(&:definition)
 
-  def execute(name, args, context)
-    tool = @tools[name] or return { "error" => "not_found", "message" => "Unknown tool." }
-    return FORBIDDEN unless context.allows?(tool.permission)
+  # `security` (Agent::Security) is told of what a defence should notice: a refusal, an argument the tool does not have, a tool that does not exist, free text that looks like
+  # an instruction. Without one the registry works the same, it just says nothing.
+  def execute(name, args, context, security: nil)
+    tool = @tools[name]
+    unless tool
+      security&.event(:unknown_tool, tool: name)
+      return { "error" => "not_found", "message" => "Unknown tool." }
+    end
+    return forbidden(name, security) unless context.allows?(tool.permission)
 
     problems = Agent::ArgumentValidator.problems(tool.input_schema, args)
-    return { "error" => "invalid_arguments", "message" => problems.to_sentence } if problems.any?
+    if problems.any?
+      unknown = args.to_h.keys.map(&:to_s) - tool.input_schema.fetch(:properties, {}).keys.map(&:to_s)
+      security&.event(:forbidden_argument, tool: name, excerpt: problems.to_sentence) if unknown.any?
+      return { "error" => "invalid_arguments", "message" => problems.to_sentence }
+    end
 
     # ponytail: Timeout interrupts the thread, not a query already sent to the database; a statement_timeout per tool if a report ever runs that long.
-    Timeout.timeout(@timeout) { read_only { tool.new.call(args, context) } }
+    result = Timeout.timeout(@timeout) { read_only { tool.new.call(args, context) } }
+    result, findings = Agent::Untrusted.clean(tool, result)
+    security&.suspicious!(name, findings) if findings.any?
+    result
   rescue Agent::ToolError => e
     { "error" => e.code, "message" => e.message }
   rescue Timeout::Error
@@ -35,6 +48,11 @@ class Agent::ToolRegistry
   end
 
   private
+
+  def forbidden(name, security)
+    security&.forbidden!(name)
+    FORBIDDEN
+  end
 
   # Whatever a tool's code does, the database refuses a write while it runs (A02: no tool writes to the books). The call runs in a savepoint that is always rolled back: that
   # is what puts the connection back to writable (PostgreSQL cannot leave read-only mode inside a transaction), and a tool that only reads loses nothing by it.

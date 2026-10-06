@@ -2840,7 +2840,8 @@ CREATE TABLE public.agent_messages (
     output_tokens integer,
     latency_ms integer,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    flags jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -2861,6 +2862,42 @@ CREATE SEQUENCE public.agent_messages_id_seq
 --
 
 ALTER SEQUENCE public.agent_messages_id_seq OWNED BY public.agent_messages.id;
+
+
+--
+-- Name: agent_security_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_security_events (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    conversation_id bigint,
+    user_id bigint,
+    kind character varying NOT NULL,
+    tool character varying,
+    excerpt text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_security_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_security_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_security_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_security_events_id_seq OWNED BY public.agent_security_events.id;
 
 
 --
@@ -4761,6 +4798,13 @@ ALTER TABLE ONLY public.agent_messages ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: agent_security_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_security_events ALTER COLUMN id SET DEFAULT nextval('public.agent_security_events_id_seq'::regclass);
+
+
+--
 -- Name: agent_settings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5539,6 +5583,14 @@ ALTER TABLE ONLY public.agent_feedback
 
 ALTER TABLE ONLY public.agent_messages
     ADD CONSTRAINT agent_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_security_events agent_security_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_security_events
+    ADD CONSTRAINT agent_security_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -7686,6 +7738,41 @@ CREATE INDEX index_agent_messages_on_conversation_id ON public.agent_messages US
 
 
 --
+-- Name: index_agent_security_events_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_security_events_on_conversation_id ON public.agent_security_events USING btree (conversation_id);
+
+
+--
+-- Name: index_agent_security_events_on_conversation_id_and_kind; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_security_events_on_conversation_id_and_kind ON public.agent_security_events USING btree (conversation_id, kind);
+
+
+--
+-- Name: index_agent_security_events_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_security_events_on_entity_id ON public.agent_security_events USING btree (entity_id);
+
+
+--
+-- Name: index_agent_security_events_on_entity_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_security_events_on_entity_id_and_created_at ON public.agent_security_events USING btree (entity_id, created_at);
+
+
+--
+-- Name: index_agent_security_events_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_security_events_on_user_id ON public.agent_security_events USING btree (user_id);
+
+
+--
 -- Name: index_agent_settings_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8485,6 +8572,14 @@ ALTER TABLE ONLY public.accounting_bank_statements
 
 ALTER TABLE ONLY public.accounting_payment_batches
     ADD CONSTRAINT fk_rails_0bc5bca68a FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id);
+
+
+--
+-- Name: agent_security_events fk_rails_0d0b2ca800; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_security_events
+    ADD CONSTRAINT fk_rails_0d0b2ca800 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -9528,6 +9623,14 @@ ALTER TABLE ONLY public.accounting_period_locks
 
 
 --
+-- Name: agent_security_events fk_rails_a680129408; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_security_events
+    ADD CONSTRAINT fk_rails_a680129408 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_entry_templates fk_rails_a85a054ffc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9936,6 +10039,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 
 --
+-- Name: agent_security_events fk_rails_dac74b1c8c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_security_events
+    ADD CONSTRAINT fk_rails_dac74b1c8c FOREIGN KEY (conversation_id) REFERENCES public.agent_conversations(id) ON DELETE SET NULL;
+
+
+--
 -- Name: entities fk_rails_dc402a0917; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10286,6 +10397,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261006120000'),
 ('20261006110000'),
 ('20261006102000'),
 ('20261006101000'),

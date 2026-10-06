@@ -19,6 +19,7 @@ class Agent::Runner
     @on_event = on_event
     @stop = stop
     @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors, @tool_log = [], Hash.new(0), nil, 0, 0, 0, []
+    @security = Agent::Security.new(conversation: @conversation, context: @context)
     messages = history + [ { role: "user", content: question } ]
     @conversation.messages.create!(role: "user", content: question)
 
@@ -75,7 +76,7 @@ class Agent::Runner
     input = call[:input].to_h.deep_stringify_keys
     emit(type: :tool_start, name: call[:name], input: input)
     began = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    result = @registry.execute(call[:name], input, @context)
+    result = @registry.execute(call[:name], input, @context, security: @security)
     error = result["error"]
     @tool_calls += 1
     @tool_errors = error ? @tool_errors + 1 : 0
@@ -87,7 +88,8 @@ class Agent::Runner
 
   def finish(status, notice)
     content = (@texts + [ notice ]).compact.join("\n\n")
-    message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms,
+    @security.event(:limit_reached) if notice == LIMIT_NOTICE
+    message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms, flags: @security.flags,
                                              input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])
     record_tool_calls(message)
     emit(type: :done, message: message)
