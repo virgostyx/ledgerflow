@@ -40,3 +40,10 @@ Décisions prises pendant l'audit (`00-audit.md`), validées par l'utilisateur l
 - **API** : « flux » remplacé par un `202` et une lecture de la conversation (D8), non faite à ce jour.
 - **Mémoire des rapports et quotas** : les quotas se comptent sur les questions enregistrées. Une question supprimée avec sa conversation ne compte plus : un utilisateur pourrait contourner la limite en supprimant. À durcir avec `agent_usage` (A04/§16).
 - **Interrupteur d'urgence** : variable d'environnement relue à chaque requête, donc effective « en moins d'une minute » seulement si l'hébergement permet de la changer sans redémarrer. Sinon, ajouter un réglage de plateforme en base.
+
+## A02 — décisions à valider
+- **`get_vat_return`** : lit `VatGridQuery` (écritures validées, statut `posted` seulement, comme l'écran). Les écritures extournées n'y figurent pas : à confirmer avec R09.
+- **Soldes présentés** : `get_trial_balance` donne l'ouverture et la clôture en débit/crédit nets (comme l'écran), `get_ledger` donne le solde courant dans le sens normal du compte, avec ce sens dit dans `filters_applied`. Un modèle qui lirait un solde sans le sens risquerait de se tromper ; le sens est dans chaque réponse.
+- **Audit de l'agent** : chaque appel d'outil est une ligne de la piste d'audit, ce qui l'allonge vite (15 outils, plusieurs appels par question). À surveiller ; une agrégation par message est possible si la piste devient trop bavarde.
+- **`get_audit_trail`** donne l'adresse e-mail de l'auteur (classe `personal`), pas le détail des changements.
+- **Lecture seule en base** : le savepoint annulé après chaque outil suppose qu'aucun outil n'a d'effet de bord utile en base (c'est le cas : `Rails.cache` est sur une autre base en production).

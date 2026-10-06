@@ -6,7 +6,7 @@ class Agent::Runner
   TOOLS_NOTICE  = "I stopped because the tools are not answering. Try again in a moment, or use the reports directly.".freeze
   ACCESS_NOTICE = "I stopped because you no longer have access to the agent.".freeze
 
-  def initialize(conversation:, context:, gateway: Agent::ModelGateway.default, registry: Agent::ToolRegistry.new, limits: {})
+  def initialize(conversation:, context:, gateway: Agent::ModelGateway.default, registry: Agent::ToolRegistry.default, limits: {})
     @conversation = conversation
     @context      = context
     @gateway      = gateway

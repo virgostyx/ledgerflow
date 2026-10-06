@@ -186,11 +186,12 @@ RSpec.describe Agent::Runner do
     end
 
     it "stops asking the model once the right was taken away during the answer" do
-      taker = Class.new(echo) { def call(*) = (UserEntity.find_by(role: :accountant).update!(role: :auditor, valid_until: 1.month.from_now); { "data" => "x" }) }
-      taking = described_class.new(conversation: conversation, context: context, gateway: (@gateway = Agent::FakeGateway.new([ tool_use("1"), text("never") ])), registry: Agent::ToolRegistry.new([ taker ]))
-      membership # the accountant, who may use the agent
+      @gateway = Agent::FakeGateway.new([ tool_use("1"), text("never") ])
+      allow(@gateway).to receive(:call).and_wrap_original do |original, **args| # the right goes while the first answer is being written
+        original.call(**args).tap { membership.update!(role: :auditor, valid_until: 1.month.from_now) if @gateway.requests.size == 1 }
+      end
 
-      answer = taking.ask("Q")
+      answer = described_class.new(conversation: conversation, context: context, gateway: @gateway, registry: registry).ask("Q")
 
       expect(@gateway.requests.size).to eq(1)
       expect(answer.content).to include("no longer")

@@ -3,6 +3,12 @@
 class Agent::ToolRegistry
   FORBIDDEN = { "error" => "forbidden", "message" => "You do not have access to this information." }.freeze
 
+  # Every tool the agent has, in one list: adding a tool means adding its class here, so that nothing joins the catalog by accident.
+  def self.default
+    new(%w[GetCompanyContext SearchAccounts SearchPartners GetJournalEntry GetTrialBalance GetLedger GetAgedBalance ListUnreconciled GetBankReconciliation
+           GetFinancialStatements GetVatReturn GetDashboardKpis GetConsistencyFindings GetAuditTrail SearchDocuments].map { |name| "Agent::Tools::#{name}".constantize })
+  end
+
   def initialize(tools = [], timeout: Agent::Config.limits[:max_tool_seconds])
     @tools = tools.index_by(&:tool_name)
     @timeout = timeout
@@ -18,7 +24,7 @@ class Agent::ToolRegistry
     return { "error" => "invalid_arguments", "message" => problems.to_sentence } if problems.any?
 
     # ponytail: Timeout interrupts the thread, not a query already sent to the database; a statement_timeout per tool if a report ever runs that long.
-    Timeout.timeout(@timeout) { tool.new.call(args, context) }
+    Timeout.timeout(@timeout) { read_only { tool.new.call(args, context) } }
   rescue Agent::ToolError => e
     { "error" => e.code, "message" => e.message }
   rescue Timeout::Error
@@ -26,5 +32,19 @@ class Agent::ToolRegistry
   rescue StandardError => e
     Rails.logger.error("[agent] tool #{name} failed: #{e.class}")
     { "error" => "internal_error", "message" => "The tool could not answer. Try again, or use the report directly." }
+  end
+
+  private
+
+  # Whatever a tool's code does, the database refuses a write while it runs (A02: no tool writes to the books). The call runs in a savepoint that is always rolled back: that
+  # is what puts the connection back to writable (PostgreSQL cannot leave read-only mode inside a transaction), and a tool that only reads loses nothing by it.
+  def read_only
+    result = nil
+    ActiveRecord::Base.transaction(requires_new: true) do
+      ActiveRecord::Base.connection.execute("SET LOCAL transaction_read_only = on")
+      result = yield
+      raise ActiveRecord::Rollback
+    end
+    result
   end
 end
