@@ -38,7 +38,7 @@ class Agent::Tools::GetFinancialStatements < Agent::Tools::Base
     notes = []
     notes << "The fiscal year #{year.year} is not closed: these figures can still change." unless year.closed?
     notes << "The balance sheet does not balance (difference #{money(report.difference)} EUR). See the consistency findings." unless report.balanced?
-    notes << "#{report.unmapped.size} account(s) are not mapped to a heading of the annual accounts." if report.unmapped.any?
+    notes << "#{report.unmapped.size} account(s) are not mapped to a heading of the annual accounts, so their balance is missing from the statements: #{report.unmapped.first(5).map { |account| "#{account.code} (#{account.label}, balance #{money(account.balance)})" }.join('; ')}." if report.unmapped.any?
     previous = report.previous_year
     notes << "The previous fiscal year does not have the same length (#{(previous.end_date - previous.start_date).to_i + 1} days against #{(year.end_date - year.start_date).to_i + 1}): compare with care." if previous && (previous.end_date - previous.start_date) != (year.end_date - year.start_date)
     notes

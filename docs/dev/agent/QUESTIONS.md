@@ -96,3 +96,11 @@ Voir la liste complète dans `DATA_PROCESSING.md` : conservation chez le fournis
 - **Deux mots au moins** pour qu'un passage compte (questions de trois mots ou plus) : plus prudent (moins de faux passages, donc plus de « je ne sais pas »), au prix d'un rappel un peu plus bas sur des questions très courtes. À réviser avec le jeu réel.
 - **Documents expirés** : jamais cités sans `as_of_date` dans leur période ; la question doit porter une date. Si le modèle oublie la date, il reçoit la règle en vigueur aujourd'hui.
 - **Retrait** : irréversible dans l'interface (il faut déposer une nouvelle version). Les citations anciennes restent lisibles.
+
+## A08 — décisions à valider
+- **Aucun protocole n'est validé** : les 22 premiers jets (`app/services/agent/playbooks/`) doivent être relus par un comptable avant `validated: true`. D'ici là, chaque explication le dit et présente les causes comme des hypothèses. Priorité de relecture : C04, I5, I7 (les trois exemples de la spec), puis C09, C14, C16, C17.
+- **17 contrôles et 11 invariants** (spec) contre **15 contrôles** (C08, C10, C15 absents) et 4 invariants rejoués (I2, I6, I7, I11) dans le code. I1 = C01 et I10 = C16 ; I3, I4, I5, I8, I9 ne sont pas rejoués à l'exécution. Un protocole existe pour I5 (rapprochement bancaire) bien qu'aucun contrôle ne l'émette ; ceux de I3, I4, I8, I9 n'existent pas.
+- **C13 n'attrape pas un compte de produits sans rubrique** (voir A08.md) : à examiner avec le comptable avant de s'y fier.
+- **Seuil de 30 %** pour une variation à ligne unique, repris de la spec ; le montant d'arrondi toléré (5 centimes) est celui de C09.
+- **Priorisation** : gravité d'abord, puis effet bloquant (clôture, TVA), montant, ancienneté. Une anomalie bloquante sans montant passe après une anomalie bloquante avec montant. L'ordre est une proposition, pas une règle comptable.
+- **Rejeu d'un contrôle** (`still_present`) : lecture seule, mais coûteux sur un gros dossier.

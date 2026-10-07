@@ -89,7 +89,7 @@ module Agent::Evals
       TEXT
     }.freeze
 
-    Built = Data.define(:entity, :accountant, :reader)
+    Built = Data.define(:entity, :accountant, :reader, :anomalies)
 
     # What is true of the books above, by arithmetic: every figure as the two-decimal string a tool gives.
     def self.facts
@@ -117,7 +117,7 @@ module Agent::Evals
         "overdue_percent" => (overdue.call(sales).sum(&gross) / sales.sum(&gross) * 100).round(2), "net_position" => sales.sum(&gross) - purchases.sum(&gross), "customer_lines" => sales.size,
         "q3_vat_collected" => q3.call(sales).sum { |row| row[:vat] }, "q3_vat_deductible" => q3.call(purchases).sum { |row| row[:vat] },
         "trial_balance_debit_total" => sales.sum(&gross) + net_purchases + purchases.sum { |row| row[:vat] }
-      }.transform_values { |value| value.is_a?(BigDecimal) ? Agent::ToolResult.money(value) : value.to_s }
+      }.transform_values { |value| value.is_a?(BigDecimal) ? Agent::ToolResult.money(value) : value.to_s }.merge(Agent::Evals::AnomalyDataset.facts)
     end
 
     # The identifiers the cases need in their arguments, found in the books at the time of the run.
@@ -128,8 +128,8 @@ module Agent::Evals
         foreign = ActsAsTenant.without_tenant { Entity.find_by!(name: FOREIGN_NAME) }
         documents = Knowledge::Document.where(entity_id: built.entity.id).or(Knowledge::Document.where(scope: "platform")).index_by { |document| [ document.title, document.version ] }
         kb = KNOWLEDGE.to_h { |key, spec| [ "kb_#{key}", documents.fetch([ spec[:title], spec[:after] ? 2 : 1 ]).id.to_s ] }
-        { **kb, "fiscal_year" => Accounting::FiscalYear.find_by!(year: 2026).id.to_s, "last_consistency_run" => Accounting::ConsistencyRun.order(:id).last.id.to_s, "first_sale_entry" => first_sale.id.to_s, "first_sale_reference" => first_sale.reference.to_s, "acme" => partners.fetch("Acme SA").id.to_s, "charlie" => partners.fetch("Charlie Dupont").id.to_s,
-          "foreign_entity" => foreign.id.to_s, "foreign_entry" => ActsAsTenant.with_tenant(foreign) { Accounting::JournalEntry.order(:id).first.id.to_s } }
+        { **kb, **Agent::Evals::AnomalyDataset.ids(built.anomalies), "fiscal_year" => Accounting::FiscalYear.find_by!(year: 2026).id.to_s, "last_consistency_run" => Accounting::ConsistencyRun.order(:id).last.id.to_s, "first_sale_entry" => first_sale.id.to_s, "first_sale_reference" => first_sale.reference.to_s, "acme" => partners.fetch("Acme SA").id.to_s, "charlie" => partners.fetch("Charlie Dupont").id.to_s,
+          "foreign_entity" => foreign.id.to_s, "main_finding" => Accounting::ConsistencyRun.order(:id).last.findings.order(:id).first.id.to_s, "foreign_entry" => ActsAsTenant.with_tenant(foreign) { Accounting::JournalEntry.order(:id).first.id.to_s } }
       end
     end
 
@@ -145,8 +145,9 @@ module Agent::Evals
 
     def self.built_from(entity)
       ActsAsTenant.without_tenant do
-        new.send(:knowledge, entity, User.find_by!(email: EMAILS[:accountant]))
-        Built.new(entity: entity, accountant: User.find_by!(email: EMAILS[:accountant]), reader: User.find_by!(email: EMAILS[:reader]))
+        accountant, reader = User.find_by!(email: EMAILS[:accountant]), User.find_by!(email: EMAILS[:reader])
+        new.send(:knowledge, entity, accountant)
+        Built.new(entity: entity, accountant: accountant, reader: reader, anomalies: Agent::Evals::AnomalyDataset.build!(accountant: accountant, reader: reader))
       end
     end
 
@@ -162,7 +163,7 @@ module Agent::Evals
         ActsAsTenant.with_tenant(entity) { fill }
         knowledge(entity, accountant)
         foreign(accountant)
-        return Built.new(entity: entity, accountant: accountant, reader: reader)
+        return Built.new(entity: entity, accountant: accountant, reader: reader, anomalies: Agent::Evals::AnomalyDataset.build!(accountant: accountant, reader: reader))
       end
     end
 

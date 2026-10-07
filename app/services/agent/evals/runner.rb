@@ -59,10 +59,11 @@ class Agent::Evals::Runner
 
   # Plays one case as the person would: the question put to the agent, as the person of the case, on the day of the dataset. Everything is cleaned up afterwards.
   def play(kase)
-    ActsAsTenant.with_tenant(@built.entity) do
+    entity = kase.dataset == "anomalies" ? @built.anomalies : @built.entity
+    ActsAsTenant.with_tenant(entity) do
       prepare(kase)
       user = kase.role == "reader" ? @built.reader : @built.accountant
-      context = Agent::Context.build(user: user, entity: @built.entity, locale: kase.language, today: Agent::Evals::Dataset::AS_OF)
+      context = Agent::Context.build(user: user, entity: entity, locale: kase.language, today: Agent::Evals::Dataset::AS_OF)
       conversation = Agent::Conversation.create!(user: user, title: "evaluation #{kase.id}")
       gateway = Agent::Evals::RecordingGateway.new(@mode == :real ? Agent::ModelGateway.new : Agent::FakeGateway.new(script_for(kase)))
       before = books

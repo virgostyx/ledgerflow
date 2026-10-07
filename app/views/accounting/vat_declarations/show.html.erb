@@ -73,7 +73,7 @@
     <dt class="text-gray-500">Ledger movement (VAT payable − recoverable)</dt><dd class="text-right font-mono"><%= money.(c.ledger_net) %></dd>
     <dt class="text-gray-500">of which without VAT grid (payments, manual entries)</dt><dd class="text-right font-mono"><%= money.(c.ungridded_net) %></dd>
     <dt class="text-gray-500 font-medium">Unexplained difference</dt>
-    <dd class="text-right font-mono font-medium <%= c.residual.zero? ? 'text-green-700' : 'text-red-700' %>"><%= money.(c.residual) %></dd>
+    <dd class="text-right font-mono font-medium <%= c.residual.zero? ? 'text-green-700' : 'text-red-700' %>"><%= money.(c.residual) %><%= render "agent/explain_button", subject_type: "I7", subject_id: @declaration.id, hint: "Ask the assistant to explain this difference" unless c.residual.zero? %></dd>
   </dl>
   <% if c.anomalies.any? %>
     <h3 class="text-xs font-semibold text-gray-700 mt-4 mb-2">Documents where base × rate ≠ VAT (tolerance 0.05 €)</h3>

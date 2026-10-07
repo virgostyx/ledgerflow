@@ -1,6 +1,8 @@
 # Opening, resuming, renaming, archiving and deleting one's conversations with the agent (A01).
 class Agent::ConversationsController < Agent::BaseController
   EXPLAIN_QUESTION = "Explain this figure.".freeze
+  # The question is the same every time for a kind of object, whatever the button sent.
+  EXPLAIN_QUESTIONS = { "R19" => "Explain this anomaly.", "R19top" => "Explain the five first open anomalies, in the order to fix them.", "I7" => "Explain this difference." }.freeze
 
   def index
     @screen = params[:screen].to_s[SCREEN]
@@ -18,7 +20,7 @@ class Agent::ConversationsController < Agent::BaseController
   def create
     reference = { "type" => params[:subject_type].to_s[REFERENCE], "id" => params[:subject_id].to_s[REFERENCE] }
     conversation = conversations.create!(user: current_user, origin_screen: params[:screen].to_s[SCREEN], context_ref: reference.values.all? ? reference : {})
-    ask_to_explain(conversation) if params[:explain] == "1"
+    ask_to_explain(conversation, EXPLAIN_QUESTIONS.fetch(reference["type"], EXPLAIN_QUESTION)) if params[:explain] == "1"
     redirect_to agent_conversation_path(conversation), status: :see_other
   end
 
@@ -43,12 +45,12 @@ class Agent::ConversationsController < Agent::BaseController
   private
 
   # The "Explain" button of a figure: the question is the same every time, whatever the button sent, and the answer is started at once. The panel shows the question and the live bubble.
-  def ask_to_explain(conversation)
+  def ask_to_explain(conversation, question)
     return if Agent::Quota.check(user: current_user, entity: ActsAsTenant.current_tenant)
 
-    conversation.update!(title: EXPLAIN_QUESTION.truncate(60))
+    conversation.update!(title: question.truncate(60))
     conversation.start_answering!
-    Agent::AnswerJob.set(wait: 1.second).perform_later(conversation, EXPLAIN_QUESTION, I18n.locale.to_s)
-    flash[:pending_question] = EXPLAIN_QUESTION
+    Agent::AnswerJob.set(wait: 1.second).perform_later(conversation, question, I18n.locale.to_s)
+    flash[:pending_question] = question
   end
 end

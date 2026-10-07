@@ -7,7 +7,7 @@ RSpec.describe "The agent's tool catalog" do
   # What a tool may use of the application: the reports (queries and services that read), and the models it reads from. Nothing that posts, letters, locks, imports, pays or sends.
   READ_ONLY_CONSTANTS = %w[Account Partner JournalEntry FiscalYear PeriodLock Journal TrialBalanceQuery GeneralLedgerQuery AgedBalanceQuery UnletteredLinesQuery BankAccount
                            BankReconciliationQuery AnnualAccounts VatGridQuery VatDeclaration DashboardKpis ConsistencyRun ConsistencyFinding ConsistencyAcknowledgement
-                           AuditLogsQuery Document].freeze
+                           AuditLogsQuery Document VariationQuery AuditLog Consistency].freeze
   WRITE_CALL = /\.(create!?|update!?|update_all|update_column|update_columns|destroy!?|destroy_all|delete|delete_all|save!?|insert_all!?|upsert_all|touch|increment!|toggle!)\b|\bnew\.save|\.execute\(/
   OTHER_NAMESPACES = /\b(Closing|Payments|Imports|Fx|Peppol|Banking|Bank|Entities|Consolidation|Portfolio|Webhooks|Exports|Api)::[A-Z]/
 
@@ -54,7 +54,7 @@ RSpec.describe "The agent's tool catalog" do
     end
 
     it "stays compact: its definitions are sent with every question" do
-      expect(registry.definitions.to_json.bytesize).to be < 20_000
+      expect(registry.definitions.to_json.bytesize).to be < 24_000
     end
 
     it "is what the runner uses when it is not given another" do

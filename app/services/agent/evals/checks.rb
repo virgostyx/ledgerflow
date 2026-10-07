@@ -11,6 +11,8 @@ module Agent::Evals
       "general"   => { "en" => "general rule, to be checked", "fr" => "règle générale, à valider", "nl" => "algemene regel, na te kijken" },
       "unknown"   => { "en" => "unknown", "fr" => "inconnu", "nl" => "onbekend" }
     }.freeze
+    # How a cause is labelled in an explanation (A08), in each language of the cases.
+    LABELS = { "established" => { "en" => "established", "fr" => "constaté", "nl" => "vastgesteld" }, "hypothesis" => { "en" => "hypothesis", "fr" => "hypothèse", "nl" => "hypothese" } }.freeze
     ACCOUNT_CODE = /(?<!\d)(?<!\d[.,])\d{6}(?!\d)(?![.,]\d)/
 
     # => { "check name" => true | "why not" }, for the checks this case asks for, and those every case must pass.
@@ -27,6 +29,7 @@ module Agent::Evals
       results["references_verified"] = verified_marks(outcome.text, "[unverified reference]", expect["flags"], "unverified_references", "a legal reference no passage gave")
       results["accounts_grounded"] = accounts_grounded(kase, outcome)
       results["certainty"] = certainty(expect["certainty"], kase, outcome) if expect["certainty"]
+      results["labels"] = labels(expect["labels"], kase, outcome) if expect["labels"]
       results["tool_results_include"] = includes(expect["tool_results_include"], outcome.tool_results.join(" "), "what the tools gave") if expect["tool_results_include"]
       results["tool_results_exclude"] = excludes(expect["tool_results_exclude"], outcome.tool_results.join(" "), "what the tools gave") if expect["tool_results_exclude"]
       results["citations"] = citations(expect["citations"], outcome) if expect["citations"]
@@ -89,6 +92,12 @@ module Agent::Evals
       allowed = outcome.tool_results.join(" ").scan(ACCOUNT_CODE) + kase.input.scan(ACCOUNT_CODE)
       stray = outcome.text.to_s.scan(ACCOUNT_CODE).uniq - allowed
       stray.empty? || "accounts in the answer that no tool showed: #{stray.join(', ')}"
+    end
+
+    # The explanation separates what is established from what is a hypothesis: each label asked for is in the answer, in the language of the case.
+    def self.labels(expected, kase, outcome)
+      missing = Array(expected).reject { |label| outcome.text.to_s.downcase.include?(LABELS.fetch(label).fetch(kase.language)) }
+      missing.empty? || "the explanation does not label: #{missing.join(', ')}"
     end
 
     # `true` asks for any of the four levels; a name asks for that level, in the language of the case.

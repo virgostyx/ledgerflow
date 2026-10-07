@@ -37,6 +37,7 @@
       <%= f.submit "Filter", class: "btn-primary" %>
     <% end %>
 
+    <% if @findings.any? %><p class="mb-2 text-sm"><%= render "agent/explain_button", subject_type: "R19top", subject_id: @run.id, label: "Explain the first five", hint: "Ask the assistant to explain the five first open anomalies" %></p><% end %>
     <table class="min-w-full divide-y divide-gray-200 text-sm">
       <thead class="bg-gray-50"><tr>
         <% %w[Severity Check Anomaly Object].each do |h| %><th class="px-3 py-2 text-left font-medium text-gray-600"><%= h %></th><% end %><th></th>
@@ -47,7 +48,7 @@
           <tr class="<%= 'text-gray-400' if ack %>">
             <td class="px-3 py-2"><%= f.severity.humanize %></td>
             <td class="px-3 py-2 font-mono"><%= f.check_id %></td>
-            <td class="px-3 py-2"><%= f.message %><% if ack %><span class="italic"> — acknowledged: <%= ack.comment %></span><% end %></td>
+            <td class="px-3 py-2"><%= f.message %><% if ack %><span class="italic"> — acknowledged: <%= ack.comment %></span><% end %><%= render "agent/explain_button", subject_type: "R19", subject_id: f.id, hint: "Ask the assistant to explain this anomaly" %></td>
             <td class="px-3 py-2">
               <% case f.subject_type when "Accounting::JournalEntry" %><%= link_to "Entry ##{f.subject_id}", accounting_journal_entry_path(f.subject_id), class: "text-primary-600 underline" %>
               <% when "Accounting::Invoice" %><%= link_to "Invoice ##{f.subject_id}", accounting_invoice_path(f.subject_id), class: "text-primary-600 underline" %>

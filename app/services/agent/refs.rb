@@ -8,6 +8,7 @@ module Agent::Refs
     "doc"     => ->(routes, id)            { routes.accounting_document_path(id) },
     "vat"     => ->(routes, id)            { routes.accounting_vat_declaration_path(id) },
     "audit"   => ->(routes, id)            { routes.accounting_audit_log_path(id) },
+    "screen"  => ->(routes, name)          { Agent::Screens.path(name) },
     "kb"      => ->(routes, doc, passage = nil) { (id = doc[/\Adoc-(\d+)\z/, 1]) && routes.agent_knowledge_document_path(id, anchor: passage && passage[/\Ap-\d+\z/]) },
     "R01"     => ->(routes, fiscal_year, as_of, *)     { routes.accounting_reports_trial_balance_path(fiscal_year_id: fiscal_year, as_of: as_of) },
     "R02"     => ->(routes, fiscal_year, account, range, *) { routes.accounting_reports_general_ledger_path(fiscal_year_id: fiscal_year, account_id: account, date_from: range.to_s.split("..").first, date_to: range.to_s.split("..").last) },
@@ -34,6 +35,7 @@ module Agent::Refs
     when "doc"     then "Document ##{parts[0]}"
     when "vat"     then "VAT declaration ##{parts[0]}"
     when "audit"   then "Audit event ##{parts[0]}"
+    when "screen"  then Agent::Screens.label(parts[0]) && "Screen: #{Agent::Screens.label(parts[0])}"
     when "kb"      then [ "Knowledge base, document ##{parts[0].to_s.delete_prefix('doc-')}", ("passage #{parts[1].to_s.delete_prefix('p-')}" if parts[1]) ].compact.join(", ")
     when "R01"     then "Trial balance as of #{parts[1]}"
     when "R02"     then "Ledger of account ##{parts[1]}, #{parts[2].to_s.sub('..', ' to ')}"

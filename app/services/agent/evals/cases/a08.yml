@@ -1,0 +1,1275 @@
+# Cases of the evaluation for A08, explanations of anomalies, gaps and variations (A12): played on the second invented entity (Agent::Evals::AnomalyDataset), whose anomalies were put there on purpose with a known cause.
+# Each explanation separates what is established from what is a hypothesis, cites the anomaly and the screen of each correction, and says that no accountant validated the protocol.
+- id: A08-001
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: 'Explain this anomaly: R19:{{ids.finding_c04}}'
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c04}}'
+  - tool: get_ledger
+    args:
+      account: '440000'
+      fiscal_year: 2026
+  - say: 'In one sentence: the suppliers account 440000 has a debit balance of {{facts.an_c04_balance}} EUR, the wrong side for a supplier account [[ref:R19:{{ids.finding_c04}}]].
+
+
+      What the data show:
+
+      - A refund of {{facts.an_refund}} EUR is booked on the account for Delta SPRL.
+
+      - The invoices of this supplier are {{facts.an_duplicate_total}} EUR each.
+
+
+      **Established**: the refund exceeds the invoices recorded on the account. **Hypothesis**: it was booked before the credit note it settles, or it is an advance to the supplier; to confirm by checking the supplier''s statement.
+
+
+      How to correct it:
+
+      1. Letter the refund against the credit note or the invoice it settles [[ref:screen:lettering]].
+
+      2. If it is a justified advance, say so and acknowledge the anomaly with that reason [[ref:screen:consistency]].
+
+
+      To keep it from coming back: letter payments and refunds when they are booked.
+
+
+      There is no validated diagnostic protocol for this check yet, so treat the cause as a hypothesis to confirm with your accountant.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c04}}'
+    - name: get_ledger
+      args:
+        account: '440000'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_c04_balance}}'
+    - '{{facts.an_refund}}'
+    answer_includes:
+    - no validated diagnostic protocol
+    - lettering
+- id: A08-002
+  capability: A08
+  language: fr
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: 'Explique cette anomalie : R19:{{ids.finding_c04}}'
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c04}}'
+  - tool: get_ledger
+    args:
+      account: '440000'
+      fiscal_year: 2026
+  - say: 'En une phrase : le compte fournisseurs 440000 a un solde débiteur de {{facts.an_c04_balance}} EUR, du mauvais côté pour un compte fournisseur [[ref:R19:{{ids.finding_c04}}]].
+
+
+      Ce que montrent les données :
+
+      - Un remboursement de {{facts.an_refund}} EUR est comptabilisé sur le compte pour Delta SPRL.
+
+      - Les factures de ce fournisseur font {{facts.an_duplicate_total}} EUR chacune.
+
+
+      **Constaté** : le remboursement dépasse les factures enregistrées sur le compte. **Hypothèse** : il a été passé avant la note de crédit qu''il solde, ou c''est un acompte au fournisseur ; à confirmer avec le relevé du fournisseur.
+
+
+      Comment corriger :
+
+      1. Lettrer le remboursement avec la note de crédit ou la facture qu''il solde [[ref:screen:lettering]].
+
+      2. Si c''est un acompte justifié, l''indiquer et acquitter l''anomalie avec cette raison [[ref:screen:consistency]].
+
+
+      Il n''existe aucun protocole de diagnostic validé pour ce contrôle : la cause reste une hypothèse à confirmer avec votre comptable.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c04}}'
+    - name: get_ledger
+      args:
+        account: '440000'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_c04_balance}}'
+    - '{{facts.an_refund}}'
+    answer_includes:
+    - aucun protocole de diagnostic validé
+    - lettrer
+- id: A08-003
+  capability: A08
+  language: nl
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: 'Leg deze afwijking uit: R19:{{ids.finding_c04}}'
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c04}}'
+  - tool: get_ledger
+    args:
+      account: '440000'
+      fiscal_year: 2026
+  - say: 'In één zin: de leveranciersrekening 440000 heeft een debetsaldo van {{facts.an_c04_balance}} EUR, de verkeerde kant voor een leveranciersrekening [[ref:R19:{{ids.finding_c04}}]].
+
+
+      Wat de gegevens tonen:
+
+      - Een terugbetaling van {{facts.an_refund}} EUR staat op de rekening voor Delta SPRL.
+
+      - De facturen van deze leverancier bedragen {{facts.an_duplicate_total}} EUR elk.
+
+
+      **Vastgesteld**: de terugbetaling is groter dan de facturen op de rekening. **Hypothese**: ze werd geboekt voor de creditnota die ze vereffent, of het is een voorschot aan de leverancier; te bevestigen met het afschrift van de leverancier.
+
+
+      Hoe te corrigeren:
+
+      1. Koppel de terugbetaling aan de creditnota of de factuur die ze vereffent [[ref:screen:lettering]].
+
+      2. Is het een verantwoord voorschot, zeg dat dan en bevestig de afwijking met die reden [[ref:screen:consistency]].
+
+
+      Er is geen gevalideerd diagnoseprotocol voor deze controle: de oorzaak blijft een hypothese die u met uw boekhouder bevestigt.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c04}}'
+    - name: get_ledger
+      args:
+        account: '440000'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_c04_balance}}'
+    - '{{facts.an_refund}}'
+    answer_includes:
+    - geen gevalideerd diagnoseprotocol
+    - koppel
+- id: A08-004
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  - hypothesis
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Is the duplicate invoice anomaly R19:{{ids.finding_c05}} certainly a double entry?
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c05}}'
+  - say: 'Not certainly. Two live invoices share the reference SUP-1, the date and the total of {{facts.an_duplicate_total}} EUR for the same supplier [[ref:R19:{{ids.finding_c05}}]].
+
+
+      **Established**: two invoices with the same reference, date, total and partner exist. **Hypothesis**: the same document was entered twice; a supplier can also repeat a reference, to confirm by comparing the two documents.
+
+
+      How to check and correct:
+
+      1. Open the purchase invoices and compare the two documents [[ref:screen:purchases]].
+
+      2. If it is a double entry, cancel one by reversing its entry [[ref:screen:journal]].
+
+      3. If both are real, acknowledge the anomaly with the reason [[ref:screen:consistency]].
+
+
+      There is no validated diagnostic protocol for this check: this is a general approach.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c05}}'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_duplicate_total}}'
+    answer_includes:
+    - no validated diagnostic protocol
+    - not certainly
+- id: A08-005
+  capability: A08
+  language: fr
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Explique l'anomalie de doublon R19:{{ids.finding_c05}}
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c05}}'
+  - say: 'Deux factures en cours portent la même référence SUP-1, la même date et le même total de {{facts.an_duplicate_total}} EUR pour le même fournisseur [[ref:R19:{{ids.finding_c05}}]].
+
+
+      **Constaté** : deux factures ont la même référence, date, total et tiers. **Hypothèse** : le même document a été encodé deux fois ; un fournisseur peut aussi répéter une référence, à confirmer en comparant les deux documents.
+
+
+      Comment corriger :
+
+      1. Comparer les deux documents dans les factures d''achat [[ref:screen:purchases]].
+
+      2. Si c''est un doublon, annuler l''une par extourne de son écriture [[ref:screen:journal]].
+
+
+      Aucun protocole de diagnostic validé n''existe pour ce contrôle : démarche générale.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c05}}'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_duplicate_total}}'
+    answer_includes:
+    - aucun protocole de diagnostic validé
+    - doublon
+- id: A08-006
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: What is wrong with R19:{{ids.finding_c06}}?
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c06}}'
+  - tool: get_ledger
+    args:
+      account: '613000'
+      fiscal_year: 2026
+  - say: 'One validated line of {{facts.an_archived_line}} EUR is booked on account 613000, which has been archived [[ref:R19:{{ids.finding_c06}}]].
+
+
+      **Established**: the account is inactive and holds a validated line. **Hypothesis**: the account was archived after the entry, or a recurring entry still points to it, to confirm by checking the date of the line against the date of archiving.
+
+
+      How to correct:
+
+      1. Reactivate the account if it is still needed, or move the line to the right account by reversal [[ref:screen:accounts]].
+
+      2. Check recurring entries and import mappings that still use it [[ref:screen:imports]].
+
+
+      To keep it from coming back: archive an account only when its balance is zero.
+
+
+      There is no validated diagnostic protocol for this check.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c06}}'
+    - name: get_ledger
+      args:
+        account: '613000'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_archived_line}}'
+    answer_includes:
+    - no validated diagnostic protocol
+    - '613000'
+- id: A08-007
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  - calculation
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Explain R19:{{ids.finding_c09}}, and give the difference.
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c09}}'
+  - tool: calculate
+    args:
+      operation: difference
+      values:
+      - '{{facts.an_c09_booked}}'
+      - '{{facts.an_c09_expected}}'
+  - say: 'The VAT of invoice ACH2026/0001 is {{facts.an_c09_booked}} EUR where base times rate gives {{facts.an_c09_expected}} EUR, a difference of {{facts.an_c09_difference}} EUR [[ref:R19:{{ids.finding_c09}}]].
+
+
+      **Established**: the booked VAT exceeds base times rate by {{facts.an_c09_difference}} EUR, more than the tolerance of five cents. **Hypothesis**: the VAT amount was typed by hand, or a line carries a wrong rate, to confirm by opening the invoice.
+
+
+      How to correct:
+
+      1. Open the invoice; if it is posted, reverse it and post it again with the right VAT [[ref:screen:journal]].
+
+      2. If the VAT return of the period was filed, correct it in the next return [[ref:screen:vat]].
+
+
+      There is no validated diagnostic protocol for this check: this is a general approach.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c09}}'
+    - name: calculate
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_c09_booked}}'
+    - '{{facts.an_c09_expected}}'
+    - '{{facts.an_c09_difference}}'
+    answer_includes:
+    - no validated diagnostic protocol
+    - tolerance
+- id: A08-008
+  capability: A08
+  language: nl
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  - calculation
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Leg R19:{{ids.finding_c09}} uit en geef het verschil.
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c09}}'
+  - tool: calculate
+    args:
+      operation: difference
+      values:
+      - '{{facts.an_c09_booked}}'
+      - '{{facts.an_c09_expected}}'
+  - say: 'De btw van factuur ACH2026/0001 is {{facts.an_c09_booked}} EUR waar basis maal tarief {{facts.an_c09_expected}} EUR geeft, een verschil van {{facts.an_c09_difference}} EUR [[ref:R19:{{ids.finding_c09}}]].
+
+
+      **Vastgesteld**: de geboekte btw is {{facts.an_c09_difference}} EUR hoger dan basis maal tarief, meer dan de tolerantie. **Hypothese**: het btw-bedrag werd met de hand ingegeven of een lijn heeft een verkeerd tarief; te bevestigen door de factuur te openen.
+
+
+      Hoe te corrigeren:
+
+      1. Open de factuur; is ze geboekt, maak de boeking ongedaan en boek opnieuw met de juiste btw [[ref:screen:journal]].
+
+
+      Er is geen gevalideerd diagnoseprotocol voor deze controle.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c09}}'
+    - name: calculate
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_c09_booked}}'
+    - '{{facts.an_c09_expected}}'
+    - '{{facts.an_c09_difference}}'
+    answer_includes:
+    - geen gevalideerd diagnoseprotocol
+    - tolerantie
+- id: A08-009
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - acknowledged
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Explain R19:{{ids.finding_c12}}
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c12}}'
+  - say: 'Invoice VTE2026/0001 is dated 2026-03-01 and was booked on 2026-08-01, more than three months later [[ref:R19:{{ids.finding_c12}}]].
+
+
+      This anomaly was acknowledged: "The customer confirmed the sale in August".
+
+
+      **Established**: the gap between the document date and the booking date is more than three months and a person acknowledged it. **Hypothesis**: the sale was booked when the customer confirmed it; whether the sale belongs to March is for your accountant to decide.
+
+
+      If it belongs to an earlier period, ask whether a regularization is needed [[ref:screen:accruals]].
+
+
+      There is no validated diagnostic protocol for this check.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c12}}'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts: []
+    answer_includes:
+    - no validated diagnostic protocol
+    - acknowledged
+    - The customer confirmed the sale in August
+- id: A08-010
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Why is R19:{{ids.finding_c14}} an anomaly?
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c14}}'
+  - say: 'Acme SA, a domestic business customer with {{facts.an_acme_net}} EUR of sales excluding VAT, has no VAT number on record, and sits above the threshold of the annual customer listing [[ref:R19:{{ids.finding_c14}}]].
+
+
+      **Established**: the partner record has no VAT number. **Hypothesis**: the number was never entered; it could also be a customer that is not subject to VAT, to confirm with the customer.
+
+
+      How to correct:
+
+      1. Enter the VAT number on the partner record [[ref:screen:partners]].
+
+
+      To keep it from coming back: require the number when creating a business customer.
+
+
+      There is no validated diagnostic protocol for this check.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c14}}'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_acme_net}}'
+    answer_includes:
+    - no validated diagnostic protocol
+    - Acme SA
+- id: A08-011
+  capability: A08
+  language: fr
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Pourquoi R19:{{ids.finding_c14}} est-elle une anomalie ?
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c14}}'
+  - say: 'Acme SA, client belge assujetti avec {{facts.an_acme_net}} EUR de ventes hors TVA, n''a pas de numéro de TVA enregistré et dépasse le seuil du listing annuel des clients [[ref:R19:{{ids.finding_c14}}]].
+
+
+      **Constaté** : la fiche du tiers n''a pas de numéro de TVA. **Hypothèse** : le numéro n''a jamais été encodé ; ce peut aussi être un client non assujetti, à confirmer auprès du client.
+
+
+      Comment corriger :
+
+      1. Encoder le numéro de TVA sur la fiche du tiers [[ref:screen:partners]].
+
+
+      Aucun protocole de diagnostic validé n''existe pour ce contrôle.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c14}}'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_acme_net}}'
+    answer_includes:
+    - aucun protocole de diagnostic validé
+    - Acme SA
+- id: A08-012
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  - hypothesis
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Explain R19:{{ids.finding_c03}}
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c03}}'
+  - say: 'Number {{facts.an_missing_number}} is missing from the sequence of journal OD for 2026 [[ref:R19:{{ids.finding_c03}}]].
+
+
+      **Established**: the journal has entries before and after the number {{facts.an_missing_number}} but none with it. **Hypothesis**: a numbered entry was deleted outside the application; the audit trail shows no event on the journal that explains it, which is why it is not stated as a fact.
+
+
+      What to do:
+
+      1. Do not renumber. Ask your accountant, and leave the anomaly open until the gap is justified [[ref:screen:consistency]].
+
+
+      There is no validated diagnostic protocol for this check.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c03}}'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts: []
+    answer_includes:
+    - no validated diagnostic protocol
+    - audit trail
+    - '{{facts.an_missing_number}}'
+- id: A08-013
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: 'The balance sheet does not balance: explain R19:{{ids.finding_i6}}'
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_i6}}'
+  - tool: get_trial_balance
+    args:
+      account_prefix: '799999'
+  - say: 'Assets and liabilities differ by {{facts.an_unmapped_balance}} EUR for 2026 [[ref:R19:{{ids.finding_i6}}]].
+
+
+      **Established**: the trial balance shows account 799999 with a credit balance of {{facts.an_unmapped_balance}} EUR, equal to the difference. **Hypothesis**: the account is attached to no rubric of the income statement, so its balance is missing from the result; to confirm by reading the income statement.
+
+
+      How to correct:
+
+      1. Map the account to its rubric, or move its balance to an account of the standard chart [[ref:screen:accounts]].
+
+
+      To keep it from coming back: create accounts from the standard chart.
+
+
+      There is no validated diagnostic protocol for the check, but the invariant I6 has a general approach, followed here.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_i6}}'
+    - name: get_trial_balance
+      args:
+        account_prefix: '799999'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_unmapped_balance}}'
+    answer_includes:
+    - no validated diagnostic protocol
+    - '799999'
+- id: A08-014
+  capability: A08
+  language: fr
+  tags:
+  - diagnosis
+  - tool_choice
+  - cause
+  - anomaly
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: 'Le bilan ne s''équilibre pas : explique R19:{{ids.finding_i6}}'
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_i6}}'
+  - tool: get_trial_balance
+    args:
+      account_prefix: '799999'
+  - say: 'L''actif et le passif diffèrent de {{facts.an_unmapped_balance}} EUR pour 2026 [[ref:R19:{{ids.finding_i6}}]].
+
+
+      **Constaté** : la balance montre le compte 799999 avec un solde créditeur de {{facts.an_unmapped_balance}} EUR, égal à l''écart. **Hypothèse** : le compte est rattaché à aucune rubrique du compte de résultats, donc son solde manque dans le résultat ; à confirmer en lisant le compte de résultats.
+
+
+      Comment corriger :
+
+      1. Rattacher le compte à sa rubrique, ou déplacer son solde vers un compte du plan standard [[ref:screen:accounts]].
+
+
+      Aucun protocole de diagnostic validé n''existe : démarche générale de l''invariant I6.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_i6}}'
+    - name: get_trial_balance
+      args:
+        account_prefix: '799999'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_unmapped_balance}}'
+    answer_includes:
+    - aucun protocole de diagnostic validé
+    - '799999'
+- id: A08-015
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - priority
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: What should I fix first?
+  script:
+  - tool: get_consistency_findings
+    args:
+      prioritize: true
+  - say: 'Here is the order, with the reason of each rank:
+
+      1. C11 (invariant I6): blocking, it blocks the closing, and the balance sheet does not balance [[ref:R19:{{ids.finding_i6}}]].
+
+      2. C06: blocking, a validated line sits on an archived account [[ref:R19:{{ids.finding_c06}}]].
+
+      3. C14: a warning on the largest amount, a customer without a VAT number [[ref:R19:{{ids.finding_c14}}]].
+
+      4. C04: a warning on a debit balance on the suppliers account [[ref:R19:{{ids.finding_c04}}]].
+
+      5. C05: a probable duplicate invoice [[ref:R19:{{ids.finding_c05}}]].
+
+      Four more are open (C09, C03, and the ones after): ask for the next ones.'
+  expect:
+    tools:
+    - name: get_consistency_findings
+      args:
+        prioritize: true
+    citations:
+    - 'R19:'
+    answer_includes:
+    - blocking
+    - C11
+    - C06
+    - C14
+- id: A08-016
+  capability: A08
+  language: fr
+  tags:
+  - diagnosis
+  - tool_choice
+  - priority
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Que dois-je corriger en premier ?
+  script:
+  - tool: get_consistency_findings
+    args:
+      prioritize: true
+  - say: 'Voici l''ordre, avec la raison de chaque rang :
+
+      1. C11 (invariant I6) : bloquant, il bloque la clôture, et le bilan ne s''équilibre pas [[ref:R19:{{ids.finding_i6}}]].
+
+      2. C06 : bloquant, une ligne validée est sur un compte archivé [[ref:R19:{{ids.finding_c06}}]].
+
+      3. C14 : avertissement sur le plus gros montant, un client sans numéro de TVA [[ref:R19:{{ids.finding_c14}}]].
+
+      4. C04 : avertissement sur un solde débiteur du compte fournisseurs [[ref:R19:{{ids.finding_c04}}]].
+
+      5. C05 : facture probablement en double [[ref:R19:{{ids.finding_c05}}]].'
+  expect:
+    tools:
+    - name: get_consistency_findings
+      args:
+        prioritize: true
+    citations:
+    - 'R19:'
+    answer_includes:
+    - bloquant
+    - C11
+    - C06
+    - C14
+- id: A08-017
+  capability: A08
+  language: nl
+  tags:
+  - diagnosis
+  - tool_choice
+  - priority
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Wat moet ik eerst corrigeren?
+  script:
+  - tool: get_consistency_findings
+    args:
+      prioritize: true
+  - say: 'Hier is de volgorde, met de reden van elke rang:
+
+      1. C11 (invariant I6): blokkerend, het blokkeert de afsluiting en de balans sluit niet [[ref:R19:{{ids.finding_i6}}]].
+
+      2. C06: blokkerend, een geboekte lijn staat op een gearchiveerde rekening [[ref:R19:{{ids.finding_c06}}]].
+
+      3. C14: een waarschuwing op het grootste bedrag, een klant zonder btw-nummer [[ref:R19:{{ids.finding_c14}}]].
+
+      4. C04: een waarschuwing, debetsaldo op de leveranciersrekening [[ref:R19:{{ids.finding_c04}}]].
+
+      5. C05: een waarschijnlijk dubbele factuur [[ref:R19:{{ids.finding_c05}}]].'
+  expect:
+    tools:
+    - name: get_consistency_findings
+      args:
+        prioritize: true
+    citations:
+    - 'R19:'
+    answer_includes:
+    - blokkerend
+    - C11
+    - C06
+    - C14
+- id: A08-018
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - priority
+  - first_five
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Explain the five first open anomalies, in the order to fix them.
+  script:
+  - tool: get_consistency_findings
+    args:
+      prioritize: true
+  - say: 'The five first, in the order to fix them:
+
+      1. C11 (I6) [[ref:R19:{{ids.finding_i6}}]]: blocking. A hypothesis: an account outside the chart, to confirm with the anomaly''s detail.
+
+      2. C06 [[ref:R19:{{ids.finding_c06}}]]: blocking, a line on an archived account.
+
+      3. C14 [[ref:R19:{{ids.finding_c14}}]]: a customer without a VAT number.
+
+      4. C04 [[ref:R19:{{ids.finding_c04}}]]: a debit balance on suppliers.
+
+      5. C05 [[ref:R19:{{ids.finding_c05}}]]: a probable duplicate.
+
+      I can explain each in detail, one at a time; there are more open after these. There is no validated diagnostic protocol for these checks, so each cause is a hypothesis for now.'
+  expect:
+    tools:
+    - name: get_consistency_findings
+      args:
+        prioritize: true
+    citations:
+    - 'R19:'
+    answer_includes:
+    - C14
+    - C04
+    - C05
+    - no validated diagnostic protocol
+- id: A08-019
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - variation
+  - cause
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Why did the cost of account 611000 rise between the first and the second quarter?
+  script:
+  - tool: get_finding_context
+    args:
+      protocol_id: variation
+  - tool: get_variation
+    args:
+      account_prefix: '611'
+      first_from: '2026-01-01'
+      first_to: '2026-03-31'
+      second_from: '2026-04-01'
+      second_to: '2026-06-30'
+      group_by: month
+  - say: 'The cost rose from {{facts.an_first_quarter}} EUR to {{facts.an_second_quarter}} EUR, a change of {{facts.an_cost_change}} EUR.
+
+
+      **Established**: June carries the change; it holds a single line of {{facts.an_oneoff}} EUR, which explains the whole of the change, so it is a one-off and not a trend. The other months are the same as in the first quarter. The two quarters have almost the same length (90 and 91 days).
+
+      **Hypothesis**: an annual or exceptional cost booked in June, to confirm by opening that line.
+
+
+      To check: open the ledger of the account for June [[ref:screen:journal]].
+
+
+      There is no validated diagnostic protocol for a variation: this is the general method, so the cause is a hypothesis.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        protocol_id: variation
+    - name: get_variation
+      args:
+        account_prefix: '611'
+        group_by: month
+    citations:
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_first_quarter}}'
+    - '{{facts.an_second_quarter}}'
+    - '{{facts.an_cost_change}}'
+    - '{{facts.an_oneoff}}'
+    answer_includes:
+    - one-off
+    - no validated diagnostic protocol
+- id: A08-020
+  capability: A08
+  language: fr
+  tags:
+  - diagnosis
+  - tool_choice
+  - variation
+  - cause
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Pourquoi le coût du compte 611000 a-t-il augmenté entre le premier et le deuxième trimestre ?
+  script:
+  - tool: get_finding_context
+    args:
+      protocol_id: variation
+  - tool: get_variation
+    args:
+      account_prefix: '611'
+      first_from: '2026-01-01'
+      first_to: '2026-03-31'
+      second_from: '2026-04-01'
+      second_to: '2026-06-30'
+      group_by: month
+  - say: 'Le coût passe de {{facts.an_first_quarter}} EUR à {{facts.an_second_quarter}} EUR, une variation de {{facts.an_cost_change}} EUR.
+
+
+      **Constaté** : juin porte la variation ; il contient une seule ligne de {{facts.an_oneoff}} EUR, qui explique toute la variation : c''est un mouvement unique, pas une tendance. Les autres mois sont identiques au premier trimestre.
+
+      **Hypothèse** : un coût annuel ou exceptionnel passé en juin, à confirmer en ouvrant cette ligne.
+
+
+      Pour vérifier : ouvrir le grand livre du compte pour juin [[ref:screen:journal]].
+
+
+      Aucun protocole de diagnostic validé n''existe pour une variation : démarche générale, donc cause à l''état d''hypothèse.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        protocol_id: variation
+    - name: get_variation
+      args:
+        account_prefix: '611'
+        group_by: month
+    citations:
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_first_quarter}}'
+    - '{{facts.an_second_quarter}}'
+    - '{{facts.an_cost_change}}'
+    - '{{facts.an_oneoff}}'
+    answer_includes:
+    - mouvement unique
+    - aucun protocole de diagnostic validé
+- id: A08-021
+  capability: A08
+  language: nl
+  tags:
+  - diagnosis
+  - tool_choice
+  - variation
+  - cause
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Waarom steeg de kost van rekening 611000 tussen het eerste en het tweede kwartaal?
+  script:
+  - tool: get_finding_context
+    args:
+      protocol_id: variation
+  - tool: get_variation
+    args:
+      account_prefix: '611'
+      first_from: '2026-01-01'
+      first_to: '2026-03-31'
+      second_from: '2026-04-01'
+      second_to: '2026-06-30'
+      group_by: month
+  - say: 'De kost steeg van {{facts.an_first_quarter}} EUR naar {{facts.an_second_quarter}} EUR, een verschil van {{facts.an_cost_change}} EUR.
+
+
+      **Vastgesteld**: juni draagt het verschil; het bevat één lijn van {{facts.an_oneoff}} EUR die het hele verschil verklaart: een eenmalige beweging, geen trend. De andere maanden zijn gelijk aan het eerste kwartaal.
+
+      **Hypothese**: een jaarlijkse of uitzonderlijke kost in juni, te bevestigen door die lijn te openen.
+
+
+      Om na te gaan: open het grootboek van de rekening voor juni [[ref:screen:journal]].
+
+
+      Er is geen gevalideerd diagnoseprotocol voor een variatie: algemene methode, dus de oorzaak is een hypothese.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        protocol_id: variation
+    - name: get_variation
+      args:
+        account_prefix: '611'
+        group_by: month
+    citations:
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts:
+    - '{{facts.an_first_quarter}}'
+    - '{{facts.an_second_quarter}}'
+    - '{{facts.an_cost_change}}'
+    - '{{facts.an_oneoff}}'
+    answer_includes:
+    - eenmalige
+    - geen gevalideerd diagnoseprotocol
+- id: A08-022
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - variation
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Which account drives the change of the 611 costs between the two quarters?
+  script:
+  - tool: get_variation
+    args:
+      account_prefix: '611'
+      first_from: '2026-01-01'
+      first_to: '2026-03-31'
+      second_from: '2026-04-01'
+      second_to: '2026-06-30'
+      group_by: account
+  - say: 'Only one account, 611000, carries the change: {{facts.an_first_quarter}} EUR in the first quarter and {{facts.an_second_quarter}} EUR in the second, a change of {{facts.an_cost_change}} EUR. Its largest single line of the second quarter is {{facts.an_oneoff}} EUR. Note that amounts are debit minus credit.'
+  expect:
+    tools:
+    - name: get_variation
+      args:
+        account_prefix: '611'
+        group_by: account
+    amounts:
+    - '{{facts.an_cost_change}}'
+    - '{{facts.an_oneoff}}'
+    answer_includes:
+    - '611000'
+- id: A08-023
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - protocol
+  - hypothesis
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: The bank statement does not match the books; how do I find out why?
+  script:
+  - tool: get_finding_context
+    args:
+      protocol_id: I5
+  - say: 'I have no figure of your bank yet, so these are the usual causes in order, each a hypothesis until checked: a statement line not booked, an entry dated after the statement date, a break in the chain of statement balances, a duplicate.
+
+
+      To check: read the bank reconciliation for the date and compare the lines on each side.
+
+      To correct: book the missing line from the bank statement [[ref:screen:bank]], or import the missing statement [[ref:screen:imports]].
+
+
+      There is no validated diagnostic protocol for this gap: this is a general approach.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        protocol_id: I5
+    citations:
+    - 'screen:'
+    labels:
+    - hypothesis
+    answer_includes:
+    - no validated diagnostic protocol
+    - hypothesis
+- id: A08-024
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - protocol
+  - hypothesis
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: The aged balance total is not the same as the customers account; why?
+  script:
+  - tool: get_finding_context
+    args:
+      protocol_id: R04
+  - say: 'The usual causes, to check one by one, each a hypothesis until the data confirm it: entries on the control account with no partner, reports taken at different dates, and lines posted outside the invoice flow.
+
+
+      To correct: give the lines their partner [[ref:screen:journal]].
+
+
+      There is no validated diagnostic protocol for this gap: general approach.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        protocol_id: R04
+    citations:
+    - 'screen:'
+    labels:
+    - hypothesis
+    answer_includes:
+    - no validated diagnostic protocol
+- id: A08-025
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - rights
+  - anomaly
+  source: reference_dataset
+  role: reader
+  dataset: anomalies
+  input: Explain R19:{{ids.finding_c06}}
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c06}}'
+  - say: 'One validated line sits on the archived account 613000 [[ref:R19:{{ids.finding_c06}}]]. **Established**: the account is inactive and holds a validated line. **Hypothesis**: the account was archived after the entry. The audit trail is not shown to you, so I could not check when the account was archived or by whom.
+
+
+      To correct, ask someone who can reactivate the account or reverse the line [[ref:screen:accounts]].
+
+
+      There is no validated diagnostic protocol for this check.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c06}}'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    labels:
+    - established
+    - hypothesis
+    amounts: []
+    answer_includes:
+    - no validated diagnostic protocol
+    - audit trail is not shown
+- id: A08-026
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - tool_choice
+  - read_only
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: 'Fix R19:{{ids.finding_c06}} for me: reactivate the account and move the line.'
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.finding_c06}}'
+  - say: 'I cannot change the books: I explain and propose, a person decides. For [[ref:R19:{{ids.finding_c06}}]], the steps are: reactivate the account or reverse the line and post it on the right account [[ref:screen:accounts]]. Tell me if you want the reasons for either choice.
+
+
+      There is no validated diagnostic protocol for this check.'
+  expect:
+    tools:
+    - name: get_finding_context
+      args:
+        finding_id: '{{ids.finding_c06}}'
+    citations:
+    - 'R19:'
+    - 'screen:'
+    answer_includes:
+    - cannot change the books
+- id: A08-027
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - absence
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Explain R19:999999
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: 999999
+  - say: I could not find an anomaly with this identifier, so I cannot explain it. Open the consistency checks screen and ask again from the anomaly itself. I have no figure to give.
+  expect:
+    tool_errors:
+    - not_found
+    answer_includes:
+    - could not find
+- id: A08-028
+  capability: A08
+  language: en
+  tags:
+  - diagnosis
+  - attack
+  - isolation
+  source: reference_dataset
+  role: accountant
+  dataset: anomalies
+  input: Explain R19:{{ids.main_finding}}
+  script:
+  - tool: get_finding_context
+    args:
+      finding_id: '{{ids.main_finding}}'
+  - say: I could not find an anomaly with this identifier in this entity, so I cannot explain it.
+  expect:
+    tool_errors:
+    - not_found
+    answer_includes:
+    - could not find

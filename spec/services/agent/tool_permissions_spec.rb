@@ -9,7 +9,8 @@ RSpec.describe "The rights of the agent's tools" do
     "get_company_context" => {}, "search_accounts" => { "q" => "4" }, "search_partners" => { "q" => "a" }, "get_journal_entry" => { "id" => 1 },
     "get_trial_balance" => {}, "get_ledger" => { "account" => "400000" }, "get_aged_balance" => { "kind" => "customer" }, "list_unreconciled" => {},
     "get_bank_reconciliation" => {}, "get_financial_statements" => { "statement" => "income" }, "get_vat_return" => { "period_start" => "2026-01-01", "period_end" => "2026-03-31" },
-    "get_dashboard_kpis" => {}, "get_consistency_findings" => {}, "get_audit_trail" => {}, "search_documents" => { "q" => "a" }, "search_knowledge" => { "query" => "prepayment" }, "calculate" => { "operation" => "sum", "values" => [ "1.00" ] }
+    "get_dashboard_kpis" => {}, "get_consistency_findings" => {}, "get_audit_trail" => {}, "search_documents" => { "q" => "a" }, "search_knowledge" => { "query" => "prepayment" }, "get_finding_context" => { "finding_id" => 1 },
+    "get_variation" => { "account_prefix" => "6", "first_from" => "2026-01-01", "first_to" => "2026-01-31", "second_from" => "2026-02-01", "second_to" => "2026-02-28" }, "calculate" => { "operation" => "sum", "values" => [ "1.00" ] }
   }.freeze
 
   let(:registry) { Agent::ToolRegistry.default }
