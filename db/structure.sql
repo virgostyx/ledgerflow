@@ -2825,6 +2825,90 @@ ALTER SEQUENCE public.agent_conversations_id_seq OWNED BY public.agent_conversat
 
 
 --
+-- Name: agent_eval_results; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_eval_results (
+    id bigint NOT NULL,
+    run_id bigint NOT NULL,
+    case_id character varying NOT NULL,
+    capability character varying NOT NULL,
+    attempt integer DEFAULT 1 NOT NULL,
+    passed boolean NOT NULL,
+    checks jsonb DEFAULT '{}'::jsonb NOT NULL,
+    answer text,
+    input_tokens integer DEFAULT 0 NOT NULL,
+    output_tokens integer DEFAULT 0 NOT NULL,
+    duration_ms integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_eval_results_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_eval_results_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_eval_results_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_eval_results_id_seq OWNED BY public.agent_eval_results.id;
+
+
+--
+-- Name: agent_eval_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_eval_runs (
+    id bigint NOT NULL,
+    mode character varying NOT NULL,
+    scope character varying DEFAULT 'all'::character varying NOT NULL,
+    manifest_hash character varying NOT NULL,
+    manifest jsonb DEFAULT '{}'::jsonb NOT NULL,
+    status character varying DEFAULT 'running'::character varying NOT NULL,
+    runs_per_case integer DEFAULT 1 NOT NULL,
+    cases_total integer DEFAULT 0 NOT NULL,
+    cases_passed integer DEFAULT 0 NOT NULL,
+    metrics jsonb DEFAULT '{}'::jsonb NOT NULL,
+    input_tokens integer DEFAULT 0 NOT NULL,
+    output_tokens integer DEFAULT 0 NOT NULL,
+    budget_tokens integer,
+    started_at timestamp(6) without time zone NOT NULL,
+    finished_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_eval_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_eval_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_eval_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_eval_runs_id_seq OWNED BY public.agent_eval_runs.id;
+
+
+--
 -- Name: agent_feedback; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4864,6 +4948,20 @@ ALTER TABLE ONLY public.agent_conversations ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: agent_eval_results id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_eval_results ALTER COLUMN id SET DEFAULT nextval('public.agent_eval_results_id_seq'::regclass);
+
+
+--
+-- Name: agent_eval_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_eval_runs ALTER COLUMN id SET DEFAULT nextval('public.agent_eval_runs_id_seq'::regclass);
+
+
+--
 -- Name: agent_feedback id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5662,6 +5760,22 @@ ALTER TABLE ONLY public.agent_consents
 
 ALTER TABLE ONLY public.agent_conversations
     ADD CONSTRAINT agent_conversations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_eval_results agent_eval_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_eval_results
+    ADD CONSTRAINT agent_eval_results_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_eval_runs agent_eval_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_eval_runs
+    ADD CONSTRAINT agent_eval_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -7834,6 +7948,27 @@ CREATE INDEX index_agent_conversations_on_user_id ON public.agent_conversations 
 
 
 --
+-- Name: index_agent_eval_results_on_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_eval_results_on_run_id ON public.agent_eval_results USING btree (run_id);
+
+
+--
+-- Name: index_agent_eval_results_on_run_id_and_case_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_eval_results_on_run_id_and_case_id ON public.agent_eval_results USING btree (run_id, case_id);
+
+
+--
+-- Name: index_agent_eval_runs_on_mode_and_scope_and_started_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_eval_runs_on_mode_and_scope_and_started_at ON public.agent_eval_runs USING btree (mode, scope, started_at);
+
+
+--
 -- Name: index_agent_feedback_on_message_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9392,6 +9527,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: agent_eval_results fk_rails_701fb6e5bc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_eval_results
+    ADD CONSTRAINT fk_rails_701fb6e5bc FOREIGN KEY (run_id) REFERENCES public.agent_eval_runs(id);
+
+
+--
 -- Name: accounting_payment_reminder_items fk_rails_708d3ff286; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10566,6 +10709,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261007090000'),
 ('20261006130000'),
 ('20261006120000'),
 ('20261006110000'),

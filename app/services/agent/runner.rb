@@ -28,6 +28,7 @@ class Agent::Runner
     @redaction = Hash.new { |hash, data_class| hash[data_class] = Hash.new(0) }
     @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors, @tool_log = [], Hash.new(0), nil, 0, 0, 0, []
     @security = Agent::Security.new(conversation: @conversation, context: @context)
+    @manifest = Agent::Manifest.current
     messages = history + [ { role: "user", content: question } ]
     @conversation.messages.create!(role: "user", content: question)
 
@@ -100,7 +101,7 @@ class Agent::Runner
     @security.flag("content_removed") if removed.any?
     @security.event(:limit_reached) if notice == LIMIT_NOTICE
     @conversation.pseudonym_table.unknown_tokens(content).each { |token| @security.event(:invented_token, excerpt: token) }
-    message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms, flags: @security.flags,
+    message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms, flags: @security.flags, manifest_hash: @manifest.hash_value,
                                              redaction_stats: @redaction.transform_values(&:to_h), sent_payload: @sent&.to_json,
                                              input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])
     record_tool_calls(message)
