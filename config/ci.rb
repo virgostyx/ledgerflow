@@ -10,6 +10,7 @@ CI.run do
   step "Security: Brakeman code analysis", "bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error"
   step "Tests: RSpec", "bundle exec rspec --format progress"
   step "Tests: Seeds", "env RAILS_ENV=test bin/rails db:seed:replant"
+  step "Agent: evaluation, simulated mode", "env RAILS_ENV=test bin/rails agent:evals"
 
   # Optional: Run system tests
   # step "Tests: System", "bundle exec rspec spec/system"

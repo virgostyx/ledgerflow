@@ -111,6 +111,14 @@ RSpec.describe Agent::Redactor do
       expect(redact("Alice Dupont owes 10")).to eq("Alice Dupont owes 10")
     end
 
+    it "is never sent in block mode or restricted mode even when the partner is a company: no name of a third party at all" do
+      with_modes("personal" => "block")
+
+      expect(redact("Acme Industries SA owes 10")).to eq("[name blocked] owes 10")
+      setting.update!(data_class_modes: {}, restricted: true)
+      expect(redact("Acme Industries SA owes 10")).to eq("[name blocked] owes 10")
+    end
+
     it "is hidden from the model but read again by the person: the answer's tokens come back as names" do
       redact("Alice Dupont")
 

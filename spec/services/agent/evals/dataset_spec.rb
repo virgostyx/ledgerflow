@@ -72,11 +72,19 @@ RSpec.describe Agent::Evals::Dataset do
     end
   end
 
+  it "has another entity beside it, with something in it that the first must never see, and gives the identifiers the cases need" do
+    ids = described_class.ids(built)
+
+    expect(ids.keys).to include("first_sale_entry", "first_sale_reference", "acme", "charlie", "foreign_entity", "foreign_entry")
+    expect(ActsAsTenant.with_tenant(entity) { Accounting::JournalEntry.where(id: ids["foreign_entry"].to_i) }).to be_empty
+    expect(ActsAsTenant.with_tenant(Entity.find(ids["foreign_entity"])) { Accounting::JournalEntry.find(ids["foreign_entry"]).description }).to include("FOREIGN-SECRET")
+  end
+
   it "has a natural person among its customers, a document, and a run of the consistency checks" do
     in_entity do
       expect(Accounting::Partner.find_by!(name: "Charlie Dupont").is_natural_person).to be true
-      expect(Accounting::Partner.where(is_natural_person: false).count).to eq(4)
-      expect(Accounting::Document.count).to eq(1)
+      expect(Accounting::Partner.where(is_natural_person: false).count).to eq(5)
+      expect(Accounting::Document.count).to eq(2)
       expect(Accounting::ConsistencyRun.count).to eq(1)
     end
   end

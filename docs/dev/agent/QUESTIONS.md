@@ -67,3 +67,11 @@ Voir la liste complète dans `DATA_PROCESSING.md` : conservation chez le fournis
 - **Chiffrement déterministe** de la table des pseudonymes : même valeur, même chiffré, pour retrouver une personne ; c'est un compromis assumé (un attaquant avec la base mais sans la clé ne lit rien, mais voit quelles conversations partagent un nom).
 - **Notes de dossier et propositions** (A10, A07) : le droit d'accès et d'effacement ne les couvre pas encore, elles n'existent pas.
 - **Document mode** (A09) : non réglable pour le moment (aucune capacité n'envoie de document).
+
+## A12 — décisions à valider
+- **Les cas sont des fichiers YAML du dépôt**, pas une table `agent_evals` : relus comme du code, historique dans git. La table existe pour les exécutions et leurs résultats (`agent_eval_runs`, `agent_eval_results`).
+- **Entités de démonstration créées dans la base courante** par la première exécution (« Agent Evaluation Demo » et « Agent Evaluation Foreign »). Elles apparaissent dans le sélecteur de dossiers d'un utilisateur qui y aurait accès (personne, sauf les utilisateurs d'évaluation). À lancer sur une base dédiée ou en `RAILS_ENV=test`.
+- **Le mode réel n'est pas planifié** : il coûte de l'argent et demande une clé ; à lancer à la main avant une livraison. La spec veut une exécution nocturne : à décider avec le budget (§16).
+- **Pas de modèle-juge ni de revue humaine** à ce stade : aucun critère de rubrique n'est jugeable par un modèle tant que A05 (réponses citées) n'existe pas. Le comptable référent doit relire les 30 cas (questions et attendus) avant que les chiffres soient pris pour une mesure.
+- **Retour arrière du manifeste** : exige que la consigne et les descriptions d'outils existent en plusieurs versions choisies par un drapeau. Aujourd'hui, revenir en arrière est un retour de code et un déploiement.
+- **Corpus d'attaques** (A03) : 6 cas ici et 52 textes en spec ; le rejeu complet avec le vrai modèle est à faire (le mode réel sait jouer les cas ; les textes du corpus ne sont pas encore tous des cas).

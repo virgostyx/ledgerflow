@@ -84,9 +84,10 @@ class Agent::Redactor
     end
   end
 
+  # A company's name goes as it is, masked or not; but a class the entity does not let go does not go: no name at all, a company's included.
   def person(value)
+    return blocked(:personal) if mode(:personal) == "block"
     return value if company_names.include?(value.strip.downcase) || mode(:personal) == "send"
-    return blocked(:personal) unless mode(:personal) == "mask"
 
     count(:personal, "masked")
     pseudonyms.token_for(value, "person")
@@ -172,7 +173,7 @@ class Agent::Redactor
     return text if mode(:personal) == "send" || person_pattern.nil?
 
     text.gsub(person_pattern) do |raw|
-      next raw if company_names.include?(raw.downcase)
+      next raw if company_names.include?(raw.downcase) && mode(:personal) != "block"
 
       mode(:personal) == "mask" ? (count(:personal, "masked"); pseudonyms.token_for(raw, "person")) : (count(:personal, "blocked"); "[name blocked]")
     end
@@ -188,7 +189,7 @@ class Agent::Redactor
   def person_pattern
     return @person_pattern if defined?(@person_pattern)
 
-    names = partners.reject { |_, natural| natural == false }.map { |name, _| name.to_s.strip }.select { |name| name.length >= MIN_NAME }.uniq.sort_by { |name| -name.length }
+    names = partners.reject { |_, natural| natural == false && mode(:personal) != "block" }.map { |name, _| name.to_s.strip }.select { |name| name.length >= MIN_NAME }.uniq.sort_by { |name| -name.length }
     @person_pattern = names.empty? ? nil : Regexp.union(names.map { |name| /(?<![[:alnum:]])#{Regexp.escape(name)}(?![[:alnum:]])/i })
   end
 end
