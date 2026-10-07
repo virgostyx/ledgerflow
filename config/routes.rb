@@ -433,6 +433,17 @@ Rails.application.routes.draw do
         get name, to: "public/resources#index", defaults: { resource: name }, as: "public_#{name}"
         get "#{name}/:id", to: "public/resources#show", defaults: { resource: name }, as: "public_#{name.singularize}", constraints: { id: /\d+/ }
       end
+      # A01: the AI agent (personal tokens, scope agent:use). The answer is written in the background: a question is accepted (202) and the conversation read until it is no longer answering.
+      scope "agent", constraints: { id: /\d+/, message_id: /\d+/ } do
+        get    "conversations", to: "public/agent_conversations#index", as: :agent_conversations
+        post   "conversations", to: "public/agent_conversations#create"
+        get    "conversations/:id", to: "public/agent_conversations#show", as: :agent_conversation
+        patch  "conversations/:id", to: "public/agent_conversations#update"
+        delete "conversations/:id", to: "public/agent_conversations#destroy"
+        post   "conversations/:id/stop", to: "public/agent_conversations#stop", as: :stop_agent_conversation
+        post   "conversations/:id/messages", to: "public/agent_messages#create", as: :agent_messages
+        post   "conversations/:id/messages/:message_id/feedback", to: "public/agent_feedback#create", as: :agent_feedback
+      end
       resources :invoice_events, only: [ :index ]
       resources :incoming_invoices, only: [] do
         member do

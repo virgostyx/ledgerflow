@@ -14,6 +14,8 @@ module ApiHelpers
 
   def api_patch(path, token, body = {}, headers: {}) = patch(path, params: body.to_json, headers: auth(token).merge("Content-Type" => "application/json").merge(headers))
 
+  def api_delete(path, token, headers: {}) = delete(path, headers: auth(token).merge(headers))
+
   def json = JSON.parse(response.body)
 end
 

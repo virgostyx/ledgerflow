@@ -5,7 +5,7 @@
 module Api::V1::OpenApi
   VERSION = "1.0.0"
   PROBLEM_STATUSES = { 400 => "Bad request", 401 => "Unauthorized", 403 => "Forbidden", 404 => "Not found", 409 => "Conflict", 412 => "Precondition failed",
-                       422 => "Unprocessable", 428 => "Precondition required", 429 => "Too many requests" }.freeze
+                       422 => "Unprocessable", 428 => "Precondition required", 429 => "Too many requests", 503 => "Service unavailable" }.freeze
   TYPES = { integer: { "type" => %w[integer null] }, string: { "type" => %w[string null] }, boolean: { "type" => %w[boolean null] }, decimal: { "type" => %w[string null], "pattern" => '^-?\d+(\.\d+)?$' },
             date: { "type" => %w[string null], "format" => "date" }, datetime: { "type" => %w[string null], "format" => "date-time" } }.freeze
 
@@ -39,6 +39,7 @@ module Api::V1::OpenApi
     paths["/entries/{id}/post"] = { "post" => action("postEntry", "Validate a draft entry", "entries:post", 200) }
     paths["/entries/{id}/reverse"] = { "post" => action("reverseEntry", "Reverse a validated entry", "entries:reverse", 201, body: { "reason" => { "type" => "string" }, "date" => { "type" => "string", "format" => "date" } }) }
     paths["/reports/{name}"] = { "get" => report_operation }
+    paths.merge!(Api::V1::OpenApi::AgentEndpoints.paths)
     paths
   end
 
@@ -47,12 +48,14 @@ module Api::V1::OpenApi
                                                               "properties" => { "has_more" => { "type" => "boolean" }, "next_cursor" => { "type" => %w[string null] } } },
                 "EntryLine" => entry_line_schema, "Entry" => entry_schema, "EntryInput" => entry_input_schema, "Report" => report_schema }
     Api::V1::Resources::REGISTRY.each_value { |r| schemas[schema_name(r)] = resource_schema(r) }
+    schemas.merge!(Api::V1::OpenApi::AgentEndpoints.schemas)
     { "securitySchemes" => { "bearerAuth" => { "type" => "http", "scheme" => "bearer", "description" => "A personal access token (lf_…)." } },
       "parameters" => { "PageSize" => { "name" => "page[size]", "in" => "query", "schema" => { "type" => "integer", "minimum" => 1, "maximum" => Api::V1::Public::BaseController::MAX_PAGE } },
                         "PageAfter" => { "name" => "page[after]", "in" => "query", "schema" => { "type" => "string" }, "description" => "The `next_cursor` of the previous page." },
                         "Id" => { "name" => "id", "in" => "path", "required" => true, "schema" => { "type" => "integer" } },
                         "IfMatch" => { "name" => "If-Match", "in" => "header", "required" => true, "schema" => { "type" => "string" }, "description" => "The ETag read with the resource." },
-                        "IdempotencyKey" => { "name" => "Idempotency-Key", "in" => "header", "required" => false, "schema" => { "type" => "string", "maxLength" => 255 } } },
+                        "IdempotencyKey" => { "name" => "Idempotency-Key", "in" => "header", "required" => false, "schema" => { "type" => "string", "maxLength" => 255 } } }
+                          .merge(Api::V1::OpenApi::AgentEndpoints.parameters),
       "responses" => PROBLEM_STATUSES.to_h { |code, title| [ "Problem#{code}", { "description" => title, "content" => { "application/problem+json" => { "schema" => { "$ref" => "#/components/schemas/Problem" } } } } ] },
       "schemas" => schemas }
   end
@@ -67,7 +70,8 @@ module Api::V1::OpenApi
   def self.problem_schema
     { "type" => "object", "required" => %w[type title status], "properties" => {
       "type" => { "type" => "string" }, "title" => { "type" => "string" }, "status" => { "type" => "integer" }, "detail" => { "type" => "string" },
-      "instance" => { "type" => "string" }, "request_id" => { "type" => "string" }, "required_scope" => { "type" => "string" }, "retry_after" => { "type" => "integer" } } }
+      "instance" => { "type" => "string" }, "request_id" => { "type" => "string" }, "required_scope" => { "type" => "string" }, "retry_after" => { "type" => "integer" },
+      "reason" => { "type" => "string" }, "findings" => { "type" => "array", "items" => { "type" => "object" } } } }
   end
 
   def self.entry_line_schema
