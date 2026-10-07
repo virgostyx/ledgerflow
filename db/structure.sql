@@ -2786,6 +2786,43 @@ ALTER SEQUENCE public.agent_consents_id_seq OWNED BY public.agent_consents.id;
 
 
 --
+-- Name: agent_conversation_reviews; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_conversation_reviews (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    conversation_id bigint,
+    author_id bigint NOT NULL,
+    reviewer_id bigint NOT NULL,
+    reason text NOT NULL,
+    message_count integer DEFAULT 0 NOT NULL,
+    reviewed_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_conversation_reviews_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_conversation_reviews_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_conversation_reviews_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_conversation_reviews_id_seq OWNED BY public.agent_conversation_reviews.id;
+
+
+--
 -- Name: agent_conversations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4941,6 +4978,13 @@ ALTER TABLE ONLY public.agent_consents ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: agent_conversation_reviews id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversation_reviews ALTER COLUMN id SET DEFAULT nextval('public.agent_conversation_reviews_id_seq'::regclass);
+
+
+--
 -- Name: agent_conversations id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5752,6 +5796,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 ALTER TABLE ONLY public.agent_consents
     ADD CONSTRAINT agent_consents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_conversation_reviews agent_conversation_reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversation_reviews
+    ADD CONSTRAINT agent_conversation_reviews_pkey PRIMARY KEY (id);
 
 
 --
@@ -7927,6 +7979,34 @@ CREATE UNIQUE INDEX index_agent_consents_on_entity_id_and_version ON public.agen
 
 
 --
+-- Name: index_agent_conversation_reviews_on_author_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_conversation_reviews_on_author_id ON public.agent_conversation_reviews USING btree (author_id);
+
+
+--
+-- Name: index_agent_conversation_reviews_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_conversation_reviews_on_conversation_id ON public.agent_conversation_reviews USING btree (conversation_id);
+
+
+--
+-- Name: index_agent_conversation_reviews_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_conversation_reviews_on_entity_id ON public.agent_conversation_reviews USING btree (entity_id);
+
+
+--
+-- Name: index_agent_conversation_reviews_on_reviewer_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_conversation_reviews_on_reviewer_id ON public.agent_conversation_reviews USING btree (reviewer_id);
+
+
+--
 -- Name: index_agent_conversations_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9375,6 +9455,14 @@ ALTER TABLE ONLY public.accounting_peppol_messages
 
 
 --
+-- Name: agent_conversation_reviews fk_rails_50e14aca2e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversation_reviews
+    ADD CONSTRAINT fk_rails_50e14aca2e FOREIGN KEY (author_id) REFERENCES public.users(id);
+
+
+--
 -- Name: data_exports fk_rails_5408e45594; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9756,6 +9844,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 ALTER TABLE ONLY public.user_entities
     ADD CONSTRAINT fk_rails_8e87e2e2aa FOREIGN KEY (custom_role_id) REFERENCES public.custom_roles(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: agent_conversation_reviews fk_rails_8fa0a63138; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversation_reviews
+    ADD CONSTRAINT fk_rails_8fa0a63138 FOREIGN KEY (conversation_id) REFERENCES public.agent_conversations(id) ON DELETE SET NULL;
 
 
 --
@@ -10199,6 +10295,14 @@ ALTER TABLE ONLY public.accounting_lettering_suggestions
 
 
 --
+-- Name: agent_conversation_reviews fk_rails_c8f3e1dfce; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversation_reviews
+    ADD CONSTRAINT fk_rails_c8f3e1dfce FOREIGN KEY (reviewer_id) REFERENCES public.users(id);
+
+
+--
 -- Name: webhook_deliveries fk_rails_ca77174d07; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10228,6 +10332,14 @@ ALTER TABLE ONLY public.accounting_fixed_assets
 
 ALTER TABLE ONLY public.accounting_peppol_events
     ADD CONSTRAINT fk_rails_cdf528e0a8 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: agent_conversation_reviews fk_rails_ce61c9af92; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversation_reviews
+    ADD CONSTRAINT fk_rails_ce61c9af92 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -10709,6 +10821,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261007100000'),
 ('20261007090000'),
 ('20261006130000'),
 ('20261006120000'),

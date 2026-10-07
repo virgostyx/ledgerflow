@@ -9,6 +9,7 @@ class Agent::Conversation < ApplicationRecord
 
   belongs_to :user
   has_many :pseudonyms, class_name: "Agent::Pseudonym", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :delete_all
+  has_many :reviews, class_name: "Agent::ConversationReview", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :nullify
   has_many :messages, class_name: "Agent::Message", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :destroy
 
   enum :status, { active: "active", archived: "archived" }, default: "active"

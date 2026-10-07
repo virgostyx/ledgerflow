@@ -9,6 +9,7 @@ class Agent::ConversationsController < Agent::BaseController
     @conversation = find_conversation
     @messages = @conversation.messages.where(role: %w[user assistant]).order(:id)
     @context = agent_context(screen: @conversation.origin_screen, subject_ref: @conversation.context_ref)
+    @reviews = @conversation.reviews.includes(:reviewer).order(:reviewed_at)
   end
 
   # A reference to the object the panel is opened on is kept only if it is shaped like one (a type and an identifier), never as text copied from the screen.

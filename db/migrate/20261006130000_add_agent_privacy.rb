@@ -7,7 +7,7 @@ class AddAgentPrivacy < ActiveRecord::Migration[8.1]
 
     create_table :agent_consents do |t|
       t.references :entity, null: false, foreign_key: true
-      t.string   :version, null: false
+      t.string :version, null: false
       t.references :accepted_by, null: false, foreign_key: { to_table: :users }
       t.datetime :accepted_at, null: false
       t.timestamps

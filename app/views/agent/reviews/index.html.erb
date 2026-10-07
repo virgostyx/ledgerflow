@@ -1,0 +1,33 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium">Assistant: reading a conversation</span><% end %>
+<div class="max-w-4xl space-y-4">
+  <p class="text-sm text-gray-600">A conversation with the assistant is its author's alone. As an owner you can read one in an exceptional case: you give a reason and a code of your second factor, the author is told who read it, when and why, and the reading is written in the audit trail. The list shows who talked, when and how much, never what was said.</p>
+
+  <% if @alert %><p role="alert" class="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700"><%= @alert %></p><% end %>
+
+  <% if @conversations.empty? %>
+    <p class="text-sm text-gray-500">No conversation to read.</p>
+  <% else %>
+    <ul class="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white text-sm">
+      <% @conversations.each do |conversation| %>
+        <li class="space-y-2 px-3 py-3">
+          <div class="flex justify-between">
+            <span><%= conversation.user.email %> · <%= conversation.try(:messages_count) || conversation.messages.count %> messages<%= " · already read #{@reviews_by_conversation[conversation.id]} time(s)" if @reviews_by_conversation[conversation.id] %></span>
+            <time class="text-gray-400"><%= l(conversation.updated_at, format: :short) %></time>
+          </div>
+          <%= form_with url: agent_reviews_path, method: :post, class: "flex flex-wrap items-end gap-2" do %>
+            <%= hidden_field_tag :conversation_id, conversation.id %>
+            <div class="grow">
+              <%= label_tag "reason_#{conversation.id}", "Reason (the author is told)", class: "block text-xs text-gray-500" %>
+              <%= text_field_tag :reason, nil, id: "reason_#{conversation.id}", class: "w-full rounded-md border-gray-300 text-sm", maxlength: 500 %>
+            </div>
+            <div>
+              <%= label_tag "code_#{conversation.id}", "Code of your authenticator", class: "block text-xs text-gray-500" %>
+              <%= text_field_tag :code, nil, id: "code_#{conversation.id}", class: "w-32 rounded-md border-gray-300 text-sm", inputmode: "numeric", autocomplete: "one-time-code", maxlength: 6 %>
+            </div>
+            <%= submit_tag "Review", class: "rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white" %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

@@ -1,0 +1,8 @@
+An owner of <%= @entity.legal_name %> read one of your conversations with the assistant.
+
+Who:  <%= @review.reviewer.email %>
+When: <%= l(@review.reviewed_at, format: :long) %>
+Why:  <%= @review.reason %>
+
+This is an exceptional procedure: it needs a reason and a second factor, and it is written in the audit trail. It was not possible to read your conversations otherwise.
+If you do not understand why it was done, ask the owner.

@@ -6,6 +6,10 @@
       <h2 class="mx-2 min-w-0 flex-1 truncate text-center text-sm font-semibold text-gray-900"><%= @conversation.title.presence || "New conversation" %></h2>
     </div>
 
+    <% @reviews.each do |review| %>
+      <p class="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900"><%= review.reviewer.email %> read this conversation on <%= l(review.reviewed_at, format: :short) %>, for this reason: “<%= review.reason %>”.</p>
+    <% end %>
+
     <details class="border-b border-gray-100 px-4 py-2 text-xs text-gray-600">
       <summary class="cursor-pointer font-medium text-gray-700">What the agent knows</summary>
       <dl class="mt-2 space-y-1">
