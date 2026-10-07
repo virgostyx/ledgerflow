@@ -23,5 +23,11 @@ export default class extends Controller {
     if (event.detail.success) this.inputTarget.value = ""
   }
 
+  // A question to start from: put in the box, ready to be sent or changed.
+  fill(event) {
+    this.inputTarget.value = event.currentTarget.dataset.text
+    this.inputTarget.focus()
+  }
+
   scroll() { this.messagesTarget.scrollTop = this.messagesTarget.scrollHeight }
 }

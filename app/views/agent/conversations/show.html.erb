@@ -22,17 +22,21 @@
     </details>
 
     <div id="agent_conversation_<%= @conversation.id %>_messages" role="log" aria-live="polite" aria-label="Conversation" class="flex-1 space-y-3 overflow-y-auto px-4 py-3" data-agent-composer-target="messages">
-      <% if @messages.empty? %>
+      <% if @messages.empty? && flash[:pending_question].blank? %>
         <div class="text-sm text-gray-500">
           <p class="mb-2">Ask a question about the books of this entity. For example:</p>
-          <ul class="list-disc space-y-1 pl-5">
-            <li>What is the balance of account 400?</li>
-            <li>Which customers are more than 60 days late?</li>
-            <li>Are there anomalies to fix before the closing?</li>
+          <ul class="space-y-1">
+            <% Agent::Examples.for(@conversation.origin_screen).each do |example| %>
+              <li><button type="button" data-action="agent-composer#fill" data-text="<%= example %>" class="text-left text-indigo-700 hover:underline"><%= example %></button></li>
+            <% end %>
           </ul>
         </div>
       <% end %>
       <%= render partial: "agent/messages/message", collection: @messages, as: :message %>
+      <% if flash[:pending_question].present? %>
+        <%= render "agent/messages/user_bubble", text: flash[:pending_question] %>
+        <%= render "agent/messages/live", conversation: @conversation %>
+      <% end %>
     </div>
 
     <div id="agent_conversation_<%= @conversation.id %>_error" class="px-4 text-sm text-red-600" role="alert"></div>

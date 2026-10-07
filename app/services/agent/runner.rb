@@ -30,6 +30,9 @@ class Agent::Runner
     @security = Agent::Security.new(conversation: @conversation, context: @context)
     @manifest = Agent::Manifest.current
     messages = history + [ { role: "user", content: question } ]
+    @anchors = Agent::Anchors.new(question: question, earlier_answers: @conversation.messages.where(role: "assistant", status: "complete").map(&:content))
+    @known_refs = Set.new(@conversation.messages.where(role: "assistant").pluck(:citations).flatten.map { |citation| citation["ref"] })
+    @regenerated = false
     @conversation.messages.create!(role: "user", content: question)
 
     finish(*run(messages))
@@ -46,6 +49,10 @@ class Agent::Runner
 
       response = ask_model(messages)
       turns += 1
+      if response.stop_reason != "tool_use" && regenerate?(response)
+        messages << { role: "assistant", content: response.content.map { |block| normalise(block) } } << { role: "user", content: correction_for(response) }
+        next
+      end
       @texts << response.text if response.text.present?
       return [ :complete, nil ] unless response.stop_reason == "tool_use"
 
@@ -53,6 +60,25 @@ class Agent::Runner
       outcome = run_tools(response.tool_uses, messages)
       return outcome if outcome
     end
+  end
+
+  # An answer with an amount that no tool gave is asked again, once, with what is wrong; the draft is not kept.
+  def regenerate?(response)
+    stray = stray_amounts(response)
+    return false if stray.empty? || @regenerated
+
+    @regenerated = true
+    @security.event(:unanchored_amount, excerpt: "regenerated: #{stray.join(', ')}")
+    emit(type: :restart)
+    true
+  end
+
+  # What would be shown of the answer: an amount inside a link or a key that is taken out does not count.
+  def stray_amounts(response) = @anchors.unanchored(Agent::ResponseGuard.clean(response.text).first)
+
+  def correction_for(response)
+    "These amounts in your answer were not given by any tool: #{stray_amounts(response).join(', ')}. Correct your answer: use only the amounts the tools returned (use the calculate tool for any sum, " \
+      "difference or percentage), or say that you cannot establish them."
   end
 
   def ask_model(messages)
@@ -85,28 +111,56 @@ class Agent::Runner
     input = reveal(call[:input].to_h.deep_stringify_keys) # the model only knows tokens: the tool needs the real value
     emit(type: :tool_start, name: call[:name], input: input)
     began = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    result = @registry.execute(call[:name], input, @context, security: @security)
+    result = execute(call[:name], input)
     error = result["error"]
+    @anchors.add_result(result.to_json) unless error
+    @known_refs.merge(Agent::Refs.in_result(result)) unless error
     @tool_calls += 1
     @tool_errors = error ? @tool_errors + 1 : 0
     duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round
-    @tool_log << { tool: call[:name], arguments: input.to_json, status: error ? "error" : "ok", error: error, row_count: result["row_count"], truncated: result["truncated"] == true, duration_ms: duration_ms }
+    @tool_log << { tool: call[:name], arguments: input.to_json, status: error ? "error" : "ok", error: error, row_count: result["row_count"], truncated: result["truncated"] == true, duration_ms: duration_ms,
+                 result_digest: (Digest::SHA256.hexdigest(result.to_json) unless error), result_amounts: (error ? [] : Agent::Amounts.of(result.to_json)) }
     emit(type: :tool_end, name: call[:name], error: error, duration_ms: duration_ms)
     { type: "tool_result", tool_use_id: call[:id], content: result.to_json, is_error: error.present? }
+  end
+
+  # A calculation of amounts that no tool gave is refused: the agent computes on what it was shown, not on what it made up.
+  def execute(name, input)
+    unanchored = name == "calculate" ? @anchors.unanchored_inputs(Array(input["values"]), operation: input["operation"]) : []
+    if unanchored.any?
+      @security.event(:unanchored_amount, tool: name, excerpt: "calculation refused: #{unanchored.join(', ')}")
+      return { "error" => "invalid_arguments", "message" => "These amounts were not given by any tool: #{unanchored.join(', ')}. Read them with the report tools first." }
+    end
+
+    @registry.execute(name, input, @context, security: @security)
   end
 
   def finish(status, notice)
     content, removed = Agent::ResponseGuard.clean((@texts + [ notice ]).compact.join("\n\n"))
     removed.each { |kind| @security.event(kind) }
     @security.flag("content_removed") if removed.any?
+    content, citations, invalid = Agent::Citations.resolve(content, @known_refs)
+    invalid.each { |ref| @security.event(:invalid_citation, excerpt: ref) }
+    @security.flag("unverified_sources") if invalid.any?
+    content = mark_unverified(content)
     @security.event(:limit_reached) if notice == LIMIT_NOTICE
     @conversation.pseudonym_table.unknown_tokens(content).each { |token| @security.event(:invented_token, excerpt: token) }
-    message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms, flags: @security.flags, manifest_hash: @manifest.hash_value,
+    message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms, flags: @security.flags, manifest_hash: @manifest.hash_value, citations: citations, ledger_version: (Agent::LedgerVersion.current if @tool_log.any?),
                                              redaction_stats: @redaction.transform_values(&:to_h), sent_payload: @sent&.to_json,
                                              input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])
     record_tool_calls(message)
     emit(type: :done, message: message)
     message
+  end
+
+  # An amount that no source gave, still there after the one new try, is shown for what it is: marked in the text, flagged, recorded.
+  def mark_unverified(content)
+    stray = @anchors.unanchored(content)
+    return content if stray.empty?
+
+    @security.flag("unverified_figures")
+    @security.event(:unanchored_amount, excerpt: "shown as unverified: #{stray.join(', ')}")
+    Agent::Amounts.spans(content).reverse.reduce(content.dup) { |text, (position, length, amount)| stray.include?(amount) ? text.insert(position + length, " [unverified figure]") : text }
   end
 
   # Each call is kept on the answer it served and written in the entity's audit trail: the tool and the outcome, never the arguments (they are in the encrypted table).

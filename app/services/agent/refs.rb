@@ -20,6 +20,33 @@ module Agent::Refs
     "kpi"     => ->(routes, *)             { routes.accounting_root_path }
   }.freeze
 
+  # A calculation of the agent has a reference too (calc:…) so that its result can be cited, but there is no screen to open: it is its inputs, each cited, that can be looked at.
+  def self.computed?(ref) = ref.to_s.start_with?("calc:")
+
+  # What a reference stands for, in words, from its parts alone (no lookup: it is shown on hover and in the list of sources).
+  def self.label(ref)
+    type, *parts = ref.to_s.split(":", -1)
+    case type
+    when "entry"   then "Entry ##{parts[0]}"
+    when "partner" then "Partner ##{parts[0]}"
+    when "account" then "Account ##{parts[0]}"
+    when "doc"     then "Document ##{parts[0]}"
+    when "vat"     then "VAT declaration ##{parts[0]}"
+    when "audit"   then "Audit event ##{parts[0]}"
+    when "R01"     then "Trial balance as of #{parts[1]}"
+    when "R02"     then "Ledger of account ##{parts[1]}, #{parts[2].to_s.sub('..', ' to ')}"
+    when "R04"     then "Aged balance (#{parts[1]}s) as of #{parts[0]}, #{parts[2] == 'total' ? 'total' : "partner #{parts[2]}"}"
+    when "R05"     then "Open lines (#{parts[1]}) as of #{parts[0]}"
+    when "R06"     then "Bank reconciliation of account ##{parts[0]} as of #{parts[1]}"
+    when "R07"     then "Balance sheet, fiscal year ##{parts[0]}"
+    when "R08"     then "Income statement, fiscal year ##{parts[0]}"
+    when "R09"     then "VAT grids #{parts[1].to_s.sub('..', ' to ')}"
+    when "R19"     then "Consistency findings"
+    when "kpi"     then "Indicator #{parts[0].to_s.tr('_', ' ')}"
+    when "calc"    then "Calculation"
+    end
+  end
+
   def self.build(type, *parts) = [ type, *parts ].map(&:to_s).join(":")
 
   # The path a reference opens, or nil for a reference this table does not know (a forged or mistyped one).

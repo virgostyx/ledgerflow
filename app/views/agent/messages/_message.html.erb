@@ -6,8 +6,35 @@
     <% if message.flags.include?("content_removed") %><p class="mb-1 text-xs text-amber-700">A link or a key was removed from this answer.</p><% end %>
     <% if message.stopped? %><p class="mb-1 text-xs font-medium text-amber-700">Stopped before the end</p><% end %>
     <div class="[&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_table]:w-full [&_table]:text-xs [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_code]:rounded [&_code]:bg-gray-100 [&_code]:px-1">
-      <%= Agent::MarkdownRenderer.html(message.conversation.reveal(message.content)) %>
+      <%= Agent::MarkdownRenderer.html(message.conversation.reveal(message.content), citations: message.citations) %>
     </div>
+    <% if message.flags.include?("unverified_figures") %><p class="mt-2 text-xs text-red-700">A figure of this answer could not be checked against the books: it is marked “[unverified figure]”. Do not rely on it.</p><% end %>
+    <% if message.flags.include?("unverified_sources") %><p class="mt-2 text-xs text-amber-700">A source cited by the assistant does not exist: it is marked “[unverified source]”.</p><% end %>
+    <% if message.citations.any? %>
+      <div class="mt-2 border-t border-gray-100 pt-2 text-xs text-gray-600">
+        <p class="font-medium text-gray-700">Sources</p>
+        <ol class="mt-1 space-y-0.5">
+          <% message.citations.each do |citation| %>
+            <% path = citation["computed"] ? nil : Agent::Refs.path(citation["ref"]) %>
+            <li>[<%= citation["n"] %>] <%= path ? link_to(citation["label"], path, class: "text-indigo-700 hover:underline") : "#{citation['label']} (calculated from the figures cited above)" %></li>
+          <% end %>
+        </ol>
+      </div>
+    <% end %>
+    <% if message.tool_calls.any? { |call| call.status == "ok" } %>
+      <div class="mt-2 text-xs"><%= button_to "Check", verify_agent_conversation_message_path(message.conversation_id, message), class: "rounded border border-gray-300 px-2 py-0.5 text-gray-700 hover:bg-gray-50" %></div>
+      <div id="agent_message_<%= message.id %>_verification" class="text-xs" aria-live="polite"></div>
+    <% end %>
+    <% if message.tool_calls.any? %>
+      <details class="mt-2 text-xs text-gray-600">
+        <summary class="cursor-pointer text-indigo-700">How I got these figures</summary>
+        <ul class="mt-1 space-y-1">
+          <% message.tool_calls.sort_by(&:id).each do |call| %>
+            <li><span class="font-mono"><%= call.tool %></span> <%= call.arguments.present? ? JSON.parse(call.arguments).to_a.map { |key, value| "#{key}: #{value}" }.join(", ") : "" %> — <%= call.status == "ok" ? "#{call.row_count || 0} row(s)#{', partial' if call.truncated}" : "refused (#{call.error})" %></li>
+          <% end %>
+        </ul>
+      </details>
+    <% end %>
     <div id="agent_message_<%= message.id %>_feedback" class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
       <% if message.sent_payload.present? %><%= link_to "See what was sent", sent_agent_conversation_message_path(message.conversation_id, message), class: "text-indigo-700 hover:underline" %><% end %>
       <%= button_to "Useful", agent_conversation_message_feedback_path(message.conversation_id, message), params: { rating: "useful" }, class: "rounded border border-gray-300 px-2 py-0.5 hover:bg-gray-50" %>

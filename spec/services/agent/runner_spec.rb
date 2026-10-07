@@ -231,6 +231,111 @@ RSpec.describe Agent::Runner do
     end
   end
 
+  describe "the sources and the figures of an answer (A05)" do
+    let(:registry) { Agent::ToolRegistry.default }
+    let!(:partner) { create(:partner, name: "Acme Industries SA", is_natural_person: false, city: "Namur") }
+    let(:total) { Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: [ { type: "tool_use", id: "t1", name: "get_dashboard_kpis", input: { "kpi" => "revenue_ytd" } } ]) }
+
+    def play(script, question: "How is revenue?", &block)
+      @gateway = Agent::FakeGateway.new(script)
+      described_class.new(conversation: conversation, context: context, gateway: @gateway, registry: registry).ask(question, &block)
+    end
+
+    def calc(id, operation, values) = Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: [ { type: "tool_use", id: id, name: "calculate", input: { "operation" => operation, "values" => values } } ])
+
+    before { create(:fiscal_year, status: :open) } # the indicators read a fiscal year
+
+    it "keeps the sources the answer cites, numbered, when a tool gave them" do
+      answer = play([ total, text("Revenue year to date is 0.00 EUR [[ref:kpi:revenue_ytd]].") ])
+
+      expect(answer.content).to eq("Revenue year to date is 0.00 EUR [[ref:kpi:revenue_ytd]].")
+      expect(answer.citations).to eq([ { "n" => 1, "ref" => "kpi:revenue_ytd", "label" => "Indicator revenue ytd", "computed" => false } ])
+    end
+
+    it "replaces a source that no tool gave, flags the answer and records it" do
+      answer = play([ total, text("Revenue is 0.00 EUR [[ref:entry:999]] and [[ref:kpi:revenue_ytd]].") ])
+
+      expect(answer.content).to eq("Revenue is 0.00 EUR [unverified source] and [[ref:kpi:revenue_ytd]].")
+      expect(answer.flags).to include("unverified_sources")
+      expect(Agent::SecurityEvent.where(conversation: conversation, kind: "invalid_citation").count).to eq(1)
+    end
+
+    it "lets an answer cite a source an earlier answer of the conversation had" do
+      play([ total, text("It is 0.00 [[ref:kpi:revenue_ytd]].") ])
+
+      later = play([ text("As said, [[ref:kpi:revenue_ytd]].") ], question: "Again?")
+
+      expect(later.citations.map { |c| c["ref"] }).to eq([ "kpi:revenue_ytd" ])
+    end
+
+    it "leaves an answer whose amounts all come from a tool, the question or an earlier answer without a word" do
+      answer = play([ total, text("It is 0.00 EUR, as the 50.00 you mention does not change that.") ], question: "Is it 50.00?")
+
+      expect(answer.flags).to eq([])
+      expect(Agent::SecurityEvent.where(kind: "unanchored_amount")).to be_empty
+    end
+
+    it "asks again, once, an answer with an amount that no tool gave: the draft is dropped, the correction asked for is sent, and the second answer stands" do
+      events = []
+      answer = play([ total, text("Revenue is 9999.99 EUR."), text("Revenue is 0.00 EUR.") ]) { |event| events << event[:type] }
+
+      expect(answer.content).to eq("Revenue is 0.00 EUR.")
+      expect(answer.flags).to eq([])
+      expect(@gateway.requests.last[:messages].last).to include(role: "user")
+      expect(@gateway.requests.last[:messages].last[:content]).to include("9999.99", "calculate")
+      expect(events).to include(:restart)
+      expect(Agent::SecurityEvent.where(kind: "unanchored_amount").pluck(:excerpt).join).to include("regenerated")
+    end
+
+    it "shows the amount for what it is when the second answer has it still: marked in the text, flagged, recorded" do
+      answer = play([ total, text("Revenue is 9999.99 EUR."), text("Revenue is 8888.88 EUR and 9999.99 EUR.") ])
+
+      expect(answer.content).to eq("Revenue is 8888.88 [unverified figure] EUR and 9999.99 [unverified figure] EUR.")
+      expect(answer.flags).to include("unverified_figures")
+      expect(Agent::SecurityEvent.where(kind: "unanchored_amount").pluck(:excerpt).join).to include("shown as unverified")
+    end
+
+    it "calculates on amounts a tool gave, and the result is anchored and citable like a figure of a report" do
+      ref = "calc:#{Digest::SHA256.hexdigest(%w[sum 0.00 0.00 2].join('|'))[0, 12]}"
+
+      answer = play([ total, calc("c1", "sum", %w[0.00 0.00]), text("The two together make 0.00 EUR [[ref:#{ref}]].") ])
+
+      expect(Agent::ToolCall.where(tool: "calculate").last.status).to eq("ok")
+      expect(answer.citations).to eq([ { "n" => 1, "ref" => ref, "label" => "Calculation", "computed" => true } ])
+      expect(answer.flags).to eq([])
+    end
+
+    it "refuses a calculation on amounts that no tool gave, tells the model, and records it" do
+      answer = play([ calc("c1", "sum", [ "123.45", "10.00" ]), text("I cannot establish that.") ])
+
+      call = Agent::ToolCall.where(tool: "calculate").last
+      expect(call).to have_attributes(status: "error", error: "invalid_arguments")
+      expect(@gateway.requests.last[:messages].last[:content].first[:content]).to include("123.45", "report tools first")
+      expect(Agent::SecurityEvent.where(kind: "unanchored_amount").pluck(:tool, :excerpt).flatten.join).to include("calculate", "calculation refused")
+      expect(answer.content).to eq("I cannot establish that.")
+    end
+
+    it "lets a rate be the second factor of a multiplication" do
+      answer = play([ total, calc("c1", "multiply", [ "0.00", "0.21" ]), text("The VAT is 0.00 EUR.") ])
+
+      expect(Agent::ToolCall.where(tool: "calculate").last.status).to eq("ok")
+      expect(answer.flags).to eq([])
+    end
+
+    it "keeps what a check needs: the state of the books, and for each call a fingerprint of the result and the amounts it gave" do
+      answer = play([ total, text("It is 0.00 EUR.") ])
+
+      expect(answer.ledger_version).to eq(Agent::LedgerVersion.current)
+      call = answer.tool_calls.first
+      expect(call.result_digest).to match(/\A\h{64}\z/)
+      expect(call.result_amounts).to include("0.00")
+    end
+
+    it "keeps no state of the books for an answer that used no tool" do
+      expect(play([ text("Hello.") ], question: "Hi").ledger_version).to be_nil
+    end
+  end
+
   describe "the record of the tool calls" do
     it "keeps each call with the tool, the arguments (encrypted), the outcome and the time, on the answer it belongs to" do
       answer = runner([ tool_use("t1"), text("ok") ]).ask("Q")

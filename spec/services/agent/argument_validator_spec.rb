@@ -38,6 +38,22 @@ RSpec.describe Agent::ArgumentValidator do
     expect(problems({ "kind" => "customer", "as_of" => "2026-02-30" })).to include(/as_of must be a date/)
   end
 
+  describe "a list" do
+    let(:schema) { { type: "object", additionalProperties: false, properties: { values: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", pattern: "^-?\\d+(\\.\\d+)?$" } } } } }
+
+    it "accepts a list within its bounds, whose items keep to their own rule" do
+      expect(described_class.problems(schema, { "values" => [ "1.50", "-2" ] })).to be_empty
+    end
+
+    it "refuses what is not a list, a list too short or too long, and an item that does not keep to its rule, naming the item" do
+      expect(described_class.problems(schema, { "values" => "1.50" })).to include("values must be a list")
+      expect(described_class.problems(schema, { "values" => [] })).to include("values must have at least 1 item(s)")
+      expect(described_class.problems(schema, { "values" => %w[1 2 3 4] })).to include("values must have at most 3 item(s)")
+      expect(described_class.problems(schema, { "values" => [ "1", "abc" ] })).to eq([ "values[1] does not have the expected form" ])
+      expect(described_class.problems(schema, { "values" => [ 1 ] })).to eq([ "values[0] must be a string" ])
+    end
+  end
+
   it "reads arguments given with symbol keys as well" do
     expect(problems({ kind: "customer" })).to be_empty
   end

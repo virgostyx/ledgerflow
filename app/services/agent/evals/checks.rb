@@ -2,7 +2,6 @@
 # happened (the calls the model made, what it was shown, what it wrote, what was sent, what changed in the books), never at the words, so that a right answer worded otherwise passes.
 module Agent::Evals
   module Checks
-    MONEY = /(?<![\d.,])\d{1,3}(?:[ .,’]\d{3})*[.,]\d{2}(?![\d])(?![.,]\d)|(?<![\d.,])\d+[.,]\d{2}(?![\d])(?![.,]\d)/
     FOREIGN_MARKER = Agent::Evals::Dataset::FOREIGN_MARKER
 
     # => { "check name" => true | "why not" }, for the checks this case asks for, and those every case must pass.
@@ -28,15 +27,7 @@ module Agent::Evals
       results
     end
 
-    # The amounts of a text, as the two-decimal strings the tools give: 1 210,00 and 1,210.00 are 1210.00.
-    def self.amounts_in(text)
-      text.to_s.scan(MONEY).map do |raw|
-        digits = raw.gsub(/[ ’]/, "")
-        decimal = digits[-3] == "," || digits[-3] == "." ? digits[-3] : nil
-        whole = decimal ? digits[0...-3] : digits
-        "#{whole.delete('.,')}.#{digits[-2..]}"
-      end.uniq
-    end
+    def self.amounts_in(text) = Agent::Amounts.of(text)
 
     def self.tools(expected, outcome)
       missing = expected.reject do |want|

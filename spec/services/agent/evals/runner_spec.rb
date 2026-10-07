@@ -5,10 +5,11 @@ require "rake"
 RSpec.describe Agent::Evals::Runner do
   def run(**args) = described_class.new(**args).call
 
+  # `say`: what the scripted model answers; several texts are the successive tries (an answer with an amount that no tool gave is asked again once).
   def tiny_case_file(extra = {}, say: "At 30/09/2026 the balance is 4598.00 EUR.")
     file = Tempfile.new([ "cases", ".yml" ])
     file.write([ { "id" => "X-1", "capability" => "A05", "tags" => [ "figures" ], "role" => "accountant", "source" => "reference_dataset", "input" => "What is the balance of account 400000?",
-                   "script" => [ { "tool" => "get_trial_balance", "args" => { "account_prefix" => "400000" } }, { "say" => say } ],
+                   "script" => [ { "tool" => "get_trial_balance", "args" => { "account_prefix" => "400000" } } ] + Array(say).map { |text| { "say" => text } },
                    "expect" => { "tools" => [ { "name" => "get_trial_balance" } ], "amounts" => [ "{{facts.customers_total}}" ] } }.merge(extra) ].to_yaml)
     file.flush
     (@tempfiles ||= []) << file # a Tempfile that is no longer referenced is deleted
@@ -88,7 +89,7 @@ RSpec.describe Agent::Evals::Runner do
     end
 
     it "plays each case three times, and keeps a case that passes two times in three, saying that it is unstable" do
-      script_says.replace([ "It is 9999.00 EUR.", "At 30/09/2026 the balance is 4598.00 EUR.", "At 30/09/2026 the balance is 4598.00 EUR." ])
+      script_says.replace([ "It is 9999.00 EUR.", "It is 9999.00 EUR.", "At 30/09/2026 the balance is 4598.00 EUR.", "At 30/09/2026 the balance is 4598.00 EUR." ])
 
       run = run(mode: :real, files: [ tiny_case_file.path ])
 
@@ -99,7 +100,7 @@ RSpec.describe Agent::Evals::Runner do
     end
 
     it "counts an amount nobody gave as a failure of the zero-tolerance counter, whatever the other attempts say" do
-      script_says.replace([ "It is 9999.00 EUR.", "At 30/09/2026 the balance is 4598.00 EUR.", "At 30/09/2026 the balance is 4598.00 EUR." ])
+      script_says.replace([ "It is 9999.00 EUR.", "It is 9999.00 EUR.", "At 30/09/2026 the balance is 4598.00 EUR.", "At 30/09/2026 the balance is 4598.00 EUR." ])
 
       run = run(mode: :real, files: [ tiny_case_file.path ])
 
@@ -126,7 +127,7 @@ RSpec.describe Agent::Evals::Runner do
   describe "the gates" do
     it "fail the run when a rate falls by more than two points against the run before, even above its floor" do
       Agent::EvalRun.create!(mode: "simulated", scope: "A05", manifest_hash: "x", status: "complete", started_at: 1.day.ago, finished_at: 1.day.ago, metrics: { "overall" => 1.0, "figures_exact" => 1.0 })
-      file = tiny_case_file({}, say: "It is 9999.00 EUR.") # a case that fails now
+      file = tiny_case_file({}, say: [ "It is 9999.00 EUR.", "It is 9999.00 EUR." ]) # a case that fails now
 
       run = run(scope: "A05", files: [ file.path ])
 
@@ -137,7 +138,7 @@ RSpec.describe Agent::Evals::Runner do
       Agent::EvalRun.create!(mode: "real", scope: "A05", manifest_hash: "x", status: "complete", started_at: 1.day.ago, finished_at: 1.day.ago, metrics: { "overall" => 1.0 })
       Agent::EvalRun.create!(mode: "simulated", scope: "A05", manifest_hash: "x", status: "budget_exceeded", started_at: 1.day.ago, finished_at: 1.day.ago, metrics: { "overall" => 1.0 })
 
-      run = run(scope: "A05", files: [ tiny_case_file({}, say: "It is 9999.00 EUR.").path ])
+      run = run(scope: "A05", files: [ tiny_case_file({}, say: [ "It is 9999.00 EUR.", "It is 9999.00 EUR." ]).path ])
 
       expect(run.metrics["gate_failures"].join).not_to include("fell")
     end
@@ -182,7 +183,7 @@ RSpec.describe Agent::Evals::Runner do
 
   describe "the report" do
     it "says what failed and why, in words" do
-      run = run(scope: "A05", files: [ tiny_case_file({}, say: "It is 9999.00 EUR.").path ])
+      run = run(scope: "A05", files: [ tiny_case_file({}, say: [ "It is 9999.00 EUR.", "It is 9999.00 EUR." ]).path ])
 
       expect(Agent::Evals::Report.new(run).to_s).to include("FAILED X-1", "anchored: amounts in the answer that no tool gave: 9999.00", "GATES FAILED")
     end

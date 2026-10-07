@@ -9,7 +9,7 @@ RSpec.describe "The rights of the agent's tools" do
     "get_company_context" => {}, "search_accounts" => { "q" => "4" }, "search_partners" => { "q" => "a" }, "get_journal_entry" => { "id" => 1 },
     "get_trial_balance" => {}, "get_ledger" => { "account" => "400000" }, "get_aged_balance" => { "kind" => "customer" }, "list_unreconciled" => {},
     "get_bank_reconciliation" => {}, "get_financial_statements" => { "statement" => "income" }, "get_vat_return" => { "period_start" => "2026-01-01", "period_end" => "2026-03-31" },
-    "get_dashboard_kpis" => {}, "get_consistency_findings" => {}, "get_audit_trail" => {}, "search_documents" => { "q" => "a" }
+    "get_dashboard_kpis" => {}, "get_consistency_findings" => {}, "get_audit_trail" => {}, "search_documents" => { "q" => "a" }, "calculate" => { "operation" => "sum", "values" => [ "1.00" ] }
   }.freeze
 
   let(:registry) { Agent::ToolRegistry.default }

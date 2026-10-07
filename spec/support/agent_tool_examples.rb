@@ -48,7 +48,7 @@ RSpec.shared_examples "an agent tool" do |permission:, denied_role: nil|
     refs = Agent::Refs.in_result(registry.execute(tool.tool_name, valid_args, context))
 
     expect(refs).not_to be_empty
-    expect(refs.map { |ref| Agent::Refs.path(ref) }).to all(be_present)
+    expect(refs.map { |ref| Agent::Refs.path(ref) || (ref if Agent::Refs.computed?(ref)) }).to all(be_present) # a calculation has no screen, only its inputs
   end
 
   it "classes the data it returns, so that the redactor knows what it handles" do

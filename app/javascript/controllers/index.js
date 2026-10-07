@@ -83,3 +83,6 @@ application.register("agent-panel", AgentPanelController)
 
 import AgentComposerController from "controllers/agent_composer_controller"
 application.register("agent-composer", AgentComposerController)
+
+import AgentExplainController from "controllers/agent_explain_controller"
+application.register("agent-explain", AgentExplainController)

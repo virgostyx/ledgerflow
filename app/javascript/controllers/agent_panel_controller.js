@@ -7,6 +7,7 @@ export default class extends Controller {
   toggle() { this.drawerTarget.hidden ? this.open() : this.close() }
 
   open() {
+    if (!this.drawerTarget.hidden) return
     this.drawerTarget.hidden = false
     this.buttonTarget.setAttribute("aria-expanded", "true")
     ;(this.drawerTarget.querySelector("textarea") || this.closeTarget).focus()

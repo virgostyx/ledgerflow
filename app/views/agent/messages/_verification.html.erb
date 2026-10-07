@@ -1,0 +1,17 @@
+<% if result.valid? %>
+  <p class="text-green-700">Still valid: the books give the same figures as when this answer was written<%= result.books_moved ? ", although other entries have been validated since" : "" %>.</p>
+<% else %>
+  <div class="text-amber-800">
+    <p class="font-medium">The data has changed since this answer was written. Ask again to get the figures of today.</p>
+    <ul class="mt-1 list-disc space-y-0.5 pl-5">
+      <% result.changes.each do |change| %>
+        <li>
+          <span class="font-mono"><%= change.tool %></span> <%= change.arguments.map { |key, value| "#{key}: #{value}" }.join(", ") %> —
+          <% if change.error %>could not be checked now (<%= change.error %>).<% else %>
+            <%= "now also gives #{change.added.join(', ')}" if change.added.any? %><%= "; " if change.added.any? && change.removed.any? %><%= "no longer gives #{change.removed.join(', ')}" if change.removed.any? %>.
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

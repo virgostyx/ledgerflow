@@ -1,0 +1,6 @@
+<%# "Explain" on a cell of a report (A05): opens the panel on a conversation about this figure, with the reference of the cell, and asks the assistant to explain it. %>
+<% if agent_available? %>
+  <%= button_to "Explain", agent_conversations_path, params: { subject_type: subject_type, subject_id: subject_id, screen: "#{controller_path}##{action_name}", explain: "1" },
+        form: { class: "inline", data: { turbo_frame: "agent_panel", controller: "agent-explain", action: "submit->agent-explain#open" } },
+        class: "ml-2 text-xs text-indigo-700 hover:underline cursor-pointer", title: "Ask the assistant to explain this figure", aria: { label: "Explain this figure to me" } %>
+<% end %>

@@ -25,6 +25,7 @@ class Agent::AnswerJob < ApplicationJob
   def show(conversation, event)
     case event[:type]
     when :text       then Turbo::StreamsChannel.broadcast_append_to(conversation, target: dom(conversation, "live_text"), html: ERB::Util.html_escape(conversation.reveal(event[:text])).to_s)
+    when :restart    then Turbo::StreamsChannel.broadcast_update_to(conversation, target: dom(conversation, "live_text"), html: "") # the draft is asked again: what was shown goes
     when :tool_start then Turbo::StreamsChannel.broadcast_append_to(conversation, target: dom(conversation, "live_steps"), partial: "agent/messages/step", locals: { name: event[:name] })
     when :done       then Turbo::StreamsChannel.broadcast_replace_to(conversation, target: dom(conversation, "live"), partial: "agent/messages/message", locals: { message: event[:message] })
     end

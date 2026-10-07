@@ -2999,7 +2999,9 @@ CREATE TABLE public.agent_messages (
     updated_at timestamp(6) without time zone NOT NULL,
     flags jsonb DEFAULT '[]'::jsonb NOT NULL,
     redaction_stats jsonb DEFAULT '{}'::jsonb NOT NULL,
-    sent_payload text
+    sent_payload text,
+    citations jsonb DEFAULT '[]'::jsonb NOT NULL,
+    ledger_version character varying
 );
 
 
@@ -3142,7 +3144,9 @@ CREATE TABLE public.agent_tool_calls (
     truncated boolean DEFAULT false NOT NULL,
     duration_ms integer,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    result_digest character varying,
+    result_amounts jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -10821,6 +10825,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261007110000'),
 ('20261007100000'),
 ('20261007090000'),
 ('20261006130000'),

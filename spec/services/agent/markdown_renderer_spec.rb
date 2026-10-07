@@ -26,6 +26,23 @@ RSpec.describe Agent::MarkdownRenderer do
     expect(html).to include("click")
   end
 
+  describe "the sources of an answer" do
+    let(:citations) { [ { "n" => 1, "ref" => "entry:12", "label" => "Entry #12", "computed" => false } ] }
+
+    it "turns a marker into a link built by the application, after the sanitizing, to the screen of the source" do
+      html = described_class.html("Total 10.00 EUR [[ref:entry:12]].", citations: citations)
+
+      expect(html).to include('<a href="/accounting/journal_entries/12"', ">[1]</a>")
+    end
+
+    it "gives no link to what the model wrote itself: a marker that is not a resolved source shows as unverified, and an address stays dead" do
+      html = described_class.html("See [[ref:entry:999]] and [click](http://evil.example)", citations: citations)
+
+      expect(html).to include("[unverified source]")
+      expect(html).not_to include("evil.example", "<a ")
+    end
+  end
+
   it "is html_safe only after sanitizing, and empty for no text" do
     expect(render("x")).to be_html_safe
     expect(render(nil)).to eq("")

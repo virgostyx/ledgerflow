@@ -32,6 +32,16 @@ class Agent::MessagesController < Agent::BaseController
     @payload = @message.sent_payload.present? ? JSON.parse(@message.sent_payload) : nil
   end
 
+  # "Check": the tool calls of an answer replayed, to say whether the figures are still the ones the books give.
+  def verify
+    @message = find_conversation.messages.assistant.find(params[:id])
+    @result = Agent::Verification.call(message: @message, context: agent_context)
+    respond_to do |format|
+      format.turbo_stream { render turbo_stream: turbo_stream.update("agent_message_#{@message.id}_verification", partial: "agent/messages/verification", locals: { message: @message, result: @result }) }
+      format.html { render partial: "agent/messages/verification", locals: { message: @message, result: @result } }
+    end
+  end
+
   private
 
   # A message that holds what must not leave as it is: the person is told, and chooses (unless it can never go).

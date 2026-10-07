@@ -67,7 +67,7 @@
             <% (Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated]).each do |col| %>
               <td class="px-4 py-2 text-right"><%= number_to_currency(row[col], unit: "€") %></td>
             <% end %>
-            <td class="px-4 py-2 text-right font-semibold"><%= number_to_currency(row.total, unit: "€") %></td>
+            <td class="px-4 py-2 text-right font-semibold"><%= number_to_currency(row.total, unit: "€") %><%= render "agent/explain_button", subject_type: "R04", subject_id: "#{@as_of.iso8601}:#{@kind}:#{row.partner_id}" if row.partner_id %></td>
             <td class="px-4 py-2 text-right"><%= number_to_currency(row.overdue, unit: "€") %></td>
             <td class="px-4 py-2 text-right"><%= row.overdue_pct.nil? ? "" : number_to_percentage(row.overdue_pct, precision: 1) %></td>
           </tr>

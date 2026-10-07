@@ -58,6 +58,7 @@ Rails.application.routes.draw do
       resource :stop, only: :create
       resources :messages, only: :create do
         get :sent, on: :member
+        post :verify, on: :member
         resource :feedback, only: :create
       end
     end

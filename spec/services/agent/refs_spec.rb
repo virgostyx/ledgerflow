@@ -30,6 +30,21 @@ RSpec.describe Agent::Refs do
     expect(described_class.build("R04", "2026-09-26", "customer", "p-1")).to eq("R04:2026-09-26:customer:p-1")
   end
 
+  it "says what a reference stands for, in words, from its parts alone" do
+    {
+      "entry:12" => "Entry #12", "R04:2026-09-26:customer:p-1042" => "Aged balance (customers) as of 2026-09-26, partner p-1042", "R04:2026-09-26:supplier:total" => "Aged balance (suppliers) as of 2026-09-26, total",
+      "R01:2:2026-09-26" => "Trial balance as of 2026-09-26", "R02:2:9:2026-01-01..2026-09-26" => "Ledger of account #9, 2026-01-01 to 2026-09-26", "R09:2:2026-07-01..2026-09-30" => "VAT grids 2026-07-01 to 2026-09-30",
+      "kpi:overdue_receivables" => "Indicator overdue receivables", "calc:ab12" => "Calculation"
+    }.each { |ref, label| expect(described_class.label(ref)).to eq(label) }
+    expect(described_class.label("evil:1")).to be_nil
+  end
+
+  it "knows a calculation, which opens no screen" do
+    expect(described_class.computed?("calc:ab12cd34")).to be true
+    expect(described_class.computed?("entry:1")).to be false
+    expect(described_class.path("calc:ab12cd34")).to be_nil
+  end
+
   it "opens nothing for a reference it does not know, a forged one, or one with nothing after its type" do
     expect(described_class.path("evil:1")).to be_nil
     expect(described_class.path("http://evil.example")).to be_nil

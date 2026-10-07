@@ -3,10 +3,12 @@
 module Agent::MarkdownRenderer
   TAGS = %w[p br strong em code pre ul ol li table thead tbody tr th td h3 h4 h5 blockquote].freeze
 
-  def self.html(text)
+  # `citations`: the sources of the answer (Agent::Citations): each `[[ref:…]]` becomes its number, a link built by the application. Done after the sanitizing, from the table of references only.
+  def self.html(text, citations: [])
     return "" if text.blank?
 
     rendered = Commonmarker.to_html(text.to_s, options: { extension: { table: true } })
-    ActionController::Base.helpers.sanitize(rendered, tags: TAGS, attributes: [])
+    sanitized = ActionController::Base.helpers.sanitize(rendered, tags: TAGS, attributes: [])
+    Agent::Citations.render(sanitized, citations).html_safe
   end
 end
