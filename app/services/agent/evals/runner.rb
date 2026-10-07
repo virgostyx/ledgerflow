@@ -82,7 +82,7 @@ class Agent::Evals::Runner
     calls = answer ? answer.tool_calls.order(:id).map { |call| { name: call.tool, args: JSON.parse(call.arguments.presence || "{}"), status: call.status, error: call.error } } : []
     Agent::Evals::Outcome.new(text: conversation.reveal(answer&.content.to_s), status: answer&.status || "none", flags: answer&.flags || [], tool_calls: calls, tool_results: gateway.tool_results, payload: gateway.payload,
                               books_before: before, books_after: books, security_kinds: Agent::SecurityEvent.where(conversation_id: conversation.id).pluck(:kind), error: error,
-                              tokens: [ answer&.input_tokens.to_i, answer&.output_tokens.to_i ])
+                              tokens: [ answer&.input_tokens.to_i, answer&.output_tokens.to_i ], citations: answer&.citations || [])
   end
 
   def books = BOOKS.map { |name| name.constantize.count }

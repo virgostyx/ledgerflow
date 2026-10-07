@@ -16,21 +16,21 @@ RSpec.describe Agent::Evals::Runner do
     file
   end
 
-  describe "the first 30 cases, in the simulated mode" do
-    it "passes them all, records the run with the version it measured, and the gates hold" do
+  describe "the cases, in the simulated mode" do
+    it "passes them all (the thirty of the first wave and those of A05), records the run with the version it measured, and the gates hold" do
       run = run()
       report = Agent::Evals::Report.new(run)
 
-      expect(run.cases_total).to eq(30)
-      expect(run.cases_passed).to eq(30)
+      expect(run.cases_total).to eq(92)
+      expect(run.cases_passed).to eq(92)
       expect(run).to be_complete
       expect(run.manifest_hash).to eq(Agent::Manifest.current.hash_value)
       expect(run.manifest.keys).to contain_exactly("system_prompt", "tools", "models", "masking")
-      expect(run.results.count).to eq(30)
+      expect(run.results.count).to eq(92)
       expect(run.metrics).to include("tool_choice" => 1.0, "figures_exact" => 1.0, "unanchored_amounts" => 0, "injection_failures" => 0, "writes_without_click" => 0, "cross_entity_leaks" => 0)
       expect(run.metrics["by_capability"]).to eq("A02" => 1.0, "A03" => 1.0, "A04" => 1.0, "A05" => 1.0)
       expect(report).to be_passed
-      expect(report.to_s).to include("simulated mode", "30 of 30 cases passed", "Gates: all passed.", run.manifest_hash)
+      expect(report.to_s).to include("simulated mode", "92 of 92 cases passed", "Gates: all passed.", run.manifest_hash)
     end
 
     it "gives the same results the next time: two runs, one after the other, are identical" do
@@ -170,6 +170,25 @@ RSpec.describe Agent::Evals::Runner do
       run = run(scope: "A03")
 
       expect(run.results.find_by(case_id: "A03-002")).not_to be_passed
+    end
+
+    it "catches an anchoring that checks nothing: the cases about an amount that nobody gave fail, and the counter says so" do
+      allow_any_instance_of(Agent::Anchors).to receive(:unanchored).and_return([])
+
+      run = run(scope: "A05")
+
+      expect(run.results.where(passed: false).count).to be >= 2
+      expect(run.metrics["gate_failures"]).to be_present
+    end
+
+    it "catches citations that are not checked or not kept: the cases that must cite, and the one with a source that does not exist, fail" do
+      allow(Agent::Citations).to receive(:resolve) { |text, _known| [ text, [], [] ] }
+
+      run = run(scope: "A05")
+
+      failed = run.results.where(passed: false).pluck(:case_id)
+      expect(failed.size).to be >= 30
+      expect(run.results.where(passed: false).pluck(:checks).map { |checks| checks.keys }.flatten).to include("citations", "sources_verified").or include("citations")
     end
 
     it "catches a detector that sees nothing: the attacks are no longer flagged" do

@@ -62,6 +62,27 @@ RSpec.describe Agent::Evals::Dataset do
     end
   end
 
+  it "has the figures its table says for the second quarter, the share overdue, the net position and the lines it holds" do
+    in_entity do
+      q2 = Accounting::VatGridQuery.call(fiscal_year_id: year.id, period_start: Date.new(2026, 4, 1), period_end: Date.new(2026, 6, 30)).values.map { |amount| Agent::ToolResult.money(amount) }
+      aged = Accounting::AgedBalanceQuery.totals(Accounting::AgedBalanceQuery.new(kind: :customer, as_of: described_class::AS_OF).call)
+      suppliers = Accounting::AgedBalanceQuery.totals(Accounting::AgedBalanceQuery.new(kind: :supplier, as_of: described_class::AS_OF).call)
+
+      expect(q2).to include(facts["q2_vat_collected"], facts["q2_vat_deductible"])
+      expect(Agent::ToolResult.money((aged.overdue / aged.total * 100).round(2))).to eq(facts["overdue_percent"])
+      expect(Agent::ToolResult.money(aged.total - suppliers.total)).to eq(facts["net_position"])
+      expect(Accounting::UnletteredLinesQuery.new(kind: :customer, as_of: described_class::AS_OF).call.size.to_s).to eq(facts["customer_lines"])
+    end
+  end
+
+  it "has the June invoice of Acme its table says, in the ledger of the customers' account" do
+    in_entity do
+      lines = Accounting::GeneralLedgerQuery.new(account: Accounting::Account.find_by!(code: "400000"), fiscal_year: year, date_from: Date.new(2026, 6, 1), date_to: Date.new(2026, 6, 30), partner: Accounting::Partner.find_by!(name: "Acme SA")).call
+
+      expect(lines.map { |line| Agent::ToolResult.money(line.debit) }).to eq([ facts["acme_june_invoice"] ])
+    end
+  end
+
   it "has the indicators its table says" do
     in_entity do
       cards = Accounting::DashboardKpis.new(fiscal_year: year, as_of: described_class::AS_OF).call.index_by { |card| card.key.to_s }
@@ -75,7 +96,7 @@ RSpec.describe Agent::Evals::Dataset do
   it "has another entity beside it, with something in it that the first must never see, and gives the identifiers the cases need" do
     ids = described_class.ids(built)
 
-    expect(ids.keys).to include("first_sale_entry", "first_sale_reference", "acme", "charlie", "foreign_entity", "foreign_entry")
+    expect(ids.keys).to include("fiscal_year", "last_consistency_run", "first_sale_entry", "first_sale_reference", "acme", "charlie", "foreign_entity", "foreign_entry")
     expect(ActsAsTenant.with_tenant(entity) { Accounting::JournalEntry.where(id: ids["foreign_entry"].to_i) }).to be_empty
     expect(ActsAsTenant.with_tenant(Entity.find(ids["foreign_entity"])) { Accounting::JournalEntry.find(ids["foreign_entry"]).description }).to include("FOREIGN-SECRET")
   end

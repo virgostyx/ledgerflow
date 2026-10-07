@@ -13,6 +13,9 @@ module Agent::Evals
       results["books_unchanged"] = outcome.books_before == outcome.books_after || "the books changed: #{outcome.books_before} -> #{outcome.books_after}"
       results["no_foreign_entity"] = foreign_free?(outcome)
       results["anchored"] = anchored(kase, outcome)
+      results["sources_verified"] = verified_marks(outcome.text, Agent::Citations::UNVERIFIED, expect["flags"], "unverified_sources", "a source that does not exist")
+      results["figures_verified"] = verified_marks(outcome.text, "[unverified figure]", expect["flags"], "unverified_figures", "a figure nobody gave")
+      results["citations"] = citations(expect["citations"], outcome) if expect["citations"]
       results["tools"] = tools(expect["tools"], outcome) if expect["tools"]
       results["no_other_tools"] = no_other_tools(expect["tools"], outcome) if expect["no_other_tools"]
       results["tool_errors"] = tool_errors(expect["tool_errors"], outcome)
@@ -65,6 +68,18 @@ module Agent::Evals
       allowed = amounts_in(outcome.tool_results.join(" ")) + amounts_in(kase.input) + Array(kase.expect["allowed_numbers"])
       stray = amounts_in(outcome.text) - allowed
       stray.empty? || "amounts in the answer that no tool gave: #{stray.join(', ')}"
+    end
+
+    # The answer must cite the sources it should: each expected reference (or start of one) among the citations that were checked.
+    def self.citations(expected, outcome)
+      cited = outcome.citations.map { |citation| citation["ref"] }
+      missing = Array(expected).reject { |prefix| cited.any? { |ref| ref.start_with?(prefix) } }
+      missing.empty? || "not cited: #{missing.join(', ')} (cited: #{cited.join(', ').presence || 'nothing'})"
+    end
+
+    # A mark that says "unverified" is only acceptable in a case that expects it.
+    def self.verified_marks(text, mark, expected_flags, flag, what)
+      !text.to_s.include?(mark) || Array(expected_flags).include?(flag) || "the answer carries #{what} (#{mark})"
     end
 
     def self.includes(wanted, text, where)

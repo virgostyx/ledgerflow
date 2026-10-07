@@ -41,6 +41,7 @@ module Agent::Evals
       overdue = ->(rows) { rows.select { |row| Date.iso8601(row[:due]) < AS_OF } }
       older_than = ->(rows, days) { rows.select { |row| (AS_OF - Date.iso8601(row[:due])).to_i > days } }
       q3 = ->(rows) { rows.select { |row| Date.iso8601(row[:date]).between?(Date.new(2026, 7, 1), Date.new(2026, 9, 30)) } }
+      q2 = ->(rows) { rows.select { |row| Date.iso8601(row[:date]).between?(Date.new(2026, 4, 1), Date.new(2026, 6, 30)) } }
       per_partner = sales.group_by { |row| row[:partner] }.transform_values { |rows| rows.sum(&gross) }
       biggest = per_partner.max_by { |_, amount| amount }
       net_sales = sales.sum { |row| BigDecimal(row[:net]) }
@@ -52,8 +53,11 @@ module Agent::Evals
         "suppliers_total" => purchases.sum(&gross), "suppliers_overdue" => overdue.call(purchases).sum(&gross),
         "september_revenue" => sales.select { |row| Date.iso8601(row[:date]).between?(Date.new(2026, 9, 1), Date.new(2026, 9, 30)) }.sum { |row| BigDecimal(row[:net]) },
         "first_sale_total" => gross.call(sales.min_by { |row| row[:date] }),
+        "acme_june_invoice" => gross.call(sales.find { |row| row[:partner] == :acme && row[:date].start_with?("2026-06") }),
         "revenue" => net_sales, "expenses" => net_purchases, "result" => net_sales - net_purchases,
         "vat_collected" => sales.sum { |row| row[:vat] }, "vat_deductible" => purchases.sum { |row| row[:vat] },
+        "q2_vat_collected" => q2.call(sales).sum { |row| row[:vat] }, "q2_vat_deductible" => q2.call(purchases).sum { |row| row[:vat] },
+        "overdue_percent" => (overdue.call(sales).sum(&gross) / sales.sum(&gross) * 100).round(2), "net_position" => sales.sum(&gross) - purchases.sum(&gross), "customer_lines" => sales.size,
         "q3_vat_collected" => q3.call(sales).sum { |row| row[:vat] }, "q3_vat_deductible" => q3.call(purchases).sum { |row| row[:vat] },
         "trial_balance_debit_total" => sales.sum(&gross) + net_purchases + purchases.sum { |row| row[:vat] }
       }.transform_values { |value| value.is_a?(BigDecimal) ? Agent::ToolResult.money(value) : value.to_s }
@@ -65,7 +69,7 @@ module Agent::Evals
         first_sale = Accounting::Invoice.where(invoice_type: :customer).order(:invoice_date).first.journal_entry
         partners = Accounting::Partner.all.index_by(&:name)
         foreign = ActsAsTenant.without_tenant { Entity.find_by!(name: FOREIGN_NAME) }
-        { "first_sale_entry" => first_sale.id.to_s, "first_sale_reference" => first_sale.reference.to_s, "acme" => partners.fetch("Acme SA").id.to_s, "charlie" => partners.fetch("Charlie Dupont").id.to_s,
+        { "fiscal_year" => Accounting::FiscalYear.find_by!(year: 2026).id.to_s, "last_consistency_run" => Accounting::ConsistencyRun.order(:id).last.id.to_s, "first_sale_entry" => first_sale.id.to_s, "first_sale_reference" => first_sale.reference.to_s, "acme" => partners.fetch("Acme SA").id.to_s, "charlie" => partners.fetch("Charlie Dupont").id.to_s,
           "foreign_entity" => foreign.id.to_s, "foreign_entry" => ActsAsTenant.with_tenant(foreign) { Accounting::JournalEntry.order(:id).first.id.to_s } }
       end
     end

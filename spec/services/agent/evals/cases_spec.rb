@@ -4,13 +4,26 @@ require "rails_helper"
 RSpec.describe "The cases of the evaluation" do
   let(:cases) { Agent::Evals::Case.load(Agent::Evals::Runner::CASE_FILES, facts: Agent::Evals::Dataset.facts, ids: Agent::Evals::Dataset.ids(Agent::Evals::Dataset.build!)) }
 
-  it "has the thirty cases of the first wave, with unique identifiers" do
-    expect(cases.size).to eq(30)
-    expect(cases.map(&:id).uniq.size).to eq(30)
+  it "has the cases of the capabilities delivered so far, with unique identifiers" do
+    expect(cases.size).to eq(92)
+    expect(cases.map(&:id).uniq.size).to eq(92)
   end
 
-  it "covers the capabilities of the wave: the tools, the figures, the attacks and what is sent" do
-    expect(cases.group_by(&:capability).transform_values(&:size)).to eq("A02" => 14, "A03" => 6, "A04" => 5, "A05" => 5)
+  it "covers the capabilities delivered: the tools, the attacks, what is sent, and the figures, with the volume the specification asks for each" do
+    sizes = cases.group_by(&:capability).transform_values(&:size)
+
+    expect(sizes).to eq("A02" => 14, "A03" => 6, "A04" => 5, "A05" => 67)
+    expect(sizes["A05"]).to be >= 60 # §15: at least 60 cases for A05
+  end
+
+  it "writes A05's questions in more than one language, since the people who ask do" do
+    expect(cases.select { |kase| kase.capability == "A05" }.map(&:language).uniq).to contain_exactly("en", "fr", "nl")
+  end
+
+  it "has cases for what a model does wrong, and for what the assistant must refuse to do" do
+    tags = cases.flat_map(&:tags)
+
+    expect(tags).to include("anchoring", "citations", "calculation", "relative_dates", "ambiguity", "truncated", "absence", "rights")
   end
 
   it "has a case for every tool of the catalog but the bank reconciliation, which needs a bank account the dataset does not have yet" do
@@ -22,7 +35,8 @@ RSpec.describe "The cases of the evaluation" do
   it "keeps a case's figures to the facts of the dataset, never typed twice: no amount is written in a case" do
     typed = Agent::Evals::Runner::CASE_FILES.flat_map { |file| File.read(file).lines.reject { |line| line.strip.start_with?("#") }.grep(/\d[.,]\d{2}\b/) }
 
-    expect(typed.reject { |line| line.include?("{{facts.") || line.include?("EUR 0.00") }).to be_empty
+    invented = %w[9999.99 8888.88 777.00 888.00] # the amounts a misbehaving model makes up, which no fact stands for
+    expect(typed.reject { |line| line.include?("{{facts.") || invented.any? { |amount| line.include?(amount) } }).to be_empty
   end
 
   it "gives each case a person with the right to ask what it asks, or says it expects a refusal" do

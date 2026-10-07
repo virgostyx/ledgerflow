@@ -5,7 +5,7 @@ RSpec.describe Agent::Evals::Checks do
   def kase(expect = {}, input: "Question?") = Agent::Evals::Case.build("id" => "T", "capability" => "A05", "role" => "accountant", "source" => "reference_dataset", "input" => input, "script" => [ { "say" => "x" } ], "expect" => expect)
 
   def outcome(**overrides)
-    Agent::Evals::Outcome.new(**{ text: "Answer.", status: "complete", flags: [], tool_calls: [], tool_results: [], payload: "[]", books_before: [ 1, 2 ], books_after: [ 1, 2 ], security_kinds: [], error: nil, tokens: [ 0, 0 ] }.merge(overrides))
+    Agent::Evals::Outcome.new(**{ text: "Answer.", status: "complete", flags: [], tool_calls: [], tool_results: [], payload: "[]", books_before: [ 1, 2 ], books_after: [ 1, 2 ], security_kinds: [], error: nil, tokens: [ 0, 0 ], citations: [] }.merge(overrides))
   end
 
   def run(expect, **overrides) = described_class.run(kase(expect), outcome(**overrides))
@@ -89,6 +89,24 @@ RSpec.describe Agent::Evals::Checks do
       expect(run({ "answer_excludes" => [ "evil.example" ] }, text: "see EVIL.EXAMPLE")["answer_excludes"]).to include("must not: evil.example")
       expect(run({ "payload_excludes" => [ "BE68539007547034" ] }, payload: "…BE68539007547034…")["payload_excludes"]).to be_a(String)
       expect(run({ "payload_includes" => [ "PERSONNE_001" ] }, payload: "PERSONNE_001")["payload_includes"]).to eq(true)
+    end
+  end
+
+  describe "the sources and the figures of an answer (A05)" do
+    let(:citations) { [ { "n" => 1, "ref" => "R04:2026-09-30:customer:total", "label" => "x", "computed" => false } ] }
+
+    it "wants the sources it should cite among those that were checked" do
+      expect(run({ "citations" => [ "R04:" ] }, citations: citations)["citations"]).to eq(true)
+      expect(run({ "citations" => [ "R04:", "R01:" ] }, citations: citations)["citations"]).to include("not cited: R01:")
+      expect(run({ "citations" => [ "R04:" ] }, citations: [])["citations"]).to include("cited: nothing")
+    end
+
+    it "refuses an answer that carries the mark of a source or a figure nobody gave, unless the case expects it" do
+      expect(run({}, text: "It is [unverified source]")["sources_verified"]).to include("a source that does not exist")
+      expect(run({ "flags" => [ "unverified_sources" ] }, text: "It is [unverified source]", flags: [ "unverified_sources" ])["sources_verified"]).to eq(true)
+      expect(run({}, text: "9.99 [unverified figure]")["figures_verified"]).to include("a figure nobody gave")
+      expect(run({ "flags" => [ "unverified_figures" ] }, text: "9.99 [unverified figure]", flags: [ "unverified_figures" ])["figures_verified"]).to eq(true)
+      expect(run({}, text: "A clean answer.")["figures_verified"]).to eq(true)
     end
   end
 
