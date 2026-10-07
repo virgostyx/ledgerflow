@@ -22,6 +22,12 @@ class Agent::Tools::Base
       field_classes(fields)
     end
 
+    # The fields of free text that may run longer than the usual cut (a passage of the knowledge base).
+    def long_text(*paths)
+      @long_text = paths if paths.any?
+      @long_text || (superclass.long_text if superclass.respond_to?(:long_text)) || []
+    end
+
     def definition = { name: tool_name, description: description, strict: true, input_schema: input_schema }
 
     # The arguments every list tool takes: a page size (never more than `max`) and the cursor of the next page.

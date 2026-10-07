@@ -26,7 +26,7 @@ class Agent::Runner
     @stop = stop
     @redactor = Agent::Redactor.new(setting: Agent::Setting.find_by(entity: @context.entity) || Agent::Setting.new(entity: @context.entity), conversation: @conversation)
     @redaction = Hash.new { |hash, data_class| hash[data_class] = Hash.new(0) }
-    @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors, @tool_log = [], Hash.new(0), nil, 0, 0, 0, []
+    @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors, @tool_log, @gaps = [], Hash.new(0), nil, 0, 0, 0, [], []
     @security = Agent::Security.new(conversation: @conversation, context: @context)
     @manifest = Agent::Manifest.current
     messages = history + [ { role: "user", content: question } ]
@@ -64,11 +64,13 @@ class Agent::Runner
 
   # An answer with an amount that no tool gave is asked again, once, with what is wrong; the draft is not kept.
   def regenerate?(response)
-    stray = stray_amounts(response)
-    return false if stray.empty? || @regenerated
+    amounts = stray_amounts(response)
+    references = stray_references(response)
+    return false if (amounts.empty? && references.empty?) || @regenerated
 
     @regenerated = true
-    @security.event(:unanchored_amount, excerpt: "regenerated: #{stray.join(', ')}")
+    @security.event(:unanchored_amount, excerpt: "regenerated: #{amounts.join(', ')}") if amounts.any?
+    @security.event(:unanchored_reference, excerpt: "regenerated: #{references.join(', ')}") if references.any?
     emit(type: :restart)
     true
   end
@@ -76,9 +78,18 @@ class Agent::Runner
   # What would be shown of the answer: an amount inside a link or a key that is taken out does not count.
   def stray_amounts(response) = @anchors.unanchored(Agent::ResponseGuard.clean(response.text).first)
 
+  def stray_references(response)
+    text = Agent::ResponseGuard.clean(response.text).first
+    @anchors.unanchored_references(text).map { |match| text[match.position, match.length] }
+  end
+
   def correction_for(response)
-    "These amounts in your answer were not given by any tool: #{stray_amounts(response).join(', ')}. Correct your answer: use only the amounts the tools returned (use the calculate tool for any sum, " \
-      "difference or percentage), or say that you cannot establish them."
+    amounts = stray_amounts(response)
+    references = stray_references(response)
+    parts = []
+    parts << "These amounts in your answer were not given by any tool: #{amounts.join(', ')}. Use only the amounts the tools returned (use the calculate tool for any sum, difference or percentage), or say that you cannot establish them." if amounts.any?
+    parts << "These legal references are in no passage the knowledge base gave: #{references.join(', ')}. Quote only an article, law, decree or circular that is in a passage returned by search_knowledge, or say that you cannot confirm it." if references.any?
+    "#{parts.join(' ')} Correct your answer."
   end
 
   def ask_model(messages)
@@ -117,6 +128,7 @@ class Agent::Runner
     @known_refs.merge(Agent::Refs.in_result(result)) unless error
     @tool_calls += 1
     @tool_errors = error ? @tool_errors + 1 : 0
+    @gaps << input["query"] if call[:name] == "search_knowledge" && !error && result["row_count"].to_i.zero?
     duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round
     @tool_log << { tool: call[:name], arguments: input.to_json, status: error ? "error" : "ok", error: error, row_count: result["row_count"], truncated: result["truncated"] == true, duration_ms: duration_ms,
                  result_digest: (Digest::SHA256.hexdigest(result.to_json) unless error), result_amounts: (error ? [] : Agent::Amounts.of(result.to_json)) }
@@ -143,12 +155,14 @@ class Agent::Runner
     invalid.each { |ref| @security.event(:invalid_citation, excerpt: ref) }
     @security.flag("unverified_sources") if invalid.any?
     content = mark_unverified(content)
+    content = mark_unverified_references(content)
     @security.event(:limit_reached) if notice == LIMIT_NOTICE
     @conversation.pseudonym_table.unknown_tokens(content).each { |token| @security.event(:invented_token, excerpt: token) }
     message = @conversation.messages.create!(role: "assistant", content: content, status: status, model: @model, latency_ms: @latency_ms, flags: @security.flags, manifest_hash: @manifest.hash_value, citations: citations, ledger_version: (Agent::LedgerVersion.current if @tool_log.any?),
                                              redaction_stats: @redaction.transform_values(&:to_h), sent_payload: @sent&.to_json,
                                              input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])
     record_tool_calls(message)
+    @gaps.uniq.each { |query| Knowledge::Gap.record(kind: "no_passage", question: query, user: @context.user, message: message) }
     emit(type: :done, message: message)
     message
   end
@@ -161,6 +175,16 @@ class Agent::Runner
     @security.flag("unverified_figures")
     @security.event(:unanchored_amount, excerpt: "shown as unverified: #{stray.join(', ')}")
     Agent::Amounts.spans(content).reverse.reduce(content.dup) { |text, (position, length, amount)| stray.include?(amount) ? text.insert(position + length, " [unverified figure]") : text }
+  end
+
+  # A legal reference that no passage gave, still there after the one new try, is shown for what it is.
+  def mark_unverified_references(content)
+    stray = @anchors.unanchored_references(content)
+    return content if stray.empty?
+
+    @security.flag("unverified_references")
+    @security.event(:unanchored_reference, excerpt: "shown as unverified: #{stray.map { |match| content[match.position, match.length] }.join(', ')}")
+    stray.reverse.reduce(content.dup) { |text, match| text.insert(match.position + match.length, " [unverified reference]") }
   end
 
   # Each call is kept on the answer it served and written in the entity's audit trail: the tool and the outcome, never the arguments (they are in the encrypted table).

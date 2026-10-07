@@ -87,3 +87,12 @@ Voir la liste complète dans `DATA_PROCESSING.md` : conservation chez le fournis
 - **Les marqueurs `[[ref:…]]` restent dans le texte stocké** (rendus en numéros à l'affichage). L'export et l'API les rendent tels quels ; un client peut les remplacer lui-même, mais ne doit pas construire de lien à partir d'eux sans la table de l'application.
 - **Constantes d'un calcul** : les valeurs qui n'ont pas deux décimales sont libres (comptes, comptes de lignes, taux « 0.2134 »). Un modèle qui écrit « 1234.5 » au lieu de « 1234.50 » contourne l'ancrage de l'entrée d'un calcul, pas celui du résultat affiché (qui doit être ancré, donc donné par `calculate` lui-même). À durcir si le mode réel le montre.
 - **Pas de comparaison de la réponse à la décision du comptable** pour les chiffres d'un autre exercice tant que le jeu de données n'en a pas.
+
+## A06 — décisions à valider
+- **Contenu de la base** : aucun document réel n'est livré. Les 11 notes du jeu d'évaluation sont inventées et n'énoncent pas le droit belge. Qui charge et relit le PCMN et les fiches communes de plateforme, et sous quelle licence ? Le comptable référent doit relire tout document avant la première mise en service (statut `reviewed`).
+- **Quatre yeux** : suit le réglage de l'entité (`four_eyes`). Sans lui, l'auteur relit son propre document ; la base pourrait alors contenir une règle fausse que personne d'autre n'a vue. Recommandation : l'exiger pour la base.
+- **Un document de portée entité qui contient des consignes pour une IA** est accepté en brouillon et signalé ; il n'est pas refusé (une note légitime peut en contenir). La relecture humaine est la barrière.
+- **Références légales** : contrôle par article / loi / arrêté / circulaire. Un taux ou une date de mémoire n'est pas détecté par code. Prudence appliquée : la consigne interdit toute citation hors passage, et le mode réel doit mesurer le non-respect.
+- **Deux mots au moins** pour qu'un passage compte (questions de trois mots ou plus) : plus prudent (moins de faux passages, donc plus de « je ne sais pas »), au prix d'un rappel un peu plus bas sur des questions très courtes. À réviser avec le jeu réel.
+- **Documents expirés** : jamais cités sans `as_of_date` dans leur période ; la question doit porter une date. Si le modèle oublie la date, il reçoit la règle en vigueur aujourd'hui.
+- **Retrait** : irréversible dans l'interface (il faut déposer une nouvelle version). Les citations anciennes restent lisibles.

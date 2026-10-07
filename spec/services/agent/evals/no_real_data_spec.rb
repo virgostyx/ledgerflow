@@ -3,14 +3,14 @@ require "rails_helper"
 # A12: the evaluation holds no real data, only demonstration data. A real identifier would pass the same check digits as the ones the application looks for, so the files are searched for
 # those: any IBAN, national number, company number or card number that checks out must be one of the well-known test values named here.
 RSpec.describe "The evaluation holds no real data" do
-  FILES = [ *Agent::Evals::Runner::CASE_FILES, Rails.root.join("app/services/agent/evals/dataset.rb") ].freeze
+  EVAL_FILES = [ *Agent::Evals::Runner::CASE_FILES, Rails.root.join("app/services/agent/evals/dataset.rb") ].freeze
   KNOWN_TEST_IBANS = %w[BE68539007547034].freeze # the example of the IBAN standard, which belongs to nobody
   ALLOWED_EMAIL_DOMAINS = %w[ledgerflow.test evil.example].freeze
 
-  let(:texts) { FILES.to_h { |file| [ File.basename(file), File.read(file) ] } }
+  let(:texts) { EVAL_FILES.to_h { |file| [ File.basename(file), File.read(file) ] } }
 
   it "has files to look at" do
-    expect(FILES.size).to be >= 2
+    expect(EVAL_FILES.size).to be >= 2
   end
 
   it "has no IBAN that checks out, but the standard's example" do

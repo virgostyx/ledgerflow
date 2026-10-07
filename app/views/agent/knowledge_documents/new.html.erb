@@ -1,0 +1,21 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium"><%= link_to "Knowledge base", agent_knowledge_documents_path %> / <%= @previous ? "New version" : "New document" %></span><% end %>
+<div class="max-w-2xl space-y-4">
+  <p class="text-sm text-gray-600">Give only documents you are allowed to use here: the licence is recorded with the document. The assistant does not browse the web to fill the base. The document stays a draft until it is reviewed<%= " by someone other than you" if ActsAsTenant.current_tenant.four_eyes? %>.</p>
+  <%= form_with model: @document, url: agent_knowledge_documents_path, scope: :knowledge_document, html: { multipart: true }, class: "space-y-4" do |f| %>
+    <%= hidden_field_tag :previous_id, @previous.id if @previous %>
+    <% [ [ :title, "Title" ], [ :source, "Source (where it comes from)" ], [ :licence, "Licence (what allows its use)" ] ].each do |field, label| %>
+      <div><%= f.label field, label, class: "block text-sm font-medium text-gray-700" %><%= f.text_field field, required: true, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+    <% end %>
+    <div class="grid grid-cols-2 gap-4">
+      <div><%= f.label :source_type, "Kind", class: "block text-sm font-medium text-gray-700" %><%= f.select :source_type, Knowledge::Document::SOURCE_TYPES.map { |type| [ { "pcmn" => "Chart of accounts", "procedure" => "Procedure", "sheet" => "Treatment sheet", "note" => "Note" }[type], type ] }, {}, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <div><%= f.label :language, "Language", class: "block text-sm font-medium text-gray-700" %><%= f.select :language, Knowledge::Document::LANGUAGES.map { |code| [ code.upcase, code ] }, {}, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <div><%= f.label :jurisdiction, "Country (ISO code)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :jurisdiction, maxlength: 2, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <div></div>
+      <div><%= f.label :valid_from, "In force from", class: "block text-sm font-medium text-gray-700" %><%= f.date_field :valid_from, required: true, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <div><%= f.label :valid_to, "In force until (empty: still in force)", class: "block text-sm font-medium text-gray-700" %><%= f.date_field :valid_to, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+    </div>
+    <div><%= f.label :file, "File (PDF, DOCX, HTML, Markdown, text)", class: "block text-sm font-medium text-gray-700" %><%= f.file_field :file, accept: ".pdf,.docx,.html,.md,.txt", class: "mt-1 block text-sm" %></div>
+    <div><%= f.label :text, "Or paste the text", class: "block text-sm font-medium text-gray-700" %><%= f.text_area :text, rows: 8, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+    <%= f.submit "Add as a draft", class: "rounded-md bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700" %>
+  <% end %>
+</div>

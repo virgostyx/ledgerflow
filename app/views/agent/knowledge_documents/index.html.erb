@@ -1,0 +1,45 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium">Knowledge base</span><% end %>
+<div class="space-y-6">
+  <p class="text-sm text-gray-600">The documents the assistant may rely on for questions of method. It only quotes a document that was reviewed and that is in force on the date of the operation. Documents of the platform are read-only.</p>
+  <p class="text-sm"><%= link_to "Add a document", new_agent_knowledge_document_path, class: "rounded-md bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700" %> · <%= link_to "Questions the base could not answer", agent_knowledge_gaps_path, class: "text-indigo-700 hover:underline" %></p>
+
+  <% if @statistics.ending_soon.any? %>
+    <p role="status" class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Ending soon: <%= @statistics.ending_soon.map { |document| "#{document.title} (#{l(document.valid_to)})" }.to_sentence %>.</p>
+  <% end %>
+
+  <% if @documents.empty? %>
+    <p class="text-sm text-gray-500">Nothing here yet. Without a document, the assistant answers questions of method as a general rule, to be checked.</p>
+  <% else %>
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+          <tr><th class="px-3 py-2">Title</th><th class="px-3 py-2">Scope</th><th class="px-3 py-2">Version</th><th class="px-3 py-2">Valid</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Cited</th></tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% never = @statistics.never_cited.map(&:id) %>
+          <% @documents.each do |document| %>
+            <tr>
+              <td class="px-3 py-2"><%= link_to document.title, agent_knowledge_document_path(document), class: "text-indigo-700 hover:underline" %></td>
+              <td class="px-3 py-2"><%= document.scope.capitalize %></td>
+              <td class="px-3 py-2"><%= document.version %></td>
+              <td class="whitespace-nowrap px-3 py-2"><%= l(document.valid_from) %> – <%= document.valid_to ? l(document.valid_to) : "open" %></td>
+              <td class="px-3 py-2"><%= document.status.capitalize %></td>
+              <td class="px-3 py-2 text-gray-500"><%= document.reviewed? ? (never.include?(document.id) ? "never" : "yes") : "" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+
+  <% if @statistics.most_cited.any? %>
+    <div>
+      <h2 class="text-sm font-semibold text-gray-900">Most cited passages</h2>
+      <ul class="mt-1 text-sm text-gray-700">
+        <% @statistics.most_cited.each do |ref, count| %>
+          <li><%= link_to Agent::Refs.label(ref), Agent::Refs.path(ref), class: "text-indigo-700 hover:underline" %> · <%= pluralize(count, "citation") %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+</div>

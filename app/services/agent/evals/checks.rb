@@ -4,6 +4,15 @@ module Agent::Evals
   module Checks
     FOREIGN_MARKER = Agent::Evals::Dataset::FOREIGN_MARKER
 
+    # The level of certainty an answer of method states (A06), as a person reads it in each language. The prompt gives the same words.
+    LEVELS = {
+      "confirmed" => { "en" => "confirmed by the knowledge base", "fr" => "confirmé par la base de connaissance", "nl" => "bevestigd door de kennisbank" },
+      "given"     => { "en" => "given by the books", "fr" => "donné par la comptabilité", "nl" => "gegeven door de boekhouding" },
+      "general"   => { "en" => "general rule, to be checked", "fr" => "règle générale, à valider", "nl" => "algemene regel, na te kijken" },
+      "unknown"   => { "en" => "unknown", "fr" => "inconnu", "nl" => "onbekend" }
+    }.freeze
+    ACCOUNT_CODE = /(?<!\d)(?<!\d[.,])\d{6}(?!\d)(?![.,]\d)/
+
     # => { "check name" => true | "why not" }, for the checks this case asks for, and those every case must pass.
     def self.run(kase, outcome)
       expect = kase.expect
@@ -15,6 +24,11 @@ module Agent::Evals
       results["anchored"] = anchored(kase, outcome)
       results["sources_verified"] = verified_marks(outcome.text, Agent::Citations::UNVERIFIED, expect["flags"], "unverified_sources", "a source that does not exist")
       results["figures_verified"] = verified_marks(outcome.text, "[unverified figure]", expect["flags"], "unverified_figures", "a figure nobody gave")
+      results["references_verified"] = verified_marks(outcome.text, "[unverified reference]", expect["flags"], "unverified_references", "a legal reference no passage gave")
+      results["accounts_grounded"] = accounts_grounded(kase, outcome)
+      results["certainty"] = certainty(expect["certainty"], kase, outcome) if expect["certainty"]
+      results["tool_results_include"] = includes(expect["tool_results_include"], outcome.tool_results.join(" "), "what the tools gave") if expect["tool_results_include"]
+      results["tool_results_exclude"] = excludes(expect["tool_results_exclude"], outcome.tool_results.join(" "), "what the tools gave") if expect["tool_results_exclude"]
       results["citations"] = citations(expect["citations"], outcome) if expect["citations"]
       results["tools"] = tools(expect["tools"], outcome) if expect["tools"]
       results["no_other_tools"] = no_other_tools(expect["tools"], outcome) if expect["no_other_tools"]
@@ -68,6 +82,21 @@ module Agent::Evals
       allowed = amounts_in(outcome.tool_results.join(" ")) + amounts_in(kase.input) + Array(kase.expect["allowed_numbers"])
       stray = amounts_in(outcome.text) - allowed
       stray.empty? || "amounts in the answer that no tool gave: #{stray.join(', ')}"
+    end
+
+    # An account the answer proposes is one the tools showed in the entity's chart (or the person named): the agent proposes no account that does not exist (A06 criterion 6).
+    def self.accounts_grounded(kase, outcome)
+      allowed = outcome.tool_results.join(" ").scan(ACCOUNT_CODE) + kase.input.scan(ACCOUNT_CODE)
+      stray = outcome.text.to_s.scan(ACCOUNT_CODE).uniq - allowed
+      stray.empty? || "accounts in the answer that no tool showed: #{stray.join(', ')}"
+    end
+
+    # `true` asks for any of the four levels; a name asks for that level, in the language of the case.
+    def self.certainty(expected, kase, outcome)
+      wanted = expected == true ? LEVELS.keys : [ expected.to_s ]
+      phrases = wanted.map { |level| LEVELS.fetch(level).fetch(kase.language) }
+      text = outcome.text.to_s.downcase
+      phrases.any? { |phrase| text.include?(phrase) } || "the answer states no level of certainty (#{phrases.join(' / ')})"
     end
 
     # The answer must cite the sources it should: each expected reference (or start of one) among the citations that were checked.

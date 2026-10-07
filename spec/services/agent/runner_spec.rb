@@ -231,6 +231,64 @@ RSpec.describe Agent::Runner do
     end
   end
 
+  describe "the knowledge base and the legal references of an answer (A06)" do
+    let(:registry) { Agent::ToolRegistry.default }
+
+    def search(query = "prepayment insurance") = Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: [ { type: "tool_use", id: "k1", name: "search_knowledge", input: { "query" => query } } ])
+
+    def play(script, question: "How do I book an insurance premium paid in advance?")
+      @gateway = Agent::FakeGateway.new(script)
+      described_class.new(conversation: conversation, context: context, gateway: @gateway, registry: registry).ask(question)
+    end
+
+    before { add_knowledge("# Prepayments\n\nUnder article 45 bis of the firm handbook, an insurance premium paid in advance is a prepayment.", title: "Handbook") }
+
+    it "lets an answer quote a reference that a passage gave, in any spelling" do
+      answer = play([ search, text("Book it as a prepayment (art. 45bis) [[ref:kb:doc-#{Knowledge::Document.first.id}:p-1]].") ])
+
+      expect(answer.content).not_to include("unverified")
+      expect(answer.flags).to eq([])
+      expect(answer.citations.map { |c| c["label"] }).to eq([ "Knowledge base, document ##{Knowledge::Document.first.id}, passage 1" ])
+    end
+
+    it "asks again once when the answer quotes a reference that no passage gave, then shows it as unverified" do
+      answer = play([ search, text("Under article 99 of the code, it is a prepayment."), text("Under article 99 of the code, still.") ])
+
+      expect(@gateway.requests.last[:messages].last[:content]).to include("article 99")
+      expect(answer.content).to eq("Under article 99 [unverified reference] of the code, still.")
+      expect(answer.flags).to include("unverified_references")
+      expect(Agent::SecurityEvent.where(conversation: conversation, kind: "unanchored_reference").count).to eq(2)
+    end
+
+    it "takes the corrected answer when the second one quotes only what the passages gave" do
+      answer = play([ search, text("The law of 1999 says so."), text("It is a prepayment, article 45 bis of the handbook.") ])
+
+      expect(answer.content).to eq("It is a prepayment, article 45 bis of the handbook.")
+      expect(answer.flags).to eq([])
+    end
+
+    it "lets an answer repeat a reference the person gave in the question" do
+      answer = play([ text("Article 12 of the circular you mention is a rule of the accountant.") ], question: "What does article 12 say?")
+
+      expect(answer.content).not_to include("unverified")
+    end
+
+    it "records the question in the gap report when the search finds nothing, once however often it was asked in the answer" do
+      play([ search("quantum accounting"), search("quantum accounting"), text("The base does not cover it. General rule, to be checked.") ], question: "How to book quantum accounting?")
+
+      gap = Knowledge::Gap.order(:id).last
+      expect(Knowledge::Gap.count).to eq(1)
+      expect(gap).to have_attributes(kind: "no_passage", question: "quantum accounting", user_id: user.id)
+      expect(gap.message).to be_present
+    end
+
+    it "records nothing in the gap report when a passage was found" do
+      play([ search, text("Prepayment.") ])
+
+      expect(Knowledge::Gap.count).to eq(0)
+    end
+  end
+
   describe "the sources and the figures of an answer (A05)" do
     let(:registry) { Agent::ToolRegistry.default }
     let!(:partner) { create(:partner, name: "Acme Industries SA", is_natural_person: false, city: "Namur") }

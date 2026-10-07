@@ -4143,6 +4143,130 @@ ALTER SEQUENCE public.import_templates_id_seq OWNED BY public.import_templates.i
 
 
 --
+-- Name: knowledge_chunks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.knowledge_chunks (
+    id bigint NOT NULL,
+    document_id bigint NOT NULL,
+    "position" integer NOT NULL,
+    section character varying,
+    content text NOT NULL,
+    quality character varying DEFAULT 'normal'::character varying NOT NULL,
+    config character varying DEFAULT 'french'::character varying NOT NULL,
+    search_vector tsvector,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: knowledge_chunks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.knowledge_chunks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: knowledge_chunks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.knowledge_chunks_id_seq OWNED BY public.knowledge_chunks.id;
+
+
+--
+-- Name: knowledge_documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.knowledge_documents (
+    id bigint NOT NULL,
+    scope character varying DEFAULT 'company'::character varying NOT NULL,
+    entity_id bigint,
+    organization_id bigint,
+    title character varying NOT NULL,
+    source character varying NOT NULL,
+    licence character varying NOT NULL,
+    source_type character varying DEFAULT 'note'::character varying NOT NULL,
+    jurisdiction character varying DEFAULT 'BE'::character varying NOT NULL,
+    language character varying DEFAULT 'fr'::character varying NOT NULL,
+    valid_from date NOT NULL,
+    valid_to date,
+    series character varying NOT NULL,
+    version integer DEFAULT 1 NOT NULL,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    body text NOT NULL,
+    content_sha256 character varying NOT NULL,
+    injection_suspected boolean DEFAULT false NOT NULL,
+    author_id bigint NOT NULL,
+    reviewed_by_id bigint,
+    reviewed_at timestamp(6) without time zone,
+    retired_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: knowledge_documents_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.knowledge_documents_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: knowledge_documents_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.knowledge_documents_id_seq OWNED BY public.knowledge_documents.id;
+
+
+--
+-- Name: knowledge_gaps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.knowledge_gaps (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint,
+    message_id bigint,
+    kind character varying NOT NULL,
+    question text NOT NULL,
+    question_key character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: knowledge_gaps_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.knowledge_gaps_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: knowledge_gaps_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.knowledge_gaps_id_seq OWNED BY public.knowledge_gaps.id;
+
+
+--
 -- Name: organization_memberships; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5220,6 +5344,27 @@ ALTER TABLE ONLY public.import_templates ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: knowledge_chunks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_chunks ALTER COLUMN id SET DEFAULT nextval('public.knowledge_chunks_id_seq'::regclass);
+
+
+--
+-- Name: knowledge_documents id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_documents ALTER COLUMN id SET DEFAULT nextval('public.knowledge_documents_id_seq'::regclass);
+
+
+--
+-- Name: knowledge_gaps id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_gaps ALTER COLUMN id SET DEFAULT nextval('public.knowledge_gaps_id_seq'::regclass);
+
+
+--
 -- Name: organization_memberships id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6080,6 +6225,30 @@ ALTER TABLE ONLY public.entities
 
 ALTER TABLE ONLY public.import_templates
     ADD CONSTRAINT import_templates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: knowledge_chunks knowledge_chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_chunks
+    ADD CONSTRAINT knowledge_chunks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: knowledge_documents knowledge_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_documents
+    ADD CONSTRAINT knowledge_documents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: knowledge_gaps knowledge_gaps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_gaps
+    ADD CONSTRAINT knowledge_gaps_pkey PRIMARY KEY (id);
 
 
 --
@@ -8641,6 +8810,97 @@ CREATE UNIQUE INDEX index_import_templates_on_entity_id_and_kind_and_name ON pub
 
 
 --
+-- Name: index_knowledge_chunks_on_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_chunks_on_document_id ON public.knowledge_chunks USING btree (document_id);
+
+
+--
+-- Name: index_knowledge_chunks_on_document_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_knowledge_chunks_on_document_id_and_position ON public.knowledge_chunks USING btree (document_id, "position");
+
+
+--
+-- Name: index_knowledge_chunks_on_search_vector; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_chunks_on_search_vector ON public.knowledge_chunks USING gin (search_vector);
+
+
+--
+-- Name: index_knowledge_documents_on_author_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_documents_on_author_id ON public.knowledge_documents USING btree (author_id);
+
+
+--
+-- Name: index_knowledge_documents_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_documents_on_entity_id ON public.knowledge_documents USING btree (entity_id);
+
+
+--
+-- Name: index_knowledge_documents_on_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_documents_on_organization_id ON public.knowledge_documents USING btree (organization_id);
+
+
+--
+-- Name: index_knowledge_documents_on_reviewed_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_documents_on_reviewed_by_id ON public.knowledge_documents USING btree (reviewed_by_id);
+
+
+--
+-- Name: index_knowledge_documents_on_series_and_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_knowledge_documents_on_series_and_version ON public.knowledge_documents USING btree (series, version);
+
+
+--
+-- Name: index_knowledge_documents_on_status_and_scope; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_documents_on_status_and_scope ON public.knowledge_documents USING btree (status, scope);
+
+
+--
+-- Name: index_knowledge_gaps_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_gaps_on_entity_id ON public.knowledge_gaps USING btree (entity_id);
+
+
+--
+-- Name: index_knowledge_gaps_on_entity_id_and_kind_and_question_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_gaps_on_entity_id_and_kind_and_question_key ON public.knowledge_gaps USING btree (entity_id, kind, question_key);
+
+
+--
+-- Name: index_knowledge_gaps_on_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_gaps_on_message_id ON public.knowledge_gaps USING btree (message_id);
+
+
+--
+-- Name: index_knowledge_gaps_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_gaps_on_user_id ON public.knowledge_gaps USING btree (user_id);
+
+
+--
 -- Name: index_organization_memberships_on_organization_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8931,6 +9191,14 @@ ALTER TABLE ONLY public.accounting_bank_statements
 
 
 --
+-- Name: knowledge_gaps fk_rails_0a919200a4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_gaps
+    ADD CONSTRAINT fk_rails_0a919200a4 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_payment_batches fk_rails_0bc5bca68a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8976,6 +9244,14 @@ ALTER TABLE ONLY public.consolidation_runs
 
 ALTER TABLE ONLY public.agent_conversations
     ADD CONSTRAINT fk_rails_10a03a536e FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: knowledge_documents fk_rails_115cb1e221; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_documents
+    ADD CONSTRAINT fk_rails_115cb1e221 FOREIGN KEY (organization_id) REFERENCES public.organizations(id);
 
 
 --
@@ -9443,6 +9719,14 @@ ALTER TABLE ONLY public.agent_consents
 
 
 --
+-- Name: knowledge_documents fk_rails_4c6189699a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_documents
+    ADD CONSTRAINT fk_rails_4c6189699a FOREIGN KEY (reviewed_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_payment_reminders fk_rails_4d0dea3e8f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9739,6 +10023,14 @@ ALTER TABLE ONLY public.accounting_comments
 
 
 --
+-- Name: knowledge_documents fk_rails_785836c099; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_documents
+    ADD CONSTRAINT fk_rails_785836c099 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: consolidation_mappings fk_rails_7a5ee835b7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9800,6 +10092,14 @@ ALTER TABLE ONLY public.accounting_recurring_invoices
 
 ALTER TABLE ONLY public.accounting_peppol_messages
     ADD CONSTRAINT fk_rails_8823ec69c6 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id) ON DELETE SET NULL;
+
+
+--
+-- Name: knowledge_gaps fk_rails_8909b34db4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_gaps
+    ADD CONSTRAINT fk_rails_8909b34db4 FOREIGN KEY (message_id) REFERENCES public.agent_messages(id) ON DELETE SET NULL;
 
 
 --
@@ -10051,6 +10351,14 @@ ALTER TABLE ONLY public.api_clients
 
 
 --
+-- Name: knowledge_gaps fk_rails_ab47e5e0c3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_gaps
+    ADD CONSTRAINT fk_rails_ab47e5e0c3 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: agent_conversations fk_rails_abb244c035; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10147,6 +10455,14 @@ ALTER TABLE ONLY public.accounting_lettering_write_offs
 
 
 --
+-- Name: knowledge_chunks fk_rails_b810dc08ea; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_chunks
+    ADD CONSTRAINT fk_rails_b810dc08ea FOREIGN KEY (document_id) REFERENCES public.knowledge_documents(id) ON DELETE CASCADE;
+
+
+--
 -- Name: closing_runs fk_rails_b8b7468d50; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10240,6 +10556,14 @@ ALTER TABLE ONLY public.accounting_payment_batch_lines
 
 ALTER TABLE ONLY public.active_storage_attachments
     ADD CONSTRAINT fk_rails_c3b3935057 FOREIGN KEY (blob_id) REFERENCES public.active_storage_blobs(id);
+
+
+--
+-- Name: knowledge_documents fk_rails_c3c1a2331b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_documents
+    ADD CONSTRAINT fk_rails_c3c1a2331b FOREIGN KEY (author_id) REFERENCES public.users(id);
 
 
 --
@@ -10825,6 +11149,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261008090000'),
 ('20261007110000'),
 ('20261007100000'),
 ('20261007090000'),

@@ -5,9 +5,16 @@ class Agent::Anchors
 
   def initialize(question:, earlier_answers: [])
     @amounts = Set.new(Agent::Amounts.of(question) + earlier_answers.flat_map { |text| Agent::Amounts.of(text) })
+    @references = Set.new(Agent::LegalReferences.keys(question) + earlier_answers.flat_map { |text| Agent::LegalReferences.keys(text) })
   end
 
-  def add_result(json) = @amounts.merge(Agent::Amounts.of(json))
+  def add_result(json)
+    @amounts.merge(Agent::Amounts.of(json))
+    @references.merge(Agent::LegalReferences.keys(json))
+  end
+
+  # The legal references of a text that neither a passage, nor the person, nor an earlier answer gave (A06).
+  def unanchored_references(text) = Agent::LegalReferences.matches(text).reject { |match| @references.include?(match.key) }
 
   # The amounts of a text that no source gave.
   def unanchored(text) = Agent::Amounts.of(text) - @amounts.to_a

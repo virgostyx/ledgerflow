@@ -102,6 +102,7 @@ gem "rqrcode", "~> 3.2"
 
 # F03: checks that an uploaded PDF is readable (and reads back generated PDFs in specs)
 gem "pdf-reader"
+gem "rubyzip" # DOCX files of the knowledge base (A06); already in the bundle through caxlsx
 
 gem "anthropic", "~> 1.76"
 

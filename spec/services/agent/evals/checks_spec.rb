@@ -110,6 +110,33 @@ RSpec.describe Agent::Evals::Checks do
     end
   end
 
+  describe "the method answers (A06)" do
+    it "wants a level of certainty, in the language of the case, or the one the case names" do
+      expect(run({ "certainty" => true }, text: "Do it. Certainty: Confirmed by the knowledge base.")["certainty"]).to eq(true)
+      expect(run({ "certainty" => true }, text: "Do it.")["certainty"]).to include("no level of certainty")
+      expect(run({ "certainty" => "general" }, text: "Do it. Certainty: Confirmed by the knowledge base.")["certainty"]).to include("General rule, to be checked".downcase)
+      expect(described_class.run(kase({ "certainty" => true }).with(language: "fr"), outcome(text: "Niveau de certitude : Règle générale, à valider."))["certainty"]).to eq(true)
+      expect(described_class.run(kase({ "certainty" => true }).with(language: "nl"), outcome(text: "Zekerheid: Onbekend."))["certainty"]).to eq(true)
+    end
+
+    it "refuses an account in the answer that no tool showed, and lets through the ones the tools or the question gave" do
+      expect(run({}, text: "Use 490000.", tool_results: [ '{"code":"490000"}' ])["accounts_grounded"]).to eq(true)
+      expect(described_class.run(kase({}, input: "Is 612000 right?"), outcome(text: "Yes, 612000."))["accounts_grounded"]).to eq(true)
+      expect(run({}, text: "Use 999999.")["accounts_grounded"]).to include("999999")
+    end
+
+    it "refuses a legal reference marked as unverified unless the case expects it" do
+      expect(run({}, text: "Under article 99 [unverified reference] it holds.")["references_verified"]).to include("a legal reference no passage gave")
+      expect(run({ "flags" => [ "unverified_references" ] }, text: "Under article 99 [unverified reference] it holds.", flags: [ "unverified_references" ])["references_verified"]).to eq(true)
+    end
+
+    it "looks in what the tools gave for the passage that had to be found, and for what must not be there" do
+      expect(run({ "tool_results_include" => [ "Prepayments" ] }, tool_results: [ '{"title":"Prepayments"}' ])["tool_results_include"]).to eq(true)
+      expect(run({ "tool_results_include" => [ "Prepayments" ] })["tool_results_include"]).to include("lacks")
+      expect(run({ "tool_results_exclude" => [ "secret" ] }, tool_results: [ "a secret" ])["tool_results_exclude"]).to include("must not")
+    end
+  end
+
   describe "flags and security events" do
     it "wants exactly the flags expected, and the events expected, and none of those that must not be" do
       expect(run({ "flags" => [ "suspicious_content" ] }, flags: [ "suspicious_content" ])["flags"]).to eq(true)

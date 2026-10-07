@@ -1,0 +1,69 @@
+# Invented documents and questions to measure the search (A06): the right passage must be among the first five. Nothing here states real law; these are made-up firm notes.
+documents:
+  prepayments:
+    title: Prepayments and accruals
+    language: en
+    text: |
+      # Prepayments
+      An expense paid in advance, such as an annual insurance premium, is booked on a prepayment account and spread over the months it covers.
+
+      # Accruals
+      An expense incurred but not yet invoiced at year end is booked on an accrual account and reversed when the invoice arrives.
+  assets:
+    title: Fixed assets
+    language: en
+    text: |
+      # Depreciation
+      A fixed asset is depreciated over its useful life. Office furniture is depreciated over ten years, computers over three years.
+
+      # Disposal
+      When an asset is sold, the gain or loss is the difference between the sale price and the net book value.
+  cars:
+    title: Company cars
+    language: en
+    text: |
+      # Fuel
+      Fuel for company cars is booked on the vehicle expenses account. The private share is a benefit in kind.
+
+      # Leasing
+      A leasing instalment for a company car is an expense of the period, booked on the leasing account.
+  loyers:
+    title: Loyers et charges
+    language: fr
+    text: |
+      # Loyers
+      Le loyer des bureaux se comptabilise en charge du mois concerné. Un loyer payé d'avance pour le trimestre suivant est une charge constatée d'avance.
+
+      # Garantie locative
+      La garantie locative versée au bailleur est inscrite à l'actif, sur un compte de cautionnements versés.
+  tva:
+    title: TVA sur frais de représentation
+    language: fr
+    text: |
+      # Restaurant
+      La TVA sur les repas au restaurant n'est pas déductible. Elle est incorporée à la charge.
+
+      # Cadeaux
+      Les cadeaux d'affaires de faible valeur peuvent être déduits sous conditions.
+  voorraad:
+    title: Voorraad en kosten
+    language: nl
+    text: |
+      # Voorraad
+      De voorraad wordt op het einde van het boekjaar gewaardeerd tegen aanschaffingswaarde of lagere marktwaarde.
+
+      # Afschrijvingen
+      Een vaste activa wordt afgeschreven over de economische levensduur.
+questions:
+  - { q: "how to book an annual insurance premium paid in advance", doc: prepayments, section: Prepayments }
+  - { q: "expense not yet invoiced at year end", doc: prepayments, section: Accruals }
+  - { q: "how many years to depreciate computers", doc: assets, section: Depreciation }
+  - { q: "gain when an asset is sold", doc: assets, section: Disposal }
+  - { q: "fuel for company cars private share", doc: cars, section: Fuel }
+  - { q: "leasing instalment of a car", doc: cars, section: Leasing }
+  - { q: "loyer payé d'avance trimestre suivant", doc: loyers, section: Loyers }
+  - { q: "garantie locative versée au bailleur", doc: loyers, section: Garantie locative }
+  - { q: "TVA repas restaurant déductible", doc: tva, section: Restaurant }
+  - { q: "waardering voorraad einde boekjaar", doc: voorraad, section: Voorraad }
+  - { q: "afschrijving vaste activa levensduur", doc: voorraad, section: Afschrijvingen }
+  - { q: "charges constatees d avance", doc: loyers, section: Loyers }

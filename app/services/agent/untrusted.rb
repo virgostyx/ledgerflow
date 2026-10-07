@@ -3,6 +3,7 @@
 # application's own and are left alone.
 module Agent::Untrusted
   MAX_LENGTH = 500
+  MAX_LONG_LENGTH = 1200
   THIRD_PARTY = %i[free_text personal].freeze
   HIDDEN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁩﻿]/
 
@@ -16,11 +17,11 @@ module Agent::Untrusted
 
         patterns = Agent::InjectionDetector.scan(text)
         findings << { patterns: patterns, excerpt: Agent::Security.mask_excerpt(text) } if patterns.any?
-        shorten(text.gsub(HIDDEN, ""))
+        shorten(text.gsub(HIDDEN, ""), tool.long_text.include?(path) ? MAX_LONG_LENGTH : MAX_LENGTH)
       end
     end
     [ copy, findings ]
   end
 
-  def self.shorten(text) = text.length > MAX_LENGTH ? "#{text[0, MAX_LENGTH]}…" : text
+  def self.shorten(text, limit = MAX_LENGTH) = text.length > limit ? "#{text[0, limit]}…" : text
 end

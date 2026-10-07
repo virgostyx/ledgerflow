@@ -634,6 +634,7 @@ DEPENDENCIES
   rqrcode (~> 3.2)
   rspec-rails
   rubocop-rails-omakase
+  rubyzip
   selenium-webdriver
   sepa_king
   shoulda-matchers
