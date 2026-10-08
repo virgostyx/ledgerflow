@@ -231,6 +231,92 @@ RSpec.describe Agent::Runner do
     end
   end
 
+  describe "the proposals of an answer (A07)" do
+    include_context "with_pcmn_accounts"
+
+    let(:registry) { Agent::ToolRegistry.default }
+    let(:journal) { create(:journal, :purchase) }
+    let(:supplier) { create(:partner, :supplier, name: "Fournisseur Dupont SA", vat_number: nil) }
+    let(:day) { Date.new(2026, 1, 6) }
+
+    def propose(amount: "100.00", credit: "100.00", id: "p1", name: "propose_entry", input: nil)
+      input ||= { "journal" => journal.code, "entry_date" => day.iso8601, "description" => "Insurance", "rationale" => "Annual premium.", "certainty" => "given",
+                  "lines" => [ { "account" => "604000", "side" => "debit", "amount" => amount }, { "account" => "440000", "side" => "credit", "amount" => credit, "partner_id" => supplier.id } ] }
+      Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: [ { type: "tool_use", id: id, name: name, input: input } ])
+    end
+
+    def play(script, question: "Book the insurance premium.")
+      @gateway = Agent::FakeGateway.new(script)
+      described_class.new(conversation: conversation, context: context, gateway: @gateway, registry: registry).ask(question)
+    end
+
+    before { create(:fiscal_year, status: :open, year: 2026, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 12, 31)) }
+
+    it "keeps a proposal the server accepted, with the answer, for the person to decide, and writes nothing to the books" do
+      expect { @answer = play([ propose, text("I prepared an entry for you to review.") ]) }.not_to change(Accounting::JournalEntry, :count)
+
+      proposal = @answer.reload.proposals.first
+      expect(proposal).to have_attributes(kind: "entry_draft", status: "pending", user_id: user.id, conversation_id: conversation.id, warnings_present: false, review_required: false)
+      expect(proposal.data["totals"]).to eq("debit" => "100.00", "credit" => "100.00")
+      expect(proposal.expires_at).to be_within(1.minute).of(7.days.from_now)
+      expect(Accounting::AuditLog.where(action: "agent_proposal", auditable_id: proposal.id)).to exist
+    end
+
+    it "asks for the justification to be read above the threshold of the entity" do
+      Agent::Setting.for_current_entity.update!(review_threshold: 50)
+
+      play([ propose, text("Prepared.") ])
+
+      expect(Agent::Proposal.last.review_required).to be true
+    end
+
+    it "keeps nothing of a proposal the server refused, and lets the model correct it" do
+      answer = play([ propose(credit: "99.99", id: "p1"), propose(id: "p2"), text("Prepared.") ])
+
+      expect(@gateway.requests[1][:messages].last[:content].first[:content]).to include("not balanced", "99.99")
+      expect(answer.reload.proposals.count).to eq(1)
+    end
+
+    it "stops after two corrections and tells the model to explain, so that an unbalanced proposal never reaches the person" do
+      answer = play([ propose(credit: "1.00", id: "a"), propose(credit: "2.00", id: "b"), propose(credit: "3.00", id: "c"), propose(credit: "4.00", id: "d"), text("I could not prepare it: the amounts do not balance.") ])
+
+      expect(@gateway.requests.last[:messages].last[:content].first[:content]).to include("Stop proposing")
+      expect(answer.reload.proposals).to be_empty
+      expect(Agent::SecurityEvent.where(conversation: conversation, kind: "limit_reached")).to exist
+    end
+
+    it "keeps no more than twenty proposals in one answer" do
+      calls = Array.new(22) { |i| propose(id: "p#{i}").content.first }
+      batch = Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: calls)
+
+      answer = play([ batch, text("Done.") ])
+
+      expect(answer.reload.proposals.count).to eq(20)
+    end
+
+    it "keeps a task proposal, and its warnings flag" do
+      task = propose(name: "propose_task", input: { "title" => "Ask for the contract", "kind" => "missing_document", "rationale" => "No document behind the entry.", "certainty" => "given" })
+
+      play([ task, text("Prepared.") ])
+
+      expect(Agent::Proposal.last).to have_attributes(kind: "task", status: "pending")
+      expect(Agent::Proposal.last.data["title"]).to eq("Ask for the contract")
+    end
+
+    it "keeps nothing when the answer is stopped" do
+      expect(described_class.new(conversation: conversation, context: context, gateway: Agent::FakeGateway.new([ propose, text("x") ]), registry: registry).ask("Q", stop: -> { true }).reload.proposals).to be_empty
+    end
+
+    it "cancels what is waiting when the conversation is deleted" do
+      play([ propose, text("Prepared.") ])
+      proposal = Agent::Proposal.last
+
+      conversation.destroy!
+
+      expect(proposal.reload).to have_attributes(status: "cancelled", conversation_id: nil)
+    end
+  end
+
   describe "the knowledge base and the legal references of an answer (A06)" do
     let(:registry) { Agent::ToolRegistry.default }
 

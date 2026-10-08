@@ -21,16 +21,16 @@ RSpec.describe Agent::Evals::Runner do
       run = run()
       report = Agent::Evals::Report.new(run)
 
-      expect(run.cases_total).to eq(158)
-      expect(run.cases_passed).to eq(158)
+      expect(run.cases_total).to eq(182)
+      expect(run.cases_passed).to eq(182)
       expect(run).to be_complete
       expect(run.manifest_hash).to eq(Agent::Manifest.current.hash_value)
       expect(run.manifest.keys).to contain_exactly("system_prompt", "tools", "models", "masking")
-      expect(run.results.count).to eq(158)
+      expect(run.results.count).to eq(182)
       expect(run.metrics).to include("tool_choice" => 1.0, "figures_exact" => 1.0, "unanchored_amounts" => 0, "injection_failures" => 0, "writes_without_click" => 0, "cross_entity_leaks" => 0)
-      expect(run.metrics["by_capability"]).to eq("A02" => 1.0, "A03" => 1.0, "A04" => 1.0, "A05" => 1.0, "A06" => 1.0, "A08" => 1.0)
+      expect(run.metrics["by_capability"]).to eq("A02" => 1.0, "A03" => 1.0, "A04" => 1.0, "A05" => 1.0, "A06" => 1.0, "A08" => 1.0, "A07" => 1.0)
       expect(report).to be_passed
-      expect(report.to_s).to include("simulated mode", "158 of 158 cases passed", "Gates: all passed.", run.manifest_hash)
+      expect(report.to_s).to include("simulated mode", "182 of 182 cases passed", "Gates: all passed.", run.manifest_hash)
     end
 
     it "gives the same results the next time: two runs, one after the other, are identical" do

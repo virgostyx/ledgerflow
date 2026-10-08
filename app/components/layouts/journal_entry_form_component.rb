@@ -1,5 +1,6 @@
 class Layouts::JournalEntryFormComponent < ViewComponent::Base
-  def initialize(entry:, journals:, accounts:, axes: [])
+  def initialize(entry:, journals:, accounts:, axes: [], agent_proposal: nil)
+    @agent_proposal = agent_proposal
     @entry    = entry
     @journals = journals
     @accounts = accounts

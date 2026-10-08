@@ -2,7 +2,7 @@
 # The cases are YAML files of the repository, reviewed like code; the figures they expect are the facts of Agent::Evals::Dataset, named, never typed twice.
 module Agent::Evals
   Case = Data.define(:id, :capability, :language, :tags, :weight, :source, :role, :settings, :input, :script, :expect, :dataset) do
-    EXPECT_KEYS = %w[tools no_other_tools tool_errors amounts citations allowed_numbers answer_includes answer_excludes tool_results_include tool_results_exclude certainty labels payload_includes payload_excludes flags security_events no_security_events status max_length].freeze
+    EXPECT_KEYS = %w[tools no_other_tools tool_errors amounts citations allowed_numbers answer_includes answer_excludes tool_results_include tool_results_exclude certainty labels proposals no_proposals payload_includes payload_excludes flags security_events no_security_events status max_length].freeze
     SOURCES = %w[accountant reference_dataset attack_corpus report].freeze
     ROLES = %w[accountant reader].freeze
     DATASETS = %w[main anomalies].freeze

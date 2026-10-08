@@ -11,7 +11,7 @@ class Agent::ConversationsController < Agent::BaseController
 
   def show
     @conversation = find_conversation
-    @messages = @conversation.messages.where(role: %w[user assistant]).includes(:tool_calls).order(:id)
+    @messages = @conversation.messages.where(role: %w[user assistant]).includes(:tool_calls, :proposals).order(:id)
     @context = agent_context(screen: @conversation.origin_screen, subject_ref: @conversation.context_ref)
     @reviews = @conversation.reviews.includes(:reviewer).order(:reviewed_at)
   end

@@ -35,6 +35,15 @@
         </ul>
       </details>
     <% end %>
+    <% proposals = message.proposals.sort_by(&:id) %>
+    <% proposals.each do |proposal| %><%= render "agent/proposals/card", proposal: proposal %><% end %>
+    <% creatable = proposals.select { |proposal| proposal.pending? && !proposal.lapsed? && proposal.kind == "entry_draft" && !proposal.warnings_present && !proposal.review_required } %>
+    <% if creatable.size > 1 %>
+      <%= form_with url: agent_accept_all_proposals_path(message.id), class: "mt-2 text-xs", data: { turbo_confirm: "Create #{creatable.size} drafts? Only the proposals without a warning are created." } do %>
+        <%= hidden_field_tag :confirm_count, creatable.size %>
+        <%= submit_tag "Create all #{creatable.size} drafts without a warning", class: "rounded border border-indigo-300 px-3 py-1 text-indigo-800 hover:bg-indigo-50" %>
+      <% end %>
+    <% end %>
     <div id="agent_message_<%= message.id %>_feedback" class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
       <% if message.sent_payload.present? %><%= link_to "See what was sent", sent_agent_conversation_message_path(message.conversation_id, message), class: "text-indigo-700 hover:underline" %><% end %>
       <%= button_to "Useful", agent_conversation_message_feedback_path(message.conversation_id, message), params: { rating: "useful" }, class: "rounded border border-gray-300 px-2 py-0.5 hover:bg-gray-50" %>

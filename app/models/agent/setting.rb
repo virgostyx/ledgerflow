@@ -16,6 +16,7 @@ class Agent::Setting < ApplicationRecord
   acts_as_tenant :entity
 
   validates :retention_days, inclusion: { in: RETENTION_CHOICES }
+  validates :review_threshold, numericality: { greater_than_or_equal_to: 0, less_than: 10**13 }
   validate :modes_are_known
 
   def self.for_current_entity = find_or_create_by!(entity: ActsAsTenant.current_tenant)

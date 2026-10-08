@@ -29,7 +29,7 @@ class Agent::SettingsController < ApplicationController
 
   # A mode left blank goes back to the default of its class.
   def setting_params
-    permitted = params.require(:agent_setting).permit(:enabled, :retention_days, :restricted, data_class_modes: Agent::Setting::DATA_CLASSES)
+    permitted = params.require(:agent_setting).permit(:enabled, :retention_days, :restricted, :review_threshold, data_class_modes: Agent::Setting::DATA_CLASSES)
     modes = permitted.delete(:data_class_modes)
     permitted[:data_class_modes] = modes.to_h.compact_blank if modes
     permitted

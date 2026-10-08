@@ -4,6 +4,8 @@
 class Agent::Runner
   LIMIT_NOTICE  = "I stopped before finishing: the limit of this question was reached. What I established is above; I could not verify the rest.".freeze
   TOOLS_NOTICE  = "I stopped because the tools are not answering. Try again in a moment, or use the reports directly.".freeze
+  PROPOSAL_ERRORS = %w[invalid_proposal limit_reached].freeze
+  MAX_CORRECTIONS = 2 # a proposal the server refuses may be corrected twice (A07); then the person is told
   ACCESS_NOTICE = "I stopped because you no longer have access to the agent.".freeze
 
   def initialize(conversation:, context:, gateway: Agent::ModelGateway.default, registry: Agent::ToolRegistry.default, limits: {})
@@ -27,6 +29,7 @@ class Agent::Runner
     @redactor = Agent::Redactor.new(setting: Agent::Setting.find_by(entity: @context.entity) || Agent::Setting.new(entity: @context.entity), conversation: @conversation)
     @redaction = Hash.new { |hash, data_class| hash[data_class] = Hash.new(0) }
     @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors, @tool_log, @gaps = [], Hash.new(0), nil, 0, 0, 0, [], []
+    @proposals, @proposal_failures = [], 0
     @security = Agent::Security.new(conversation: @conversation, context: @context)
     @manifest = Agent::Manifest.current
     messages = history + [ { role: "user", content: question } ]
@@ -126,9 +129,10 @@ class Agent::Runner
     error = result["error"]
     @anchors.add_result(result.to_json) unless error
     @known_refs.merge(Agent::Refs.in_result(result)) unless error
-    @tool_calls += 1
-    @tool_errors = error ? @tool_errors + 1 : 0
+    @tool_calls += 1 unless call[:name].start_with?("propose_") # the proposals of a batch (twenty at most) do not eat the reading budget of the question
+    @tool_errors = error && !PROPOSAL_ERRORS.include?(error) ? @tool_errors + 1 : 0 # a refused proposal is a correction to make, not a tool that is down
     @gaps << input["query"] if call[:name] == "search_knowledge" && !error && result["row_count"].to_i.zero?
+    note_proposal(call[:name], result)
     duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round
     @tool_log << { tool: call[:name], arguments: input.to_json, status: error ? "error" : "ok", error: error, row_count: result["row_count"], truncated: result["truncated"] == true, duration_ms: duration_ms,
                  result_digest: (Digest::SHA256.hexdigest(result.to_json) unless error), result_amounts: (error ? [] : Agent::Amounts.of(result.to_json)) }
@@ -138,6 +142,8 @@ class Agent::Runner
 
   # A calculation of amounts that no tool gave is refused: the agent computes on what it was shown, not on what it made up.
   def execute(name, input)
+    return proposal_refused(name) if name.start_with?("propose_") && (@proposal_failures > MAX_CORRECTIONS || @proposals.size >= Agent::Proposal::MAX_PER_ANSWER)
+
     unanchored = name == "calculate" ? @anchors.unanchored_inputs(Array(input["values"]), operation: input["operation"]) : []
     if unanchored.any?
       @security.event(:unanchored_amount, tool: name, excerpt: "calculation refused: #{unanchored.join(', ')}")
@@ -145,6 +151,28 @@ class Agent::Runner
     end
 
     @registry.execute(name, input, @context, security: @security)
+  end
+
+  def proposal_refused(name)
+    @security.event(:limit_reached, tool: name, excerpt: "proposals: corrections or number per answer")
+    { "error" => "limit_reached", "message" => "Stop proposing. Explain to the person what prevents the proposal, or that this answer already holds #{Agent::Proposal::MAX_PER_ANSWER} proposals." }
+  end
+
+  # A proposal the server accepted is kept (by what the tool gave, not by what the model writes afterwards); one it refused counts as a correction turn.
+  def note_proposal(name, result)
+    return unless name.start_with?("propose_")
+
+    result["error"] == "invalid_proposal" ? @proposal_failures += 1 : (@proposals << result.dig("data", 0, "proposal") unless result["error"])
+  end
+
+  # What was proposed in the answer, each proposal for the person to decide (A07). Nothing reaches the books here.
+  def store_proposals(message)
+    threshold = Agent::Setting.find_by(entity: @context.entity)&.review_threshold || Agent::Setting.column_defaults.fetch("review_threshold")
+    @proposals.compact.each do |data|
+      proposal = Agent::Proposal.create!(user: @context.user, conversation: @conversation, message: message, kind: data.fetch("kind"), payload: data.to_json, warnings_present: Array(data["warnings"]).any?,
+                                         review_required: data["kind"] == "entry_draft" && BigDecimal(data.dig("totals", "debit")) >= threshold)
+      Accounting::AuditLog.record!(auditable: proposal, action: "agent_proposal", user: @context.user, payload: { kind: proposal.kind, conversation_id: @conversation.id })
+    end
   end
 
   def finish(status, notice)
@@ -162,6 +190,7 @@ class Agent::Runner
                                              redaction_stats: @redaction.transform_values(&:to_h), sent_payload: @sent&.to_json,
                                              input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])
     record_tool_calls(message)
+    store_proposals(message) if status == :complete
     @gaps.uniq.each { |query| Knowledge::Gap.record(kind: "no_passage", question: query, user: @context.user, message: message) }
     emit(type: :done, message: message)
     message

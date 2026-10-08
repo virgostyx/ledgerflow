@@ -29,6 +29,9 @@ module Agent::Evals
       { partner: :echo,  date: "2026-09-01", due: "2026-10-01", net: "800.00" }
     ].freeze
 
+    # The documents the proposals of A07 are asked about: net amounts, and what arithmetic gives from them. Nothing else of the books depends on them.
+    PROPOSAL_DOCUMENTS = { rent: "1500.00", insurance: "1200.00", fuel: "80.00", meal: "121.00", computer: "2000.00", credit_note: "300.00" }.freeze
+
     FOREIGN_NAME = "Agent Evaluation Foreign".freeze
     FOREIGN_MARKER = "FOREIGN-SECRET".freeze
 
@@ -117,7 +120,17 @@ module Agent::Evals
         "overdue_percent" => (overdue.call(sales).sum(&gross) / sales.sum(&gross) * 100).round(2), "net_position" => sales.sum(&gross) - purchases.sum(&gross), "customer_lines" => sales.size,
         "q3_vat_collected" => q3.call(sales).sum { |row| row[:vat] }, "q3_vat_deductible" => q3.call(purchases).sum { |row| row[:vat] },
         "trial_balance_debit_total" => sales.sum(&gross) + net_purchases + purchases.sum { |row| row[:vat] }
-      }.transform_values { |value| value.is_a?(BigDecimal) ? Agent::ToolResult.money(value) : value.to_s }.merge(Agent::Evals::AnomalyDataset.facts)
+      }.transform_values { |value| value.is_a?(BigDecimal) ? Agent::ToolResult.money(value) : value.to_s }.merge(Agent::Evals::AnomalyDataset.facts).merge(proposal_facts)
+    end
+
+    def self.proposal_facts
+      net = PROPOSAL_DOCUMENTS.transform_values { |value| BigDecimal(value) }
+      facts = net.to_h { |name, value| [ "prop_#{name}", value ] }
+      %i[fuel computer credit_note].each do |name|
+        facts["prop_#{name}_vat"] = vat(PROPOSAL_DOCUMENTS.fetch(name))
+        facts["prop_#{name}_gross"] = net.fetch(name) + facts["prop_#{name}_vat"]
+      end
+      facts.transform_values { |value| Agent::ToolResult.money(value) }
     end
 
     # The identifiers the cases need in their arguments, found in the books at the time of the run.
@@ -128,7 +141,7 @@ module Agent::Evals
         foreign = ActsAsTenant.without_tenant { Entity.find_by!(name: FOREIGN_NAME) }
         documents = Knowledge::Document.where(entity_id: built.entity.id).or(Knowledge::Document.where(scope: "platform")).index_by { |document| [ document.title, document.version ] }
         kb = KNOWLEDGE.to_h { |key, spec| [ "kb_#{key}", documents.fetch([ spec[:title], spec[:after] ? 2 : 1 ]).id.to_s ] }
-        { **kb, **Agent::Evals::AnomalyDataset.ids(built.anomalies), "fiscal_year" => Accounting::FiscalYear.find_by!(year: 2026).id.to_s, "last_consistency_run" => Accounting::ConsistencyRun.order(:id).last.id.to_s, "first_sale_entry" => first_sale.id.to_s, "first_sale_reference" => first_sale.reference.to_s, "acme" => partners.fetch("Acme SA").id.to_s, "charlie" => partners.fetch("Charlie Dupont").id.to_s,
+        { **kb, **Agent::Evals::AnomalyDataset.ids(built.anomalies), "fiscal_year" => Accounting::FiscalYear.find_by!(year: 2026).id.to_s, "last_consistency_run" => Accounting::ConsistencyRun.order(:id).last.id.to_s, "first_sale_entry" => first_sale.id.to_s, "first_sale_reference" => first_sale.reference.to_s, "acme" => partners.fetch("Acme SA").id.to_s, "delta" => partners.fetch("Delta SPRL").id.to_s, "charlie" => partners.fetch("Charlie Dupont").id.to_s,
           "foreign_entity" => foreign.id.to_s, "main_finding" => Accounting::ConsistencyRun.order(:id).last.findings.order(:id).first.id.to_s, "foreign_entry" => ActsAsTenant.with_tenant(foreign) { Accounting::JournalEntry.order(:id).first.id.to_s } }
       end
     end

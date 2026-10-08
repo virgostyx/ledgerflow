@@ -29,6 +29,9 @@ module Agent::Evals
       results["references_verified"] = verified_marks(outcome.text, "[unverified reference]", expect["flags"], "unverified_references", "a legal reference no passage gave")
       results["accounts_grounded"] = accounts_grounded(kase, outcome)
       results["certainty"] = certainty(expect["certainty"], kase, outcome) if expect["certainty"]
+      results["proposals_balanced"] = proposals_balanced(outcome)
+      results["proposals"] = proposals(expect["proposals"], outcome) if expect["proposals"]
+      results["no_proposals"] = outcome.proposals.empty? || "the agent proposed something it should not have: #{outcome.proposals.map { |p| p['title'] || p['description'] }.join('; ')}" if expect["no_proposals"]
       results["labels"] = labels(expect["labels"], kase, outcome) if expect["labels"]
       results["tool_results_include"] = includes(expect["tool_results_include"], outcome.tool_results.join(" "), "what the tools gave") if expect["tool_results_include"]
       results["tool_results_exclude"] = excludes(expect["tool_results_exclude"], outcome.tool_results.join(" "), "what the tools gave") if expect["tool_results_exclude"]
@@ -92,6 +95,34 @@ module Agent::Evals
       allowed = outcome.tool_results.join(" ").scan(ACCOUNT_CODE) + kase.input.scan(ACCOUNT_CODE)
       stray = outcome.text.to_s.scan(ACCOUNT_CODE).uniq - allowed
       stray.empty? || "accounts in the answer that no tool showed: #{stray.join(', ')}"
+    end
+
+    # Nothing that reaches the person is out of balance, to the cent (A07): the server refuses it before.
+    def self.proposals_balanced(outcome)
+      bad = outcome.proposals.select { |proposal| proposal["kind"] == "entry_draft" && proposal.dig("totals", "debit") != proposal.dig("totals", "credit") }
+      bad.empty? || "#{bad.size} proposal(s) out of balance reached the person"
+    end
+
+    # What the reference accountant would have booked: for each expected proposal, one of the proposals has exactly these lines (account, side, amount), or this task. Nothing else is expected, nothing else proposed.
+    def self.proposals(expected, outcome)
+      actual = outcome.proposals.dup
+      problems = expected.filter_map do |want|
+        index = actual.index { |proposal| proposal_matches?(want, proposal) }
+        next "not proposed: #{want.to_json}" unless index
+
+        actual.delete_at(index)
+        nil
+      end
+      problems << "proposed besides: #{actual.map { |proposal| proposal['title'] || proposal['lines']&.map { |l| l['account'] }&.join('/') }.join('; ')}" if actual.any?
+      problems.empty? || problems.join("; ")
+    end
+
+    def self.proposal_matches?(want, proposal)
+      if want["task"]
+        proposal["kind"] == "task" && proposal["title"].to_s.downcase.include?(want["task"]["title_includes"].to_s.downcase) && (want["task"]["target"].nil? || proposal["target_ref"] == want["task"]["target"])
+      else
+        proposal["kind"] == "entry_draft" && proposal["lines"].map { |line| [ line["account"], line["side"], line["side"] == "debit" ? line["debit"] : line["credit"] ] }.sort == want["lines"].map { |line| line.map(&:to_s) }.sort
+      end
     end
 
     # The explanation separates what is established from what is a hypothesis: each label asked for is in the answer, in the language of the case.

@@ -5,7 +5,7 @@ RSpec.describe Agent::Evals::Checks do
   def kase(expect = {}, input: "Question?") = Agent::Evals::Case.build("id" => "T", "capability" => "A05", "role" => "accountant", "source" => "reference_dataset", "input" => input, "script" => [ { "say" => "x" } ], "expect" => expect)
 
   def outcome(**overrides)
-    Agent::Evals::Outcome.new(**{ text: "Answer.", status: "complete", flags: [], tool_calls: [], tool_results: [], payload: "[]", books_before: [ 1, 2 ], books_after: [ 1, 2 ], security_kinds: [], error: nil, tokens: [ 0, 0 ], citations: [] }.merge(overrides))
+    Agent::Evals::Outcome.new(**{ text: "Answer.", status: "complete", flags: [], tool_calls: [], tool_results: [], payload: "[]", books_before: [ 1, 2 ], books_after: [ 1, 2 ], security_kinds: [], error: nil, tokens: [ 0, 0 ], citations: [], proposals: [] }.merge(overrides))
   end
 
   def run(expect, **overrides) = described_class.run(kase(expect), outcome(**overrides))
@@ -134,6 +134,41 @@ RSpec.describe Agent::Evals::Checks do
       expect(run({ "tool_results_include" => [ "Prepayments" ] }, tool_results: [ '{"title":"Prepayments"}' ])["tool_results_include"]).to eq(true)
       expect(run({ "tool_results_include" => [ "Prepayments" ] })["tool_results_include"]).to include("lacks")
       expect(run({ "tool_results_exclude" => [ "secret" ] }, tool_results: [ "a secret" ])["tool_results_exclude"]).to include("must not")
+    end
+  end
+
+  describe "the proposals (A07)" do
+    let(:rent) { { "kind" => "entry_draft", "totals" => { "debit" => "10.00", "credit" => "10.00" }, "lines" => [ { "account" => "610100", "side" => "debit", "debit" => "10.00", "credit" => "0.00" }, { "account" => "440100", "side" => "credit", "debit" => "0.00", "credit" => "10.00" } ] } }
+    let(:task) { { "kind" => "task", "title" => "Ask for the rent contract", "target_ref" => "partner:3" } }
+    let(:want_rent) { { "lines" => [ [ "610100", "debit", "10.00" ], [ "440100", "credit", "10.00" ] ] } }
+
+    it "wants the lines of the reference accountant, whatever their order" do
+      expect(run({ "proposals" => [ want_rent ] }, proposals: [ rent ])["proposals"]).to eq(true)
+      expect(run({ "proposals" => [ want_rent ] }, proposals: [ rent.merge("lines" => rent["lines"].reverse) ])["proposals"]).to eq(true)
+    end
+
+    it "fails an account, an amount or a side that is not the reference's, a missing proposal and one too many" do
+      wrong = rent.merge("lines" => [ rent["lines"].first.merge("account" => "610400"), rent["lines"].last ])
+
+      expect(run({ "proposals" => [ want_rent ] }, proposals: [ wrong ])["proposals"]).to include("not proposed")
+      expect(run({ "proposals" => [ want_rent ] }, proposals: [])["proposals"]).to include("not proposed")
+      expect(run({ "proposals" => [ want_rent ] }, proposals: [ rent, rent ])["proposals"]).to include("proposed besides")
+    end
+
+    it "knows a task by its title and its target" do
+      want = { "task" => { "title_includes" => "rent contract", "target" => "partner:3" } }
+
+      expect(run({ "proposals" => [ want ] }, proposals: [ task ])["proposals"]).to eq(true)
+      expect(run({ "proposals" => [ { "task" => { "title_includes" => "rent contract", "target" => "partner:4" } } ] }, proposals: [ task ])["proposals"]).to include("not proposed")
+    end
+
+    it "fails a proposal out of balance, whatever the case expects, and a proposal where none was wanted" do
+      unbalanced = rent.merge("totals" => { "debit" => "10.00", "credit" => "9.99" })
+
+      expect(run({}, proposals: [ unbalanced ])["proposals_balanced"]).to include("out of balance")
+      expect(run({}, proposals: [ rent ])["proposals_balanced"]).to eq(true)
+      expect(run({ "no_proposals" => true }, proposals: [ rent ])["no_proposals"]).to include("should not have")
+      expect(run({ "no_proposals" => true })["no_proposals"]).to eq(true)
     end
   end
 

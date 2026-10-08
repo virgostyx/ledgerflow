@@ -1,0 +1,66 @@
+<%# The card of a proposal (A07): what the agent proposes, what the server checked, why, and the decision. Nothing here has been written to the books. %>
+<% data = proposal.data %>
+<% badge = ->(text, ok) { content_tag(:span, text, class: "rounded-full px-2 py-0.5 text-xs #{ok ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'}") } %>
+<div id="<%= dom_id(proposal) %>" class="mt-3 rounded-md border border-indigo-200 bg-indigo-50/40 p-3">
+  <% if proposal.kind == "entry_draft" %>
+    <p class="font-medium text-gray-900">Proposed entry — journal <%= data["journal"] %>, <%= data["entry_date"] %>: <%= data["description"] %></p>
+    <table class="mt-2 w-full text-xs">
+      <thead><tr class="text-left text-gray-500"><th class="pr-2">Account</th><th class="pr-2">Label</th><th class="px-2 text-right">Debit</th><th class="px-2 text-right">Credit</th></tr></thead>
+      <tbody>
+        <% data["lines"].each do |line| %>
+          <tr class="border-t border-gray-100">
+            <td class="pr-2"><span class="font-mono"><%= line["account"] %></span> <%= line["account_label"] %></td>
+            <td class="pr-2"><%= line["label"] %><%= " (#{line['vat_grid'] ? "VAT grid #{line['vat_grid']}" : ''})" if line["vat_grid"] %><%= " #{line['amount_currency']} #{line['currency']}" if line["currency"] %></td>
+            <td class="px-2 text-right font-mono"><%= line["debit"] unless line["debit"] == "0.00" %></td>
+            <td class="px-2 text-right font-mono"><%= line["credit"] unless line["credit"] == "0.00" %></td>
+          </tr>
+        <% end %>
+        <tr class="border-t border-gray-300 font-medium"><td colspan="2">Total</td><td class="px-2 text-right font-mono"><%= data.dig("totals", "debit") %></td><td class="px-2 text-right font-mono"><%= data.dig("totals", "credit") %></td></tr>
+      </tbody>
+    </table>
+    <p class="mt-2 flex flex-wrap gap-1">
+      <%= badge.call("Balanced", true) %> <%= badge.call("Period open", true) %>
+      <% if data.dig("checks", "vat") == "consistent" %><%= badge.call("VAT consistent", true) %><% end %>
+      <% if data.dig("checks", "duplicate") %><%= badge.call("Possible duplicate", false) %><% end %>
+    </p>
+  <% else %>
+    <p class="font-medium text-gray-900">Proposed task — <%= data["title"] %></p>
+    <p class="text-xs text-gray-600"><%= data["task_kind"].to_s.humanize %>, priority <%= data["priority"] %><%= ", due #{data['due_on']}" if data["due_on"] %><%= ", about #{data['target_ref']}" if data["target_ref"] %></p>
+  <% end %>
+
+  <% Array(data["warnings"]).each do |warning| %><p class="mt-1 text-xs text-amber-800">Warning: <%= warning %></p><% end %>
+
+  <details class="mt-2 text-xs" <%= "open" if proposal.review_required && proposal.pending? %> data-proposal-justification>
+    <summary class="cursor-pointer text-indigo-700">Why this treatment?</summary>
+    <p class="mt-1 whitespace-pre-line text-gray-800"><%= data["rationale"] %></p>
+    <p class="mt-1 text-gray-600">Certainty: <%= { "confirmed" => "Confirmed by the knowledge base", "given" => "Given by the books", "general" => "General rule, to be checked" }[data["certainty"]] %></p>
+    <% Array(data["source_refs"]).each do |ref| %>
+      <% path = Agent::Refs.path(ref) %><span class="mr-2"><%= path ? link_to(Agent::Refs.label(ref), path, class: "text-indigo-700 hover:underline") : Agent::Refs.label(ref) %></span>
+    <% end %>
+    <% Array(data["alternatives"]).each do |alternative| %><p class="mt-1 text-gray-700"><span class="font-medium">Alternative:</span> <%= alternative["treatment"] %> — <span class="italic"><%= alternative["condition"] %></span></p><% end %>
+  </details>
+
+  <% if proposal.pending? && !proposal.lapsed? %>
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+      <%= button_to (proposal.kind == "task" ? "Create the task" : "Create the draft"), accept_agent_proposal_path(proposal), params: (proposal.review_required ? { justification_read: "1" } : {}),
+            class: "rounded bg-indigo-600 px-3 py-1 text-white hover:bg-indigo-700", form: { data: (proposal.review_required ? { turbo_confirm: "This amount needs a closer look. Have you read the justification?" } : {}) } %>
+      <% if proposal.kind == "entry_draft" %><%= button_to "Modify", modify_agent_proposal_path(proposal), method: :get, class: "rounded border border-gray-300 px-3 py-1 hover:bg-gray-50" %><% end %>
+      <%= form_with url: reject_agent_proposal_path(proposal), class: "flex items-center gap-1" do %>
+        <%= text_field_tag :reason, nil, placeholder: "Reason (optional)", maxlength: 300, aria: { label: "Reason for rejecting" }, class: "w-40 rounded border-gray-300 text-xs" %>
+        <%= submit_tag "Reject", class: "rounded border border-gray-300 px-3 py-1 hover:bg-gray-50" %>
+      <% end %>
+      <span class="text-gray-500">Valid until <%= l(proposal.expires_at.to_date) %></span>
+    </div>
+    <% if proposal.review_required %><p class="mt-1 text-xs text-amber-800">This amount is above the review threshold: read the justification before creating the draft.</p><% end %>
+  <% else %>
+    <p class="mt-2 text-xs text-gray-600">
+      <%= case proposal.status
+          when "created" then proposal.result_type == "Accounting::Task" ? "The task was created." : "The draft was created."
+          when "rejected" then "Rejected#{": #{proposal.reject_reason}" if proposal.reject_reason.present?}."
+          when "cancelled" then "Cancelled: the conversation was deleted."
+          else "Expired: nobody decided it in time."
+          end %>
+      <% if proposal.created? && proposal.result_type == "Accounting::JournalEntry" %><%= link_to "Open the entry", accounting_journal_entry_path(proposal.result_id), class: "text-indigo-700 hover:underline" %><% end %>
+    </p>
+  <% end %>
+</div>

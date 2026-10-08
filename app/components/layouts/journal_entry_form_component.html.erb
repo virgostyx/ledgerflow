@@ -4,6 +4,10 @@
                       journal_entry_form_rate_lookup_url_value: helpers.accounting_exchange_rate_lookup_path } do |f| %>
 
   <%= f.hidden_field :fiscal_year_id %>
+  <% if @agent_proposal %>
+    <%= hidden_field_tag "accounting_journal_entry[agent_proposal_id]", @agent_proposal.id %>
+    <p role="status" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">Prepared by the assistant from your request. Check every line: what you save here is your entry, not the proposal.</p>
+  <% end %>
 
   <%# Header fields %>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -49,7 +53,7 @@
 
   <%# Lines container %>
   <div data-journal-entry-form-target="linesContainer">
-    <%= f.fields_for :lines, @entry.lines.first || @entry.lines.build do |lf| %>
+    <%= f.fields_for :lines, (@entry.lines.any? ? @entry.lines : [ @entry.lines.build ]) do |lf| %>
       <div class="entry-lines mb-2 border border-primary-200 odd:bg-primary-50 rounded-md py-1 px-1 -mx-1" data-journal-entry-form-target="line">
         <div class="grid grid-cols-12 gap-2 items-center">
           <div class="col-span-3 relative" data-controller="account-search"

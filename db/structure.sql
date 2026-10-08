@@ -3025,6 +3025,52 @@ ALTER SEQUENCE public.agent_messages_id_seq OWNED BY public.agent_messages.id;
 
 
 --
+-- Name: agent_proposals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_proposals (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    conversation_id bigint,
+    message_id bigint,
+    kind character varying NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    payload text NOT NULL,
+    warnings_present boolean DEFAULT false NOT NULL,
+    review_required boolean DEFAULT false NOT NULL,
+    outcome character varying,
+    changed_fields jsonb DEFAULT '[]'::jsonb NOT NULL,
+    reject_reason text,
+    result_id bigint,
+    result_type character varying,
+    expires_at timestamp(6) without time zone NOT NULL,
+    decided_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_proposals_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_proposals_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_proposals_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_proposals_id_seq OWNED BY public.agent_proposals.id;
+
+
+--
 -- Name: agent_pseudonyms; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3106,7 +3152,8 @@ CREATE TABLE public.agent_settings (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     data_class_modes jsonb DEFAULT '{}'::jsonb NOT NULL,
-    restricted boolean DEFAULT false NOT NULL
+    restricted boolean DEFAULT false NOT NULL,
+    review_threshold numeric(15,2) DEFAULT 5000.0 NOT NULL
 );
 
 
@@ -5148,6 +5195,13 @@ ALTER TABLE ONLY public.agent_messages ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: agent_proposals id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_proposals ALTER COLUMN id SET DEFAULT nextval('public.agent_proposals_id_seq'::regclass);
+
+
+--
 -- Name: agent_pseudonyms id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5993,6 +6047,14 @@ ALTER TABLE ONLY public.agent_feedback
 
 ALTER TABLE ONLY public.agent_messages
     ADD CONSTRAINT agent_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_proposals agent_proposals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_proposals
+    ADD CONSTRAINT agent_proposals_pkey PRIMARY KEY (id);
 
 
 --
@@ -8250,6 +8312,41 @@ CREATE INDEX index_agent_messages_on_conversation_id ON public.agent_messages US
 
 
 --
+-- Name: index_agent_proposals_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_proposals_on_conversation_id ON public.agent_proposals USING btree (conversation_id);
+
+
+--
+-- Name: index_agent_proposals_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_proposals_on_entity_id ON public.agent_proposals USING btree (entity_id);
+
+
+--
+-- Name: index_agent_proposals_on_entity_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_proposals_on_entity_id_and_status ON public.agent_proposals USING btree (entity_id, status);
+
+
+--
+-- Name: index_agent_proposals_on_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_proposals_on_message_id ON public.agent_proposals USING btree (message_id);
+
+
+--
+-- Name: index_agent_proposals_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_proposals_on_user_id ON public.agent_proposals USING btree (user_id);
+
+
+--
 -- Name: index_agent_pseudonyms_on_conversation_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9391,6 +9488,14 @@ ALTER TABLE ONLY public.accounting_invoice_events
 
 
 --
+-- Name: agent_proposals fk_rails_22c62a2bda; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_proposals
+    ADD CONSTRAINT fk_rails_22c62a2bda FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: webhook_deliveries fk_rails_242bfb2cbe; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9692,6 +9797,14 @@ ALTER TABLE ONLY public.consolidation_rule_validations
 
 ALTER TABLE ONLY public.accounting_analytical_annotations
     ADD CONSTRAINT fk_rails_4883ca45d6 FOREIGN KEY (journal_entry_line_id) REFERENCES public.accounting_journal_entry_lines(id);
+
+
+--
+-- Name: agent_proposals fk_rails_48fd6583ce; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_proposals
+    ADD CONSTRAINT fk_rails_48fd6583ce FOREIGN KEY (conversation_id) REFERENCES public.agent_conversations(id) ON DELETE SET NULL;
 
 
 --
@@ -10575,6 +10688,14 @@ ALTER TABLE ONLY public.accounting_recurring_invoices
 
 
 --
+-- Name: agent_proposals fk_rails_c48b138698; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_proposals
+    ADD CONSTRAINT fk_rails_c48b138698 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoice_events fk_rails_c545c3aa7e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10983,6 +11104,14 @@ ALTER TABLE ONLY public.accounting_payment_batch_lines
 
 
 --
+-- Name: agent_proposals fk_rails_f0638d1aa0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_proposals
+    ADD CONSTRAINT fk_rails_f0638d1aa0 FOREIGN KEY (message_id) REFERENCES public.agent_messages(id) ON DELETE SET NULL;
+
+
+--
 -- Name: accounting_intracom_listing_lines fk_rails_f227b86af3; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11149,6 +11278,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261008100000'),
 ('20261008090000'),
 ('20261007110000'),
 ('20261007100000'),

@@ -11,8 +11,9 @@ class Accounting::JournalEntriesController < ApplicationController
   end
 
   def new
-    @entry      = Accounting::JournalEntry.new
-    @entry.fiscal_year = Accounting::FiscalYear.current
+    @agent_proposal = agent_proposal
+    @entry      = @agent_proposal ? Agent::Proposals::Accept.prefilled_entry(@agent_proposal) : Accounting::JournalEntry.new
+    @entry.fiscal_year ||= Accounting::FiscalYear.current
     @journals   = Accounting::Journal.active.order(:code)
     @accounts   = Accounting::Account.where(is_leaf: true).order(:code)
     @axes       = Accounting::AnalyticalAxis.active.ordered.includes(analytical_accounts: [])
@@ -23,16 +24,15 @@ class Accounting::JournalEntriesController < ApplicationController
     converted = converted_entry_params
     return render_foreign_error(:new) if @fx_error
 
-    @entry = Accounting::JournalEntry.new(converted.merge(created_by: current_user))
-    authorize @entry
+    authorize Accounting::JournalEntry.new(converted.except(:lines_attributes)), :create?
+    @agent_proposal = agent_proposal
+    draft = Accounting::CreateDraftEntry.call(attributes: converted, user: current_user, source: (@agent_proposal && [ "Agent::Proposal", @agent_proposal.id ]))
+    @entry = draft.entry
+    saved = draft.saved?
+    Agent::Proposals::Accept.modified!(@agent_proposal, @entry) if saved && @agent_proposal
 
-    saved = ApplicationRecord.transaction do
-      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
-      @entry.save
-    end
-
-    if saved && !policy(@entry).post?
-      # Whoever may only draft (an assistant) never validates: the entry waits for someone who may.
+    if saved && (@agent_proposal || !policy(@entry).post?)
+      # Whoever may only draft (an assistant) never validates: the entry waits for someone who may. So does an entry started from a proposal of the agent (A07): validating stays a gesture of its own.
       redirect_to accounting_journal_entry_path(@entry), notice: t("accounting.journal_entries.created")
       return
     end
@@ -124,6 +124,12 @@ class Accounting::JournalEntriesController < ApplicationController
   end
 
   private
+
+  # The proposal of the agent this screen was opened from ("Modify"), if the person it was made for may still decide it (A07).
+  def agent_proposal
+    id = params[:agent_proposal_id].presence || params.dig(:accounting_journal_entry, :agent_proposal_id).presence
+    Agent::Proposal.live.where(user_id: current_user.id, kind: "entry_draft").find_by(id: id) if id
+  end
 
   def set_entry
     @entry = Accounting::JournalEntry.includes(lines: [ :account, :partner ]).find(params[:id])

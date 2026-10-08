@@ -104,3 +104,11 @@ Voir la liste complète dans `DATA_PROCESSING.md` : conservation chez le fournis
 - **Seuil de 30 %** pour une variation à ligne unique, repris de la spec ; le montant d'arrondi toléré (5 centimes) est celui de C09.
 - **Priorisation** : gravité d'abord, puis effet bloquant (clôture, TVA), montant, ancienneté. Une anomalie bloquante sans montant passe après une anomalie bloquante avec montant. L'ordre est une proposition, pas une règle comptable.
 - **Rejeu d'un contrôle** (`still_present`) : lecture seule, mais coûteux sur un gros dossier.
+
+## A07 — décisions à valider
+- **Écritures de référence des cas** (loyer 610100, assurance 610400, carburant 613300, repas 617300, ordinateur 240200, note de crédit 614100, TVA 410100) : choisies dans le plan du jeu de démonstration, **jamais relues par un comptable**. Points douteux : l'assurance annuelle en charge ou en charge à reporter selon l'exercice ; la déductibilité partielle du carburant ; les grilles de TVA des immobilisations et des notes de crédit. La mesure à 90 % n'a de sens qu'après relecture.
+- **Revue renforcée** : seuil de 5 000 EUR par défaut, sur le total du débit ; à fixer avec le propriétaire du dossier.
+- **Péremption** : 7 jours, comme la spec. Une proposition expirée n'est pas reprise : il faut la redemander.
+- **Le bouton « Modify » ouvre l'écran de saisie standard, mais l'écriture enregistrée à partir d'une proposition reste un brouillon**, même pour une personne qui a `entries.post` : la validation est un geste distinct (décision prise pour respecter la spec ; l'écran standard valide sinon d'un coup).
+- **Tolérance de TVA** : 0,05 EUR, celle de R09, sur la somme des bases d'une proposition.
+- **Doublon** : détecté sur facture (tiers, référence, total) et sur la référence d'écriture ; un doublon de simple écriture manuelle sans référence n'est pas détecté.

@@ -7,9 +7,13 @@ class Agent::Conversation < ApplicationRecord
 
   encrypts :title # the first words of the first question: it can hold a name
 
+  # What was proposed in a conversation that goes is no longer decided (A07); the drafts already created stay, linked in the audit trail. Declared before the associations: it must run before they let go.
+  before_destroy { Agent::Proposal.where(conversation_id: id).pending.update_all(status: "cancelled", updated_at: Time.current) }
+
   belongs_to :user
   has_many :pseudonyms, class_name: "Agent::Pseudonym", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :delete_all
   has_many :reviews, class_name: "Agent::ConversationReview", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :nullify
+  has_many :proposals, class_name: "Agent::Proposal", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :nullify
   has_many :messages, class_name: "Agent::Message", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :destroy
 
   enum :status, { active: "active", archived: "archived" }, default: "active"

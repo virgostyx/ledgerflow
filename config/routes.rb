@@ -58,6 +58,14 @@ Rails.application.routes.draw do
       end
     end
     resources :knowledge_gaps, only: :index
+    resources :proposals, only: [] do
+      member do
+        post :accept
+        post :reject
+        get :modify
+      end
+    end
+    post "messages/:message_id/proposals/accept_all", to: "proposals#accept_all", as: :accept_all_proposals
     resources :reviews, only: %i[index create show]
     resource :privacy, only: :show, controller: "privacy"
     resources :subject_requests, only: %i[new create]
