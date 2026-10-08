@@ -317,6 +317,43 @@ RSpec.describe Agent::Runner do
     end
   end
 
+  describe "the notes of the memory in an answer (A10b)" do
+    let(:registry) { Agent::ToolRegistry.default }
+    let(:partner) { create(:partner, :customer, name: "Client Martin SRL", vat_number: nil) }
+    let!(:note) { Agent::MemoryNote.create!(scope_kind: "partner", scope_id: partner.id, text: "Pays at 45 days and owes 1.210,00 EUR.", category: "partner", author: user) }
+    let(:read) { Agent::Response.new(stop_reason: "tool_use", usage: {}, model: "m", content: [ { type: "tool_use", id: "n1", name: "get_memory_notes", input: { "scope_kind" => "partner", "object_id" => partner.id } } ]) }
+
+    def play(script)
+      described_class.new(conversation: conversation, context: context, gateway: Agent::FakeGateway.new(script), registry: registry).ask("How does the customer pay?")
+    end
+
+    it "counts the use of a note the assistant read, once per answer" do
+      play([ read, text("According to the note, 45 days [[ref:note:#{note.id}]].") ])
+
+      expect(note.reload).to have_attributes(uses_count: 1)
+      expect(note.last_used_at).to be_within(1.minute).of(Time.current)
+    end
+
+    it "lets an answer cite a note, as a source with its own link" do
+      answer = play([ read, text("According to the note, 45 days [[ref:note:#{note.id}]].") ])
+
+      expect(answer.citations).to eq([ { "n" => 1, "ref" => "note:#{note.id}", "label" => "Case note ##{note.id}", "computed" => false } ])
+    end
+
+    it "does not take an amount from a note: an answer that repeats it is marked as unverified, a note being no source of figures" do
+      answer = play([ read, text("The customer owes 1.210,00 EUR."), text("The customer owes 1.210,00 EUR.") ])
+
+      expect(answer.content).to include("[unverified figure]")
+      expect(answer.flags).to include("unverified_figures")
+    end
+
+    it "uses nothing when the notes were not read" do
+      play([ text("No note read.") ])
+
+      expect(note.reload.uses_count).to eq(0)
+    end
+  end
+
   describe "the knowledge base and the legal references of an answer (A06)" do
     let(:registry) { Agent::ToolRegistry.default }
 

@@ -8,6 +8,7 @@ module Agent::Refs
     "doc"     => ->(routes, id)            { routes.accounting_document_path(id) },
     "vat"     => ->(routes, id)            { routes.accounting_vat_declaration_path(id) },
     "audit"   => ->(routes, id)            { routes.accounting_audit_log_path(id) },
+    "note"    => ->(routes, id)            { routes.edit_agent_memory_note_path(id) },
     "screen"  => ->(routes, name)          { Agent::Screens.path(name) },
     "kb"      => ->(routes, doc, passage = nil) { (id = doc[/\Adoc-(\d+)\z/, 1]) && routes.agent_knowledge_document_path(id, anchor: passage && passage[/\Ap-\d+\z/]) },
     "R01"     => ->(routes, fiscal_year, as_of, *)     { routes.accounting_reports_trial_balance_path(fiscal_year_id: fiscal_year, as_of: as_of) },
@@ -35,6 +36,7 @@ module Agent::Refs
     when "doc"     then "Document ##{parts[0]}"
     when "vat"     then "VAT declaration ##{parts[0]}"
     when "audit"   then "Audit event ##{parts[0]}"
+    when "note"    then "Case note ##{parts[0]}"
     when "screen"  then Agent::Screens.label(parts[0]) && "Screen: #{Agent::Screens.label(parts[0])}"
     when "kb"      then [ "Knowledge base, document ##{parts[0].to_s.delete_prefix('doc-')}", ("passage #{parts[1].to_s.delete_prefix('p-')}" if parts[1]) ].compact.join(", ")
     when "R01"     then "Trial balance as of #{parts[1]}"

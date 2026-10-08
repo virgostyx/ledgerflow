@@ -5,6 +5,10 @@ production:
     class: Agent::RetentionJob
     queue: agent_batch
     schedule: every day at 3am
+  agent_digest:
+    class: Agent::DigestJob
+    queue: agent_batch
+    schedule: every hour
   generate_recurring_invoices:
     class: Accounting::GenerateRecurringInvoicesJob
     queue: default

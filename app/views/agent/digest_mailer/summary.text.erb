@@ -1,0 +1,12 @@
+<%= @digest.kind == "event" ? "An alert from your assistant" : "Your summary of #{@digest.local_date.iso8601}" %> — <%= @digest.entity.legal_name %>
+
+<% @digest.sections.each do |section| %>
+<%= section["title"] %>
+<% section["items"].each do |item| %>
+- <%= item["text"] %><%= " (#{item['detail']})" if @details && item["detail"].present? %>
+<% end %>
+
+<% end %>
+Open it: <%= @url %>
+
+Figures and names stay in the application. You choose when you receive this in the summary preferences.

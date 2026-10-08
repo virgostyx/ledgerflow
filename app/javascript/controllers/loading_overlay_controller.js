@@ -10,6 +10,8 @@ export default class extends Controller {
     document.addEventListener("turbo:load", this.boundHide)
     document.addEventListener("turbo:frame-load", this.boundHide)
     document.addEventListener("turbo:fetch-request-error", this.boundHide)
+    this.boundSubmitEnd = this.submitEnd.bind(this)
+    document.addEventListener("turbo:submit-end", this.boundSubmitEnd)
   }
 
   disconnect() {
@@ -17,7 +19,14 @@ export default class extends Controller {
     document.removeEventListener("turbo:load", this.boundHide)
     document.removeEventListener("turbo:frame-load", this.boundHide)
     document.removeEventListener("turbo:fetch-request-error", this.boundHide)
+    document.removeEventListener("turbo:submit-end", this.boundSubmitEnd)
     clearTimeout(this.showTimeout)
+  }
+
+  // A form answered with a Turbo Stream changes the page in place: no page load follows to hide the overlay, so it is hidden when the answer is in (a redirect keeps it until the next page loads).
+  submitEnd(event) {
+    const type = event.detail?.fetchResponse?.response?.headers?.get("Content-Type") || ""
+    if (type.includes("turbo-stream")) this.hide()
   }
 
   show() {

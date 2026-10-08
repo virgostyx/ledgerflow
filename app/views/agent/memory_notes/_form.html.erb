@@ -1,0 +1,14 @@
+<%= form_with model: note, url: (note.persisted? ? agent_memory_note_path(note) : agent_memory_notes_path), scope: :agent_memory_note, class: "max-w-xl space-y-4" do |f| %>
+  <%= hidden_field_tag :proposal_id, proposal.id if local_assigns[:proposal] && proposal %>
+  <% if note.errors.any? %><p role="alert" class="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800"><%= note.errors.full_messages.to_sentence %></p><% end %>
+  <div class="grid grid-cols-2 gap-4 text-sm">
+    <div><%= f.label :scope_kind, "About" %><%= f.select :scope_kind, [ [ "The whole file", "entity" ], [ "A partner", "partner" ], [ "An account", "account" ] ], {}, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+    <div><%= f.label :category, "Category" %><%= f.select :category, Agent::MemoryNote::CATEGORIES.map { |category| [ category.capitalize, category ] }, {}, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+    <div><%= label_tag "agent_memory_note_partner_id", "Partner" %><%= select_tag "agent_memory_note[partner_id]", options_from_collection_for_select(Accounting::Partner.order(:name), :id, :name, note.scope_kind == "partner" ? note.scope_id : nil), include_blank: true, id: "agent_memory_note_partner_id", class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+    <div><%= label_tag "agent_memory_note_account_id", "Account" %><%= select_tag "agent_memory_note[account_id]", options_from_collection_for_select(Accounting::Account.where(is_leaf: true).order(:code), :id, ->(account) { "#{account.code} #{account.label_fr}" }, note.scope_kind == "account" ? note.scope_id : nil), include_blank: true, id: "agent_memory_note_account_id", class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+  </div>
+  <div class="text-sm"><%= f.label :text, "The note (#{Agent::MemoryNote::MAX_LENGTH} characters at most)" %><%= f.text_area :text, rows: 4, maxlength: Agent::MemoryNote::MAX_LENGTH, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %>
+    <p class="mt-1 text-xs text-gray-500">The assistant reads it and quotes it as a note. It never takes a figure from it: write facts and habits, not amounts.</p></div>
+  <div class="text-sm"><%= f.label :valid_until, "Valid until (optional)" %><%= f.date_field :valid_until, class: "mt-1 rounded-md border-gray-300 text-sm" %></div>
+  <%= f.submit (note.persisted? ? "Save" : "Keep the note"), class: "rounded-md bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700" %>
+<% end %>

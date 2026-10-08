@@ -1,0 +1,22 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium"><%= link_to "Assistant summaries", agent_digests_path %> / Preferences</span><% end %>
+<div class="max-w-xl space-y-4">
+  <p class="text-sm text-gray-600">A summary is built for you alone, with your own rights, only when something changed or is urgent. Alerts (a blocking anomaly, a cash forecast under the threshold, a VAT return in five days, a year about to end with drafts) come at most once a day each.</p>
+  <%= form_with model: @preference, url: agent_digest_preference_path, method: :patch, scope: :agent_digest_preference, class: "space-y-4" do |f| %>
+    <% if @preference.errors.any? %><p role="alert" class="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800"><%= @preference.errors.full_messages.to_sentence %></p><% end %>
+    <label class="flex items-center gap-2 text-sm"><%= f.check_box :enabled %> Send me a summary</label>
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div><%= f.label :frequency, "How often" %><%= f.select :frequency, Agent::DigestPreference::FREQUENCIES.map { |value| [ value.capitalize, value ] }, {}, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <div><%= f.label :weekday, "Day (weekly)" %><%= f.select :weekday, Date::DAYNAMES.each_with_index.map { |name, index| [ name, index ] }, {}, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <div><%= f.label :send_hour, "Hour" %><%= f.select :send_hour, (0..23).map { |hour| [ format("%02d:00", hour), hour ] }, {}, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <div><%= f.label :time_zone, "Time zone" %><%= f.select :time_zone, ActiveSupport::TimeZone.all.map { |zone| [ zone.to_s, zone.tzinfo.name ] }.uniq(&:last), {}, class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+    </div>
+    <fieldset class="text-sm">
+      <legend class="font-medium text-gray-700">Sections (none ticked: all those you may see)</legend>
+      <% Agent::Digest::Sources::SECTIONS.each do |key, title| %>
+        <label class="mr-4 inline-flex items-center gap-1"><%= check_box_tag "agent_digest_preference[sections][]", key, @preference.sections.include?(key), id: "section_#{key}" %> <%= title %></label>
+      <% end %>
+    </fieldset>
+    <label class="flex items-center gap-2 text-sm"><%= f.check_box :email %> Also by e-mail (counts and links only<%= "; the company allows details too" if Agent::Setting.find_by(entity: ActsAsTenant.current_tenant)&.digest_email_details %>)</label>
+    <%= f.submit "Save", class: "rounded-md bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700" %>
+  <% end %>
+</div>

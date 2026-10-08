@@ -65,6 +65,14 @@ Rails.application.routes.draw do
         post :reject
       end
     end
+    resources :memory_notes, except: :show do
+      member { post :archive }
+      get :export, on: :collection
+    end
+    resources :digests, only: %i[index show] do
+      member { post :create_task }
+    end
+    resource :digest_preference, only: %i[show update]
     resources :proposals, only: [] do
       member do
         post :accept

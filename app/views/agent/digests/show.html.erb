@@ -1,0 +1,22 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium"><%= link_to "Assistant summaries", agent_digests_path %> / <%= @digest.title %></span><% end %>
+<div class="space-y-4">
+  <% @digest.sections.each do |section| %>
+    <details open class="rounded-lg border border-gray-200 bg-white p-3">
+      <summary class="cursor-pointer text-sm font-semibold text-gray-900"><%= section["title"] %> · <%= pluralize(section["items"].size, "point") %></summary>
+      <ul class="mt-2 space-y-3 text-sm">
+        <% section["items"].each do |item| %>
+          <% path = Agent::Refs.path(item["ref"]) %>
+          <li>
+            <p class="<%= 'font-medium text-red-800' if item['urgent'] %>"><%= item["text"] %></p>
+            <% if item["detail"].present? %><p class="text-xs text-gray-600"><%= item["detail"] %></p><% end %>
+            <div class="mt-1 flex flex-wrap items-center gap-3 text-xs">
+              <%= link_to "Open", path, class: "text-indigo-700 hover:underline" if path %>
+              <%= button_to "Create a task", create_task_agent_digest_path(@digest, key: item["key"]), class: "text-indigo-700 hover:underline cursor-pointer" if policy(Accounting::Task).create? %>
+              <%= button_to "Ask the assistant", agent_conversations_path, params: { ask: item["ask"], screen: "agent/digests#show" }, class: "text-indigo-700 hover:underline cursor-pointer" if Agent::Digest::Sources::ASK.key?(item["ask"]) %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </details>
+  <% end %>
+</div>

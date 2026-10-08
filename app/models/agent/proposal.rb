@@ -3,7 +3,7 @@
 class Agent::Proposal < ApplicationRecord
   self.table_name = "agent_proposals"
 
-  KINDS = %w[entry_draft task].freeze
+  KINDS = %w[entry_draft task note].freeze
   LIFETIME = 7.days
   MAX_PER_ANSWER = 20
 

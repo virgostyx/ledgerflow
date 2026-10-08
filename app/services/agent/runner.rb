@@ -4,6 +4,7 @@
 class Agent::Runner
   LIMIT_NOTICE  = "I stopped before finishing: the limit of this question was reached. What I established is above; I could not verify the rest.".freeze
   TOOLS_NOTICE  = "I stopped because the tools are not answering. Try again in a moment, or use the reports directly.".freeze
+  NOT_SOURCES = %w[get_memory_notes].freeze
   PROPOSAL_ERRORS = %w[invalid_proposal limit_reached].freeze
   MAX_CORRECTIONS = 2 # a proposal the server refuses may be corrected twice (A07); then the person is told
   ACCESS_NOTICE = "I stopped because you no longer have access to the agent.".freeze
@@ -29,7 +30,7 @@ class Agent::Runner
     @redactor = Agent::Redactor.new(setting: Agent::Setting.find_by(entity: @context.entity) || Agent::Setting.new(entity: @context.entity), conversation: @conversation)
     @redaction = Hash.new { |hash, data_class| hash[data_class] = Hash.new(0) }
     @texts, @usage, @model, @latency_ms, @tool_calls, @tool_errors, @tool_log, @gaps = [], Hash.new(0), nil, 0, 0, 0, [], []
-    @proposals, @proposal_failures = [], 0
+    @proposals, @proposal_failures, @note_ids = [], 0, []
     @security = Agent::Security.new(conversation: @conversation, context: @context)
     @manifest = Agent::Manifest.current
     messages = history + [ { role: "user", content: question } ]
@@ -97,7 +98,7 @@ class Agent::Runner
 
   def ask_model(messages)
     began = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    response = @gateway.call(system: Agent::SystemPrompt.build(@context), messages: messages.deep_dup, tools: @registry.definitions, redactor: @redactor) { |piece| emit(type: :text, text: Agent::ResponseGuard.clean(piece).first) }
+    response = @gateway.call(system: Agent::SystemPrompt.build(@context), messages: messages.deep_dup, tools: @registry.definitions_for(@context), redactor: @redactor) { |piece| emit(type: :text, text: Agent::ResponseGuard.clean(piece).first) }
     @latency_ms += ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round
     @model = response.model
     @sent = response.sent
@@ -127,10 +128,11 @@ class Agent::Runner
     began = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     result = execute(call[:name], input)
     error = result["error"]
-    @anchors.add_result(result.to_json) unless error
+    @anchors.add_result(result.to_json) unless error || NOT_SOURCES.include?(call[:name]) # a user's note is not a source of figures nor of references
     @known_refs.merge(Agent::Refs.in_result(result)) unless error
     @tool_calls += 1 unless call[:name].start_with?("propose_") # the proposals of a batch (twenty at most) do not eat the reading budget of the question
     @tool_errors = error && !PROPOSAL_ERRORS.include?(error) ? @tool_errors + 1 : 0 # a refused proposal is a correction to make, not a tool that is down
+    @note_ids.concat(Agent::Refs.in_result(result).filter_map { |ref| ref[/\Anote:(\d+)\z/, 1]&.to_i }) if call[:name] == "get_memory_notes" && !error
     @gaps << input["query"] if call[:name] == "search_knowledge" && !error && result["row_count"].to_i.zero?
     note_proposal(call[:name], result)
     duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - began) * 1000).round
@@ -191,6 +193,7 @@ class Agent::Runner
                                              input_tokens: @usage[:input_tokens], output_tokens: @usage[:output_tokens])
     record_tool_calls(message)
     store_proposals(message) if status == :complete
+    Agent::MemoryNote.used!(@note_ids.uniq) if @note_ids.any?
     @gaps.uniq.each { |query| Knowledge::Gap.record(kind: "no_passage", question: query, user: @context.user, message: message) }
     emit(type: :done, message: message)
     message

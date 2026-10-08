@@ -122,3 +122,13 @@ Voir la liste complète dans `DATA_PROCESSING.md` : conservation chez le fournis
 - **Plus de 30 pages** : les 30 premières seulement sont lues, avec l'avertissement de couverture partielle (pas de découpage en sections avec fusion).
 - **Quota** : 40 documents lus par heure et par personne (chaque document d'un lot compte) ; pas de budget en euros (§16 non livré) : l'estimation d'un lot est en tokens.
 - **Le fournisseur** est rapproché par TVA puis IBAN seulement (règle de F06) ; sans correspondance, aucun tiers n'est créé.
+
+## A10 — décisions à valider
+- **Heure et fréquence** : tout est à la personne (désactivé par défaut), dans son fuseau, sans valeur imposée par la société. Faut-il que la société fixe des limites (spec : « dans les limites fixées par la société ») ?
+- **E-mail** : compteurs et liens par défaut ; la société peut autoriser les détails (noms et montants dans un e-mail). À décider avec le DPO : un e-mail sort de l'application.
+- **Seuil de trésorerie** : zéro. À fixer par la société (une marge ?).
+- **Échéance de TVA** : le 20 du mois qui suit la période (règle de R14), période déduite de la dernière déclaration ; pas de calendrier des échéances propre à la société.
+- **Notes et RGPD** : un texte libre peut nommer une personne ; l'export et l'effacement le retrouvent par le nom (comparaison de texte) et par le tiers visé. Une note qui nomme une personne autrement (surnom) ne sera pas retrouvée.
+- **Qui gère la mémoire** : propriétaire et comptable (`agent.memory.manage`). Les autres lisent les notes mais n'en écrivent pas.
+- **Montants dans une note** : permis (avertissement à la proposition) mais jamais repris par l'agent comme chiffre.
+- **Catalogue d'outils** : 32 Ko (seuil relevé) ; les outils sont maintenant présentés selon les droits de la personne, ce qui économise des tokens aux lecteurs.

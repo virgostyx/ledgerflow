@@ -17,6 +17,10 @@ module Agent::Screens
     "fiscal_years"  => [ "Fiscal years", ->(routes) { routes.accounting_fiscal_years_path } ],
     "accruals"      => [ "Regularizations", ->(routes) { routes.accounting_accruals_path } ],
     "fixed_assets"  => [ "Fixed assets", ->(routes) { routes.accounting_fixed_assets_path } ],
+    "tasks"         => [ "Tasks", ->(routes) { routes.accounting_tasks_path } ],
+    "peppol"        => [ "Received invoices", ->(routes) { routes.accounting_peppol_messages_path } ],
+    "cash_forecast" => [ "Cash forecast", ->(routes) { routes.accounting_reports_cash_forecast_path } ],
+    "aged_balance"  => [ "Aged balance", ->(routes) { routes.accounting_reports_aged_balance_path } ],
     "consistency"   => [ "Consistency checks", ->(routes) { routes.accounting_consistency_runs_path } ]
   }.freeze
 

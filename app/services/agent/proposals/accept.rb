@@ -42,7 +42,11 @@ class Agent::Proposals::Accept
     return Result.new(nil, [ "Only the author of the conversation can decide this proposal." ]) unless @proposal.decidable_by?(@user)
 
     context = Agent::Context.build(user: @user, entity: ActsAsTenant.current_tenant, locale: I18n.locale)
-    @proposal.kind == "task" ? task(context) : entry(context)
+    case @proposal.kind
+    when "task" then task(context)
+    when "note" then note(context)
+    else entry(context)
+    end
   end
 
   private
@@ -68,6 +72,21 @@ class Agent::Proposals::Accept
     return Result.new(nil, task.errors.full_messages) unless task.save
 
     record(task, "accepted_as_is", "task_via_agent", task_id: task.id)
+  end
+
+  # A note is kept only by a person who may manage the memory of the file; the text can be corrected first (see Modify), this is the click as it stands.
+  def note(context)
+    return Result.new(nil, [ "Only a person who manages the memory of the file can keep a note." ]) unless context.allows?("agent.memory.manage")
+
+    checked = Agent::Proposals::Note.call(@proposal.data.slice("scope_kind", "text", "category", "valid_until", "rationale").merge("object_id" => @proposal.data["object_id"]), context: context)
+    return Result.new(nil, checked.errors) unless checked.valid?
+
+    data = checked.normalized
+    note = Agent::MemoryNote.create(scope_kind: data["scope_kind"], scope_id: data["object_id"], text: data["text"], category: data["category"], valid_until: data["valid_until"], author: @user, source: "proposal",
+                                    proposal_id: @proposal.id, confirmed_at: Time.current)
+    return Result.new(nil, note.errors.full_messages) unless note.persisted?
+
+    record(note, "accepted_as_is", "memory_note_via_agent", note_id: note.id)
   end
 
   def record(created, outcome, action, **details)

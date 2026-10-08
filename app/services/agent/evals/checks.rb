@@ -113,12 +113,14 @@ module Agent::Evals
         actual.delete_at(index)
         nil
       end
-      problems << "proposed besides: #{actual.map { |proposal| proposal['title'] || proposal['lines']&.map { |l| l['account'] }&.join('/') }.join('; ')}" if actual.any?
+      problems << "proposed besides: #{actual.map { |proposal| proposal['title'] || proposal['text'] || proposal['lines']&.map { |l| l['account'] }&.join('/') }.join('; ')}" if actual.any?
       problems.empty? || problems.join("; ")
     end
 
     def self.proposal_matches?(want, proposal)
-      if want["task"]
+      if want["note"]
+        proposal["kind"] == "note" && proposal["text"].to_s.downcase.include?(want["note"]["text_includes"].to_s.downcase) && proposal["scope_kind"] == want["note"]["scope_kind"] && (want["note"]["object_id"].nil? || proposal["object_id"].to_s == want["note"]["object_id"].to_s)
+      elsif want["task"]
         proposal["kind"] == "task" && proposal["title"].to_s.downcase.include?(want["task"]["title_includes"].to_s.downcase) && (want["task"]["target"].nil? || proposal["target_ref"] == want["task"]["target"])
       else
         proposal["kind"] == "entry_draft" && proposal["lines"].map { |line| [ line["account"], line["side"], line["side"] == "debit" ? line["debit"] : line["credit"] ] }.sort == want["lines"].map { |line| line.map(&:to_s) }.sort

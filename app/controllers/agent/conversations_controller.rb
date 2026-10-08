@@ -20,7 +20,12 @@ class Agent::ConversationsController < Agent::BaseController
   def create
     reference = { "type" => params[:subject_type].to_s[REFERENCE], "id" => params[:subject_id].to_s[REFERENCE] }
     conversation = conversations.create!(user: current_user, origin_screen: params[:screen].to_s[SCREEN], context_ref: reference.values.all? ? reference : {})
-    ask_to_explain(conversation, EXPLAIN_QUESTIONS.fetch(reference["type"], EXPLAIN_QUESTION)) if params[:explain] == "1"
+    asked = Agent::Digest::Sources::ASK[params[:ask].to_s] # a question of the summary: fixed on the server, the page only names the section
+    if asked
+      ask_to_explain(conversation, asked)
+    elsif params[:explain] == "1"
+      ask_to_explain(conversation, EXPLAIN_QUESTIONS.fetch(reference["type"], EXPLAIN_QUESTION))
+    end
     redirect_to agent_conversation_path(conversation), status: :see_other
   end
 

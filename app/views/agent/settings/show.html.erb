@@ -5,7 +5,7 @@
 
 <div class="max-w-2xl space-y-6">
   <p class="text-sm text-gray-600">The assistant reads the books of this entity through the reports and answers questions. It never validates, sends or posts anything: it prepares, a person decides.</p>
-  <p class="text-sm"><%= link_to "Knowledge base", agent_knowledge_documents_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "Security events of the assistant", agent_security_events_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "What the assistant does with the data", agent_privacy_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "Access and erasure", new_agent_subject_request_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "Read a conversation (exceptional)", agent_reviews_path, class: "text-indigo-700 hover:underline" %></p>
+  <p class="text-sm"><%= link_to "Assistant summaries", agent_digests_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "Knowledge base", agent_knowledge_documents_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "Security events of the assistant", agent_security_events_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "What the assistant does with the data", agent_privacy_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "Access and erasure", new_agent_subject_request_path, class: "text-indigo-700 hover:underline" %> · <%= link_to "Read a conversation (exceptional)", agent_reviews_path, class: "text-indigo-700 hover:underline" %></p>
 
   <%= form_with model: @setting, url: agent_setting_path, method: :patch, scope: :agent_setting, class: "space-y-6" do |f| %>
     <% if @setting.errors.any? %>
@@ -73,6 +73,11 @@
       <%= f.label :review_threshold, "Extra review above (EUR)", class: "block text-sm text-gray-700" %>
       <%= f.number_field :review_threshold, step: "0.01", min: 0, class: "mt-1 w-40 rounded-md border-gray-300 text-sm" %>
       <p class="mt-1 text-xs text-gray-400">An entry the assistant proposes for a total at or above this amount shows its justification open, and asks you to confirm that you read it before the draft is created.</p>
+    </section>
+
+    <section class="rounded-lg border border-gray-200 bg-white p-4">
+      <label class="flex items-center gap-2 text-sm text-gray-700"><%= f.check_box :digest_email_details %> Allow names and figures in the e-mails of the summary</label>
+      <p class="mt-1 text-xs text-gray-400">By default the e-mail of a summary carries counts and links only: an e-mail leaves the application and may be read elsewhere.</p>
     </section>
 
     <%= f.submit "Save", class: "rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700" %>

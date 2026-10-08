@@ -9,7 +9,7 @@ class Agent::ProposalsController < Agent::BaseController
 
     result = Agent::Proposals::Accept.call(proposal: @proposal, user: current_user)
     if result.created?
-      redirect_to destination(result.record), notice: result.record.is_a?(Accounting::JournalEntry) ? "The draft was created. It is not validated: that stays your decision." : "The task was created.", status: :see_other
+      redirect_to destination(result.record), notice: created_notice(result.record), status: :see_other
     else
       back(@proposal, alert: "Not created: #{result.errors.to_sentence}")
     end
@@ -25,9 +25,9 @@ class Agent::ProposalsController < Agent::BaseController
 
   # The standard entry screen, filled with the proposal; what the person saves there is theirs.
   def modify
-    return back(@proposal, alert: "This proposal can no longer be decided.") unless @proposal.decidable_by?(current_user) && @proposal.kind == "entry_draft"
+    return back(@proposal, alert: "This proposal can no longer be decided.") unless @proposal.decidable_by?(current_user) && %w[entry_draft note].include?(@proposal.kind)
 
-    redirect_to new_accounting_journal_entry_path(agent_proposal_id: @proposal.id), status: :see_other
+    redirect_to (@proposal.kind == "note" ? new_agent_memory_note_path(proposal_id: @proposal.id) : new_accounting_journal_entry_path(agent_proposal_id: @proposal.id)), status: :see_other
   end
 
   # "Create all drafts": the proposals of one answer that have no warning, after the person confirmed the number.
@@ -51,5 +51,19 @@ class Agent::ProposalsController < Agent::BaseController
     redirect_to proposal&.conversation_id ? agent_conversation_path(proposal.conversation_id) : agent_conversations_path, flash: flash, status: :see_other
   end
 
-  def destination(record) = record.is_a?(Accounting::JournalEntry) ? accounting_journal_entry_path(record) : accounting_task_path(record)
+  def created_notice(record)
+    case record
+    when Accounting::JournalEntry then "The draft was created. It is not validated: that stays your decision."
+    when Agent::MemoryNote then "The note was kept."
+    else "The task was created."
+    end
+  end
+
+  def destination(record)
+    case record
+    when Accounting::JournalEntry then accounting_journal_entry_path(record)
+    when Agent::MemoryNote then edit_agent_memory_note_path(record)
+    else accounting_task_path(record)
+    end
+  end
 end

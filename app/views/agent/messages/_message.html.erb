@@ -46,6 +46,7 @@
     <% end %>
     <div id="agent_message_<%= message.id %>_feedback" class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
       <% if message.sent_payload.present? %><%= link_to "See what was sent", sent_agent_conversation_message_path(message.conversation_id, message), class: "text-indigo-700 hover:underline" %><% end %>
+      <%= link_to "Remember this", new_agent_memory_note_path(message_id: message.id), class: "text-indigo-700 hover:underline" %>
       <%= button_to "Useful", agent_conversation_message_feedback_path(message.conversation_id, message), params: { rating: "useful" }, class: "rounded border border-gray-300 px-2 py-0.5 hover:bg-gray-50" %>
       <details>
         <summary class="cursor-pointer rounded border border-gray-300 px-2 py-0.5 hover:bg-gray-50">Not useful</summary>

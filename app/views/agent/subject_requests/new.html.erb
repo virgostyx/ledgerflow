@@ -15,15 +15,19 @@
     </div>
     <div class="flex gap-2">
       <%= button_tag "Search", name: "operation", value: "search", class: "rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white" %>
-      <% if @conversations&.any? %>
+      <% if @conversations&.any? || @related&.any? %>
         <%= button_tag "Export what concerns them", name: "operation", value: "export", class: "rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white" %>
-        <%= button_tag "Erase it", name: "operation", value: "erase", class: "rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white", data: { turbo_confirm: "Erase these conversations for good?" } %>
+        <%= button_tag "Erase it", name: "operation", value: "erase", class: "rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white", data: { turbo_confirm: "Erase these conversations and the other records for good?" } %>
       <% end %>
     </div>
   <% end %>
 
+  <% if @related&.any? %>
+    <p class="text-sm text-gray-700">Besides the conversations: <%= pluralize(@related.notes.size, "note") %>, <%= pluralize(@related.digests.size, "summary") %>, <%= pluralize(@related.proposals.size, "proposal") %>, <%= pluralize(@related.extractions.size, "reading of a document") %> mention this person. They go with the export and the erasure.</p>
+  <% end %>
+
   <% if @conversations %>
-    <% if @conversations.empty? %>
+    <% if @conversations.empty? && !@related&.any? %>
       <p class="text-sm text-gray-500">No conversation mentions this person.</p>
     <% else %>
       <ul class="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white text-sm">

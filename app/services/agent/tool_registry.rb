@@ -6,7 +6,7 @@ class Agent::ToolRegistry
   # Every tool the agent has, in one list: adding a tool means adding its class here, so that nothing joins the catalog by accident.
   def self.default
     new(%w[GetCompanyContext SearchAccounts SearchPartners GetJournalEntry GetTrialBalance GetLedger GetAgedBalance ListUnreconciled GetBankReconciliation
-           GetFinancialStatements GetVatReturn GetDashboardKpis GetConsistencyFindings GetAuditTrail SearchDocuments SearchKnowledge GetFindingContext GetVariation ProposeEntry ProposeTask GetDocumentExtract Calculate].map { |name| "Agent::Tools::#{name}".constantize })
+           GetFinancialStatements GetVatReturn GetDashboardKpis GetConsistencyFindings GetAuditTrail SearchDocuments SearchKnowledge GetFindingContext GetVariation ProposeEntry ProposeTask ProposeNote GetMemoryNotes GetDocumentExtract Calculate].map { |name| "Agent::Tools::#{name}".constantize })
   end
 
   def initialize(tools = [], timeout: Agent::Config.limits[:max_tool_seconds])
@@ -17,6 +17,9 @@ class Agent::ToolRegistry
   def tool(name) = @tools[name]
 
   def definitions = @tools.values.map(&:definition)
+
+  # What the person is shown: only the tools their rights allow (A07/A10), so that a reader is not sent the definitions of the tools that propose. The check at the call stays: this is a saving, not a guard.
+  def definitions_for(context) = @tools.values.select { |tool| context.allows?(tool.permission) }.map(&:definition)
 
   # `security` (Agent::Security) is told of what a defence should notice: a refusal, an argument the tool does not have, a tool that does not exist, free text that looks like
   # an instruction. Without one the registry works the same, it just says nothing.

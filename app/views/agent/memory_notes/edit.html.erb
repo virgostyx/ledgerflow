@@ -1,0 +1,6 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium"><%= link_to "Case memory", agent_memory_notes_path %> / Note #<%= @note.id %></span><% end %>
+<%= render "form", note: @note %>
+<div class="mt-4 flex gap-3 text-sm">
+  <%= button_to "Archive", archive_agent_memory_note_path(@note), class: "rounded border border-gray-300 px-3 py-1 hover:bg-gray-50" unless @note.status == "archived" %>
+  <%= button_to "Delete for good", agent_memory_note_path(@note), method: :delete, class: "rounded border border-red-300 px-3 py-1 text-red-700 hover:bg-red-50", form: { data: { turbo_confirm: "Delete this note for good? Nothing of it is kept." } } %>
+</div>

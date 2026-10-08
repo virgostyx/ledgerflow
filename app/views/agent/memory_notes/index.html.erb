@@ -1,0 +1,41 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium">Case memory</span><% end %>
+<div class="space-y-4">
+  <p class="text-sm text-gray-600">Everything the assistant may know of this file beyond the books is here: notes people wrote or confirmed. It reads them, quotes them as notes, and never takes a figure from them. It never keeps a note by itself.</p>
+  <p class="text-sm"><% if @manage %><%= link_to "Add a note", new_agent_memory_note_path, class: "rounded-md bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700" %> · <% end %><%= link_to "Export all", export_agent_memory_notes_path, class: "text-indigo-700 hover:underline" %></p>
+  <%= form_with url: agent_memory_notes_path, method: :get, class: "flex flex-wrap items-end gap-3 text-sm" do %>
+    <div><%= label_tag :q, "Search" %><%= text_field_tag :q, params[:q], class: "mt-1 rounded-md border-gray-300 text-sm" %></div>
+    <div><%= label_tag :scope_kind, "About" %><%= select_tag :scope_kind, options_for_select(Agent::MemoryNote::SCOPES, params[:scope_kind]), include_blank: "Any", class: "mt-1 rounded-md border-gray-300 text-sm" %></div>
+    <div><%= label_tag :category, "Category" %><%= select_tag :category, options_for_select(Agent::MemoryNote::CATEGORIES, params[:category]), include_blank: "Any", class: "mt-1 rounded-md border-gray-300 text-sm" %></div>
+    <div><%= label_tag :status, "Status" %><%= select_tag :status, options_for_select(Agent::MemoryNote::STATUSES, params[:status]), include_blank: "Any", class: "mt-1 rounded-md border-gray-300 text-sm" %></div>
+    <%= submit_tag "Filter", class: "rounded-md border border-gray-300 px-3 py-1.5" %>
+  <% end %>
+
+  <% if @suggested.any? && @manage %>
+    <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      <p class="font-medium">Not used for a year: archive them?</p>
+      <ul class="mt-1 space-y-1"><% @suggested.each do |note| %><li><%= note.text.truncate(90) %> <%= button_to "Archive", archive_agent_memory_note_path(note), class: "inline text-indigo-700 hover:underline cursor-pointer", form: { class: "inline" } %></li><% end %></ul>
+    </div>
+  <% end %>
+
+  <% if @notes.empty? %>
+    <p class="text-sm text-gray-500">No note.</p>
+  <% else %>
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500"><tr><th class="px-3 py-2">Note</th><th class="px-3 py-2">About</th><th class="px-3 py-2">Category</th><th class="px-3 py-2">By</th><th class="px-3 py-2">Used</th><th class="px-3 py-2">Status</th></tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @notes.each do |note| %>
+            <tr class="<%= 'text-gray-400' if note.status == 'archived' %>">
+              <td class="px-3 py-2"><%= @manage ? link_to(note.text.truncate(120), edit_agent_memory_note_path(note), class: "text-indigo-700 hover:underline") : note.text.truncate(120) %></td>
+              <td class="px-3 py-2"><%= note.object_missing? ? "Object deleted" : note.label %></td>
+              <td class="px-3 py-2"><%= note.category %></td>
+              <td class="px-3 py-2"><%= note.author.full_name %> · <%= l(note.created_at.to_date) %><%= " · from a proposal" if note.source == "proposal" %></td>
+              <td class="px-3 py-2"><%= note.uses_count %>×</td>
+              <td class="px-3 py-2"><%= note.status.capitalize %><%= " until #{l(note.valid_until)}" if note.valid_until %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</div>

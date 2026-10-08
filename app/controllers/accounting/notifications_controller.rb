@@ -21,6 +21,8 @@ class Accounting::NotificationsController < ApplicationController
 
   def target_of(notification)
     subject = notification.subject
+    return agent_digest_path(subject) if subject.is_a?(Agent::Digest)
+
     task = subject.is_a?(Accounting::Task) ? subject : (subject.commentable if subject.respond_to?(:commentable) && subject.commentable.is_a?(Accounting::Task))
     accounting_task_path(task) if task
   end

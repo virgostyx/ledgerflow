@@ -2862,6 +2862,84 @@ ALTER SEQUENCE public.agent_conversations_id_seq OWNED BY public.agent_conversat
 
 
 --
+-- Name: agent_digest_preferences; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_digest_preferences (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    frequency character varying DEFAULT 'daily'::character varying NOT NULL,
+    weekday integer DEFAULT 1 NOT NULL,
+    send_hour integer DEFAULT 8 NOT NULL,
+    time_zone character varying DEFAULT 'Europe/Brussels'::character varying NOT NULL,
+    sections jsonb DEFAULT '[]'::jsonb NOT NULL,
+    email boolean DEFAULT false NOT NULL,
+    last_built_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_digest_preferences_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_digest_preferences_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_digest_preferences_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_digest_preferences_id_seq OWNED BY public.agent_digest_preferences.id;
+
+
+--
+-- Name: agent_digests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_digests (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    kind character varying NOT NULL,
+    event_type character varying,
+    local_date date NOT NULL,
+    payload text NOT NULL,
+    item_count integer DEFAULT 0 NOT NULL,
+    read_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_digests_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_digests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_digests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_digests_id_seq OWNED BY public.agent_digests.id;
+
+
+--
 -- Name: agent_document_extractions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3024,6 +3102,49 @@ CREATE SEQUENCE public.agent_feedback_id_seq
 --
 
 ALTER SEQUENCE public.agent_feedback_id_seq OWNED BY public.agent_feedback.id;
+
+
+--
+-- Name: agent_memory_notes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_memory_notes (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    scope_kind character varying DEFAULT 'entity'::character varying NOT NULL,
+    scope_id bigint,
+    text text NOT NULL,
+    category character varying DEFAULT 'other'::character varying NOT NULL,
+    author_id bigint NOT NULL,
+    source character varying DEFAULT 'manual'::character varying NOT NULL,
+    proposal_id bigint,
+    status character varying DEFAULT 'active'::character varying NOT NULL,
+    valid_until date,
+    confirmed_at timestamp(6) without time zone,
+    last_used_at timestamp(6) without time zone,
+    uses_count integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_memory_notes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_memory_notes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_memory_notes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_memory_notes_id_seq OWNED BY public.agent_memory_notes.id;
 
 
 --
@@ -3200,7 +3321,8 @@ CREATE TABLE public.agent_settings (
     data_class_modes jsonb DEFAULT '{}'::jsonb NOT NULL,
     restricted boolean DEFAULT false NOT NULL,
     review_threshold numeric(15,2) DEFAULT 5000.0 NOT NULL,
-    document_mode character varying DEFAULT 'text_only'::character varying NOT NULL
+    document_mode character varying DEFAULT 'text_only'::character varying NOT NULL,
+    digest_email_details boolean DEFAULT false NOT NULL
 );
 
 
@@ -5214,6 +5336,20 @@ ALTER TABLE ONLY public.agent_conversations ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: agent_digest_preferences id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_digest_preferences ALTER COLUMN id SET DEFAULT nextval('public.agent_digest_preferences_id_seq'::regclass);
+
+
+--
+-- Name: agent_digests id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_digests ALTER COLUMN id SET DEFAULT nextval('public.agent_digests_id_seq'::regclass);
+
+
+--
 -- Name: agent_document_extractions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5239,6 +5375,13 @@ ALTER TABLE ONLY public.agent_eval_runs ALTER COLUMN id SET DEFAULT nextval('pub
 --
 
 ALTER TABLE ONLY public.agent_feedback ALTER COLUMN id SET DEFAULT nextval('public.agent_feedback_id_seq'::regclass);
+
+
+--
+-- Name: agent_memory_notes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_memory_notes ALTER COLUMN id SET DEFAULT nextval('public.agent_memory_notes_id_seq'::regclass);
 
 
 --
@@ -6072,6 +6215,22 @@ ALTER TABLE ONLY public.agent_conversations
 
 
 --
+-- Name: agent_digest_preferences agent_digest_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_digest_preferences
+    ADD CONSTRAINT agent_digest_preferences_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_digests agent_digests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_digests
+    ADD CONSTRAINT agent_digests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: agent_document_extractions agent_document_extractions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6101,6 +6260,14 @@ ALTER TABLE ONLY public.agent_eval_runs
 
 ALTER TABLE ONLY public.agent_feedback
     ADD CONSTRAINT agent_feedback_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_memory_notes agent_memory_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_memory_notes
+    ADD CONSTRAINT agent_memory_notes_pkey PRIMARY KEY (id);
 
 
 --
@@ -6719,6 +6886,13 @@ CREATE UNIQUE INDEX idx_on_entity_id_fingerprint_e37fdec9cd ON public.accounting
 --
 
 CREATE INDEX idx_on_entity_id_status_next_due_on_ca6acf9cb4 ON public.accounting_recurring_entries USING btree (entity_id, status, next_due_on);
+
+
+--
+-- Name: idx_on_entity_id_status_scope_kind_scope_id_2cad83cdca; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_entity_id_status_scope_kind_scope_id_2cad83cdca ON public.agent_memory_notes USING btree (entity_id, status, scope_kind, scope_id);
 
 
 --
@@ -8325,6 +8499,55 @@ CREATE INDEX index_agent_conversations_on_user_id ON public.agent_conversations 
 
 
 --
+-- Name: index_agent_digest_preferences_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_digest_preferences_on_entity_id ON public.agent_digest_preferences USING btree (entity_id);
+
+
+--
+-- Name: index_agent_digest_preferences_on_entity_id_and_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_agent_digest_preferences_on_entity_id_and_user_id ON public.agent_digest_preferences USING btree (entity_id, user_id);
+
+
+--
+-- Name: index_agent_digest_preferences_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_digest_preferences_on_user_id ON public.agent_digest_preferences USING btree (user_id);
+
+
+--
+-- Name: index_agent_digests_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_digests_on_entity_id ON public.agent_digests USING btree (entity_id);
+
+
+--
+-- Name: index_agent_digests_on_entity_id_and_user_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_digests_on_entity_id_and_user_id_and_created_at ON public.agent_digests USING btree (entity_id, user_id, created_at);
+
+
+--
+-- Name: index_agent_digests_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_digests_on_user_id ON public.agent_digests USING btree (user_id);
+
+
+--
+-- Name: index_agent_digests_one_event_per_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_agent_digests_one_event_per_day ON public.agent_digests USING btree (user_id, entity_id, event_type, local_date) WHERE ((kind)::text = 'event'::text);
+
+
+--
 -- Name: index_agent_document_extractions_on_confirmed_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8406,6 +8629,20 @@ CREATE UNIQUE INDEX index_agent_feedback_on_message_id_and_user_id ON public.age
 --
 
 CREATE INDEX index_agent_feedback_on_user_id ON public.agent_feedback USING btree (user_id);
+
+
+--
+-- Name: index_agent_memory_notes_on_author_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_memory_notes_on_author_id ON public.agent_memory_notes USING btree (author_id);
+
+
+--
+-- Name: index_agent_memory_notes_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_memory_notes_on_entity_id ON public.agent_memory_notes USING btree (entity_id);
 
 
 --
@@ -9584,6 +9821,14 @@ ALTER TABLE ONLY public.accounting_period_locks
 
 
 --
+-- Name: agent_digest_preferences fk_rails_218bb84a95; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_digest_preferences
+    ADD CONSTRAINT fk_rails_218bb84a95 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoice_events fk_rails_21a060b812; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9856,6 +10101,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 
 --
+-- Name: agent_memory_notes fk_rails_4353b6a454; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_memory_notes
+    ADD CONSTRAINT fk_rails_4353b6a454 FOREIGN KEY (author_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_depreciation_entries fk_rails_4416ad5edd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10037,6 +10290,14 @@ ALTER TABLE ONLY public.accounting_documents
 
 ALTER TABLE ONLY public.user_entities
     ADD CONSTRAINT fk_rails_5adfb6b489 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: agent_digests fk_rails_5b95312c2d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_digests
+    ADD CONSTRAINT fk_rails_5b95312c2d FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -10456,6 +10717,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: agent_digests fk_rails_9618818af5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_digests
+    ADD CONSTRAINT fk_rails_9618818af5 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: active_storage_variant_records fk_rails_993965df05; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10677,6 +10946,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 ALTER TABLE ONLY public.accounting_line_allocations
     ADD CONSTRAINT fk_rails_b66f2461eb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: agent_memory_notes fk_rails_b7a455ff81; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_memory_notes
+    ADD CONSTRAINT fk_rails_b7a455ff81 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -11096,6 +11373,14 @@ ALTER TABLE ONLY public.closing_runs
 
 
 --
+-- Name: agent_digest_preferences fk_rails_ded2e8a1ab; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_digest_preferences
+    ADD CONSTRAINT fk_rails_ded2e8a1ab FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_peppol_events fk_rails_df7afcf17c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11414,6 +11699,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261009090000'),
 ('20261008110000'),
 ('20261008100000'),
 ('20261008090000'),

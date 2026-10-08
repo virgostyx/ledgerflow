@@ -1,0 +1,12 @@
+<%# The notes linked to a partner or an account (A10b), on its own page: what the assistant reads about it, visible to whoever may see the page. %>
+<% if agent_available? %>
+  <% notes = Agent::MemoryNote.active.for_scope(kind, object.id).includes(:author).ordered %>
+  <% if notes.any? || policy(:agent).manage_memory? %>
+    <section class="mt-6 rounded-lg border border-gray-200 bg-white p-4" aria-label="Notes of the assistant's memory">
+      <div class="flex items-center justify-between"><h2 class="text-sm font-semibold text-gray-900">Notes (memory of the file)</h2>
+        <%= link_to "Add a note", new_agent_memory_note_path(scope_kind: kind, scope_id: object.id), class: "text-xs text-indigo-700 hover:underline" if policy(:agent).manage_memory? %></div>
+      <% if notes.empty? %><p class="mt-1 text-sm text-gray-500">No note.</p><% end %>
+      <ul class="mt-1 space-y-1 text-sm"><% notes.each do |note| %><li><%= note.text %> <span class="text-xs text-gray-400">— <%= note.author.full_name %>, <%= l(note.created_at.to_date) %></span></li><% end %></ul>
+    </section>
+  <% end %>
+<% end %>

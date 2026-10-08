@@ -54,7 +54,7 @@ RSpec.describe "The agent's tool catalog" do
     end
 
     it "stays compact: its definitions are sent with every question" do
-      expect(registry.definitions.to_json.bytesize).to be < 28_000
+      expect(registry.definitions.to_json.bytesize).to be < 32_000
     end
 
     it "is what the runner uses when it is not given another" do
