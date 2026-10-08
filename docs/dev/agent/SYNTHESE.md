@@ -70,7 +70,7 @@
 5. **Les réglages par défaut de confidentialité** : e-mail du résumé avec ou sans détails, retention (30/90/365 jours), classes de données masquées, mode restreint.
 6. **Quatre-yeux de la base de connaissance** : exiger la relecture par une autre personne que l'auteur pour toute société qui s'en sert.
 7. **Le coût** : activer le cache des consignes (D3, désactivé), fixer les quotas par société (20/heure et 100/jour par personne aujourd'hui), choisir la périodicité du mode réel.
-8. **Le déploiement** : files `agent_interactive` et `agent_batch` dans `queue.yml`/`recurring.yml` (la tâche horaire du résumé et la rétention quotidienne y sont ; vérifier la production), clé du fournisseur dans les credentials, chiffrement Active Record en production.
+8. **Le déploiement** : les files `agent_interactive` (réponses) et `agent_batch` (rétention, résumé, lots) n'ont pas de `config/queue.yml` : Solid Queue les traite par défaut (toutes les files), ce qui mélange les réponses interactives et les lots ; créer ce fichier si l'on veut des travailleurs séparés. La tâche horaire du résumé et la rétention quotidienne sont dans `config/recurring.yml` (production seulement). Clé du fournisseur dans les credentials, chiffrement Active Record configuré en production.
 
 ## 6. Plan de mise en service proposé
 
