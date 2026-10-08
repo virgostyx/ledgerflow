@@ -11,6 +11,7 @@
       description: "Level #{@item.level}, #{@item.email? ? 'e-mail' : 'letter to print'}, #{@item.status.humanize.downcase}",
       back_path: accounting_dunning_run_path(@item.dunning_run_id), back_text: 'Reminders') do |header| %>
   <% header.with_actions do %>
+    <%= render "agent/write_button", partner_id: @item.partner_id, kind: "dunning_letter", label: "Write with the assistant" %>
     <%= link_to (@item.letter? ? 'Letter to print (PDF)' : 'Statement (PDF)'), pdf_accounting_dunning_item_path(@item), target: '_blank', rel: 'noopener',
           class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
   <% end %>

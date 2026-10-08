@@ -21,7 +21,7 @@ class Agent::Setting < ApplicationRecord
   validates :retention_days, inclusion: { in: RETENTION_CHOICES }
   validates :document_mode, inclusion: { in: DOCUMENT_MODES }
   validates :review_threshold, numericality: { greater_than_or_equal_to: 0, less_than: 10**13 }
-  validate :modes_are_known
+  validate :modes_are_known, :profile_is_sound
 
   def self.for_current_entity = find_or_create_by!(entity: ActsAsTenant.current_tenant)
 
@@ -36,6 +36,13 @@ class Agent::Setting < ApplicationRecord
   def modes = DATA_CLASSES.index_with { |data_class| mode_for(data_class) }
 
   private
+
+  # A style is approved on three to five examples, or not set by examples at all (A11).
+  def profile_is_sound
+    examples = writing_profile.to_h["examples"]
+    errors.add(:writing_profile, "needs three to five approved examples, or none") if examples.present? && !examples.size.between?(3, 5)
+    errors.add(:writing_profile, "formality must be vous, tu or neutral") if writing_profile.to_h["formality"].present? && !%w[vous tu neutral].include?(writing_profile["formality"])
+  end
 
   def modes_are_known
     unknown = data_class_modes.keys - DATA_CLASSES

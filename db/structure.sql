@@ -3322,7 +3322,8 @@ CREATE TABLE public.agent_settings (
     restricted boolean DEFAULT false NOT NULL,
     review_threshold numeric(15,2) DEFAULT 5000.0 NOT NULL,
     document_mode character varying DEFAULT 'text_only'::character varying NOT NULL,
-    digest_email_details boolean DEFAULT false NOT NULL
+    digest_email_details boolean DEFAULT false NOT NULL,
+    writing_profile jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -3343,6 +3344,49 @@ CREATE SEQUENCE public.agent_settings_id_seq
 --
 
 ALTER SEQUENCE public.agent_settings_id_seq OWNED BY public.agent_settings.id;
+
+
+--
+-- Name: agent_text_drafts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_text_drafts (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    conversation_id bigint,
+    message_id bigint,
+    partner_id bigint,
+    kind character varying NOT NULL,
+    language character varying DEFAULT 'en'::character varying NOT NULL,
+    level integer,
+    payload text NOT NULL,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    outcome character varying,
+    edit_distance integer,
+    used_in character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_text_drafts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_text_drafts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_text_drafts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_text_drafts_id_seq OWNED BY public.agent_text_drafts.id;
 
 
 --
@@ -4142,7 +4186,8 @@ CREATE TABLE public.dunning_items (
     message_id character varying,
     error text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    agent_draft_id bigint
 );
 
 
@@ -5420,6 +5465,13 @@ ALTER TABLE ONLY public.agent_settings ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: agent_text_drafts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_text_drafts ALTER COLUMN id SET DEFAULT nextval('public.agent_text_drafts_id_seq'::regclass);
+
+
+--
 -- Name: agent_tool_calls id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6308,6 +6360,14 @@ ALTER TABLE ONLY public.agent_security_events
 
 ALTER TABLE ONLY public.agent_settings
     ADD CONSTRAINT agent_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_text_drafts agent_text_drafts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_text_drafts
+    ADD CONSTRAINT agent_text_drafts_pkey PRIMARY KEY (id);
 
 
 --
@@ -8751,6 +8811,48 @@ CREATE UNIQUE INDEX index_agent_settings_on_entity_id ON public.agent_settings U
 
 
 --
+-- Name: index_agent_text_drafts_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_text_drafts_on_conversation_id ON public.agent_text_drafts USING btree (conversation_id);
+
+
+--
+-- Name: index_agent_text_drafts_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_text_drafts_on_entity_id ON public.agent_text_drafts USING btree (entity_id);
+
+
+--
+-- Name: index_agent_text_drafts_on_entity_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_text_drafts_on_entity_id_and_status ON public.agent_text_drafts USING btree (entity_id, status);
+
+
+--
+-- Name: index_agent_text_drafts_on_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_text_drafts_on_message_id ON public.agent_text_drafts USING btree (message_id);
+
+
+--
+-- Name: index_agent_text_drafts_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_text_drafts_on_partner_id ON public.agent_text_drafts USING btree (partner_id);
+
+
+--
+-- Name: index_agent_text_drafts_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_text_drafts_on_user_id ON public.agent_text_drafts USING btree (user_id);
+
+
+--
 -- Name: index_agent_tool_calls_on_message_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9133,6 +9235,13 @@ CREATE INDEX index_dunning_item_lines_on_entity_id ON public.dunning_item_lines 
 --
 
 CREATE INDEX index_dunning_item_lines_on_line_id ON public.dunning_item_lines USING btree (line_id);
+
+
+--
+-- Name: index_dunning_items_on_agent_draft_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_dunning_items_on_agent_draft_id ON public.dunning_items USING btree (agent_draft_id) WHERE (agent_draft_id IS NOT NULL);
 
 
 --
@@ -10237,6 +10346,14 @@ ALTER TABLE ONLY public.data_exports
 
 
 --
+-- Name: agent_text_drafts fk_rails_5647a9e134; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_text_drafts
+    ADD CONSTRAINT fk_rails_5647a9e134 FOREIGN KEY (conversation_id) REFERENCES public.agent_conversations(id) ON DELETE SET NULL;
+
+
+--
 -- Name: dunning_item_lines fk_rails_56b10261a7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10346,6 +10463,14 @@ ALTER TABLE ONLY public.accounting_documents
 
 ALTER TABLE ONLY public.accounting_supplier_defaults
     ADD CONSTRAINT fk_rails_63dbd18c54 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: agent_text_drafts fk_rails_679bf9874b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_text_drafts
+    ADD CONSTRAINT fk_rails_679bf9874b FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -10522,6 +10647,14 @@ ALTER TABLE ONLY public.knowledge_documents
 
 ALTER TABLE ONLY public.consolidation_mappings
     ADD CONSTRAINT fk_rails_7a5ee835b7 FOREIGN KEY (consolidation_member_id) REFERENCES public.consolidation_members(id);
+
+
+--
+-- Name: agent_text_drafts fk_rails_7d43220df9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_text_drafts
+    ADD CONSTRAINT fk_rails_7d43220df9 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id) ON DELETE SET NULL;
 
 
 --
@@ -10754,6 +10887,14 @@ ALTER TABLE ONLY public.accounting_notifications
 
 ALTER TABLE ONLY public.accounting_journals
     ADD CONSTRAINT fk_rails_9aaf5b2621 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: agent_text_drafts fk_rails_9d7bc0ce0e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_text_drafts
+    ADD CONSTRAINT fk_rails_9d7bc0ce0e FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -11589,6 +11730,14 @@ ALTER TABLE ONLY public.closing_steps
 
 
 --
+-- Name: agent_text_drafts fk_rails_f62c84680b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_text_drafts
+    ADD CONSTRAINT fk_rails_f62c84680b FOREIGN KEY (message_id) REFERENCES public.agent_messages(id) ON DELETE SET NULL;
+
+
+--
 -- Name: accounting_supplier_defaults fk_rails_f66b9ac1ed; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11699,6 +11848,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261009120000'),
 ('20261009090000'),
 ('20261008110000'),
 ('20261008100000'),

@@ -152,7 +152,37 @@ class Agent::Runner
       return { "error" => "invalid_arguments", "message" => "These amounts were not given by any tool: #{unanchored.join(', ')}. Read them with the report tools first." }
     end
 
-    @registry.execute(name, input, @context, security: @security)
+    result = @registry.execute(name, input, @context, security: @security)
+    name == "propose_text" && !result["error"] ? ground_text(result) : result
+  end
+
+  # A draft says only what the tools gave (A11): the tokens of the masking become the names they stand for, a token that stands for nobody sends the draft back, and an amount, a date or an invoice number that no source
+  # gave is replaced by a placeholder, said in the warnings. The facts keep the references that exist.
+  def ground_text(result)
+    proposal = result.dig("data", 0, "proposal") or return result
+    tokens = @conversation.pseudonym_table.unknown_tokens("#{proposal['subject']} #{proposal['body']}")
+    if tokens.any?
+      tokens.each { |token| @security.event(:invented_token, excerpt: token) }
+      return { "error" => "invalid_proposal", "message" => "The text holds tokens that stand for nobody (#{tokens.join(', ')}). Write the names as you were given them, or a neutral formula." }
+    end
+
+    replaced = []
+    %w[subject body].each { |key| proposal[key] = ground_value(@conversation.reveal(proposal[key].to_s), replaced) if proposal[key] }
+    proposal["facts"] = Array(proposal["facts"]).map { |fact| fact["ref"] && !(@known_refs.include?(fact["ref"]) || Agent::Refs.computed?(fact["ref"])) ? fact.except("ref") : fact }
+    proposal["warnings"] = Array(proposal["warnings"]) + [ "#{replaced.size} figure(s), date(s) or invoice number(s) that no tool gave were replaced by a placeholder to fill: #{replaced.uniq.join(', ')}." ] if replaced.any?
+    result
+  end
+
+  def ground_value(text, replaced)
+    stray = @anchors.unanchored(text)
+    spans = Agent::Amounts.spans(text).select { |_, _, amount| stray.include?(amount) }.map { |position, length, _| [ position, length, "amount" ] }
+    spans += @anchors.unanchored_dates(text).map { |position, length| [ position, length, "date" ] }
+    spans += @anchors.unanchored_numbers(text).map { |position, length| [ position, length, "invoice number" ] }
+    spans.sort_by(&:first).reverse.reduce(text.dup) do |out, (position, length, what)|
+      replaced << what
+      out[position, length] = "[To complete: #{what}]"
+      out
+    end
   end
 
   def proposal_refused(name)
@@ -171,10 +201,26 @@ class Agent::Runner
   def store_proposals(message)
     threshold = Agent::Setting.find_by(entity: @context.entity)&.review_threshold || Agent::Setting.column_defaults.fetch("review_threshold")
     @proposals.compact.each do |data|
+      next store_text(data, message) if data["kind"] == "text"
+
       proposal = Agent::Proposal.create!(user: @context.user, conversation: @conversation, message: message, kind: data.fetch("kind"), payload: data.to_json, warnings_present: Array(data["warnings"]).any?,
                                          review_required: data["kind"] == "entry_draft" && BigDecimal(data.dig("totals", "debit")) >= threshold)
       Accounting::AuditLog.record!(auditable: proposal, action: "agent_proposal", user: @context.user, payload: { kind: proposal.kind, conversation_id: @conversation.id })
     end
+  end
+
+  # A text drafted: a new draft, or a new version of the one the person asked to revise.
+  def store_text(data, message)
+    revised = Agent::TextDraft.find_by(id: data["revises"], user_id: @context.user.id) if data["revises"]
+    if revised&.draft?
+      revised.add_version!(subject: data["subject"], body: data["body"], by: "assistant", facts: data["facts"], warnings: data["warnings"])
+      revised.update_columns(message_id: message.id) # the draft is shown under the answer that last wrote it
+      return Accounting::AuditLog.record!(auditable: revised, action: "agent_text_revise", user: @context.user, payload: { kind: revised.kind })
+    end
+
+    draft = Agent::TextDraft.create!(user: @context.user, conversation: @conversation, message: message, partner_id: data["partner_id"], kind: data["text_kind"], language: data["language"], level: data["level"],
+                                     payload: { "versions" => [ { "subject" => data["subject"], "body" => data["body"], "by" => "assistant", "at" => Time.current.iso8601 } ], "facts" => data["facts"], "warnings" => data["warnings"] }.to_json)
+    Accounting::AuditLog.record!(auditable: draft, action: "agent_text_draft", user: @context.user, payload: { kind: draft.kind, partner_id: draft.partner_id })
   end
 
   def finish(status, notice)

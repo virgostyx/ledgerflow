@@ -132,3 +132,12 @@ Voir la liste complète dans `DATA_PROCESSING.md` : conservation chez le fournis
 - **Qui gère la mémoire** : propriétaire et comptable (`agent.memory.manage`). Les autres lisent les notes mais n'en écrivent pas.
 - **Montants dans une note** : permis (avertissement à la proposition) mais jamais repris par l'agent comme chiffre.
 - **Catalogue d'outils** : 32 Ko (seuil relevé) ; les outils sont maintenant présentés selon les droits de la personne, ce qui économise des tokens aux lecteurs.
+
+## A11 — décisions à valider
+- **Ce que la politique de relance autorise** : seulement ce qui y figure (intérêts et indemnité activés, texte standard du niveau). Le niveau 3 du texte standard parle de « démarches de recouvrement » : l'agent peut donc en parler au niveau 3 mais pas au niveau 1. À faire relire par le comptable ou le juriste (rien n'est dit du droit ici).
+- **Relance « récente »** : une ligne relancée depuis moins de `min_days_between` jours n'obtient pas de relance rédigée (même règle que F09).
+- **Le texte rédigé par l'agent n'est jamais envoyé seul** : une relance dont le texte vient de lui est écartée de l'envoi automatique du niveau 1 ; si l'on veut un envoi automatique du texte de l'agent, c'est une décision à part, que je ne recommande pas.
+- **Profil de style** : texte libre, approuvé par un propriétaire sur trois à cinq exemples ; il est envoyé tel quel au fournisseur dans le résultat d'un outil (classe « texte libre » : masqué ou bloqué selon les réglages d'A04).
+- **Contenu d'un e-mail collé** : traité comme donnée, mais une adresse ou un nom qu'il contient part au fournisseur comme tout texte de la conversation (masqué selon les réglages).
+- **Détection des menaces et intérêts** : par mots (fr / nl / en), donc imparfaite ; la relecture par la personne reste la vraie barrière.
+- **Catalogue d'outils** : 32,7 Ko (seuil relevé à 34 Ko) ; les outils sont filtrés par droits. Envisager le cache des consignes (D3).

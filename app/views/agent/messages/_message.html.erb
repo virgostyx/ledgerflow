@@ -37,6 +37,13 @@
     <% end %>
     <% proposals = message.proposals.sort_by(&:id) %>
     <% proposals.each do |proposal| %><%= render "agent/proposals/card", proposal: proposal %><% end %>
+    <% message.text_drafts.sort_by(&:id).each do |draft| %>
+      <div class="mt-3 rounded-md border border-indigo-200 bg-indigo-50/40 p-3 text-sm">
+        <p class="font-medium text-gray-900">Draft: <%= draft.kind.humanize.downcase %><%= " for #{draft.partner.name}" if draft.partner %> (<%= draft.language.upcase %>)</p>
+        <p class="mt-1 text-xs text-gray-600"><%= draft.body.truncate(160) %></p>
+        <p class="mt-1 text-xs"><%= link_to "Open, change and use it", agent_text_draft_path(draft), class: "text-indigo-700 hover:underline" %> · not sent, and cannot be sent by the assistant</p>
+      </div>
+    <% end %>
     <% creatable = proposals.select { |proposal| proposal.pending? && !proposal.lapsed? && proposal.kind == "entry_draft" && !proposal.warnings_present && !proposal.review_required } %>
     <% if creatable.size > 1 %>
       <%= form_with url: agent_accept_all_proposals_path(message.id), class: "mt-2 text-xs", data: { turbo_confirm: "Create #{creatable.size} drafts? Only the proposals without a warning are created." } do %>

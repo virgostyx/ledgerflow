@@ -9,6 +9,7 @@ class Agent::SettingsController < ApplicationController
 
   def update
     @setting.assign_attributes(setting_params)
+    @setting.writing_profile = writing_profile_params if params[:writing_profile]
     if @setting.enabled? && !Agent::Consent.current? && params[:accept_consent] != "1"
       @setting.errors.add(:base, "Accept the data processing terms to turn the assistant on.")
       return render :show, status: :unprocessable_entity
@@ -26,6 +27,15 @@ class Agent::SettingsController < ApplicationController
   private
 
   def set_setting = @setting = Agent::Setting.for_current_entity
+
+  # The style of the company (A11), changed only here, by an owner: never learned. Three to five approved examples, or none.
+  def writing_profile_params
+    raw = params.require(:writing_profile).permit(:formality, :opening, :closing, :signature, :length_words, firmness: %w[1 2 3], examples: [])
+    profile = raw.to_h.compact_blank
+    profile["examples"] = Array(profile["examples"]).map(&:to_s).map(&:strip).reject(&:empty?).first(5)
+    profile["length_words"] = profile["length_words"].to_i if profile["length_words"]
+    profile.compact_blank
+  end
 
   # A mode left blank goes back to the default of its class.
   def setting_params

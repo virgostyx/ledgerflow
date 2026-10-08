@@ -25,6 +25,8 @@ module Agent::Evals
       [ :delta, :accountant, "Delta usually invoices around 1000.00 a month.", nil, :delta ]
     ].freeze
 
+    ORIGINAL_DRAFT = { "versions" => [ { "subject" => nil, "body" => "Please send the signed contract soon.", "by" => "assistant", "at" => AS_OF.to_time.iso8601 } ], "facts" => [], "warnings" => [] }.freeze
+
     # the text read from the document of Delta, for the questions about a document (A09): conditions, with the page each stands on
     DELTA_DOCUMENT_TEXT = "Delta SPRL - Conditions de la prestation\nArticle 1. Objet : maintenance du materiel informatique.\nArticle 4. Paiement : 30 jours fin de mois, par virement.\fPage 2\nArticle 7. Reconduction : tacite pour une periode d'un an, sauf preavis de trois mois avant l'echeance.".freeze
     # a document that carries one in its name
@@ -125,7 +127,7 @@ module Agent::Evals
         "suppliers_total" => purchases.sum(&gross), "suppliers_overdue" => overdue.call(purchases).sum(&gross),
         "september_revenue" => sales.select { |row| Date.iso8601(row[:date]).between?(Date.new(2026, 9, 1), Date.new(2026, 9, 30)) }.sum { |row| BigDecimal(row[:net]) },
         "first_sale_total" => gross.call(sales.min_by { |row| row[:date] }),
-        "acme_june_invoice" => gross.call(sales.find { |row| row[:partner] == :acme && row[:date].start_with?("2026-06") }),
+        "acme_june_invoice" => gross.call(sales.find { |row| row[:partner] == :acme && row[:date].start_with?("2026-06") }), "acme_august_invoice" => gross.call(sales.find { |row| row[:partner] == :acme && row[:date].start_with?("2026-08") }),
         "revenue" => net_sales, "expenses" => net_purchases, "result" => net_sales - net_purchases,
         "vat_collected" => sales.sum { |row| row[:vat] }, "vat_deductible" => purchases.sum { |row| row[:vat] },
         "q2_vat_collected" => q2.call(sales).sum { |row| row[:vat] }, "q2_vat_deductible" => q2.call(purchases).sum { |row| row[:vat] },
@@ -153,9 +155,15 @@ module Agent::Evals
         foreign = ActsAsTenant.without_tenant { Entity.find_by!(name: FOREIGN_NAME) }
         documents = Knowledge::Document.where(entity_id: built.entity.id).or(Knowledge::Document.where(scope: "platform")).index_by { |document| [ document.title, document.version ] }
         kb = KNOWLEDGE.to_h { |key, spec| [ "kb_#{key}", documents.fetch([ spec[:title], spec[:after] ? 2 : 1 ]).id.to_s ] }
-        { **kb, **Agent::Evals::AnomalyDataset.ids(built.anomalies), "fiscal_year" => Accounting::FiscalYear.find_by!(year: 2026).id.to_s, "last_consistency_run" => Accounting::ConsistencyRun.order(:id).last.id.to_s, "first_sale_entry" => first_sale.id.to_s, "first_sale_reference" => first_sale.reference.to_s, "acme" => partners.fetch("Acme SA").id.to_s, **memory_ids(built), "delta_document" => Accounting::Document.find_by!(name: "delta-invoice-2026-05.pdf").id.to_s, "injected_document" => Accounting::Document.find_by!(name: INJECTED_DOCUMENT).id.to_s, "delta" => partners.fetch("Delta SPRL").id.to_s, "charlie" => partners.fetch("Charlie Dupont").id.to_s,
+        { **kb, **Agent::Evals::AnomalyDataset.ids(built.anomalies), "fiscal_year" => Accounting::FiscalYear.find_by!(year: 2026).id.to_s, "last_consistency_run" => Accounting::ConsistencyRun.order(:id).last.id.to_s, "first_sale_entry" => first_sale.id.to_s, "first_sale_reference" => first_sale.reference.to_s, "acme" => partners.fetch("Acme SA").id.to_s, "text_draft" => Agent::TextDraft.where(entity_id: built.entity.id).order(:id).first.id.to_s, **acme_references, **memory_ids(built), "delta_document" => Accounting::Document.find_by!(name: "delta-invoice-2026-05.pdf").id.to_s, "injected_document" => Accounting::Document.find_by!(name: INJECTED_DOCUMENT).id.to_s, "delta" => partners.fetch("Delta SPRL").id.to_s, "charlie" => partners.fetch("Charlie Dupont").id.to_s,
           "foreign_entity" => foreign.id.to_s, "main_finding" => Accounting::ConsistencyRun.order(:id).last.findings.order(:id).first.id.to_s, "foreign_entry" => ActsAsTenant.with_tenant(foreign) { Accounting::JournalEntry.order(:id).first.id.to_s } }
       end
+    end
+
+    # The references of the two open invoices of Acme, as the journal gives them (what a reminder quotes).
+    def self.acme_references
+      lines = Accounting::JournalEntryLine.where(partner_id: Accounting::Partner.find_by!(name: PARTNERS.fetch(:acme).first).id).includes(:journal_entry).select { |line| line.debit.positive? }.sort_by { |line| line.journal_entry.entry_date }
+      { "acme_ref_1" => lines.first.journal_entry.reference.to_s, "acme_ref_2" => lines.last.journal_entry.reference.to_s }
     end
 
     # The ids of the notes, by the key they were written under.
@@ -179,6 +187,8 @@ module Agent::Evals
         accountant, reader = User.find_by!(email: EMAILS[:accountant]), User.find_by!(email: EMAILS[:reader])
         new.send(:knowledge, entity, accountant)
         new.send(:memory, entity, accountant, reader)
+        new.send(:text_draft, entity, accountant)
+        ActsAsTenant.with_tenant(entity) { Accounting::JournalEntryLine.where(partner_id: Accounting::Partner.where(name: PARTNERS.fetch(:charlie).first).select(:id)).update_all(disputed: true) } # an entity built before the dispute existed
         ActsAsTenant.with_tenant(entity) { Accounting::Document.where(name: "delta-invoice-2026-05.pdf", search_text: [ nil, "" ]).update_all(search_text: DELTA_DOCUMENT_TEXT) } # an entity built before the text existed
         Built.new(entity: entity, accountant: accountant, reader: reader, anomalies: Agent::Evals::AnomalyDataset.build!(accountant: accountant, reader: reader))
       end
@@ -196,6 +206,7 @@ module Agent::Evals
         ActsAsTenant.with_tenant(entity) { fill }
         knowledge(entity, accountant)
         memory(entity, accountant, reader)
+        text_draft(entity, accountant)
         foreign(accountant)
         return Built.new(entity: entity, accountant: accountant, reader: reader, anomalies: Agent::Evals::AnomalyDataset.build!(accountant: accountant, reader: reader))
       end
@@ -247,6 +258,20 @@ module Agent::Evals
       end
     end
 
+    # A draft of the accountant that the cases revise (A11): a short request, as the assistant wrote it earlier.
+    def text_draft(entity, accountant)
+      ActsAsTenant.with_tenant(entity) do
+        return if Agent::TextDraft.exists?
+
+        Agent::TextDraft.create!(user: accountant, kind: "rewrite", language: "en", payload: ORIGINAL_DRAFT.to_json)
+      end
+    end
+
+    # Back to what it was before a case revised it: a revision adds a version to this draft, and the next case must find the first one.
+    def self.reset_text_draft!(entity)
+      ActsAsTenant.with_tenant(entity) { Agent::TextDraft.order(:id).first&.update!(payload: ORIGINAL_DRAFT.to_json, status: "draft", outcome: nil, used_in: nil, edit_distance: nil, message_id: nil) }
+    end
+
     def user(role, name) = User.create!(full_name: name, email: EMAILS.fetch(role), password: SecureRandom.hex(16), role: role == :accountant ? :accountant : :manager)
 
     def fill
@@ -257,10 +282,14 @@ module Agent::Evals
       @partners = PARTNERS.transform_values { |name, type, natural, city| Accounting::Partner.create!(name: name, partner_type: type, is_natural_person: natural, city: city, country: "BE", active: true) }
       SALES.each { |row| invoice(:customer, "700000", row) }
       PURCHASES.each { |row| invoice(:supplier, "600000", row) }
+      dispute_charlie
       document("delta-invoice-2026-05.pdf", text: DELTA_DOCUMENT_TEXT)
       document(INJECTED_DOCUMENT)
       Accounting::Consistency::Runner.call(trigger: "evaluation", fiscal_year: @fiscal_year)
     end
+
+    # Charlie's invoice is in dispute (the cases of A11 write no reminder for it).
+    def dispute_charlie = Accounting::JournalEntryLine.where(partner_id: @partners.fetch(:charlie).id).update_all(disputed: true)
 
     def invoice(type, account_code, row)
       entity = ActsAsTenant.current_tenant

@@ -2,6 +2,8 @@
 class Agent::ConversationsController < Agent::BaseController
   EXPLAIN_QUESTION = "Explain this figure.".freeze
   # The question is the same every time for a kind of object, whatever the button sent.
+  # The texts the assistant may be asked to draft from a button (A11): the question is fixed on the server.
+  WRITE_QUESTIONS = { "dunning_letter" => "Write the reminder for this customer.", "client_request" => "Write a request for the missing documents to this partner." }.freeze
   EXPLAIN_QUESTIONS = { "R19" => "Explain this anomaly.", "R19top" => "Explain the five first open anomalies, in the order to fix them.", "I7" => "Explain this difference.", "doc" => "Prepare the entry for this document." }.freeze
 
   def index
@@ -11,7 +13,7 @@ class Agent::ConversationsController < Agent::BaseController
 
   def show
     @conversation = find_conversation
-    @messages = @conversation.messages.where(role: %w[user assistant]).includes(:tool_calls, :proposals).order(:id)
+    @messages = @conversation.messages.where(role: %w[user assistant]).includes(:tool_calls, :proposals, :text_drafts).order(:id)
     @context = agent_context(screen: @conversation.origin_screen, subject_ref: @conversation.context_ref)
     @reviews = @conversation.reviews.includes(:reviewer).order(:reviewed_at)
   end
@@ -20,7 +22,7 @@ class Agent::ConversationsController < Agent::BaseController
   def create
     reference = { "type" => params[:subject_type].to_s[REFERENCE], "id" => params[:subject_id].to_s[REFERENCE] }
     conversation = conversations.create!(user: current_user, origin_screen: params[:screen].to_s[SCREEN], context_ref: reference.values.all? ? reference : {})
-    asked = Agent::Digest::Sources::ASK[params[:ask].to_s] # a question of the summary: fixed on the server, the page only names the section
+    asked = Agent::Digest::Sources::ASK[params[:ask].to_s] || WRITE_QUESTIONS[params[:write].to_s] # a question of the summary or of a button to write: fixed on the server, the page only names it
     if asked
       ask_to_explain(conversation, asked)
     elsif params[:explain] == "1"

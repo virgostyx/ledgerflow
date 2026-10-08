@@ -1,0 +1,6 @@
+<%# "Write with the assistant" (A11): opens the panel on a conversation about this partner, with a question the server writes, so that the assistant drafts the text. Nothing is sent by it. %>
+<% if agent_available? %>
+  <%= button_to local_assigns.fetch(:label, "Write with the assistant"), agent_conversations_path, params: { subject_type: "partner", subject_id: partner_id, screen: "#{controller_path}##{action_name}", write: kind },
+        form: { class: "inline", data: { turbo_frame: "agent_panel", controller: "agent-explain", action: "submit->agent-explain#open" } },
+        class: "ml-2 text-xs text-indigo-700 hover:underline cursor-pointer", title: "The assistant drafts the text for you to read; it sends nothing" %>
+<% end %>

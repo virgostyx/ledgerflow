@@ -75,6 +75,25 @@
       <p class="mt-1 text-xs text-gray-400">An entry the assistant proposes for a total at or above this amount shows its justification open, and asks you to confirm that you read it before the draft is created.</p>
     </section>
 
+    <section class="rounded-lg border border-gray-200 bg-white p-4 space-y-2">
+      <p class="text-sm font-medium text-gray-700">Writing profile of the company</p>
+      <p class="text-xs text-gray-500">The style the assistant follows when it drafts a text. It learns nothing by itself: it changes only here, by an owner. Approve three to five examples of texts you like, or none.</p>
+      <% profile = @setting.writing_profile.to_h %>
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div><%= label_tag "writing_profile_formality", "Address" %><%= select_tag "writing_profile[formality]", options_for_select([ [ "Formal (vous)", "vous" ], [ "Informal (tu)", "tu" ], [ "Neutral", "neutral" ] ], profile["formality"]), include_blank: true, id: "writing_profile_formality", class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+        <div><%= label_tag "writing_profile_length_words", "Target length (words)" %><%= number_field_tag "writing_profile[length_words]", profile["length_words"], min: 20, max: 500, id: "writing_profile_length_words", class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+        <div><%= label_tag "writing_profile_opening", "Opening formula" %><%= text_field_tag "writing_profile[opening]", profile["opening"], id: "writing_profile_opening", class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+        <div><%= label_tag "writing_profile_closing", "Closing formula" %><%= text_field_tag "writing_profile[closing]", profile["closing"], id: "writing_profile_closing", class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      </div>
+      <div class="text-sm"><%= label_tag "writing_profile_signature", "Signature" %><%= text_area_tag "writing_profile[signature]", profile["signature"], rows: 2, id: "writing_profile_signature", class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <% (1..3).each do |level| %>
+        <div class="text-sm"><%= label_tag "writing_profile_firmness_#{level}", "Firmness of a level #{level} reminder" %><%= text_field_tag "writing_profile[firmness][#{level}]", profile.dig("firmness", level.to_s), id: "writing_profile_firmness_#{level}", class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <% end %>
+      <% 5.times do |index| %>
+        <div class="text-sm"><%= label_tag "writing_profile_example_#{index}", "Approved example #{index + 1}" %><%= text_area_tag "writing_profile[examples][]", Array(profile["examples"])[index], rows: 3, id: "writing_profile_example_#{index}", class: "mt-1 w-full rounded-md border-gray-300 text-sm" %></div>
+      <% end %>
+    </section>
+
     <section class="rounded-lg border border-gray-200 bg-white p-4">
       <label class="flex items-center gap-2 text-sm text-gray-700"><%= f.check_box :digest_email_details %> Allow names and figures in the e-mails of the summary</label>
       <p class="mt-1 text-xs text-gray-400">By default the e-mail of a summary carries counts and links only: an e-mail leaves the application and may be read elsewhere.</p>

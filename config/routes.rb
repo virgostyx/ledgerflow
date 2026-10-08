@@ -65,6 +65,15 @@ Rails.application.routes.draw do
         post :reject
       end
     end
+    resources :text_drafts, only: %i[index show update] do
+      member do
+        post :regenerate
+        post :use_in_reminder
+        post :save_in_task
+        post :copied
+        post :reject
+      end
+    end
     resources :memory_notes, except: :show do
       member { post :archive }
       get :export, on: :collection

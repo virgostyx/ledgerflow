@@ -18,6 +18,9 @@ class Accounting::DunningItem < ApplicationRecord
 
   validate :one_campaign_a_day, unless: :excluded?
 
+  # The text was written, or rewritten, by the assistant (A11): a person must validate this reminder; no automatic sending ever takes it.
+  def agent_written? = agent_draft_id.present?
+
   # A level higher than the one proposed needs an explicit confirmation before anything goes out.
   def skips_level? = level > proposed_level
 

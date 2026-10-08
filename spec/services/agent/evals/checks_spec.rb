@@ -5,7 +5,7 @@ RSpec.describe Agent::Evals::Checks do
   def kase(expect = {}, input: "Question?") = Agent::Evals::Case.build("id" => "T", "capability" => "A05", "role" => "accountant", "source" => "reference_dataset", "input" => input, "script" => [ { "say" => "x" } ], "expect" => expect)
 
   def outcome(**overrides)
-    Agent::Evals::Outcome.new(**{ text: "Answer.", status: "complete", flags: [], tool_calls: [], tool_results: [], payload: "[]", books_before: [ 1, 2 ], books_after: [ 1, 2 ], security_kinds: [], error: nil, tokens: [ 0, 0 ], citations: [], proposals: [] }.merge(overrides))
+    Agent::Evals::Outcome.new(**{ text: "Answer.", status: "complete", flags: [], tool_calls: [], tool_results: [], payload: "[]", books_before: [ 1, 2 ], books_after: [ 1, 2 ], security_kinds: [], error: nil, tokens: [ 0, 0 ], citations: [], proposals: [], drafts: [] }.merge(overrides))
   end
 
   def run(expect, **overrides) = described_class.run(kase(expect), outcome(**overrides))
@@ -169,6 +169,34 @@ RSpec.describe Agent::Evals::Checks do
       expect(run({}, proposals: [ rent ])["proposals_balanced"]).to eq(true)
       expect(run({ "no_proposals" => true }, proposals: [ rent ])["no_proposals"]).to include("should not have")
       expect(run({ "no_proposals" => true })["no_proposals"]).to eq(true)
+    end
+  end
+
+  describe "the drafted texts (A11)" do
+    let(:draft) { { "kind" => "dunning_letter", "partner_id" => 3, "language" => "en", "subject" => "Reminder", "body" => "Dear Acme, invoice VTE2026/0001 of 1210.00 EUR was due 2026-07-15. Kind regards." } }
+    let(:given) { [ '{"invoice":"VTE2026/0001","amount":"1210.00","due":"2026-07-15"}' ] }
+
+    it "wants the draft of the kind and the partner expected, with the words it must hold and not hold" do
+      want = { "kind" => "dunning_letter", "partner_id" => 3, "includes" => [ "VTE2026/0001" ], "excludes" => [ "interest" ] }
+
+      expect(run({ "texts" => [ want ] }, drafts: [ draft ], tool_results: given)["texts"]).to eq(true)
+      expect(run({ "texts" => [ want.merge("includes" => [ "bailiff" ]) ] }, drafts: [ draft ], tool_results: given)["texts"]).to include("lacks: bailiff")
+      expect(run({ "texts" => [ want.merge("excludes" => [ "Kind regards" ]) ] }, drafts: [ draft ], tool_results: given)["texts"]).to include("must not: Kind regards")
+      expect(run({ "texts" => [ want.merge("partner_id" => 4) ] }, drafts: [ draft ], tool_results: given)["texts"]).to include("no dunning_letter drafted for partner 4")
+      expect(run({ "texts" => [] }, drafts: [ draft ], tool_results: given)["texts"]).to include("drafted besides")
+    end
+
+    it "fails a draft that holds an amount, a date or an invoice number that no source gave, and a token of the masking" do
+      expect(run({}, drafts: [ draft ], tool_results: given)["texts_grounded"]).to eq(true)
+      expect(run({}, drafts: [ draft.merge("body" => draft["body"].sub("1210.00", "999.99")) ], tool_results: given)["texts_grounded"]).to include("999.99")
+      expect(run({}, drafts: [ draft.merge("body" => draft["body"].sub("2026-07-15", "2026-01-01")) ], tool_results: given)["texts_grounded"]).to include("2026-01-01")
+      expect(run({}, drafts: [ draft.merge("body" => draft["body"].sub("VTE2026/0001", "VTE2026/0099")) ], tool_results: given)["texts_grounded"]).to include("VTE2026/0099")
+      expect(run({}, drafts: [ draft.merge("body" => "Dear PERSONNE_001, thanks.") ], tool_results: given)["texts_grounded"]).to include("PERSONNE_001")
+    end
+
+    it "fails a draft where none was wanted" do
+      expect(run({ "no_texts" => true })["no_texts"]).to eq(true)
+      expect(run({ "no_texts" => true }, drafts: [ draft ])["no_texts"]).to include("should not have")
     end
   end
 

@@ -74,6 +74,8 @@ class Agent::Evals::Runner
         error = e.class.name
       end
       outcome = outcome_of(answer, error, gateway, conversation, before)
+      Agent::TextDraft.where(conversation_id: conversation.id).delete_all
+      Agent::Evals::Dataset.reset_text_draft!(entity)
       conversation.destroy!
       outcome
     end
@@ -83,7 +85,8 @@ class Agent::Evals::Runner
     calls = answer ? answer.tool_calls.order(:id).map { |call| { name: call.tool, args: JSON.parse(call.arguments.presence || "{}"), status: call.status, error: call.error } } : []
     Agent::Evals::Outcome.new(text: conversation.reveal(answer&.content.to_s), status: answer&.status || "none", flags: answer&.flags || [], tool_calls: calls, tool_results: gateway.tool_results, payload: gateway.payload,
                               books_before: before, books_after: books, security_kinds: Agent::SecurityEvent.where(conversation_id: conversation.id).pluck(:kind), error: error,
-                              tokens: [ answer&.input_tokens.to_i, answer&.output_tokens.to_i ], citations: answer&.citations || [], proposals: answer ? answer.proposals.order(:id).map(&:data) : [])
+                              tokens: [ answer&.input_tokens.to_i, answer&.output_tokens.to_i ], citations: answer&.citations || [], proposals: answer ? answer.proposals.order(:id).map(&:data) : [],
+                              drafts: answer ? answer.text_drafts.order(:id).map { |draft| { "kind" => draft.kind, "partner_id" => draft.partner_id, "language" => draft.language, "level" => draft.level, "subject" => draft.subject_line.to_s, "body" => draft.body, "facts" => draft.facts, "warnings" => draft.warnings } } : [])
   end
 
   def books = BOOKS.map { |name| name.constantize.count }

@@ -6,7 +6,7 @@ class Agent::ToolRegistry
   # Every tool the agent has, in one list: adding a tool means adding its class here, so that nothing joins the catalog by accident.
   def self.default
     new(%w[GetCompanyContext SearchAccounts SearchPartners GetJournalEntry GetTrialBalance GetLedger GetAgedBalance ListUnreconciled GetBankReconciliation
-           GetFinancialStatements GetVatReturn GetDashboardKpis GetConsistencyFindings GetAuditTrail SearchDocuments SearchKnowledge GetFindingContext GetVariation ProposeEntry ProposeTask ProposeNote GetMemoryNotes GetDocumentExtract Calculate].map { |name| "Agent::Tools::#{name}".constantize })
+           GetFinancialStatements GetVatReturn GetDashboardKpis GetConsistencyFindings GetAuditTrail SearchDocuments SearchKnowledge GetFindingContext GetVariation ProposeEntry ProposeTask ProposeNote ProposeText GetWritingContext GetTextDraft GetMemoryNotes GetDocumentExtract Calculate].map { |name| "Agent::Tools::#{name}".constantize })
   end
 
   def initialize(tools = [], timeout: Agent::Config.limits[:max_tool_seconds])

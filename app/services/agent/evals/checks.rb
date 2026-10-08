@@ -32,6 +32,9 @@ module Agent::Evals
       results["proposals_balanced"] = proposals_balanced(outcome)
       results["proposals"] = proposals(expect["proposals"], outcome) if expect["proposals"]
       results["no_proposals"] = outcome.proposals.empty? || "the agent proposed something it should not have: #{outcome.proposals.map { |p| p['title'] || p['description'] }.join('; ')}" if expect["no_proposals"]
+      results["texts_grounded"] = texts_grounded(kase, outcome)
+      results["texts"] = texts(expect["texts"], outcome) if expect["texts"]
+      results["no_texts"] = outcome.drafts.empty? || "the agent drafted a text it should not have: #{outcome.drafts.map { |d| d['kind'] }.join(', ')}" if expect["no_texts"]
       results["labels"] = labels(expect["labels"], kase, outcome) if expect["labels"]
       results["tool_results_include"] = includes(expect["tool_results_include"], outcome.tool_results.join(" "), "what the tools gave") if expect["tool_results_include"]
       results["tool_results_exclude"] = excludes(expect["tool_results_exclude"], outcome.tool_results.join(" "), "what the tools gave") if expect["tool_results_exclude"]
@@ -125,6 +128,34 @@ module Agent::Evals
       else
         proposal["kind"] == "entry_draft" && proposal["lines"].map { |line| [ line["account"], line["side"], line["side"] == "debit" ? line["debit"] : line["credit"] ] }.sort == want["lines"].map { |line| line.map(&:to_s) }.sort
       end
+    end
+
+    # A draft says only what the tools gave or the person said (A11): every amount, date and invoice number of its text is in a tool result or in the question, and no token of the masking is left.
+    def self.texts_grounded(kase, outcome)
+      source = "#{outcome.tool_results.join(' ')} #{kase.input}"
+      anchors = Agent::Anchors.new(question: source)
+      stray = outcome.drafts.flat_map do |draft|
+        text = "#{draft['subject']} #{draft['body']}"
+        anchors.unanchored(text) + anchors.unanchored_dates(text).map { |position, length| text[position, length] } + anchors.unanchored_numbers(text).map { |position, length| text[position, length] } + text.scan(/\b(?:PERSONNE|TVA|IBAN)_\d+\b/)
+      end
+      stray.empty? || "a draft holds what no source gave: #{stray.uniq.join(', ')}"
+    end
+
+    # What the draft must hold and must not: each expected draft has one of the drafts with its kind, its partner and its words.
+    def self.texts(expected, outcome)
+      remaining = outcome.drafts.dup
+      problems = expected.filter_map do |want|
+        index = remaining.index { |draft| draft["kind"] == want["kind"] && (want["partner_id"].nil? || draft["partner_id"].to_s == want["partner_id"].to_s) && (want["language"].nil? || draft["language"] == want["language"]) }
+        next "no #{want['kind']} drafted#{" for partner #{want['partner_id']}" if want['partner_id']}" unless index
+
+        draft = remaining.delete_at(index)
+        body = "#{draft['subject']} #{draft['body']}".downcase
+        missing = Array(want["includes"]).reject { |piece| body.include?(piece.to_s.downcase) }
+        forbidden = Array(want["excludes"]).select { |piece| body.include?(piece.to_s.downcase) }
+        [ ("the draft lacks: #{missing.join(', ')}" if missing.any?), ("the draft holds what it must not: #{forbidden.join(', ')}" if forbidden.any?) ].compact.presence&.join("; ")
+      end
+      problems << "drafted besides: #{remaining.map { |d| d['kind'] }.join(', ')}" if remaining.any?
+      problems.empty? || problems.join("; ")
     end
 
     # The explanation separates what is established from what is a hypothesis: each label asked for is in the answer, in the language of the case.
