@@ -10,6 +10,7 @@ class Agent::RetentionJob < ApplicationJob
           days = Agent::Setting.find_by(entity: entity)&.retention_days || Agent::Setting.column_defaults.fetch("retention_days")
           limit = days.days.ago
           Agent::Proposal.expire_due!
+          Agent::DocumentExtraction.where(created_at: ...limit).delete_all # what was confirmed lives in the document; the rest was a proposal
           Agent::Conversation.where(updated_at: ...limit).find_each(&:destroy!)
           Agent::SecurityEvent.where(conversation_id: nil, created_at: ...limit).where.not(excerpt: nil).find_each { |event| event.update_columns(excerpt: nil) }
         end

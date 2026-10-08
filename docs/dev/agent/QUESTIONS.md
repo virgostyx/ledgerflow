@@ -112,3 +112,13 @@ Voir la liste complète dans `DATA_PROCESSING.md` : conservation chez le fournis
 - **Le bouton « Modify » ouvre l'écran de saisie standard, mais l'écriture enregistrée à partir d'une proposition reste un brouillon**, même pour une personne qui a `entries.post` : la validation est un geste distinct (décision prise pour respecter la spec ; l'écran standard valide sinon d'un coup).
 - **Tolérance de TVA** : 0,05 EUR, celle de R09, sur la somme des bases d'une proposition.
 - **Doublon** : détecté sur facture (tiers, référence, total) et sur la référence d'écriture ; un doublon de simple écriture manuelle sans référence n'est pas détecté.
+
+## A09 — décisions à valider
+- **Le mode `full_document` n'existe pas.** Seul `text_only` est livré (le texte lu localement, masqué ; aucun fichier ni image). Envoyer le document tel quel (PDF, photo, sans masquage) demande l'accord explicite du produit et du propriétaire de la société (décision D5) : à prendre avec vous, avec la mention que les données partent en clair. Le réglage `document_mode` existe, limité à `text_only`.
+- **Pas de lecture d'une image sans texte** : un scan que l'OCR local n'a pas pu lire reste illisible (« lire d'abord en local »). Le modèle n'est pas utilisé comme OCR tant que `full_document` n'existe pas.
+- **Les identifiants du document sont masqués avant l'envoi** (numéro de TVA, IBAN, noms de personnes, selon les réglages d'A04) : le modèle les rend sous forme de jetons, remplacés par les vraies valeurs au retour, puis retrouvées dans le texte. En mode restreint (texte libre bloqué), la lecture ne marche plus (le texte est bloqué).
+- **Seuil de confiance** : tout champ de confiance « faible », invalide ou non retrouvé exige une confirmation manuelle ; « moyenne » et « haute » valides n'en exigent pas pour « Tout confirmer ». La spec veut que « haute » soit juste à 99 % : la mesure sur un vrai modèle n'a pas été faite ; si elle échoue, il faudra exiger la confirmation aussi pour « moyenne » ou pour « haute » sur les montants.
+- **Une instruction cachée dans un document** n'est pas bloquée mais signalée, et sans effet sur le schéma ; un chiffre qu'elle ferait écrire (ex. un total à 0,01 présent dans le texte) est gardé comme champ **à confirmer** (la somme ne tombe pas juste), jamais comme champ sûr.
+- **Plus de 30 pages** : les 30 premières seulement sont lues, avec l'avertissement de couverture partielle (pas de découpage en sections avec fusion).
+- **Quota** : 40 documents lus par heure et par personne (chaque document d'un lot compte) ; pas de budget en euros (§16 non livré) : l'estimation d'un lot est en tokens.
+- **Le fournisseur** est rapproché par TVA puis IBAN seulement (règle de F06) ; sans correspondance, aucun tiers n'est créé.

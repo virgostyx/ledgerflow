@@ -32,6 +32,19 @@ RSpec.describe Agent::RetentionJob do
     expect(Agent::Message.where(conversation_id: recent.id).count).to eq(1)
   end
 
+  it "deletes the readings of documents older than the retention too: what was confirmed lives in the document" do
+    Agent::Setting.for_current_entity.update!(retention_days: 30)
+    document = create(:document)
+    user = create(:user)
+    old = Agent::DocumentExtraction.create!(document: document, requested_by: user, engine: "agent_text", payload: "{}", created_at: 31.days.ago)
+    recent = Agent::DocumentExtraction.create!(document: document, requested_by: user, engine: "agent_text", payload: "{}", created_at: 29.days.ago)
+
+    run_job
+
+    expect(Agent::DocumentExtraction.where(id: old.id)).to be_empty
+    expect(Agent::DocumentExtraction.where(id: recent.id)).to exist
+  end
+
   it "uses the retention of each entity: 90 days by default" do
     other = create(:entity)
     ActsAsTenant.with_tenant(other) { Agent::Setting.for_current_entity.update!(retention_days: 30) }

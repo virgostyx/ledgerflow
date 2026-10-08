@@ -2862,6 +2862,52 @@ ALTER SEQUENCE public.agent_conversations_id_seq OWNED BY public.agent_conversat
 
 
 --
+-- Name: agent_document_extractions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_document_extractions (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    document_id bigint NOT NULL,
+    requested_by_id bigint NOT NULL,
+    confirmed_by_id bigint,
+    engine character varying NOT NULL,
+    status character varying DEFAULT 'proposed'::character varying NOT NULL,
+    document_type character varying,
+    payload text,
+    coverage character varying DEFAULT 'full'::character varying NOT NULL,
+    suspicious boolean DEFAULT false NOT NULL,
+    model character varying,
+    input_tokens integer DEFAULT 0 NOT NULL,
+    output_tokens integer DEFAULT 0 NOT NULL,
+    error character varying,
+    batch_key character varying,
+    confirmed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_document_extractions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_document_extractions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_document_extractions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_document_extractions_id_seq OWNED BY public.agent_document_extractions.id;
+
+
+--
 -- Name: agent_eval_results; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3153,7 +3199,8 @@ CREATE TABLE public.agent_settings (
     updated_at timestamp(6) without time zone NOT NULL,
     data_class_modes jsonb DEFAULT '{}'::jsonb NOT NULL,
     restricted boolean DEFAULT false NOT NULL,
-    review_threshold numeric(15,2) DEFAULT 5000.0 NOT NULL
+    review_threshold numeric(15,2) DEFAULT 5000.0 NOT NULL,
+    document_mode character varying DEFAULT 'text_only'::character varying NOT NULL
 );
 
 
@@ -5167,6 +5214,13 @@ ALTER TABLE ONLY public.agent_conversations ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: agent_document_extractions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_document_extractions ALTER COLUMN id SET DEFAULT nextval('public.agent_document_extractions_id_seq'::regclass);
+
+
+--
 -- Name: agent_eval_results id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6015,6 +6069,14 @@ ALTER TABLE ONLY public.agent_conversation_reviews
 
 ALTER TABLE ONLY public.agent_conversations
     ADD CONSTRAINT agent_conversations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_document_extractions agent_document_extractions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_document_extractions
+    ADD CONSTRAINT agent_document_extractions_pkey PRIMARY KEY (id);
 
 
 --
@@ -8263,6 +8325,48 @@ CREATE INDEX index_agent_conversations_on_user_id ON public.agent_conversations 
 
 
 --
+-- Name: index_agent_document_extractions_on_confirmed_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_document_extractions_on_confirmed_by_id ON public.agent_document_extractions USING btree (confirmed_by_id);
+
+
+--
+-- Name: index_agent_document_extractions_on_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_document_extractions_on_document_id ON public.agent_document_extractions USING btree (document_id);
+
+
+--
+-- Name: index_agent_document_extractions_on_document_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_document_extractions_on_document_id_and_created_at ON public.agent_document_extractions USING btree (document_id, created_at);
+
+
+--
+-- Name: index_agent_document_extractions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_document_extractions_on_entity_id ON public.agent_document_extractions USING btree (entity_id);
+
+
+--
+-- Name: index_agent_document_extractions_on_entity_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_document_extractions_on_entity_id_and_status ON public.agent_document_extractions USING btree (entity_id, status);
+
+
+--
+-- Name: index_agent_document_extractions_on_requested_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_document_extractions_on_requested_by_id ON public.agent_document_extractions USING btree (requested_by_id);
+
+
+--
 -- Name: index_agent_eval_results_on_run_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9560,6 +9664,14 @@ ALTER TABLE ONLY public.accounting_invoice_emails
 
 
 --
+-- Name: agent_document_extractions fk_rails_310ba8fa6e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_document_extractions
+    ADD CONSTRAINT fk_rails_310ba8fa6e FOREIGN KEY (confirmed_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_bank_statements fk_rails_31c90e7265; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10312,6 +10424,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: agent_document_extractions fk_rails_948ec4ed62; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_document_extractions
+    ADD CONSTRAINT fk_rails_948ec4ed62 FOREIGN KEY (document_id) REFERENCES public.accounting_documents(id) ON DELETE CASCADE;
+
+
+--
 -- Name: accounting_tasks fk_rails_949f4e9b2c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10397,6 +10517,14 @@ ALTER TABLE ONLY public.dunning_item_lines
 
 ALTER TABLE ONLY public.accounting_payment_batch_lines
     ADD CONSTRAINT fk_rails_a27948dec1 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: agent_document_extractions fk_rails_a2cb411136; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_document_extractions
+    ADD CONSTRAINT fk_rails_a2cb411136 FOREIGN KEY (requested_by_id) REFERENCES public.users(id);
 
 
 --
@@ -11136,6 +11264,14 @@ ALTER TABLE ONLY public.accounting_period_locks
 
 
 --
+-- Name: agent_document_extractions fk_rails_f4b1c85b8b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_document_extractions
+    ADD CONSTRAINT fk_rails_f4b1c85b8b FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_document_links fk_rails_f4edfdbfdf; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11278,6 +11414,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261008110000'),
 ('20261008100000'),
 ('20261008090000'),
 ('20261007110000'),

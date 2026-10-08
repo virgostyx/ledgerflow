@@ -7,7 +7,7 @@ RSpec.describe Agent::FakeGateway do
     response = gateway.call(system: "s", messages: [ { role: "user", content: "q" } ], tools: [])
 
     expect(response.content).to eq([ { type: "text", text: "one" } ])
-    expect(gateway.requests).to eq([ { system: "s", messages: [ { role: "user", content: "q" } ], tools: [], task: :chat_default } ])
+    expect(gateway.requests).to eq([ { system: "s", messages: [ { role: "user", content: "q" } ], tools: [], task: :chat_default, tool_choice: nil } ])
   end
 
   it "says so when the script is over, instead of inventing an answer" do

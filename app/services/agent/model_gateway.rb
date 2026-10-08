@@ -11,12 +11,13 @@ class Agent::ModelGateway
     @client = client
   end
 
-  def call(system:, messages:, tools:, task: :chat_default, redactor: nil, &on_text)
+  def call(system:, messages:, tools:, task: :chat_default, redactor: nil, tool_choice: nil, &on_text)
     raise Agent::LiveProviderRefused unless self.class.live_allowed?
 
     redaction = redactor&.redact(system: system, messages: messages)
     params = { model: Agent::Config.model_for(task), max_tokens: Agent::Config.provider.fetch(:max_tokens), system_: redaction&.system || system, messages: redaction&.messages || messages }
     params[:tools] = tools if tools.any?
+    params[:tool_choice] = tool_choice if tool_choice # a tool the model must call (A09: the extraction answers through one tool and no other)
     stream = client.messages.stream(**params)
     stream.text.each { |piece| on_text&.call(piece) }
     message = stream.accumulated_message

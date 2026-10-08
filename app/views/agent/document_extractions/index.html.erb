@@ -1,0 +1,25 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium">Documents read by the assistant</span><% end %>
+<div class="space-y-4">
+  <p class="text-sm text-gray-600">What the assistant read from documents the local reading could not handle. These are proposals: nothing becomes data until you confirm it. The assistant reads a document only when you ask.</p>
+  <p class="text-sm"><%= link_to "Read several documents", new_agent_document_extraction_path, class: "rounded-md bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700" %> · <%= pluralize(@pending, "reading") %> to confirm</p>
+  <% if @extractions.empty? %>
+    <p class="text-sm text-gray-500">Nothing read yet. Open a document and choose “Read with the assistant”.</p>
+  <% else %>
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500"><tr><th class="px-3 py-2">Document</th><th class="px-3 py-2">Type</th><th class="px-3 py-2">State</th><th class="px-3 py-2">By</th><th class="px-3 py-2">When</th></tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @extractions.each do |extraction| %>
+            <tr>
+              <td class="px-3 py-2"><%= link_to extraction.document.name, agent_document_extraction_path(extraction), class: "text-indigo-700 hover:underline" %></td>
+              <td class="px-3 py-2"><%= extraction.document_type.to_s.tr("_", " ").presence || "—" %></td>
+              <td class="px-3 py-2"><%= extraction.failed? ? "Failed: #{extraction.error}" : extraction.status.capitalize %></td>
+              <td class="px-3 py-2"><%= extraction.requested_by.email %></td>
+              <td class="whitespace-nowrap px-3 py-2 text-gray-500"><%= l(extraction.created_at, format: :short) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</div>

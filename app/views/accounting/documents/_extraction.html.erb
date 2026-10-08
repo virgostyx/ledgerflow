@@ -4,6 +4,11 @@
 <section class="rounded-lg border border-gray-200 bg-white p-4" id="extraction">
   <div class="mb-2 flex items-center justify-between gap-2">
     <h2 class="text-sm font-semibold text-gray-900">Proposed fields</h2>
+    <% if agent_available? && policy(document).show? && status.present? && status != "pending" %>
+      <% last = Agent::DocumentExtraction.where(document_id: document.id).order(:id).last %>
+      <%= link_to "Last reading by the assistant", agent_document_extraction_path(last), class: "text-xs font-medium text-primary-700 hover:underline" if last %>
+      <%= button_to "Read with the assistant", agent_document_extractions_path(document_id: document.id), method: :post, class: "text-xs font-medium text-primary-700 hover:underline", title: "The text is sent masked to the language model, once, because you ask" %>
+    <% end %>
     <% if policy(document).rerun? && status.present? && status != "not_applicable" %>
       <%= button_to "Read again", rerun_accounting_document_path(document), method: :post, class: "text-xs font-medium text-primary-700 hover:underline" %>
     <% end %>

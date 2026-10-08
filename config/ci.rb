@@ -11,6 +11,7 @@ CI.run do
   step "Tests: RSpec", "bundle exec rspec --format progress"
   step "Tests: Seeds", "env RAILS_ENV=test bin/rails db:seed:replant"
   step "Agent: evaluation, simulated mode", "env RAILS_ENV=test bin/rails agent:evals"
+  step "Agent: reading of documents, simulated mode", "env RAILS_ENV=test bin/rails agent:evals:documents"
 
   # Optional: Run system tests
   # step "Tests: System", "bundle exec rspec spec/system"

@@ -15,7 +15,11 @@ class Agent::Setting < ApplicationRecord
 
   acts_as_tenant :entity
 
+  # What may leave of a document (A09): the masked text only. `full_document` (the file itself, unmasked) is not offered: it needs the explicit agreement of the product and of the owner first.
+  DOCUMENT_MODES = %w[text_only].freeze
+
   validates :retention_days, inclusion: { in: RETENTION_CHOICES }
+  validates :document_mode, inclusion: { in: DOCUMENT_MODES }
   validates :review_threshold, numericality: { greater_than_or_equal_to: 0, less_than: 10**13 }
   validate :modes_are_known
 

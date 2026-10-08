@@ -1,0 +1,24 @@
+<% content_for :breadcrumb do %><span class="text-gray-900 font-medium"><%= link_to "Documents read by the assistant", agent_document_extractions_path %> / Batch</span><% end %>
+<div class="max-w-2xl space-y-4">
+  <% if @documents.empty? %>
+    <p class="text-sm text-gray-600">Choose up to <%= Agent::DocumentExtractionsController::MAX_BATCH %> documents of the inbox, whose text was read locally. You will see the estimate before anything starts.</p>
+    <%= form_with url: new_agent_document_extraction_path, method: :get do %>
+      <ul class="space-y-1 text-sm">
+        <% @candidates.each do |document| %>
+          <li><label class="flex items-center gap-2"><%= check_box_tag "document_ids[]", document.id, false, id: "document_#{document.id}" %> <%= document.name %> <span class="text-gray-400"><%= l(document.created_at.to_date) %></span></label></li>
+        <% end %>
+      </ul>
+      <% if @candidates.empty? %><p class="text-sm text-gray-500">No document of the inbox has a text to read.</p><% else %><%= submit_tag "See the estimate", class: "mt-3 rounded-md bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700" %><% end %>
+    <% end %>
+  <% else %>
+    <p class="text-sm text-gray-700"><strong><%= pluralize(@documents.size, "document") %></strong> will be read, one after the other, in the background. Estimate: about <strong><%= number_with_delimiter(@estimate) %></strong> tokens sent, and about as many as <%= number_with_delimiter(@documents.size * 700) %> back.</p>
+    <p class="text-xs text-gray-500">The text of each document is sent masked (identifiers and names as tokens). No file and no image leaves. Each result waits for your confirmation.</p>
+    <% if @too_many %><p class="text-sm text-amber-800">Only the first <%= Agent::DocumentExtractionsController::MAX_BATCH %> documents are kept.</p><% end %>
+    <ul class="list-disc pl-5 text-sm text-gray-700"><% @documents.each do |document| %><li><%= document.name %></li><% end %></ul>
+    <%= form_with url: agent_document_extractions_path, method: :post do %>
+      <% @documents.each { |document| concat hidden_field_tag("document_ids[]", document.id, id: nil) } %>
+      <%= hidden_field_tag :confirm_estimate, "1" %>
+      <%= submit_tag "Start reading", class: "rounded-md bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700" %>
+    <% end %>
+  <% end %>
+</div>

@@ -58,6 +58,13 @@ Rails.application.routes.draw do
       end
     end
     resources :knowledge_gaps, only: :index
+    resources :document_extractions, only: %i[index show new create] do
+      member do
+        post :confirm_field
+        post :confirm_all
+        post :reject
+      end
+    end
     resources :proposals, only: [] do
       member do
         post :accept

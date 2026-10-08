@@ -6,4 +6,16 @@ namespace :agent do
     puts report
     exit(1) unless report.passed?
   end
+
+  desc "Evaluate the reading of documents on the invented corpus: agent:evals:documents[100]. MODE=simulated (default, an oracle) or real"
+  task "evals:documents", [ :count ] => :environment do |_task, args|
+    report = Agent::Evals::Documents.run(count: (args[:count] || 100).to_i, mode: ENV.fetch("MODE", "simulated"))
+    metrics = report.metrics
+    puts "Reading of documents (#{report.mode}): #{metrics['documents']} documents, #{metrics['unreadable']} not read"
+    puts "Total with high confidence right: #{metrics['total_high_confidence'].inspect}, numeric fields right: #{metrics['numeric_fields'].inspect}, type right: #{metrics['document_type'].inspect}"
+    puts "Values kept that are not in the document: #{metrics['invented_kept']}; sure but wrong: #{metrics['wrong_but_sure']}; changed by an instruction: #{metrics['injection_effect']}"
+    puts "Calibration: #{metrics['calibration'].inspect}"
+    puts(report.passed? ? "Gates: all passed." : "GATES FAILED:\n" + report.failures.map { |failure| "  - #{failure}" }.join("\n"))
+    exit(1) unless report.passed?
+  end
 end

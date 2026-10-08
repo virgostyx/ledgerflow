@@ -65,5 +65,5 @@ class Accounting::ConfirmDocumentField
 
   def self.refuse(ctx, key) = ctx.tap { |c| c.fail!(I18n.t("documents.errors.field_#{key}")) }
 
-  private_class_method :clean, :clean_identifier, :vat, :communication, :refuse
+  private_class_method :clean_identifier, :vat, :communication, :refuse
 end

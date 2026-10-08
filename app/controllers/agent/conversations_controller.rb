@@ -2,7 +2,7 @@
 class Agent::ConversationsController < Agent::BaseController
   EXPLAIN_QUESTION = "Explain this figure.".freeze
   # The question is the same every time for a kind of object, whatever the button sent.
-  EXPLAIN_QUESTIONS = { "R19" => "Explain this anomaly.", "R19top" => "Explain the five first open anomalies, in the order to fix them.", "I7" => "Explain this difference." }.freeze
+  EXPLAIN_QUESTIONS = { "R19" => "Explain this anomaly.", "R19top" => "Explain the five first open anomalies, in the order to fix them.", "I7" => "Explain this difference.", "doc" => "Prepare the entry for this document." }.freeze
 
   def index
     @screen = params[:screen].to_s[SCREEN]

@@ -16,12 +16,15 @@ class Agent::Conversation < ApplicationRecord
   has_many :proposals, class_name: "Agent::Proposal", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :nullify
   has_many :messages, class_name: "Agent::Message", foreign_key: :conversation_id, inverse_of: :conversation, dependent: :destroy
 
+  # origin_screen of the short-lived conversation that holds the tokens of a document being read (A09): never shown in the panel.
+  DOCUMENT_READING = "document_extraction".freeze
+
   enum :status, { active: "active", archived: "archived" }, default: "active"
 
   # What was said goes with the conversation; of its security events only the metadata stays (the excerpt could hold what was said).
   before_destroy { Agent::SecurityEvent.where(conversation_id: id).update_all(excerpt: nil) }
 
-  scope :visible_to, ->(user) { where(user: user) }
+  scope :visible_to, ->(user) { where(user: user).where("origin_screen IS DISTINCT FROM ?", DOCUMENT_READING) }
 
   # The tokens of this conversation, loaded once: the redactor writes them, the display reads them.
   def pseudonym_table = @pseudonym_table ||= Agent::Pseudonyms.new(self)

@@ -15,9 +15,9 @@ class Agent::FakeGateway
   end
 
   # With a redactor it records what would have been sent after masking, as the real gateway does, so that a test can look at the payload that left.
-  def call(system:, messages:, tools:, task: :chat_default, redactor: nil)
+  def call(system:, messages:, tools:, task: :chat_default, redactor: nil, tool_choice: nil)
     redaction = redactor&.redact(system: system, messages: messages)
-    @requests << { system: redaction&.system || system, messages: redaction&.messages || messages, tools: tools, task: task }
+    @requests << { system: redaction&.system || system, messages: redaction&.messages || messages, tools: tools, task: task, tool_choice: tool_choice }
     response = @script.next.with(redaction: redaction&.stats || {}, sent: (redaction && { system: redaction.system, messages: redaction.messages }))
     yield response.text if block_given? && response.text.present?
     response
