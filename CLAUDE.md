@@ -68,3 +68,18 @@ Full technical and functional specification: `docs/dev/LedgerFlow_ConceptNote_v2
 - Si une règle comptable ou fiscale manque ou paraît douteuse, appliquer le comportement le plus prudent, l'inscrire dans `docs/dev/reports/QUESTIONS.md` avec sa justification, et continuer.
 - Chaque rapport respecte les règles transverses du §2 et le gabarit du §1 de la spec.
 - Ne jamais supprimer ou affaiblir un test pour le faire passer.
+
+## Fonctions signature (B01–B03) — règles de travail
+
+- Les sources de vérité sont `docs/dev/signature/spec.md`, `docs/dev/agent/spec.md`, `docs/dev/features/spec.md` et `docs/dev/reports/spec.md`. En cas de doute, les relire ; ne pas deviner.
+- TDD strict : test rouge, code minimal, test vert, refactoring. Un commit par étape cohérente.
+- Une capacité à la fois. Ne pas commencer la suivante tant que la définition de « terminé » (§13) n'est pas remplie.
+- LedgerFlow ne stocke jamais d'identifiant de connexion bancaire de l'utilisateur et n'initie jamais de paiement. Il produit un fichier que l'humain autorise dans sa banque.
+- Toute écriture comptable passe par `Ledger::PostEntry`, `ReverseEntry`, `Reconcile` ou `Unreconcile`. Les seules validations automatiques autorisées sont les exceptions listées dans la section de la capacité.
+- Un fichier de paiement exporté est immuable. Le générer deux fois doit donner le même fichier octet pour octet.
+- Le code du portail (`Portal::`) n'appelle jamais de service comptable ni de rapport. Il ne lit que les tables et vues `portal_*`. Tout identifiant exposé à un externe est un jeton opaque, et toute lecture passe par la portée du droit de l'utilisateur.
+- Tout ce qui vient d'un externe (pièces, réponses, messages, e-mails) est non fiable : quarantaine, assainissement, jamais exécuté, jamais validé automatiquement.
+- Cryptographie : bibliothèques standard uniquement (OpenSSL, bibliothèque standard de Ruby). Aucune primitive maison. Canonicalisation selon RFC 8785 avec vecteurs de test. Aucune clé privée dans le dépôt, la base ou les journaux.
+- Aucune version de format bancaire, aucune particularité de banque, aucun texte juridique n'est supposé : les obtenir dans la documentation ou auprès de l'utilisateur, sinon appliquer le comportement le plus prudent et l'inscrire dans `docs/dev/signature/QUESTIONS.md`.
+- Chaque capacité est livrée derrière un drapeau de société, avec audit R18 de chaque action et type d'acteur.
+- Ne jamais supprimer ou affaiblir un test pour le faire passer.

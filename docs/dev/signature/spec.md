@@ -4,7 +4,7 @@ Sep 26, 2026 · @Virgo STYX
 
 ## 1. Contexte, objectifs et principes
 
-Ce document décrit trois fonctions signature de LedgerFlow, celles qui donnent au logiciel une identité propre: les **paiements fournisseurs** de bout en bout (B01), la **traçabilité temporelle avec certificat d'intégrité** (B03) et le **portail client** (B02). Elles se déclinent en neuf capacités, classées en trois vagues (P0 à P2). Il complète la spécification des rapports (`docs/reports/SPEC.md`), celle des fonctions transverses (`docs/features/SPEC.md`) et celle de l'agent IA (`docs/agent/SPEC.md`), dont il réutilise les services, les droits, l'audit et la définition de « terminé ».
+Ce document décrit trois fonctions signature de LedgerFlow, celles qui donnent au logiciel une identité propre: les **paiements fournisseurs** de bout en bout (B01), la **traçabilité temporelle avec certificat d'intégrité** (B03) et le **portail client** (B02). Elles se déclinent en neuf capacités, classées en trois vagues (P0 à P2). Il complète la spécification des rapports (`docs/dev/reports/spec.md`), celle des fonctions transverses (`docs/dev/features/spec.md`) et celle de l'agent IA (`docs/dev/agent/spec.md`), dont il réutilise les services, les droits, l'audit et la définition de « terminé ».
 
 Il est écrit pour être donné tel quel à un agent de codage (Claude Code): lecture complète, audit du dépôt, puis implémentation capacité par capacité (voir §14).
 
@@ -81,14 +81,14 @@ La matrice de F01 reçoit ces lignes. Les capacités d'approbation sont en plus 
 
 ### 2.3 Invariants ajoutés
 
-Ils s'ajoutent à I1 à I11 et sont exécutés dans les mêmes tests et par R19.
+Ils s'ajoutent à I1 à I13 et sont exécutés dans les mêmes tests et par R19.
 
 | ID | Invariant | Vérifié par |
 | --- | --- | --- |
-| I12 | Pour tout compte et tous instants T1 < T2, la variation de solde connue entre T1 et T2 égale la somme des lignes validées postées entre T1 et T2, à date d'arrêté constante | B03a, B03b |
-| I13 | Pour tout lot de paiement: Σ paiements = total du lot = contrôle de somme du fichier; après confirmation, le débit bancaire égale le total des paiements confirmés | B01b, B01c |
-| I14 | Une facture n'appartient qu'à un seul lot actif, et aucune facture n'est payée deux fois | B01b |
-| I15 | La racine de hachage recalculée à partir des écritures d'un ancrage égale la racine enregistrée, et la chaîne d'ancrages est ininterrompue | B03c |
+| I14 | Pour tout compte et tous instants T1 < T2, la variation de solde connue entre T1 et T2 égale la somme des lignes validées postées entre T1 et T2, à date d'arrêté constante | B03a, B03b |
+| I15 | Pour tout lot de paiement: Σ paiements = total du lot = contrôle de somme du fichier; après confirmation, le débit bancaire égale le total des paiements confirmés | B01b, B01c |
+| I16 | Une facture n'appartient qu'à un seul lot actif, et aucune facture n'est payée deux fois | B01b |
+| I17 | La racine de hachage recalculée à partir des écritures d'un ancrage égale la racine enregistrée, et la chaîne d'ancrages est ininterrompue | B03c |
 
 ### 2.4 Lien avec l'agent IA
 
@@ -105,7 +105,7 @@ L'agent **n'approuve, n'exporte, ne confirme et ne paie jamais**. Il peut expliq
 
 ## 3. Feuille de route
 
-Les capacités suivent l'ordre ci-dessous. Une vague n'est terminée que lorsque tous ses critères d'acceptation passent et que les invariants I1 à I15 sont verts; l'agent de codage ne démarre pas la vague suivante avant.
+Les capacités suivent l'ordre ci-dessous. Une vague n'est terminée que lorsque tous ses critères d'acceptation passent et que les invariants I1 à I17 sont verts; l'agent de codage ne démarre pas la vague suivante avant.
 
 | Ordre | Réf. | Capacité | Vague | Dépend de | Effort |
 | --- | --- | --- | --- | --- | --- |
@@ -125,8 +125,8 @@ Effort relatif avec un agent de codage: S = une session, M = deux à trois, L = 
 
 **Critères de sortie de chaque vague**
 
-- **P0**: aucune facture ne se paie sans avoir franchi son circuit d'approbation; le fichier de paiement n'est généré que pour des factures approuvées et des IBAN vérifiés; il est immuable une fois exporté; sur le jeu de référence, au moins 90 % des lots sont reconnus automatiquement dans le CODA; aucun identifiant bancaire de l'utilisateur n'est stocké; I13 et I14 verts.
-- **P1**: la vue historique reproduit à l'euro près les instantanés figés existants (clôture, TVA déposée, rapprochements figés); le rapport de changements satisfait I12; un certificat se vérifie hors ligne avec l'outil indépendant, et une modification volontaire d'une écriture est détectée; I15 vert.
+- **P0**: aucune facture ne se paie sans avoir franchi son circuit d'approbation; le fichier de paiement n'est généré que pour des factures approuvées et des IBAN vérifiés; il est immuable une fois exporté; sur le jeu de référence, au moins 90 % des lots sont reconnus automatiquement dans le CODA; aucun identifiant bancaire de l'utilisateur n'est stocké; I15 et I16 verts.
+- **P1**: la vue historique reproduit à l'euro près les instantanés figés existants (clôture, TVA déposée, rapprochements figés); le rapport de changements satisfait I14; un certificat se vérifie hors ligne avec l'outil indépendant, et une modification volontaire d'une écriture est détectée; I17 vert.
 - **P2**: un utilisateur externe ne peut atteindre aucune donnée non publiée (tests d'accès direct à des identifiants sur chaque point d'entrée); le second facteur est obligatoire pour tous; un dépôt de pièces reprend après coupure réseau; toute validation par un client est liée au hash de la publication qu'il a vue.
 
 ## 4. P0 · B01a Circuit d'approbation des factures (bon à payer)
@@ -236,7 +236,7 @@ Une facture n'apparaît dans « Factures à payer » que si **toutes** ces condi
 
 - Écriture validée, ligne ouverte sur le compte fournisseur (résiduel positif).
 - `payment_status` égal à `approved` ou `not_required` (B01a), sans blocage ni litige.
-- Absente de tout autre lot actif (I14).
+- Absente de tout autre lot actif (I16).
 - Échéance dans la fenêtre choisie (défaut: jusqu'à la date d'exécution plus 7 jours). Un paiement anticipé reste possible par sélection manuelle et est signalé.
 - Compte bancaire du tiers `verified` et hors période d'observation.
 - Devise EUR et pays du bénéficiaire dans la zone SEPA. Les autres devises sont exclues avec un message (F11).
@@ -281,7 +281,7 @@ Le moteur de B01a s'applique avec le sujet `payment_batch`: seuils sur le total 
 
 ### Génération du fichier
 
-- Service `Payments::Sepa::Pain001Builder`, **versionné et configurable** par profil de banque. La version du format (par exemple `pain.001.001.03` ou une version plus récente) n'est pas fixée ici: l'agent de codage la confirme auprès de l'utilisateur, pour chaque banque, à partir de la documentation de la banque et des recommandations de l'EPC, et le consigne dans `QUESTIONS.md`. Il n'invente aucune particularité propre à une banque.
+- Service `Payments::Sepa::Pain001Builder`, **versionné et configurable** par profil de banque. La version du format (par exemple `pain.001.001.03` ou une version plus récente) n'est pas fixée ici: l'agent de codage la confirme auprès de l'utilisateur, pour chaque banque, à partir de la documentation de la banque et des recommandations de l'EPC, et le consigne dans `docs/dev/signature/QUESTIONS.md`. Il n'invente aucune particularité propre à une banque.
 - Contenu: en-tête de groupe (identifiant de message unique, date, nombre de transactions, **contrôle de somme**, initiateur), un bloc de paiement par compte débiteur et date d'exécution, une transaction par paiement (identifiant de bout en bout de 35 caractères au plus, montant en EUR, nom et IBAN du bénéficiaire, communication structurée ou libre).
 - **Validation contre le schéma XSD** de la version choisie (Nokogiri), avec les limites de longueur et le jeu de caractères.
 - **Déterminisme**: un même lot produit un fichier identique octet pour octet. L'empreinte SHA-256 est enregistrée, et le fichier est stocké de façon immuable dans F03.
@@ -320,9 +320,9 @@ Le moteur de B01a s'applique avec le sujet `payment_batch`: seuils sur le total 
 2. Un IBAN nouveau ou modifié est inutilisable tant qu'il n'est pas vérifié par une autre personne et que la période d'observation n'est pas écoulée.
 3. Un IBAN de facture différent de celui du fichier tiers bloque le paiement et crée une tâche, sans modifier le fichier tiers.
 4. Le contrôle préalable bloque sur les erreurs, exige un acquittement motivé sur les avertissements, et se rejoue à l'export.
-5. Le fichier est valide contre le XSD, le contrôle de somme égale la somme des paiements, et deux exports du même lot sont identiques octet pour octet (invariant I13).
+5. Le fichier est valide contre le XSD, le contrôle de somme égale la somme des paiements, et deux exports du même lot sont identiques octet pour octet (invariant I15).
 6. Après l'export, le lot ne peut plus être modifié; le changer impose une annulation et un nouveau lot.
-7. Une facture ne peut appartenir qu'à un lot actif, y compris sous concurrence (invariant I14).
+7. Une facture ne peut appartenir qu'à un lot actif, y compris sous concurrence (invariant I16).
 8. La compensation des notes de crédit est correcte, et un net nul ou négatif ne génère aucun paiement.
 9. L'export exige lot approuvé, permission et second facteur, et est journalisé.
 10. Aucun identifiant bancaire de l'utilisateur n'est stocké; l'IBAN est masqué dans les journaux.
@@ -400,7 +400,7 @@ Permissions `payments.confirm` et `entries.post`, séparées. Chaque confirmatio
 
 1. Sur le jeu de référence (fichiers CODA en ligne groupée et en lignes détaillées), au moins 90 % des lots sont reconnus automatiquement, avec zéro faux positif à confiance 100.
 2. La confirmation crée une écriture de paiement en brouillon par paiement, exactement une, même si l'action est répétée.
-3. Le débit bancaire du lot égale le total des paiements confirmés (invariant I13).
+3. Le débit bancaire du lot égale le total des paiements confirmés (invariant I15).
 4. La validation par lot déclenche le lettrage exact; le résiduel d'un paiement partiel est correct; R04 est à jour.
 5. Un retour est proposé comme extourne, la facture redevient ouverte et bloquée, et l'IBAN repasse en non vérifié.
 6. Une facture déjà lettrée donne une alerte de double paiement et n'est pas lettrée une seconde fois.
@@ -408,7 +408,7 @@ Permissions `payments.confirm` et `entries.post`, séparées. Chaque confirmatio
 8. La confirmation manuelle exige un motif et reste visible dans R19 tant que le relevé n'est pas rapproché.
 9. Aucune écriture n'est validée sans action humaine, hors le lettrage exact prévu.
 
-**Tests attendus**: spec de la règle 0 sur des fichiers CODA réels anonymisés de plusieurs banques (lignes groupées, détaillées, partielles), spec d'idempotence de la confirmation, spec du lettrage automatique exact et partiel, spec des rejets, retours et double paiement, spec des alertes avec `travel_to`, spec d'invariant I13, spec système de la frise du paiement.
+**Tests attendus**: spec de la règle 0 sur des fichiers CODA réels anonymisés de plusieurs banques (lignes groupées, détaillées, partielles), spec d'idempotence de la confirmation, spec du lettrage automatique exact et partiel, spec des rejets, retours et double paiement, spec des alertes avec `travel_to`, spec d'invariant I15, spec système de la frise du paiement.
 
 ## 7. P1 · B03a États de la comptabilité à une date de connaissance
 
@@ -457,7 +457,7 @@ Un rapport non supporté désactive le sélecteur de vue historique avec une exp
 
 La reconstruction est validée par des **témoins** indépendants: les instantanés déjà figés.
 
-- Pour chaque instantané (clôture F10, TVA déposée R09, rapprochement figé R06, consolidation figée F12), la tâche `TimeTravel::WitnessCheck` recalcule le rapport correspondant avec `known_at` égal à l'instant de l'instantané et le compare à la valeur figée. Tout écart est une anomalie **bloquante** de R19 (nouveau contrôle **C18**, « reconstruction historique divergente d'un instantané figé »).
+- Pour chaque instantané (clôture F10, TVA déposée R09, rapprochement figé R06, consolidation figée F12), la tâche `TimeTravel::WitnessCheck` recalcule le rapport correspondant avec `known_at` égal à l'instant de l'instantané et le compare à la valeur figée. Tout écart est une anomalie **bloquante** de R19 (nouveau contrôle **C20**, « reconstruction historique divergente d'un instantané figé »).
 - Le test de séquences aléatoires de F (opérations comptables aléatoires) enregistre des instantanés à des instants aléatoires et vérifie que la vue historique les reproduit exactement.
 
 ### Performance et cache
@@ -492,9 +492,9 @@ Les outils de rapports d'A02 acceptent `known_at`. Toute réponse fondée sur un
 9. Les mêmes droits, y compris les restrictions par journal, s'appliquent qu'en vue courante.
 10. Les exports portent le `known_at`; un résultat historique mis en cache est identique à son recalcul.
 11. Les vues historiques restent à moins de 20 % du budget de performance du rapport courant.
-12. `WitnessCheck` détecte une divergence provoquée volontairement et crée l'anomalie C18.
+12. `WitnessCheck` détecte une divergence provoquée volontairement et crée l'anomalie C20.
 
-**Tests attendus**: specs de requête avec `known_at` sur tableaux de cas (validation, extourne, lettrage, renommage, verrouillage), test de séquences aléatoires avec instantanés, test de concurrence sur `posted_seq` avec plusieurs processus, spec de refus avant `history_start`, spec de lecture seule par l'interface et par l'API, spec de `WitnessCheck` et de C18, spec de cache immuable, spec système du sélecteur et du bandeau.
+**Tests attendus**: specs de requête avec `known_at` sur tableaux de cas (validation, extourne, lettrage, renommage, verrouillage), test de séquences aléatoires avec instantanés, test de concurrence sur `posted_seq` avec plusieurs processus, spec de refus avant `history_start`, spec de lecture seule par l'interface et par l'API, spec de `WitnessCheck` et de C20, spec de cache immuable, spec système du sélecteur et du bandeau.
 
 ## 8. P1 · B03b Rapport de changements entre deux moments
 
@@ -528,7 +528,7 @@ Les outils de rapports d'A02 acceptent `known_at`. Toute réponse fondée sur un
 
 ### Règle de bouclage
 
-Pour chaque compte, la variation de solde entre `T1` et `T2` **doit égaler** la somme des mouvements des lignes validées entre ces deux instants, à `as_of` constant (**invariant I12**). Le rapport affiche le résultat de ce contrôle: « Somme des variations = somme des mouvements, écart 0,00 ». Un écart s'affiche en rouge, bloque l'export officiel et crée une anomalie dans R19.
+Pour chaque compte, la variation de solde entre `T1` et `T2` **doit égaler** la somme des mouvements des lignes validées entre ces deux instants, à `as_of` constant (**invariant I14**). Le rapport affiche le résultat de ce contrôle: « Somme des variations = somme des mouvements, écart 0,00 ». Un écart s'affiche en rouge, bloque l'export officiel et crée une anomalie dans R19.
 
 ### Règles
 
@@ -566,7 +566,7 @@ Pour 10 000 changements, l'ouverture et le résumé prennent moins de 3 secondes
 
 ### Critères d'acceptation
 
-1. Le bouclage est exact sur le jeu de référence: pour chaque compte, variation = somme des mouvements entre `T1` et `T2` (invariant I12).
+1. Le bouclage est exact sur le jeu de référence: pour chaque compte, variation = somme des mouvements entre `T1` et `T2` (invariant I14).
 2. Une écriture validée entre `T1` et `T2` apparaît dans le détail et dans l'impact, une écriture antérieure ou postérieure n'y apparaît pas.
 3. Une paire validation et extourne est marquée neutre et n'altère pas les soldes de l'impact.
 4. Une écriture datée dans une période verrouillée et obtenue par une fenêtre de déverrouillage déclenche l'alerte prévue.
@@ -624,7 +624,7 @@ Cette section est répétée sur chaque certificat, en clair.
 
 ### Le certificat (`integrity_certificates`)
 
-Identifiant (UUID), société, date et auteur de l'émission, **instant couvert** `T`, exercice ou période, plage d'ancrages et dernière empreinte d'ancrage, nombre d'écritures et de lignes, total des débits égal au total des crédits, résultats des invariants I1 à I15 à l'émission, état de la chaîne d'audit (tête, longueur, résultat de `audit:verify`), état des pièces (dernier `documents:verify`), périodes verrouillées, nombre d'anomalies bloquantes ouvertes (R19), état des témoins (B03a), version du logiciel et hash de son manifeste, **niveau de divulgation**, signature, référence du jeton d'horodatage, adresse et QR code de vérification.
+Identifiant (UUID), société, date et auteur de l'émission, **instant couvert** `T`, exercice ou période, plage d'ancrages et dernière empreinte d'ancrage, nombre d'écritures et de lignes, total des débits égal au total des crédits, résultats des invariants I1 à I17 à l'émission, état de la chaîne d'audit (tête, longueur, résultat de `audit:verify`), état des pièces (dernier `documents:verify`), périodes verrouillées, nombre d'anomalies bloquantes ouvertes (R19), état des témoins (B03a), version du logiciel et hash de son manifeste, **niveau de divulgation**, signature, référence du jeton d'horodatage, adresse et QR code de vérification.
 
 - **Niveaux de divulgation**: `minimal` (empreintes, plages, résultats d'invariants, sans montants), `standard` (en plus les totaux et un résumé par classe de comptes), `full` (en plus le paquet de vérification complet).
 - **Instants possibles**: « maintenant » (un ancrage est créé à l'émission) ou la borne d'un ancrage passé, proposée dans une liste (« Ancrage du 31/12/2025 03:00 »). Un instant quelconque entre deux ancrages n'est pas certifiable.
@@ -664,7 +664,7 @@ Ce paquet contient des données comptables. Il se transmet par un canal sécuris
 ### Détection d'altération
 
 - Job nocturne `Integrity::SelfCheck`: recalcule les `content_hash` des écritures des sept derniers jours et d'un échantillon de 1 % du reste, vérifie les racines de Merkle des ancrages récents et la chaîne d'audit. Une vérification complète tourne chaque semaine et à la demande.
-- Une divergence crée une anomalie **bloquante** (nouveau contrôle **C19**, « intégrité de l'ancrage compromise »), une alerte aux propriétaires et un événement de sécurité.
+- Une divergence crée une anomalie **bloquante** (nouveau contrôle **C21**, « intégrité de l'ancrage compromise »), une alerte aux propriétaires et un événement de sécurité.
 - Les triggers de F01 empêchent déjà la modification d'écritures validées; l'ancrage détecte ce qu'un accès direct à la base pourrait contourner.
 
 ### Interface
@@ -690,10 +690,10 @@ Ce paquet contient des données comptables. Il se transmet par un canal sécuris
 ### Critères d'acceptation
 
 1. Deux calculs de `content_hash` de la même écriture donnent la même empreinte; toute modification d'un champ de contenu la change.
-2. La racine de Merkle recalculée à partir des écritures d'un ancrage égale la racine enregistrée, et la chaîne d'ancrages est ininterrompue (invariant I15).
+2. La racine de Merkle recalculée à partir des écritures d'un ancrage égale la racine enregistrée, et la chaîne d'ancrages est ininterrompue (invariant I17).
 3. `ledger-verify` renvoie `PASS` sur un paquet intact, sans accès à l'application.
 4. Modifier volontairement un montant dans `entries.ndjson`, dans la base ou un ancrage fait échouer `ledger-verify` avec l'identifiant de l'écriture ou de l'ancrage en cause.
-5. Une altération directe en base (contournant l'application) est détectée par `Integrity::SelfCheck` et crée C19.
+5. Une altération directe en base (contournant l'application) est détectée par `Integrity::SelfCheck` et crée C21.
 6. La signature Ed25519 se vérifie avec la clé publique publiée, et une clé retirée reste utilisable pour vérifier les anciens certificats.
 7. Un jeton RFC 3161 valide se vérifie avec un outil standard; l'absence de jeton est indiquée sur le certificat.
 8. L'émission est refusée si la chaîne d'audit ou les invariants I1 et I2 sont défaillants; toute autre défaillance figure comme réserve.
@@ -943,7 +943,7 @@ Un fil simple par société (`portal_threads`, `portal_messages`), avec pièces 
 
 **Effets.** Notification au cabinet. Sur option (`client_approval_required`), l'étape 18 « Approbation » de la clôture (F10) exige cette validation. Plusieurs Dirigeants: la politique `approvals_required` choisit entre un seul et tous.
 
-**Portée juridique.** La validation par le client **n'est ni une signature électronique qualifiée, ni l'approbation des comptes annuels par l'organe compétent**. Le texte affiché au client le précise et sa formulation exacte est relue par un juriste (question consignée dans `QUESTIONS.md`). Une interface `SignatureProvider` permet plus tard de brancher un prestataire de signature qualifiée, hors périmètre ici.
+**Portée juridique.** La validation par le client **n'est ni une signature électronique qualifiée, ni l'approbation des comptes annuels par l'organe compétent**. Le texte affiché au client le précise et sa formulation exacte est relue par un juriste (question consignée dans `docs/dev/signature/QUESTIONS.md`). Une interface `SignatureProvider` permet plus tard de brancher un prestataire de signature qualifiée, hors périmètre ici.
 
 ### Tableau de bord client
 
@@ -1009,7 +1009,7 @@ Comme pour les spécifications précédentes, les valeurs attendues sont **calcu
 
 ### Niveaux de tests
 
-- **Séquences aléatoires**: le test de propriétés existant est étendu aux approbations, lots, confirmations, retours, extournes, verrouillages et validations. Après chaque suite, les invariants I1 à I15 tiennent, aucune facture n'est payée deux fois, et les vues `known_at` reproduisent les instantanés enregistrés en cours de route.
+- **Séquences aléatoires**: le test de propriétés existant est étendu aux approbations, lots, confirmations, retours, extournes, verrouillages et validations. Après chaque suite, les invariants I1 à I17 tiennent, aucune facture n'est payée deux fois, et les vues `known_at` reproduisent les instantanés enregistrés en cours de route.
 - **Droits**: les nouvelles lignes de `Permissions::MATRIX` (§2.2) sont parcourues par l'interface **et** par l'API.
 - **Sécurité du portail**: suite d'accès direct à des identifiants **générée à partir du fichier de routes** (chaque route, un objet d'un autre périmètre, réponse `404`), tests statiques de liste blanche des services, de politique de sécurité de contenu, de sessions, d'expiration, de second facteur obligatoire, de limitation de débit et de verrouillage.
 - **Secrets et données bancaires**: tests qui échouent si le schéma contient un identifiant bancaire de l'utilisateur, si une clé privée apparaît dans le dépôt, les journaux ou une sauvegarde non chiffrée, ou si un IBAN complet est journalisé.
@@ -1041,7 +1041,7 @@ Chaque étape est derrière un drapeau de société (`feature_b01a` à `feature_
 
 - [ ] Tous les tests de la capacité passent; couverture SimpleCov d'au moins 95 % sur son dossier.
 - [ ] Score de mutation d'au moins 85 % sur les composants listés ci-dessus qui la concernent.
-- [ ] Les invariants I1 à I15 sont verts, y compris après une séquence aléatoire d'opérations.
+- [ ] Les invariants I1 à I17 sont verts, y compris après une séquence aléatoire d'opérations.
 - [ ] Chaque action est couverte par la matrice de droits et testée par l'interface et par l'API.
 - [ ] L'isolation entre sociétés est testée; pour le portail, la suite d'accès direct à des identifiants passe sur toutes les routes.
 - [ ] Idempotence et concurrence testées pour tout traitement de fond, import, envoi ou validation.
@@ -1050,18 +1050,18 @@ Chaque étape est derrière un drapeau de société (`feature_b01a` à `feature_
 - [ ] Toute action est journalisée dans R18, avec l'acteur, le motif quand il est exigé, et le type d'acteur.
 - [ ] Budgets de performance tenus.
 - [ ] Libellés en fr, nl et en; états vides, chargement et erreurs traités; accessibilité vérifiée.
-- [ ] Capacité livrée derrière son drapeau et documentée dans `docs/signature/Bxx.md` (usage, règles, limites).
-- [ ] Le compte rendu de l'agent de codage liste ses hypothèses, ses écarts avec cette spécification et les questions à valider par un comptable, un juriste, la banque de l'utilisateur ou un relecteur de sécurité dans `QUESTIONS.md`.
+- [ ] Capacité livrée derrière son drapeau et documentée dans `docs/dev/signature/Bxx.md` (usage, règles, limites).
+- [ ] Le compte rendu de l'agent de codage liste ses hypothèses, ses écarts avec cette spécification et les questions à valider par un comptable, un juriste, la banque de l'utilisateur ou un relecteur de sécurité dans `docs/dev/signature/QUESTIONS.md`.
 
 ## 14. Prompts prêts à l'emploi pour Claude Code
 
-Enregistrez ce document dans le dépôt sous `docs/signature/SPEC.md`, à côté des trois autres spécifications. Les prompts s'y réfèrent par leurs numéros de section. Donnez-les un par un, dans l'ordre, et validez le résultat de chacun avant de passer au suivant.
+Enregistrez ce document dans le dépôt sous `docs/dev/signature/spec.md`, à côté des trois autres spécifications. Les prompts s'y réfèrent par leurs numéros de section. Donnez-les un par un, dans l'ordre, et validez le résultat de chacun avant de passer au suivant.
 
 ### 14.1 Règles permanentes (à ajouter à `CLAUDE.md`)
 
 ```text
 Fonctions signature — règles de travail
-- Les sources de vérité sont docs/signature/SPEC.md, docs/agent/SPEC.md, docs/features/SPEC.md et docs/reports/SPEC.md. En cas de doute, les relire; ne pas deviner.
+- Les sources de vérité sont docs/dev/signature/spec.md, docs/dev/agent/spec.md, docs/dev/features/spec.md et docs/dev/reports/spec.md. En cas de doute, les relire; ne pas deviner.
 - TDD strict: test rouge, code minimal, test vert, refactoring. Un commit par étape cohérente.
 - Une capacité à la fois. Ne pas commencer la suivante tant que la définition de « terminé » (§13) n'est pas remplie.
 - LedgerFlow ne stocke jamais d'identifiant de connexion bancaire de l'utilisateur et n'initie jamais de paiement. Il produit un fichier que l'humain autorise dans sa banque.
@@ -1070,7 +1070,7 @@ Fonctions signature — règles de travail
 - Le code du portail (Portal::) n'appelle jamais de service comptable ni de rapport. Il ne lit que les tables et vues portal_*. Tout identifiant exposé à un externe est un jeton opaque, et toute lecture passe par la portée du droit de l'utilisateur.
 - Tout ce qui vient d'un externe (pièces, réponses, messages, e-mails) est non fiable: quarantaine, assainissement, jamais exécuté, jamais validé automatiquement.
 - Cryptographie: bibliothèques standard uniquement (OpenSSL, bibliothèque standard de Ruby). Aucune primitive maison. Canonicalisation selon RFC 8785 avec vecteurs de test. Aucune clé privée dans le dépôt, la base ou les journaux.
-- Aucune version de format bancaire, aucune particularité de banque, aucun texte juridique n'est supposé: les obtenir dans la documentation ou auprès de l'utilisateur, sinon appliquer le comportement le plus prudent et l'inscrire dans docs/signature/QUESTIONS.md.
+- Aucune version de format bancaire, aucune particularité de banque, aucun texte juridique n'est supposé: les obtenir dans la documentation ou auprès de l'utilisateur, sinon appliquer le comportement le plus prudent et l'inscrire dans docs/dev/signature/QUESTIONS.md.
 - Chaque capacité est livrée derrière un drapeau de société, avec audit R18 de chaque action et type d'acteur.
 - Ne jamais supprimer ou affaiblir un test pour le faire passer.
 ```
@@ -1078,9 +1078,9 @@ Fonctions signature — règles de travail
 ### 14.2 Prompt d'audit (à donner en premier, sans coder)
 
 ```text
-Lis intégralement docs/signature/SPEC.md et les trois autres spécifications. Ne modifie aucun fichier de code.
+Lis intégralement docs/dev/signature/spec.md et les trois autres spécifications. Ne modifie aucun fichier de code.
 
-Audite ensuite le dépôt et produis docs/signature/00-audit.md contenant:
+Audite ensuite le dépôt et produis docs/dev/signature/00-audit.md contenant:
 1. L'état réel de ce dont ces capacités dépendent: F01 (droits, périodes verrouillées, second facteur), F02 (règles de rapprochement CODA), F03 (pièces, boîte de réception), F04, F06, F07, F08, R14, R18 (chaîne d'audit et sa définition exacte du hachage), R19.
 2. L'existant utile: un éventuel client mobile d'approbation, l'authentification multi-modèles, les services de génération de PDF et d'export, la file de jobs, le stockage de fichiers, l'analyse antivirus, la gestion des secrets.
 3. Pour B03a: où et comment posted_at est fixé aujourd'hui, si un ordre monotone par société est garanti, quels champs peuvent encore être modifiés après validation, et l'état des données de référence versionnées.
@@ -1096,7 +1096,7 @@ Arrête-toi après avoir écrit ce fichier et attends ma validation.
 ### 14.3 Prompt générique d'une capacité
 
 ```text
-Implémente la capacité Bxx décrite dans la section §N de docs/signature/SPEC.md, en suivant docs/signature/00-audit.md.
+Implémente la capacité Bxx décrite dans la section §N de docs/dev/signature/spec.md, en suivant docs/dev/signature/00-audit.md.
 
 Procède en TDD dans cet ordre:
 1. Les jeux de données de référence et les résultats attendus indépendants de la capacité (§13).
@@ -1104,10 +1104,10 @@ Procède en TDD dans cet ordre:
 3. Les migrations réversibles, les modèles, les services et les jobs.
 4. Les contrôleurs, les endpoints d'API, les composants et les écrans.
 5. La matrice de droits (§2.2), l'audit R18 avec le type d'acteur, et le drapeau feature_bxx.
-6. Les invariants I1 à I15 (dont les séquences aléatoires) et les contrôles de sécurité de la section.
-7. Les traductions fr, nl, en, l'accessibilité et docs/signature/Bxx.md.
+6. Les invariants I1 à I17 (dont les séquences aléatoires) et les contrôles de sécurité de la section.
+7. Les traductions fr, nl, en, l'accessibilité et docs/dev/signature/Bxx.md.
 
-Vérifie chaque critère d'acceptation de la section un par un, en citant le test qui le couvre. Ne passe pas à la capacité suivante. Termine par un compte rendu: critères couverts, écarts avec le SPEC, questions ajoutées à QUESTIONS.md.
+Vérifie chaque critère d'acceptation de la section un par un, en citant le test qui le couvre. Ne passe pas à la capacité suivante. Termine par un compte rendu: critères couverts, écarts avec le SPEC, questions ajoutées à docs/dev/signature/QUESTIONS.md.
 ```
 
 ### 14.4 Prompts par vague
@@ -1127,7 +1127,7 @@ Implémente B03a (§7), puis B03b (§8), puis B03c (§9). Avant B03c, présente-
 **P2**
 
 ```text
-Implémente B02a (§10), puis B02b (§11), puis B02c (§12). Commence B02a par l'isolation (origine, identité, code, base de données) et par la suite d'accès direct à des identifiants générée depuis les routes, avant toute fonctionnalité. Pour le texte de validation des comptes, n'invente aucune formulation juridique: prépare-la et consigne-la dans QUESTIONS.md pour relecture par un juriste. N'ouvre le portail à aucun client réel avant le test d'intrusion décrit au §13. Vérifie les critères de sortie de P2 du §3.
+Implémente B02a (§10), puis B02b (§11), puis B02c (§12). Commence B02a par l'isolation (origine, identité, code, base de données) et par la suite d'accès direct à des identifiants générée depuis les routes, avant toute fonctionnalité. Pour le texte de validation des comptes, n'invente aucune formulation juridique: prépare-la et consigne-la dans docs/dev/signature/QUESTIONS.md pour relecture par un juriste. N'ouvre le portail à aucun client réel avant le test d'intrusion décrit au §13. Vérifie les critères de sortie de P2 du §3.
 ```
 
 ### 14.5 Prompt de revue de fin de vague
@@ -1147,5 +1147,5 @@ Ne corrige rien tant que je n'ai pas validé la liste.
 ### 14.6 Prompt de préparation des revues externes
 
 ```text
-Prépare le dossier de la revue externe demandée au §13: pour la cryptographie de B03c, docs/signature/CRYPTO_REVIEW.md (objectifs de sécurité, menaces, canonicalisation, arbre de Merkle, chaînage des ancrages, signatures, gestion et rotation des clés, horodatage, limites connues, vecteurs de test, code concerné); pour le portail, docs/signature/PENTEST_SCOPE.md (périmètre, environnements de test, comptes de test, objets sensibles, hypothèses, ce qui est exclu). N'active ni certificat ni portail sur des données réelles sans mon accord explicite.
+Prépare le dossier de la revue externe demandée au §13: pour la cryptographie de B03c, docs/dev/signature/CRYPTO_REVIEW.md (objectifs de sécurité, menaces, canonicalisation, arbre de Merkle, chaînage des ancrages, signatures, gestion et rotation des clés, horodatage, limites connues, vecteurs de test, code concerné); pour le portail, docs/dev/signature/PENTEST_SCOPE.md (périmètre, environnements de test, comptes de test, objets sensibles, hypothèses, ce qui est exclu). N'active ni certificat ni portail sur des données réelles sans mon accord explicite.
 ```
