@@ -1,16 +1,17 @@
-# One decision on a request (B01a): approve, refuse (reason required) or ask for changes (reason required, a task for the author).
+# One decision on a request (B01a): approve, refuse (reason required), ask for changes (reason required, a task for the author) or hand the request to another
+# approver (who then decides in the name of the one who handed it over, for this level only).
 # The decision carries the fingerprint of the content the person had in front of them: it must still be the request's, and the invoice's.
 # Separation of tasks: the author of an invoice does not approve it, nor does a delegate for the author or for themselves,
 # unless the entity allows self-approval. Nobody decides twice on a level.
 # => ctx[:decision]
 class Approvals::Decide
-  DECISIONS = %w[approved rejected changes_requested].freeze
+  DECISIONS = %w[approved rejected changes_requested transferred].freeze
 
-  def self.call(request:, user:, decision:, content_fingerprint:, comment: nil, channel: :web, device_fingerprint: nil, recent_second_factor: false)
+  def self.call(request:, user:, decision:, content_fingerprint:, comment: nil, channel: :web, device_fingerprint: nil, recent_second_factor: false, transfer_to_id: nil)
     ctx = LightService::Context.make(decision: nil)
     invoice = request.subject
     directory = Approvals::Directory.new(invoice.entity) # who is who in this entity, read once
-    code = refusal_for(request, invoice, user, decision.to_s, content_fingerprint, comment, recent_second_factor, directory)
+    code = refusal_for(request, invoice, user, decision.to_s, content_fingerprint, comment, recent_second_factor, directory, transfer_to_id)
     return refuse(ctx, code) if code
 
     ApplicationRecord.transaction do
@@ -19,7 +20,8 @@ class Approvals::Decide
 
       on_behalf_of = Approvals::Approvers.for(request, directory)[user.id]
       ctx[:decision] = request.decisions.create!(step_position: request.current_step, approver: user, on_behalf_of_id: on_behalf_of, decision: decision,
-                                                 comment: comment, channel: channel, device_fingerprint: device_fingerprint, content_fingerprint: content_fingerprint)
+                                                 comment: comment, channel: channel, device_fingerprint: device_fingerprint, content_fingerprint: content_fingerprint,
+                                                 transferred_to_id: (transfer_to_id if decision.to_s == "transferred"))
       apply(request, invoice, ctx[:decision], user, directory)
     end
     ctx
@@ -33,12 +35,12 @@ class Approvals::Decide
   end
   private_class_method :refuse
 
-  def self.refusal_for(request, invoice, user, decision, content_fingerprint, comment, recent_second_factor, directory)
+  def self.refusal_for(request, invoice, user, decision, content_fingerprint, comment, recent_second_factor, directory, transfer_to_id)
     return :feature_off unless invoice.entity.feature?(:b01a)
     return :content_changed if request.invalidated? # the invoice changed after the approver opened it
     return :not_pending unless request.pending?
     return :unknown_decision unless DECISIONS.include?(decision)
-    return :reason_required if decision != "approved" && comment.blank?
+    return :reason_required if %w[rejected changes_requested].include?(decision) && comment.blank?
     return :content_changed unless content_fingerprint == request.content_fingerprint && Approvals::ContentFingerprint.call(invoice) == request.content_fingerprint
 
     approvers = Approvals::Approvers.for(request, directory)
@@ -47,6 +49,7 @@ class Approvals::Decide
     on_behalf_of = approvers[user.id]
     return :own_entry if own_entry?(invoice, user, on_behalf_of)
     return :already_decided if already_decided?(request, user, on_behalf_of)
+    return :invalid_transfer if decision == "transferred" && !valid_transfer?(transfer_to_id, user, directory)
 
     :step_up_required if decision == "approved" && !recent_second_factor && step_up?(invoice)
   end
@@ -59,6 +62,12 @@ class Approvals::Decide
   end
   private_class_method :step_up?
 
+  # Another person of this entity, who can approve here.
+  def self.valid_transfer?(transfer_to_id, user, directory)
+    transfer_to_id.present? && transfer_to_id != user.id && directory.approving?(transfer_to_id)
+  end
+  private_class_method :valid_transfer?
+
   def self.own_entry?(invoice, user, on_behalf_of)
     return false if invoice.entity.allow_self_approval?
 
@@ -66,20 +75,23 @@ class Approvals::Decide
   end
   private_class_method :own_entry?
 
+  # Nobody decides twice on a level. Whoever handed the request over has decided (they cannot decide any more), but their having handed it over
+  # does not stop the one they handed it to from deciding in their name.
   def self.already_decided?(request, user, on_behalf_of)
-    request.decisions.where(step_position: request.current_step, approver_id: user.id).or(
-      request.decisions.where(step_position: request.current_step, approver_id: on_behalf_of)
-    ).or(request.decisions.where(step_position: request.current_step, on_behalf_of_id: user.id)).exists?
+    here = request.decisions.where(step_position: request.current_step)
+    decided = here.where.not(decision: :transferred)
+    here.exists?(approver_id: user.id) || decided.exists?(approver_id: on_behalf_of) || decided.exists?(on_behalf_of_id: user.id)
   end
   private_class_method :already_decided?
 
   def self.apply(request, invoice, decision, user, directory)
-    payload = { request_id: request.id, step: decision.step_position, channel: decision.channel, on_behalf_of: decision.on_behalf_of_id,
+    payload = { request_id: request.id, step: decision.step_position, transferred_to: decision.transferred_to_id, channel: decision.channel, on_behalf_of: decision.on_behalf_of_id,
                 content_fingerprint: decision.content_fingerprint, device_fingerprint: decision.device_fingerprint }
     case decision.decision
     when "approved" then approve(request, invoice, directory)
     when "rejected" then close(request, invoice, :rejected)
     when "changes_requested" then ask_for_changes(request, invoice, decision, user, directory)
+    when "transferred" then hand_over(request, decision, user)
     end
     Accounting::AuditLog.record!(auditable: invoice, action: "approval_#{decision.decision}", user: user, payload: payload, reason: decision.comment)
   end
@@ -90,7 +102,7 @@ class Approvals::Decide
 
     following = request.policy.steps.where("position > ?", request.current_step).first
     if following
-      request.update!(current_step: following.position, step_started_at: Time.current, reminders_sent: 0, escalated_at: nil, escalated_to_id: nil, rerouted_at: nil)
+      request.update!(current_step: following.position, step_started_at: Time.current, reminders_sent: 0, escalated_at: nil, escalated_to_id: nil, rerouted_at: nil, transfers: {})
     else
       request.update!(status: :approved, decided_at: Time.current)
       invoice.update_columns(payment_status: Accounting::Invoice.payment_statuses[:approved])
@@ -109,6 +121,13 @@ class Approvals::Decide
     step.approver_user_ids.all? { |id| principals.include?(id) } && step.approver_roles.all? { |role| roles.include?(role) }
   end
   private_class_method :level_complete?
+
+  # The other person may now decide on this level, in the name of the one who handed over (or of whoever that one was standing in for).
+  def self.hand_over(request, decision, user)
+    request.update!(transfers: request.transfers.merge(decision.transferred_to_id.to_s => decision.on_behalf_of_id || user.id))
+    Accounting::Notify.call(user: decision.transferred_to, event: "approval_transferred:#{request.id}:#{decision.step_position}", subject: request)
+  end
+  private_class_method :hand_over
 
   def self.close(request, invoice, status)
     request.update!(status: status, decided_at: Time.current)

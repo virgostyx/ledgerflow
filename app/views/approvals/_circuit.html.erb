@@ -8,7 +8,7 @@
       <div>
         <div class="font-medium text-gray-900">Level <%= step.position %> <span class="text-xs font-normal text-gray-500"><%= step.any_of? ? 'one of' : 'all of' %> <%= (User.where(id: step.approver_user_ids).pluck(:full_name) + step.approver_roles.map { |r| UserEntity.label_for(r) }).to_sentence %></span></div>
         <% decisions.each do |d| %>
-          <div class="text-gray-700"><%= d.approver.full_name %><%= " for #{d.on_behalf_of.full_name}" if d.on_behalf_of %> — <%= d.decision.humanize.downcase %>
+          <div class="text-gray-700"><%= d.approver.full_name %><%= " for #{d.on_behalf_of.full_name}" if d.on_behalf_of %> — <%= d.transferred? ? "handed over to #{d.transferred_to.full_name}" : d.decision.humanize.downcase %>
             <span class="text-gray-400"><%= l d.decided_at, format: :short %> · <%= d.channel %></span>
             <% if d.comment.present? %><div class="text-gray-600 italic">“<%= d.comment %>”</div><% end %></div>
         <% end %>

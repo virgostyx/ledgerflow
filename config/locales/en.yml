@@ -713,12 +713,14 @@ en:
       not_an_approver: "You are not an approver at this step."
       own_entry: "You cannot approve an invoice you entered yourself."
       already_decided: "You have already decided at this step."
+      invalid_transfer: "Pick another person who can approve invoices in this entity."
       step_up_required: "This invoice is above the amount that needs a recent second factor: confirm it again to approve."
       approval_before_posting: "This invoice needs an approval (\"bon à payer\") before it can be posted."
       bulk_off: "Bulk approval is not enabled for this entity."
     decided:
       approved: "Approved."
       rejected: "Refused."
+      transferred: "Handed over."
       changes_requested: "Changes requested."
     bulk:
       approved:

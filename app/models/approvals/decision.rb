@@ -10,10 +10,12 @@ class Approvals::Decision < ApplicationRecord
   belongs_to :request, class_name: "Approvals::Request", inverse_of: :decisions
   belongs_to :approver, class_name: "User"
   belongs_to :on_behalf_of, class_name: "User", optional: true
+  belongs_to :transferred_to, class_name: "User", optional: true
 
   before_validation { self.decided_at ||= Time.current }
 
   validates :step_position, numericality: { only_integer: true, greater_than: 0 }
   validates :content_fingerprint, format: { with: /\A\h{64}\z/ }
+  validates :transferred_to, presence: true, if: :transferred?
   validates :comment, presence: true, if: -> { rejected? || changes_requested? }
 end

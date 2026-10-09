@@ -18,6 +18,7 @@ class Api::V1::Public::ApprovalsController < Api::V1::Public::BaseController
     not_pending: [ :conflict, "Already decided", "already-decided" ],
     already_decided: [ :conflict, "Already decided", "already-decided" ],
     step_up_required: [ :forbidden, "A second factor is needed", "step-up-required" ],
+    invalid_transfer: [ :unprocessable_content, "Invalid hand-over", "invalid-transfer" ],
     reason_required: [ :unprocessable_content, "A reason is required", "reason-required" ],
     unknown_decision: [ :unprocessable_content, "Unknown decision", "unknown-decision" ]
   }.freeze
@@ -44,7 +45,7 @@ class Api::V1::Public::ApprovalsController < Api::V1::Public::BaseController
 
     idempotently do
       result = Approvals::Decide.call(request: request, user: owner, decision: params[:decision].to_s, comment: params[:comment].presence,
-                                      content_fingerprint: params[:content_fingerprint].to_s, channel: :api, device_fingerprint: "token-#{@api_client.id}")
+                                      content_fingerprint: params[:content_fingerprint].to_s, channel: :api, device_fingerprint: "token-#{@api_client.id}", transfer_to_id: params[:transfer_to_id].presence&.to_i)
       next refuse(result) if result.failure?
 
       render_request(request.reload)
@@ -61,7 +62,7 @@ class Api::V1::Public::ApprovalsController < Api::V1::Public::BaseController
 
   # Found when it waits for the owner, or when the owner decided on it: nothing else is told to this token.
   def find_request
-    request = Approvals::Request.includes(:policy, decisions: %i[approver on_behalf_of], subject: :partner).find(params[:id])
+    request = Approvals::Request.includes(:policy, decisions: %i[approver on_behalf_of transferred_to], subject: :partner).find(params[:id])
     raise ActiveRecord::RecordNotFound unless Approvals::Approvers.for(request).key?(owner.id) || request.decisions.any? { |d| d.approver_id == owner.id }
 
     request
@@ -99,7 +100,7 @@ class Api::V1::Public::ApprovalsController < Api::V1::Public::BaseController
   end
 
   def decision_json(decision)
-    { decision: decision.decision, approver: decision.approver.full_name, on_behalf_of: decision.on_behalf_of&.full_name, comment: decision.comment,
+    { decision: decision.decision, approver: decision.approver.full_name, on_behalf_of: decision.on_behalf_of&.full_name, transferred_to: decision.transferred_to&.full_name, comment: decision.comment,
       channel: decision.channel, decided_at: decision.decided_at.iso8601 }
   end
 

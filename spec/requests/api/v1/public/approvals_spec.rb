@@ -205,6 +205,27 @@ RSpec.describe "Public API approvals", type: :request do
       expect(response).to have_http_status(:ok) # refusing needs no second factor
     end
 
+    it "hands the request over to another approver, who then decides in the name of the first" do
+      colleague = token_for(%w[approvals:read approvals:decide], role: :accountant)
+      colleague_user = ApiClient.find_by!(key_digest: ApiClient.digest(colleague)).owner
+
+      decide(request_record, seen.merge(decision: "transferred", transfer_to_id: colleague_user.id))
+      expect(response).to have_http_status(:ok)
+      expect(json["data"]["status"]).to eq("pending")
+      expect(json["data"]["levels"].first["decisions"].first).to include("decision" => "transferred", "transferred_to" => colleague_user.full_name)
+
+      decide(request_record, seen.merge(decision: "approved"), token: colleague)
+      expect(response).to have_http_status(:ok)
+      expect(json["data"]).to include("status" => "approved")
+    end
+
+    it "refuses a hand-over to someone who cannot approve, with 422" do
+      decide(request_record, seen.merge(decision: "transferred", transfer_to_id: owner_with(:assistant).id))
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json["type"]).to end_with("invalid-transfer")
+    end
+
     it "answers 409 once the request is decided" do
       decide(request_record, seen.merge(decision: "approved"))
       decide(request_record, seen.merge(decision: "approved"))

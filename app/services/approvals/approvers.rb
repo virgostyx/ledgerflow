@@ -9,7 +9,8 @@ class Approvals::Approvers
 
     principals = (step.approver_user_ids + directory.ids_with_role(step.approver_roles) + called_in(request, directory)).uniq
     direct = principals.index_with { nil }
-    delegated = directory.delegates_of(principals, request.policy_id)
+    # who stands in for whom on this level: by delegation, or because the request was handed over to them
+    delegated = directory.delegates_of(principals, request.policy_id).merge(request.transfers.to_h { |to, from| [ to.to_i, from.to_i ] })
     allowed = (direct.keys + delegated.keys).uniq.select { |id| directory.approving?(id) }
     delegated.merge(direct).slice(*allowed) # deciding for oneself wins over deciding for someone
   end

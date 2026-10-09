@@ -210,6 +210,118 @@ RSpec.describe Approvals::Decide do
     end
   end
 
+  describe "handing a request to another approver" do
+    let(:second)  { create(:user).tap { |u| create(:user_entity, :accountant, user: u, entity: entity) } }
+
+    def transfer(request, user, to, **extra) = decide(request, user, :transferred, transfer_to_id: to&.id, **extra)
+
+    context "on a level of one of the named" do
+      before { policy!({ approver_user_ids: [ owner.id ] }) }
+
+      it "lets the other person decide in the name of the one who handed over, and keeps both" do
+        request = submit!
+
+        result = transfer(request, owner, accountant)
+
+        expect(result).to be_success
+        expect(request.reload).to be_pending
+        expect(result[:decision]).to have_attributes(decision: "transferred", transferred_to_id: accountant.id, approver_id: owner.id)
+        expect(Approvals::Approvers.for(request)).to include(accountant.id => owner.id)
+
+        expect(decide(request, accountant)).to be_success
+        expect(request.reload).to be_approved
+        expect(request.decisions.approved.sole).to have_attributes(approver: accountant, on_behalf_of: owner)
+      end
+
+      it "needs no reason, is told to the other person, and is in the audit trail" do
+        request = submit!
+        transfer(request, owner, accountant)
+
+        event = Accounting::Notification.where(user: accountant).pluck(:event).sole
+        expect(event).to start_with("approval_transferred:")
+        log = audit("approval_transferred").sole
+        expect(log.payload).to include("transferred_to" => accountant.id, "step" => 1)
+      end
+
+      it "takes the person who handed over out of the level: they decided" do
+        request = submit!
+        transfer(request, owner, accountant)
+
+        result = decide(request, owner)
+
+        expect(result).to be_failure
+        expect(result[:code]).to eq(:already_decided)
+      end
+
+      it "does not need a recent second factor, whatever the amount: nothing is approved" do
+        entity.update!(step_up_threshold: 100)
+        request = submit!
+
+        expect(transfer(request, owner, accountant)).to be_success
+        expect(decide(request, accountant)[:code]).to eq(:step_up_required) # the approval itself still does
+      end
+
+      it "does not stand for another level" do
+        policy = Approvals::Policy.first
+        policy.update!(active: true)
+        policy.steps.create!(position: 2, mode: :any_of, approver_roles: %w[admin])
+        request = submit!
+        transfer(request, owner, accountant)
+        decide(request, accountant)
+
+        expect(request.reload).to have_attributes(current_step: 2, transfers: {})
+        expect(Approvals::Approvers.for(request).keys).to eq([ owner.id ])
+      end
+    end
+
+    context "on a level where all of the named must approve" do
+      before { policy!({ mode: :all_of, approver_user_ids: [ owner.id, second.id ] }) }
+
+      it "counts the one who stands in as the one who handed over" do
+        request = submit!
+        transfer(request, owner, accountant)
+
+        decide(request, accountant)
+        expect(request.reload).to be_pending
+
+        decide(request, second)
+        expect(request.reload).to be_approved
+      end
+    end
+
+    context "refused" do
+      before { policy!({ approver_user_ids: [ owner.id ] }) }
+
+      it "to someone who cannot approve, to oneself, to nobody, or to a person of another company" do
+        request = submit!
+        outsider = create(:user_entity, :admin, entity: create(:entity)).user
+
+        [ assistant, owner, nil, outsider ].each do |target|
+          result = transfer(request, owner, target)
+
+          expect(result).to be_failure
+          expect(result[:code]).to eq(:invalid_transfer)
+        end
+        expect(request.reload.transfers).to eq({})
+        expect(request.decisions).to be_empty
+      end
+
+      it "by someone who is not an approver of the level" do
+        request = submit!
+
+        expect(transfer(request, accountant, second)[:code]).to eq(:not_an_approver)
+      end
+
+      it "on a content the approver did not see" do
+        request = submit!
+
+        result = described_class.call(request: request, user: owner, decision: :transferred, transfer_to_id: accountant.id, content_fingerprint: "0" * 64)
+
+        expect(result[:code]).to eq(:content_changed)
+      end
+    end
+  end
+
   describe "levels" do
     it "moves to the next level once one of a level's approvers has approved" do
       policy!({ approver_roles: %w[accountant] }, { approver_roles: %w[admin] })

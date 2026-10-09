@@ -17,6 +17,7 @@ class Accounting::ApprovalsController < ApplicationController
     @history = Approvals::SupplierHistory.for(@invoice)
     @can_decide = @request.pending? && Approvals::Approvers.for(@request).key?(current_user.id)
     @total = @invoice.lines.sum(:total_incl_vat)
+    @colleagues = User.where(id: Approvals::Directory.new.approving_ids.to_a - [ current_user.id ]).order(:full_name) if @can_decide
   end
 
   def decide
@@ -24,7 +25,7 @@ class Accounting::ApprovalsController < ApplicationController
     authorize request
     result = Approvals::Decide.call(request: request, user: current_user, decision: params[:decision].to_s, comment: params[:comment].presence,
                                     content_fingerprint: params[:content_fingerprint].to_s, channel: :web, device_fingerprint: device_fingerprint,
-                                    recent_second_factor: recent_second_factor?)
+                                    recent_second_factor: recent_second_factor?, transfer_to_id: params[:transfer_to_id].presence&.to_i)
     if result.success?
       redirect_to accounting_approvals_path, notice: t("approvals.decided.#{params[:decision]}")
     elsif result[:code] == :step_up_required

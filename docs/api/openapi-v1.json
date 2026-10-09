@@ -2398,7 +2398,7 @@
     "/approvals/{id}/decision": {
       "post": {
         "operationId": "decideApproval",
-        "summary": "Approve, refuse or ask for changes, on the content you read",
+        "summary": "Approve, refuse, ask for changes or hand over, on the content you read",
         "x-required-scope": "approvals:decide",
         "parameters": [
           {
@@ -3899,6 +3899,13 @@
               "null"
             ]
           },
+          "transferred_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For a hand-over: who the request was handed to."
+          },
           "comment": {
             "type": [
               "string",
@@ -4097,8 +4104,13 @@
             "enum": [
               "approved",
               "rejected",
-              "changes_requested"
+              "changes_requested",
+              "transferred"
             ]
+          },
+          "transfer_to_id": {
+            "type": "integer",
+            "description": "To hand the request over: the user who may now decide in your name for this level (a person who can approve in this entity)."
           },
           "content_fingerprint": {
             "type": "string",

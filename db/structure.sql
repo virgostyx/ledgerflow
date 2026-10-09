@@ -3561,7 +3561,8 @@ CREATE TABLE public.approval_decisions (
     content_fingerprint character varying(64) NOT NULL,
     decided_at timestamp(6) without time zone NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    transferred_to_id bigint
 );
 
 
@@ -3683,7 +3684,8 @@ CREATE TABLE public.approval_requests (
     reminders_sent integer DEFAULT 0 NOT NULL,
     escalated_at timestamp(6) without time zone,
     escalated_to_id bigint,
-    rerouted_at timestamp(6) without time zone
+    rerouted_at timestamp(6) without time zone,
+    transfers jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -9246,6 +9248,13 @@ CREATE INDEX index_approval_decisions_on_request_id ON public.approval_decisions
 
 
 --
+-- Name: index_approval_decisions_on_transferred_to_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_decisions_on_transferred_to_id ON public.approval_decisions USING btree (transferred_to_id);
+
+
+--
 -- Name: index_approval_delegations_on_delegate_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10438,6 +10447,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 ALTER TABLE ONLY public.closing_steps
     ADD CONSTRAINT fk_rails_27616d7efe FOREIGN KEY (acknowledged_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: approval_decisions fk_rails_2c7183fa24; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_decisions
+    ADD CONSTRAINT fk_rails_2c7183fa24 FOREIGN KEY (transferred_to_id) REFERENCES public.users(id);
 
 
 --
@@ -12367,6 +12384,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261009200000'),
 ('20261009190000'),
 ('20261009180000'),
 ('20261009170000'),

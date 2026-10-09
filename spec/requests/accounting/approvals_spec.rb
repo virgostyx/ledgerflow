@@ -171,6 +171,44 @@ RSpec.describe "Invoice approval screens (B01a)", type: :request do
       expect(request_record.reload).to be_pending
     end
 
+    it "offers to hand the request to another approver, never to oneself or to someone who cannot approve" do
+      accountant
+      assistant
+
+      get accounting_approval_path(request_record)
+
+      expect(response.body).to include("Hand over to")
+      expect(response.body).to include("Alice Accountant")
+      expect(response.body).not_to include("Anna Assistant")
+      expect(response.body).not_to match(/<option[^>]*>Olga Owner/)
+    end
+
+    it "hands over, and the other person finds it in their list and decides in the name of the first" do
+      policy.steps.first.update!(approver_roles: [], approver_user_ids: [ owner.id ]) # the owner alone: the accountant is no approver unless handed the request
+      accountant
+      post decide_accounting_approval_path(request_record), params: { decision: "transferred", transfer_to_id: accountant.id, comment: "You know this supplier", content_fingerprint: request_record.content_fingerprint }
+
+      expect(response).to redirect_to(accounting_approvals_path)
+      expect(flash[:notice]).to eq("Handed over.")
+      expect(request_record.reload).to be_pending
+
+      sign_in accountant
+      get accounting_approvals_path
+      expect(response.body).to include("Acme Ltd")
+      get accounting_approval_path(request_record)
+      expect(response.body).to include("handed over to Alice Accountant")
+      post decide_accounting_approval_path(request_record), params: { decision: "approved", content_fingerprint: request_record.content_fingerprint }
+      expect(request_record.reload).to be_approved
+      expect(request_record.decisions.approved.sole).to have_attributes(approver: accountant, on_behalf_of: owner)
+    end
+
+    it "says why when the person picked cannot approve" do
+      post decide_accounting_approval_path(request_record), params: { decision: "transferred", transfer_to_id: assistant.id, content_fingerprint: request_record.content_fingerprint }
+
+      expect(flash[:alert]).to match(/another person who can approve/i)
+      expect(request_record.reload.transfers).to eq({})
+    end
+
     it "keeps the author from approving their own invoice" do
       author_owner = create(:user_entity, :admin, user: author, entity: entity).user
       sign_in author_owner

@@ -27,7 +27,7 @@ module Api::V1::OpenApi::ApprovalEndpoints
       "Approval" => { "type" => "object", "required" => %w[id status level content_fingerprint invoice], "properties" => summary },
       "ApprovalDecisionRecord" => { "type" => "object", "required" => %w[decision approver channel decided_at], "properties" => {
         "decision" => { "type" => "string", "enum" => %w[approved rejected changes_requested transferred] }, "approver" => { "type" => "string" }, "on_behalf_of" => NULLABLE_STRING,
-        "comment" => NULLABLE_STRING, "channel" => { "type" => "string", "enum" => %w[web mobile api] }, "decided_at" => { "type" => "string", "format" => "date-time" } } },
+        "transferred_to" => NULLABLE_STRING.merge("description" => "For a hand-over: who the request was handed to."), "comment" => NULLABLE_STRING, "channel" => { "type" => "string", "enum" => %w[web mobile api] }, "decided_at" => { "type" => "string", "format" => "date-time" } } },
       "ApprovalLevel" => { "type" => "object", "required" => %w[position mode current decisions], "properties" => {
         "position" => { "type" => "integer" }, "mode" => { "type" => "string", "enum" => %w[any_of all_of] }, "current" => { "type" => "boolean" },
         "decisions" => { "type" => "array", "items" => { "$ref" => "#/components/schemas/ApprovalDecisionRecord" } } } },
@@ -38,7 +38,8 @@ module Api::V1::OpenApi::ApprovalEndpoints
           "lines" => { "type" => "array", "items" => { "type" => "object", "required" => %w[account description amount_incl_vat], "properties" => {
             "account" => { "type" => "string" }, "description" => { "type" => "string" }, "amount_incl_vat" => MONEY } } }) }) },
       "ApprovalDecisionInput" => { "type" => "object", "required" => %w[decision content_fingerprint], "properties" => {
-        "decision" => { "type" => "string", "enum" => %w[approved rejected changes_requested] },
+        "decision" => { "type" => "string", "enum" => %w[approved rejected changes_requested transferred] },
+        "transfer_to_id" => { "type" => "integer", "description" => "To hand the request over: the user who may now decide in your name for this level (a person who can approve in this entity)." },
         "content_fingerprint" => { "type" => "string", "description" => "The content_fingerprint you read. If the invoice changed since, the answer is 409 content-changed: read it again." },
         "comment" => { "type" => "string", "description" => "Required to refuse and to ask for changes." } } }
     }
@@ -63,7 +64,7 @@ module Api::V1::OpenApi::ApprovalEndpoints
   end
 
   def self.decide
-    { "operationId" => "decideApproval", "summary" => "Approve, refuse or ask for changes, on the content you read", "x-required-scope" => DECIDE, "parameters" => [ ref("Id"), ref("IdempotencyKey") ],
+    { "operationId" => "decideApproval", "summary" => "Approve, refuse, ask for changes or hand over, on the content you read", "x-required-scope" => DECIDE, "parameters" => [ ref("Id"), ref("IdempotencyKey") ],
       "requestBody" => { "required" => true, "content" => { "application/json" => { "schema" => { "$ref" => "#/components/schemas/ApprovalDecisionInput" } } } },
       "responses" => { "200" => { "description" => "The request after the decision", "content" => { "application/json" => { "schema" => data("ApprovalDetail") } } } }
                        .merge(problems(401, 403, 404, 409, 422, 429, 503)) }
