@@ -3635,7 +3635,8 @@ CREATE TABLE public.approval_policies (
     active boolean DEFAULT true NOT NULL,
     version integer DEFAULT 1 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    reminder_hours integer[] DEFAULT '{24,48}'::integer[] NOT NULL
 );
 
 
@@ -3678,7 +3679,11 @@ CREATE TABLE public.approval_requests (
     decided_at timestamp(6) without time zone,
     invalidation_reason character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    reminders_sent integer DEFAULT 0 NOT NULL,
+    escalated_at timestamp(6) without time zone,
+    escalated_to_id bigint,
+    rerouted_at timestamp(6) without time zone
 );
 
 
@@ -9274,6 +9279,13 @@ CREATE INDEX index_approval_requests_on_entity_id ON public.approval_requests US
 
 
 --
+-- Name: index_approval_requests_on_escalated_to_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_requests_on_escalated_to_id ON public.approval_requests USING btree (escalated_to_id);
+
+
+--
 -- Name: index_approval_requests_on_policy_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11515,6 +11527,14 @@ ALTER TABLE ONLY public.accounting_analytical_annotations
 
 
 --
+-- Name: approval_requests fk_rails_ae4870eaf9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_requests
+    ADD CONSTRAINT fk_rails_ae4870eaf9 FOREIGN KEY (escalated_to_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_vat_declarations fk_rails_af4787f084; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12345,6 +12365,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261009170000'),
 ('20261009160000'),
 ('20261009150000'),
 ('20261009140000'),

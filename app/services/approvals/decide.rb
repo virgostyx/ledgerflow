@@ -71,7 +71,7 @@ class Approvals::Decide
 
     following = request.policy.steps.where("position > ?", request.current_step).first
     if following
-      request.update!(current_step: following.position, step_started_at: Time.current)
+      request.update!(current_step: following.position, step_started_at: Time.current, reminders_sent: 0, escalated_at: nil, escalated_to_id: nil, rerouted_at: nil)
     else
       request.update!(status: :approved, decided_at: Time.current)
       invoice.update_columns(payment_status: Accounting::Invoice.payment_statuses[:approved])

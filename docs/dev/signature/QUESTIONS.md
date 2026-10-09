@@ -18,3 +18,11 @@ Décisions prises par prudence pendant l'implémentation (règle du §14.1 de `d
 - **L'empreinte de contenu** couvre fournisseur, type de document, devise et taux, échéance, lignes (compte, quantité, prix, taux de TVA, code de grille) et SHA-256 des pièces liées. Elle ignore les libellés, les notes, le numéro attribué à la validation et l'ordre des lignes. L'IBAN écrit sur la facture y entrera avec la colonne (audit §7.8).
 - **Rôles d'un échelon** limités à ceux qui ont `approvals.approve` (propriétaire, comptable). Un assistant ne peut donc jamais être nommé approbateur par rôle.
 - **Une demande `changes_requested` est fermée** : après modification, une nouvelle demande est ouverte (une seule demande `pending` par facture, garantie par un index unique partiel).
+
+## B01a — Rappels, escalade, absence
+- **Heures de rappel par politique** (`approval_policies.reminder_hours`, 24 et 48 par défaut), délai de service et personne d'escalade par échelon. Au plus un rappel par passage du job, même si plusieurs délais sont passés d'un coup (pas de rafale).
+- **Escalade** : la personne désignée doit avoir `approvals.approve` ; sinon, ou si personne n'est désigné, ce sont les propriétaires. La personne appelée **s'ajoute** aux approbateurs de l'échelon (les autres peuvent toujours décider) ; la séparation des tâches s'applique à elle aussi.
+- **Approbateur absent ou désactivé** : quand plus personne de nommé ne peut décider, la demande est reroutée vers les propriétaires avec une alerte (une fois par échelon). Les compteurs (rappels, escalade, reroutage) repartent à zéro à chaque changement d'échelon.
+- **Notifications uniquement dans l'application pour l'instant** (écran des notifications, qui dépend du drapeau F08) : le SMTP n'est pas configuré en production, et la spec demande de toute façon des e-mails sans montants ni noms. Le lien ouvre la fiche de la facture, en attendant l'écran « À approuver ».
+- **Job horaire** `Approvals::ProcessDueJob` (`config/recurring.yml`, production seulement, comme les autres).
+- **Pas de gestion des jours fermés ni des heures calmes** : les délais sont en heures civiles. À décider si les rappels doivent éviter la nuit et le week-end.

@@ -1,6 +1,10 @@
 # Recurring tasks run by Solid Queue (inside Puma when SOLID_QUEUE_IN_PUMA is set). Development and test do not schedule
 # anything: run a job by hand, e.g. `bin/rails runner 'Accounting::GenerateRecurringInvoicesJob.perform_now'`.
 production:
+  approvals_process_due:
+    class: Approvals::ProcessDueJob
+    queue: default
+    schedule: every hour
   agent_retention:
     class: Agent::RetentionJob
     queue: agent_batch
