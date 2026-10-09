@@ -19,6 +19,7 @@ en:
     not_authorized: "You are not authorized to perform this action."
     feature_off: "This feature is not enabled for this entity."
     second_factor_required: "Two-factor authentication is required for your role: set it up to continue."
+    recent_second_factor_required: "Please confirm with your second factor again to continue."
 
   users:
     two_factor:

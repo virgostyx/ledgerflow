@@ -10,13 +10,18 @@ class Accounting::AuditLog < ApplicationRecord
   validates :auditable_id,   presence: true
   validates :action,         presence: true
 
+  # Who wrote the row: a person of the firm, or (B02a) someone of the client portal. Hashed into the chain only when it is
+  # not a user, so every row written before the column existed keeps its hash.
+  ACTOR_TYPES = %w[user portal_user].freeze
+  validates :actor_type, inclusion: { in: ACTOR_TYPES }
+
   scope :for_record,  ->(record)  { where(auditable_type: record.class.name, auditable_id: record.id) }
   scope :for_action,  ->(action)  { where(action: action) }
   scope :chronologic, -> { order(created_at: :asc) }
 
   # Appends an entry to the entity's hash chain. The advisory lock serializes writers per entity so two
   # concurrent entries can never share a predecessor. Request context defaults come from `Current`.
-  def self.record!(auditable:, action:, user: nil, payload: {}, ip_address: nil, reason: nil)
+  def self.record!(auditable:, action:, user: nil, payload: {}, ip_address: nil, reason: nil, actor_type: "user")
     user ||= Current.user
     entity_id = ActsAsTenant.current_tenant&.id
     # Third-party writes have no user: the calling application goes into the (hashed) payload instead.
@@ -28,7 +33,7 @@ class Accounting::AuditLog < ApplicationRecord
         auditable_type: auditable.class.name, auditable_id: auditable.id, action: action,
         user_id: user&.id, user_email: user&.email, payload: payload, entity_id: entity_id,
         ip_address: ip_address || Current.ip_address, user_agent: Current.user_agent, request_id: Current.request_id,
-        reason: reason || Current.reason, previous_hash: previous, created_at: Time.current.utc.round(6)
+        reason: reason || Current.reason, actor_type: actor_type, previous_hash: previous, created_at: Time.current.utc.round(6)
       ) }
       entry.content_hash = digest(entry)
       ActsAsTenant.without_tenant { entry.save! }
@@ -45,6 +50,7 @@ class Accounting::AuditLog < ApplicationRecord
       request_id: entry.request_id, user_agent: entry.user_agent, entity_id: entry.entity_id,
       created_at: entry.created_at.utc.iso8601(6)
     }
+    content[:actor_type] = entry.actor_type unless entry.actor_type == "user"
     Digest::SHA256.hexdigest("#{entry.previous_hash}#{JSON.generate(canonical(content.as_json))}")
   end
 

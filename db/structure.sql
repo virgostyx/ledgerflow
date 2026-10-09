@@ -413,7 +413,8 @@ CREATE TABLE public.accounting_audit_logs (
     content_hash character varying,
     reason text,
     user_agent character varying,
-    request_id character varying
+    request_id character varying,
+    actor_type character varying DEFAULT 'user'::character varying NOT NULL
 );
 
 
@@ -6763,7 +6764,7 @@ CREATE INDEX idx_documents_entity_status ON public.accounting_documents USING bt
 -- Name: idx_documents_integrity_failed; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_documents_integrity_failed ON public.accounting_documents USING btree (integrity_status) WHERE ((integrity_status)::text = ANY (ARRAY[('mismatch'::character varying)::text, ('missing'::character varying)::text]));
+CREATE INDEX idx_documents_integrity_failed ON public.accounting_documents USING btree (integrity_status) WHERE ((integrity_status)::text = ANY ((ARRAY['mismatch'::character varying, 'missing'::character varying])::text[]));
 
 
 --
@@ -11848,6 +11849,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261009140000'),
 ('20261009120000'),
 ('20261009090000'),
 ('20261008110000'),

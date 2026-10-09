@@ -72,7 +72,22 @@ class ApplicationController < ActionController::Base
   # Tied to the user, so one person's verification never serves another's session.
   def second_factor_passed? = session[:second_factor_user_id] == current_user.id
 
-  def second_factor_passed!(user = current_user) = session[:second_factor_user_id] = user.id
+  def second_factor_passed!(user = current_user)
+    session[:second_factor_user_id] = user.id
+    session[:second_factor_at] = Time.current.to_i
+  end
+
+  # Signature functions (B01a, B01b): a sensitive action (export a payment file, approve above a threshold) wants a second
+  # factor given a moment ago, not only the one from sign-in. Use as `before_action { require_recent_second_factor! }`.
+  # Skipped where second factors are off (development, test), like require_second_factor!.
+  # ponytail: a passkey-only person is sent to enrol a TOTP; a passkey step-up screen comes with the first screen that needs it.
+  def require_recent_second_factor!(within: 5.minutes)
+    return unless current_user && Rails.configuration.x.second_factor_required
+    return if second_factor_passed? && session[:second_factor_at].to_i > within.ago.to_i
+
+    session[:after_second_factor_path] = request.fullpath if request.get?
+    redirect_to current_user.totp_enabled? ? two_factor_challenge_path : two_factor_path, alert: t("errors.recent_second_factor_required")
+  end
 
   # The name stamped on the PDFs an external auditor downloads (F01); nil for every other role.
   def export_watermark
