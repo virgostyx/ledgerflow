@@ -700,3 +700,21 @@ en:
     unlocks:
       send_instructions: "You will receive account unlock instructions shortly."
       unlocked:          "Your account has been unlocked."
+
+  approvals:
+    errors:
+      feature_off: "Invoice approval is not enabled for this entity."
+      not_a_purchase_invoice: "Only a purchase invoice goes through approval."
+      not_open: "This invoice is cancelled or already paid: it cannot be put to approval."
+      not_pending: "This request has already been decided."
+      unknown_decision: "Unknown decision."
+      reason_required: "A reason is required."
+      content_changed: "The invoice changed since you opened it: reload the page and look at it again."
+      not_an_approver: "You are not an approver at this step."
+      own_entry: "You cannot approve an invoice you entered yourself."
+      already_decided: "You have already decided at this step."
+      approval_before_posting: "This invoice needs an approval (\"bon à payer\") before it can be posted."
+    task:
+      title: "Changes requested on invoice %{number}"
+    invalidated:
+      content_changed: "The content of the invoice changed after it was submitted."

@@ -4542,7 +4542,9 @@ CREATE TABLE public.entities (
     review_threshold_amount numeric(15,2) DEFAULT 1000.0 NOT NULL,
     organization_id bigint,
     responsible_id bigint,
-    closing_loss_account_code character varying DEFAULT '140200'::character varying NOT NULL
+    closing_loss_account_code character varying DEFAULT '140200'::character varying NOT NULL,
+    bap_before_posting boolean DEFAULT false NOT NULL,
+    allow_self_approval boolean DEFAULT false NOT NULL
 );
 
 
@@ -12343,6 +12345,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261009160000'),
 ('20261009150000'),
 ('20261009140000'),
 ('20261009120000'),

@@ -10,11 +10,13 @@ class Accounting::PostInvoice
         Accounting::Actions::ValidateInvoiceCoding,
         Accounting::Actions::ComputeInvoiceTotals,
         Accounting::Actions::ValidateInvoiceFourEyes,
+        Accounting::Actions::ValidateApprovalBeforePosting,
         Accounting::Actions::ValidateCreditNoteAmount,
         Accounting::Actions::AssignInvoiceNumber,
         Accounting::Actions::GenerateInvoiceJournalEntry,
         Accounting::Actions::UpdateInvoiceStatus,
-        Accounting::Actions::PayFromCash
+        Accounting::Actions::PayFromCash,
+        Accounting::Actions::SubmitForApproval
       )
       raise ActiveRecord::Rollback if result.failure?
 

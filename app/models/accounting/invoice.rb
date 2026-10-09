@@ -68,6 +68,8 @@ class Accounting::Invoice < ApplicationRecord
 
   after_commit :record_payment_event, on: :update, if: -> { external_digest.present? && saved_change_to_status? }
 
+  after_commit -> { Approvals::Sync.call(self) }, on: :update # B01a: a significant change invalidates the approval
+
   before_validation :default_due_date, on: :create
   before_validation :apply_franchise_rules
 

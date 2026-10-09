@@ -22,6 +22,7 @@ class Accounting::InvoiceLine < ApplicationRecord
   validates :vat_rate,    numericality: { greater_than_or_equal_to: 0 }
 
   before_validation :compute_amounts
+  after_commit :sync_approval # B01a: a significant change invalidates the approval of the invoice
 
   default_scope { order(:position) }
 
@@ -35,5 +36,12 @@ class Accounting::InvoiceLine < ApplicationRecord
     self.subtotal_excl_vat = (qty * price).round(2)
     self.vat_amount        = (subtotal_excl_vat * rate / 100).round(2)
     self.total_incl_vat    = subtotal_excl_vat + vat_amount
+  end
+
+  private
+
+  def sync_approval
+    invoice = Accounting::Invoice.find_by(id: invoice_id)
+    Approvals::Sync.call(invoice) if invoice
   end
 end

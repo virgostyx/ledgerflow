@@ -14,6 +14,7 @@ module TasksHelper
     when Accounting::JournalEntryLine then link_to("Line of entry #{target.journal_entry.reference || "##{target.journal_entry_id}"}", accounting_journal_entry_path(target.journal_entry), class: "text-primary-700 hover:underline")
     when Accounting::Partner then link_to(target.name, accounting_partner_path(target), class: "text-primary-700 hover:underline")
     when Accounting::Document then link_to(target.name, accounting_document_path(target), class: "text-primary-700 hover:underline")
+    when Accounting::Invoice then link_to(target.invoice_number || "Invoice #{target.id}", accounting_invoice_path(target), class: "text-primary-700 hover:underline")
     when Accounting::Account then "Account #{target.code}"
     when Accounting::BankTransaction then "Bank line #{target.transaction_date}"
     when Accounting::PeriodLock then "Period #{target.starts_on} to #{target.ends_on}"
