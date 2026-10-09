@@ -85,6 +85,56 @@ RSpec.describe Accounting::CashForecastQuery, type: :query do
     expect(forecast.weeks.sum { |w| w.sources.fetch(:receivables, 0) }).to eq(aged)
   end
 
+  describe "approved and awaiting approval (B01a)" do
+    # a supplier invoice with its open line on 440, due start + 3 days (week 1)
+    def supplier_invoice(amount, status)
+      invoice = create(:invoice, :posted, :supplier, partner: supplier, fiscal_year: fiscal_year, due_date: start + 3, payment_status: status)
+      entry = post(start - 1, [ expenses, amount, 0, nil ], [ suppliers, 0, amount, supplier ])
+      entry.lines.find_by(account: suppliers).update_columns(invoice_id: invoice.id, due_date: start + 3)
+      invoice
+    end
+
+    def week_one_sources = forecast.weeks.first.sources
+
+    it "tells what is approved (or needs no approval) from what still waits for approval, and from what is held" do
+      supplier_invoice(100, :approved)
+      supplier_invoice(10, :not_required)
+      supplier_invoice(200, :to_approve)
+      supplier_invoice(1000, :on_hold)
+      supplier_invoice(2000, :disputed)
+
+      sources = week_one_sources
+
+      expect(sources[:payables]).to eq(110)
+      expect(sources[:payables_pending]).to eq(200)
+      expect(sources[:payables_held]).to eq(3000)
+    end
+
+    it "still counts every one of them as an outflow: waiting for approval is not a reason to forget a debt" do
+      before = forecast.weeks.first.outflows
+      supplier_invoice(100, :approved)
+      supplier_invoice(200, :to_approve)
+      supplier_invoice(1000, :on_hold)
+
+      expect(forecast.weeks.first.outflows - before).to eq(1300)
+    end
+
+    it "counts a line that is not an invoice with the approved ones, as before" do
+      expect(forecast.weeks[2].sources[:payables]).to eq(400)
+      expect(forecast.weeks[2].sources).not_to include(:payables_pending)
+    end
+
+    it "makes the approved and the pending add up to the open supplier balance of the aged balance (R04)" do
+      supplier_invoice(100, :approved)
+      supplier_invoice(200, :to_approve)
+
+      aged = Accounting::AgedBalanceQuery.totals(Accounting::AgedBalanceQuery.new(kind: :supplier, as_of: start).call).total
+      total = forecast.weeks.sum { |w| w.sources.slice(:payables, :payables_pending, :payables_held).values.sum }
+
+      expect(total).to eq(aged)
+    end
+  end
+
   it "adding a manual item changes only its own week" do
     before = forecast.weeks.map(&:closing)
     create(:cash_forecast_item, label: "Grant", direction: :inflow, amount: 100, recurrence: :once, first_date: start + 24)

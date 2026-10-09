@@ -9,17 +9,18 @@ class Approvals::Decide
   def self.call(request:, user:, decision:, content_fingerprint:, comment: nil, channel: :web, device_fingerprint: nil, recent_second_factor: false)
     ctx = LightService::Context.make(decision: nil)
     invoice = request.subject
-    code = refusal_for(request, invoice, user, decision.to_s, content_fingerprint, comment, recent_second_factor)
+    directory = Approvals::Directory.new(invoice.entity) # who is who in this entity, read once
+    code = refusal_for(request, invoice, user, decision.to_s, content_fingerprint, comment, recent_second_factor, directory)
     return refuse(ctx, code) if code
 
     ApplicationRecord.transaction do
       request.lock!
       next refuse(ctx, :not_pending) unless request.pending? # lost a race with another click
 
-      on_behalf_of = Approvals::Approvers.for(request)[user.id]
+      on_behalf_of = Approvals::Approvers.for(request, directory)[user.id]
       ctx[:decision] = request.decisions.create!(step_position: request.current_step, approver: user, on_behalf_of_id: on_behalf_of, decision: decision,
                                                  comment: comment, channel: channel, device_fingerprint: device_fingerprint, content_fingerprint: content_fingerprint)
-      apply(request, invoice, ctx[:decision], user)
+      apply(request, invoice, ctx[:decision], user, directory)
     end
     ctx
   end
@@ -32,7 +33,7 @@ class Approvals::Decide
   end
   private_class_method :refuse
 
-  def self.refusal_for(request, invoice, user, decision, content_fingerprint, comment, recent_second_factor)
+  def self.refusal_for(request, invoice, user, decision, content_fingerprint, comment, recent_second_factor, directory)
     return :feature_off unless invoice.entity.feature?(:b01a)
     return :content_changed if request.invalidated? # the invoice changed after the approver opened it
     return :not_pending unless request.pending?
@@ -40,7 +41,7 @@ class Approvals::Decide
     return :reason_required if decision != "approved" && comment.blank?
     return :content_changed unless content_fingerprint == request.content_fingerprint && Approvals::ContentFingerprint.call(invoice) == request.content_fingerprint
 
-    approvers = Approvals::Approvers.for(request)
+    approvers = Approvals::Approvers.for(request, directory)
     return :not_an_approver unless approvers.key?(user.id)
 
     on_behalf_of = approvers[user.id]
@@ -72,20 +73,20 @@ class Approvals::Decide
   end
   private_class_method :already_decided?
 
-  def self.apply(request, invoice, decision, user)
+  def self.apply(request, invoice, decision, user, directory)
     payload = { request_id: request.id, step: decision.step_position, channel: decision.channel, on_behalf_of: decision.on_behalf_of_id,
                 content_fingerprint: decision.content_fingerprint, device_fingerprint: decision.device_fingerprint }
     case decision.decision
-    when "approved" then approve(request, invoice)
+    when "approved" then approve(request, invoice, directory)
     when "rejected" then close(request, invoice, :rejected)
-    when "changes_requested" then ask_for_changes(request, invoice, decision, user)
+    when "changes_requested" then ask_for_changes(request, invoice, decision, user, directory)
     end
     Accounting::AuditLog.record!(auditable: invoice, action: "approval_#{decision.decision}", user: user, payload: payload, reason: decision.comment)
   end
   private_class_method :apply
 
-  def self.approve(request, invoice)
-    return unless level_complete?(request)
+  def self.approve(request, invoice, directory)
+    return unless level_complete?(request, directory)
 
     following = request.policy.steps.where("position > ?", request.current_step).first
     if following
@@ -98,13 +99,13 @@ class Approvals::Decide
   private_class_method :approve
 
   # any_of: one approval is enough. all_of: every person named has approved, and every role named is represented.
-  def self.level_complete?(request)
+  def self.level_complete?(request, directory)
     step = request.policy.steps.find_by!(position: request.current_step)
     approved = request.decisions.approved.where(step_position: step.position)
     return approved.exists? if step.any_of?
 
     principals = approved.map { |d| d.on_behalf_of_id || d.approver_id }
-    roles = UserEntity.current.where(user_id: principals).pluck(:role)
+    roles = principals.filter_map { |id| directory.role_of(id) }
     step.approver_user_ids.all? { |id| principals.include?(id) } && step.approver_roles.all? { |role| roles.include?(role) }
   end
   private_class_method :level_complete?
@@ -115,11 +116,10 @@ class Approvals::Decide
   end
   private_class_method :close
 
-  def self.ask_for_changes(request, invoice, decision, user)
+  def self.ask_for_changes(request, invoice, decision, user, directory)
     close(request, invoice, :changes_requested)
     # whoever wrote it, else whoever submitted it, as long as they are still of the entity (a task needs a member); otherwise the task waits for an owner to assign it
-    members = UserEntity.current.where(user_id: [ invoice.created_by_id, request.submitted_by_id ].compact).pluck(:user_id)
-    assignee = User.find_by(id: [ invoice.created_by_id, request.submitted_by_id ].compact.find { |id| members.include?(id) })
+    assignee = User.find_by(id: [ invoice.created_by_id, request.submitted_by_id ].compact.find { |id| directory.member?(id) })
     task = Accounting::Task.create!(title: I18n.t("approvals.task.title", number: invoice.invoice_number || invoice.id), description: decision.comment, kind: :to_check,
                                     priority: :high, assignee: assignee, author: user, target: invoice)
     Accounting::Notify.call(user: assignee, event: "task_assigned", subject: task, data: { by: user.full_name }) if assignee && assignee != user

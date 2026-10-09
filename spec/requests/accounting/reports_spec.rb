@@ -449,6 +449,29 @@ RSpec.describe "Accounting::Reports", type: :request do
       expect(response.body).to include('data-controller="chart"', "Manual and recurring items")
     end
 
+    it "says how much of the outflows still waits for approval, and how much is on hold (B01a)" do
+      liability_account.update!(reconcilable: true)
+      supplier = create(:partner, :supplier)
+      { to_approve: 700, on_hold: 300 }.each do |status, amount|
+        invoice = create(:invoice, :posted, :supplier, partner: supplier, fiscal_year: fiscal_year, due_date: Date.current + 3, payment_status: status)
+        entry = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 10)
+        ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+        create(:journal_entry_line, journal_entry: entry, account: expense_account, debit: amount, credit: 0)
+        create(:journal_entry_line, journal_entry: entry, account: liability_account, partner: supplier, debit: 0, credit: amount, invoice_id: invoice.id, due_date: Date.current + 3)
+        entry.post!
+      end
+
+      get accounting_reports_cash_forecast_path
+
+      expect(response.body).to include("awaiting approval").and include("on hold")
+    end
+
+    it "says nothing of approval when nothing waits" do
+      get accounting_reports_cash_forecast_path
+
+      expect(response.body).not_to include("awaiting approval")
+    end
+
     it "accepts the 6-month horizon and a scenario" do
       get accounting_reports_cash_forecast_path(horizon: "months_6", scenario: "prudent", threshold: "500")
       expect(response).to have_http_status(:ok)

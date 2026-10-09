@@ -20,7 +20,7 @@ class Approvals::Delegation < ApplicationRecord
 
   def both_can_approve
     { delegator: delegator_id, delegate: delegate_id }.each do |role, user_id|
-      allowed = UserEntity.current.where(user_id: user_id).any? { |membership| membership.allows?("approvals.approve") }
+      allowed = UserEntity.current.where(user_id: user_id, entity_id: entity_id).includes(:custom_role).any? { |membership| membership.allows?("approvals.approve") }
       errors.add(role, "cannot approve in this entity") unless allowed
     end
   end

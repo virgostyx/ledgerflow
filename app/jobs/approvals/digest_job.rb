@@ -1,4 +1,5 @@
 # Every morning (B01a): each approver with something waiting gets one e-mail, once a day, unless they asked for no e-mail. Counts and a link only.
+# The approvers are those of the entity the requests are in, nobody else's.
 class Approvals::DigestJob < ApplicationJob
   queue_as :default
 
@@ -6,16 +7,17 @@ class Approvals::DigestJob < ApplicationJob
     Entity.find_each do |entity|
       next unless entity.feature?(:b01a)
 
-      ActsAsTenant.with_tenant(entity) { UserEntity.current.includes(:user, :custom_role).where(notify_by_email: true).each { |membership| tell(entity, membership) } }
+      ActsAsTenant.with_tenant(entity) do
+        directory = Approvals::Directory.new(entity)
+        directory.mailable.each { |membership| tell(entity, membership, directory) if directory.approving?(membership.user_id) }
+      end
     end
   end
 
   private
 
-  def tell(entity, membership)
-    return unless membership.allows?("approvals.approve")
-
-    rows = Approvals::Inbox.for(membership.user)
+  def tell(entity, membership, directory)
+    rows = Approvals::Inbox.for(membership.user, {}, directory: directory)
     return if rows.empty?
 
     # the record of the mail sent today is what keeps it to one a day

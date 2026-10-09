@@ -28,8 +28,17 @@
         <tr class="<%= 'bg-red-50' if w.alert %>">
           <td class="px-4 py-2"><%= w.index %> <span class="text-gray-500">(<%= l(w.from, format: :short) %> – <%= l(w.to, format: :short) %>)</span></td>
           <td class="px-4 py-2 text-right font-mono"><%= number_to_currency(w.opening, unit: "€") %></td>
-          <td class="px-4 py-2 text-right font-mono text-emerald-700" title="<%= w.sources.reject { |k, _| k == :payables || k == :vat }.map { |k, v| "#{k}: #{v}" }.join(', ') %>"><%= number_to_currency(w.inflows, unit: "€") %></td>
-          <td class="px-4 py-2 text-right font-mono text-red-700"><%= number_to_currency(w.outflows, unit: "€") %></td>
+          <td class="px-4 py-2 text-right font-mono text-emerald-700" title="<%= w.sources.reject { |k, _| %i[payables payables_pending payables_held vat].include?(k) }.map { |k, v| "#{k}: #{v}" }.join(', ') %>"><%= number_to_currency(w.inflows, unit: "€") %></td>
+          <td class="px-4 py-2 text-right font-mono text-red-700">
+            <%= number_to_currency(w.outflows, unit: "€") %>
+            <% if w.sources[:payables_pending]&.positive? || w.sources[:payables_held]&.positive? %>
+              <span class="block text-xs font-sans font-normal text-gray-500">of which
+                <% parts = [] %>
+                <% parts << "#{number_to_currency(w.sources[:payables_pending], unit: '€')} awaiting approval" if w.sources[:payables_pending]&.positive? %>
+                <% parts << "#{number_to_currency(w.sources[:payables_held], unit: '€')} on hold" if w.sources[:payables_held]&.positive? %>
+                <%= parts.to_sentence %></span>
+            <% end %>
+          </td>
           <td class="px-4 py-2 text-right font-mono font-semibold <%= 'text-red-700' if w.alert %>"><%= number_to_currency(w.closing, unit: "€") %><%= " ⚠" if w.alert %></td>
         </tr>
       <% end %>

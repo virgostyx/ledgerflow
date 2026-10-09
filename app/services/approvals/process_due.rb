@@ -7,8 +7,12 @@ class Approvals::ProcessDue
     Entity.find_each do |entity|
       next unless entity.feature?(:b01a)
 
-      ActsAsTenant.with_tenant(entity) { new.process }
+      ActsAsTenant.with_tenant(entity) { new(Approvals::Directory.new(entity)).process }
     end
+  end
+
+  def initialize(directory)
+    @directory = directory
   end
 
   def process
@@ -16,7 +20,7 @@ class Approvals::ProcessDue
       step = request.policy&.steps&.find_by(position: request.current_step)
       next unless step && request.step_started_at
 
-      reroute(request) if request.rerouted_at.nil? && Approvals::Approvers.for(request).empty?
+      reroute(request) if request.rerouted_at.nil? && Approvals::Approvers.for(request, @directory).empty?
       remind(request, step)
       escalate(request, step)
     end
@@ -31,7 +35,7 @@ class Approvals::ProcessDue
     return unless due > request.reminders_sent
 
     request.update!(reminders_sent: due)
-    tell(Approvals::Approvers.for(request).keys, "approval_reminder:#{request.id}:#{step.position}:#{due}", request)
+    tell(Approvals::Approvers.for(request, @directory).keys, "approval_reminder:#{request.id}:#{step.position}:#{due}", request)
     audit(request, "approval_reminder", step: step.position, number: due)
   end
 
@@ -58,9 +62,7 @@ class Approvals::ProcessDue
     Accounting::AuditLog.record!(auditable: request.subject, action: action, payload: payload.merge(request_id: request.id))
   end
 
-  def owner_ids = UserEntity.owners.current.pluck(:user_id)
+  def owner_ids = @directory.owner_ids
 
-  def can_approve?(user)
-    UserEntity.current.find_by(user_id: user.id)&.allows?("approvals.approve") == true
-  end
+  def can_approve?(user) = @directory.approving?(user.id)
 end

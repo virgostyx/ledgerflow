@@ -26,7 +26,7 @@ class Accounting::CashForecastQuery
   def call
     movements = Hash.new { |h, k| h[k] = { in: BigDecimal("0"), out: BigDecimal("0"), sources: Hash.new(BigDecimal("0")) } }
     receivable_items.each { |date, amount| add(movements, date, :in, amount, :receivables) }
-    payable_items.each    { |date, amount| add(movements, date, :out, amount, :payables) }
+    payable_items.each    { |date, amount, source| add(movements, date, :out, amount, source) }
     vat_item&.then        { |date, amount| add(movements, date, :out, amount, :vat) }
     manual_items.each     { |date, dir, amount| add(movements, date, dir, amount, :manual) }
     recurring_items.each  { |date, dir, amount| add(movements, date, dir, amount, :recurring) }
@@ -71,7 +71,7 @@ class Accounting::CashForecastQuery
   # [[date, amount], ...] — customer residuals shifted per scenario.
   def receivable_items
     lateness = @scenario == :prudent ? average_lateness_by_partner : {}
-    open_items(:customer).map do |partner_id, amount, due|
+    open_items(:customer).map do |partner_id, amount, due, _|
       shift = case @scenario
       when :prudent then (lateness[partner_id] || 0) + @prudent_days
       when :optimistic then -@early_days
@@ -81,15 +81,27 @@ class Accounting::CashForecastQuery
     end
   end
 
-  def payable_items = open_items(:supplier).map { |_, amount, due| [ due, amount ] }
+  # [[date, amount, source], ...]: what is owed to suppliers, by where it stands for payment (B01a). Everything is an outflow;
+  # the source says whether it is approved (or needs no approval, or is not an invoice), still waits for approval, or is held.
+  def payable_items = open_items(:supplier).map { |_, amount, due, payment_status| [ due, amount, payable_source(payment_status) ] }
+
+  PENDING_STATUSES = [ Accounting::Invoice.payment_statuses[:to_approve] ].freeze
+  HELD_STATUSES = Accounting::Invoice.payment_statuses.values_at(:on_hold, :disputed).freeze
+
+  def payable_source(payment_status)
+    return :payables_pending if PENDING_STATUSES.include?(payment_status)
+    return :payables_held if HELD_STATUSES.include?(payment_status)
+
+    :payables
+  end
 
   def open_items(kind)
     Accounting::OpenLineSql.open_scope(kind: kind, as_of: @start)
       .pluck(Arel.sql("accounting_journal_entry_lines.partner_id"),
              Arel.sql("(#{Accounting::OpenLineSql.residual(kind: kind, as_of: @start)})"),
-             Arel.sql(Accounting::OpenLineSql.due_date))
-      .reject { |_, amount, _| amount.zero? }
-      .map { |partner_id, amount, due| [ partner_id, BigDecimal(amount.to_s), due ] }
+             Arel.sql(Accounting::OpenLineSql.due_date), Arel.sql("i.payment_status"))
+      .reject { |_, amount, _, _| amount.zero? }
+      .map { |partner_id, amount, due, payment_status| [ partner_id, BigDecimal(amount.to_s), due, payment_status ] }
   end
 
   # Payment delay observed per client on settled invoices: amount-weighted days between due date and

@@ -40,7 +40,7 @@ class Accounting::Settings::ApprovalPoliciesController < Accounting::Settings::B
   def set_policy = (@policy = Approvals::Policy.find(params[:id]))
 
   def load_members
-    ids = UserEntity.current.includes(:custom_role).select { |m| m.allows?("approvals.approve") }.map(&:user_id)
+    ids = Approvals::Directory.new.approving_ids.to_a
     @members = User.where(id: ids).order(:full_name)
   end
 
