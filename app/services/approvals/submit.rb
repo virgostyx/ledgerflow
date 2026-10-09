@@ -11,8 +11,9 @@ class Approvals::Submit
     return ctx.tap { |c| c.fail!(I18n.t("approvals.errors.not_open")) } unless OPEN_STATUSES.include?(invoice.status)
 
     ApplicationRecord.transaction do
-      # One submission at a time per invoice, so that two clicks cannot open two requests.
-      invoice.lock!
+      # One submission at a time per invoice, so that two clicks cannot open two requests. Another instance is locked: lock! would
+      # reload this one and wipe its saved changes, which the after_commit callbacks of the posting still need.
+      Accounting::Invoice.lock.find(invoice.id)
       fingerprint = Approvals::ContentFingerprint.call(invoice)
       existing = Approvals::Request.where(subject: invoice, content_fingerprint: fingerprint, status: %i[pending approved]).order(:id).last
       next ctx[:request] = existing if existing

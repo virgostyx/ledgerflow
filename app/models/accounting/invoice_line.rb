@@ -41,7 +41,7 @@ class Accounting::InvoiceLine < ApplicationRecord
   private
 
   def sync_approval
-    invoice = Accounting::Invoice.find_by(id: invoice_id)
+    invoice = Accounting::Invoice.unscoped.find_by(id: invoice_id)
     Approvals::Sync.call(invoice) if invoice
   end
 end

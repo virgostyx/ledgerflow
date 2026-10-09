@@ -5,6 +5,11 @@ class Approvals::Sync
   def self.call(invoice)
     return unless invoice.supplier? && invoice.entity.feature?(:b01a)
 
+    # Seeders, jobs and imports save invoices outside any tenant: the circuit always works in the invoice's own.
+    ActsAsTenant.with_tenant(invoice.entity) { sync(invoice) }
+  end
+
+  def self.sync(invoice)
     current = Approvals::Request.where(subject: invoice, status: %i[pending approved]).order(:id).last
     return unless current
 
@@ -18,4 +23,5 @@ class Approvals::Sync
       Approvals::Submit.call(invoice: invoice, user: current.submitted_by)
     end
   end
+  private_class_method :sync
 end

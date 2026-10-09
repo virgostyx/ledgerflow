@@ -16,7 +16,7 @@ class Accounting::DocumentLink < ApplicationRecord
   private
 
   def sync_approval
-    invoice = Accounting::Invoice.find_by(id: target_id)
+    invoice = Accounting::Invoice.unscoped.find_by(id: target_id)
     Approvals::Sync.call(invoice) if invoice
   end
 end

@@ -100,4 +100,17 @@ RSpec.describe Approvals::Sync do
 
     expect(request.reload).to be_pending
   end
+
+  it "works outside any tenant, where seeders and jobs save invoices and lines" do
+    invoice
+    request
+
+    expect do
+      ActsAsTenant.without_tenant do
+        Accounting::InvoiceLine.create!(entity: entity, invoice: invoice, account: invoice.lines.first.account, description: "Extra", unit_price: "10.00")
+        invoice.update!(due_date: invoice.due_date + 3)
+      end
+    end.not_to raise_error
+    expect(request.reload).to be_invalidated
+  end
 end
