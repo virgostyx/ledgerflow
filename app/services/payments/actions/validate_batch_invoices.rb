@@ -36,6 +36,11 @@ class Payments::Actions::ValidateBatchInvoices
       problems << I18n.t("payments.errors.missing_iban", name: invoice.partner.name)
     end
 
+    # B01a: an invoice that has not gone through its approval circuit is not paid (waiting for approval, put on hold by a refusal or a return, disputed)
+    if invoice.entity.feature?(:b01a) && %w[to_approve on_hold disputed].include?(invoice.payment_status)
+      problems << I18n.t("payments.errors.not_approved.#{invoice.payment_status}", number: invoice.invoice_number || invoice.id)
+    end
+
     if Accounting::PaymentBatchLine.active.where(invoice_id: invoice.id).exists?
       problems << I18n.t("payments.errors.already_in_batch", number: invoice.invoice_number || invoice.id)
     end

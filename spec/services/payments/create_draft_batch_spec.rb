@@ -33,6 +33,47 @@ RSpec.describe Payments::CreateDraftBatch do
       expect(Accounting::PaymentBatch.count).to eq(0)
     end
 
+    # B01a criterion 8: an invoice that has not gone through its approval circuit is not paid
+    describe 'the approval of the invoice (B01a)' do
+      def batch_of(invoice) = described_class.call(invoice_ids: [ invoice.id ], bank_account: bank_account, requested_execution_date: Date.current + 1)
+
+      it 'refuses an invoice that waits for approval, is on hold or is disputed, and says why' do
+        %i[to_approve on_hold disputed].each do |status|
+          invoice.update_columns(payment_status: Accounting::Invoice.payment_statuses[status])
+
+          result = batch_of(invoice)
+
+          expect(result).to be_failure, status.to_s
+          expect(result.message).to match(/approval|hold|dispute/i)
+        end
+        expect(Accounting::PaymentBatch.count).to eq(0)
+      end
+
+      it 'takes an invoice that is approved, or that needs no approval' do
+        %i[approved not_required].each do |status|
+          invoice.update_columns(payment_status: Accounting::Invoice.payment_statuses[status])
+          result = batch_of(invoice)
+
+          expect(result).to be_success, status.to_s
+          result.payment_batch.destroy!
+        end
+      end
+
+      it 'refuses an approval that no longer matches the invoice (it was changed since)' do
+        entity.update!(features: entity.features.merge('b01a' => true))
+        policy = Approvals::Policy.create!(name: 'all', subject: :purchase_invoice, priority: 1)
+        policy.steps.create!(position: 1, mode: :any_of, approver_roles: %w[admin])
+        request = Approvals::Submit.call(invoice: invoice, user: nil)[:request]
+        owner = create(:user).tap { |u| create(:user_entity, :admin, user: u, entity: entity) }
+        Approvals::Decide.call(request: request, user: owner, decision: :approved, content_fingerprint: request.content_fingerprint)
+        expect(batch_of(invoice)).to be_success.and(satisfy { |r| r.payment_batch.destroy! })
+
+        invoice.lines.first.update!(unit_price: '9999.00') # invalidates the approval: the circuit starts again
+
+        expect(batch_of(invoice)).to be_failure
+      end
+    end
+
     it 'refuses a foreign-currency invoice (SEPA pays in EUR only)' do
       invoice.update_columns(currency: 'USD')
 

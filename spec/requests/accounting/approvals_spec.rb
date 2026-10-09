@@ -209,6 +209,20 @@ RSpec.describe "Invoice approval screens (B01a)", type: :request do
       expect(request_record.reload.transfers).to eq({})
     end
 
+    it "decides nothing, and shows nothing, for someone who is not signed in (an e-mail link cannot approve)" do
+      sign_out :user
+
+      get accounting_approval_path(request_record)
+      expect(response).to redirect_to(new_user_session_path)
+      post decide_accounting_approval_path(request_record), params: { decision: "approved", content_fingerprint: request_record.content_fingerprint }
+      expect(response).to redirect_to(new_user_session_path)
+      get decide_accounting_approval_path(request_record, decision: "approved", content_fingerprint: request_record.content_fingerprint)
+      expect(response.status).to be_in([ 302, 404 ])
+
+      expect(request_record.reload).to be_pending
+      expect(request_record.decisions).to be_empty
+    end
+
     it "keeps the author from approving their own invoice" do
       author_owner = create(:user_entity, :admin, user: author, entity: entity).user
       sign_in author_owner

@@ -25,6 +25,16 @@ RSpec.describe Accounting::PostInvoice, "approval" do
       expect(Approvals::Request.pending.sole.subject).to eq(invoice)
     end
 
+    it "counts the VAT of an invoice in the VAT return while its approval is still waiting (the deduction does not wait for the approval)" do
+      policy!
+
+      described_class.call(invoice: invoice)
+
+      expect(invoice.reload).to be_payment_to_approve
+      grids = Accounting::VatGridQuery.call(fiscal_year_id: fiscal_year.id, period_start: fiscal_year.start_date, period_end: fiscal_year.end_date)
+      expect(grids["59"]).to eq(BigDecimal("210.00")) # 21 % of 1,000.00, deductible
+    end
+
     it "records that no approval is needed when no policy applies" do
       described_class.call(invoice: invoice)
 

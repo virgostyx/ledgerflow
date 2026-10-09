@@ -647,6 +647,10 @@ en:
       foreign_account:      "Bank account %{label} is not in EUR: it cannot be used for a SEPA batch."
       missing_iban:         "Supplier %{name} has no valid IBAN on file."
       already_in_batch:     "Invoice %{number} is already included in another active payment batch."
+      not_approved:
+        to_approve: "Invoice %{number} is waiting for its approval and cannot be paid yet."
+        on_hold: "Invoice %{number} is on hold (refused, returned or sent back for changes) and cannot be paid."
+        disputed: "Invoice %{number} is disputed and cannot be paid."
       batch_not_generated:  "Only a generated payment batch can be executed."
       batch_not_draft:      "Only a draft payment batch can generate a SEPA file."
       sepa_generation_failed: "Could not generate the SEPA payment file: %{message}"
