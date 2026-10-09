@@ -11,6 +11,8 @@ class Accounting::Invoice < ApplicationRecord
   enum :invoice_type,   { customer: 0, supplier: 1 }
   enum :document_type,  { invoice: 0, credit_note: 1 }
   enum :status,         { draft: 0, posted: 1, paid: 2, cancelled: 3, partially_paid: 4 }
+  # B01a: where the invoice stands for payment. not_required until a policy says otherwise, so what exists is untouched.
+  enum :payment_status, { not_required: 0, to_approve: 1, approved: 2, on_hold: 3, scheduled: 4, paid: 5, disputed: 6 }, prefix: :payment
   enum :peppol_status,  { not_sent: 0, queued: 1, delivered: 2, failed: 3 }
   enum :vat_treatment,  { domestic: 0, intracom_goods: 1, intracom_services: 2,
                           construction_reverse_charge: 3, export: 4, exempt: 5 }

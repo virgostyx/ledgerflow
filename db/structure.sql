@@ -1509,7 +1509,8 @@ CREATE TABLE public.accounting_invoices (
     supplier_reference character varying,
     created_by_id bigint,
     payment_reference character varying,
-    exchange_rate_reason text
+    exchange_rate_reason text,
+    payment_status integer DEFAULT 0 NOT NULL
 );
 
 
@@ -3543,6 +3544,201 @@ ALTER SEQUENCE public.api_requests_id_seq OWNED BY public.api_requests.id;
 
 
 --
+-- Name: approval_decisions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.approval_decisions (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    request_id bigint NOT NULL,
+    step_position integer NOT NULL,
+    approver_id bigint NOT NULL,
+    on_behalf_of_id bigint,
+    decision integer NOT NULL,
+    comment text,
+    channel integer DEFAULT 0 NOT NULL,
+    device_fingerprint character varying,
+    content_fingerprint character varying(64) NOT NULL,
+    decided_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: approval_decisions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.approval_decisions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: approval_decisions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.approval_decisions_id_seq OWNED BY public.approval_decisions.id;
+
+
+--
+-- Name: approval_delegations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.approval_delegations (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    delegator_id bigint NOT NULL,
+    delegate_id bigint NOT NULL,
+    starts_on date NOT NULL,
+    ends_on date NOT NULL,
+    policy_ids bigint[] DEFAULT '{}'::bigint[] NOT NULL,
+    reason character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: approval_delegations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.approval_delegations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: approval_delegations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.approval_delegations_id_seq OWNED BY public.approval_delegations.id;
+
+
+--
+-- Name: approval_policies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.approval_policies (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    name character varying NOT NULL,
+    subject integer NOT NULL,
+    conditions jsonb DEFAULT '{}'::jsonb NOT NULL,
+    priority integer DEFAULT 100 NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    version integer DEFAULT 1 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: approval_policies_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.approval_policies_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: approval_policies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.approval_policies_id_seq OWNED BY public.approval_policies.id;
+
+
+--
+-- Name: approval_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.approval_requests (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    policy_id bigint,
+    policy_version integer,
+    subject_type character varying NOT NULL,
+    subject_id bigint NOT NULL,
+    current_step integer DEFAULT 1 NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    content_fingerprint character varying(64) NOT NULL,
+    submitted_by_id bigint,
+    submitted_at timestamp(6) without time zone,
+    step_started_at timestamp(6) without time zone,
+    decided_at timestamp(6) without time zone,
+    invalidation_reason character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: approval_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.approval_requests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: approval_requests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.approval_requests_id_seq OWNED BY public.approval_requests.id;
+
+
+--
+-- Name: approval_steps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.approval_steps (
+    id bigint NOT NULL,
+    policy_id bigint NOT NULL,
+    "position" integer NOT NULL,
+    mode integer DEFAULT 0 NOT NULL,
+    approver_user_ids bigint[] DEFAULT '{}'::bigint[] NOT NULL,
+    approver_roles character varying[] DEFAULT '{}'::character varying[] NOT NULL,
+    service_hours integer,
+    escalate_to_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: approval_steps_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.approval_steps_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: approval_steps_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.approval_steps_id_seq OWNED BY public.approval_steps.id;
+
+
+--
 -- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5501,6 +5697,41 @@ ALTER TABLE ONLY public.api_requests ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: approval_decisions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_decisions ALTER COLUMN id SET DEFAULT nextval('public.approval_decisions_id_seq'::regclass);
+
+
+--
+-- Name: approval_delegations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_delegations ALTER COLUMN id SET DEFAULT nextval('public.approval_delegations_id_seq'::regclass);
+
+
+--
+-- Name: approval_policies id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_policies ALTER COLUMN id SET DEFAULT nextval('public.approval_policies_id_seq'::regclass);
+
+
+--
+-- Name: approval_requests id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_requests ALTER COLUMN id SET DEFAULT nextval('public.approval_requests_id_seq'::regclass);
+
+
+--
+-- Name: approval_steps id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_steps ALTER COLUMN id SET DEFAULT nextval('public.approval_steps_id_seq'::regclass);
+
+
+--
 -- Name: closing_runs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6401,6 +6632,46 @@ ALTER TABLE ONLY public.api_idempotency_keys
 
 ALTER TABLE ONLY public.api_requests
     ADD CONSTRAINT api_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: approval_decisions approval_decisions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_decisions
+    ADD CONSTRAINT approval_decisions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: approval_delegations approval_delegations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_delegations
+    ADD CONSTRAINT approval_delegations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: approval_policies approval_policies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_policies
+    ADD CONSTRAINT approval_policies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: approval_requests approval_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_requests
+    ADD CONSTRAINT approval_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: approval_steps approval_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_steps
+    ADD CONSTRAINT approval_steps_pkey PRIMARY KEY (id);
 
 
 --
@@ -7762,6 +8033,13 @@ CREATE INDEX index_accounting_invoices_on_partner_id ON public.accounting_invoic
 
 
 --
+-- Name: index_accounting_invoices_on_payment_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_invoices_on_payment_status ON public.accounting_invoices USING btree (payment_status);
+
+
+--
 -- Name: index_accounting_invoices_on_peppol_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8931,6 +9209,118 @@ CREATE INDEX index_api_requests_on_api_client_id_and_created_at ON public.api_re
 
 
 --
+-- Name: index_approval_decisions_on_approver_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_decisions_on_approver_id ON public.approval_decisions USING btree (approver_id);
+
+
+--
+-- Name: index_approval_decisions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_decisions_on_entity_id ON public.approval_decisions USING btree (entity_id);
+
+
+--
+-- Name: index_approval_decisions_on_on_behalf_of_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_decisions_on_on_behalf_of_id ON public.approval_decisions USING btree (on_behalf_of_id);
+
+
+--
+-- Name: index_approval_decisions_on_request_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_decisions_on_request_id ON public.approval_decisions USING btree (request_id);
+
+
+--
+-- Name: index_approval_delegations_on_delegate_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_delegations_on_delegate_id ON public.approval_delegations USING btree (delegate_id);
+
+
+--
+-- Name: index_approval_delegations_on_delegator_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_delegations_on_delegator_id ON public.approval_delegations USING btree (delegator_id);
+
+
+--
+-- Name: index_approval_delegations_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_delegations_on_entity_id ON public.approval_delegations USING btree (entity_id);
+
+
+--
+-- Name: index_approval_policies_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_policies_on_entity_id ON public.approval_policies USING btree (entity_id);
+
+
+--
+-- Name: index_approval_requests_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_requests_on_entity_id ON public.approval_requests USING btree (entity_id);
+
+
+--
+-- Name: index_approval_requests_on_policy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_requests_on_policy_id ON public.approval_requests USING btree (policy_id);
+
+
+--
+-- Name: index_approval_requests_on_subject_type_and_subject_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_requests_on_subject_type_and_subject_id ON public.approval_requests USING btree (subject_type, subject_id);
+
+
+--
+-- Name: index_approval_requests_on_submitted_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_requests_on_submitted_by_id ON public.approval_requests USING btree (submitted_by_id);
+
+
+--
+-- Name: index_approval_requests_one_pending_per_subject; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_approval_requests_one_pending_per_subject ON public.approval_requests USING btree (subject_type, subject_id) WHERE (status = 0);
+
+
+--
+-- Name: index_approval_steps_on_escalate_to_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_steps_on_escalate_to_id ON public.approval_steps USING btree (escalate_to_id);
+
+
+--
+-- Name: index_approval_steps_on_policy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_approval_steps_on_policy_id ON public.approval_steps USING btree (policy_id);
+
+
+--
+-- Name: index_approval_steps_on_policy_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_approval_steps_on_policy_id_and_position ON public.approval_steps USING btree (policy_id, "position");
+
+
+--
 -- Name: index_closing_runs_on_approved_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9731,6 +10121,14 @@ ALTER TABLE ONLY public.accounting_entry_template_lines
 
 
 --
+-- Name: approval_requests fk_rails_048f2033ab; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_requests
+    ADD CONSTRAINT fk_rails_048f2033ab FOREIGN KEY (policy_id) REFERENCES public.approval_policies(id) ON DELETE SET NULL;
+
+
+--
 -- Name: accounting_bank_statements fk_rails_04d068db3c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9819,6 +10217,14 @@ ALTER TABLE ONLY public.accounting_analytical_axes
 
 
 --
+-- Name: approval_delegations fk_rails_141083a0bb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_delegations
+    ADD CONSTRAINT fk_rails_141083a0bb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_vat_declarations fk_rails_14867a239f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9867,6 +10273,14 @@ ALTER TABLE ONLY public.accounting_partners
 
 
 --
+-- Name: approval_delegations fk_rails_1aebba5e0d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_delegations
+    ADD CONSTRAINT fk_rails_1aebba5e0d FOREIGN KEY (delegator_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_bank_rules fk_rails_1c0ebe51cb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9896,6 +10310,14 @@ ALTER TABLE ONLY public.accounting_journal_entry_lines
 
 ALTER TABLE ONLY public.dunning_item_lines
     ADD CONSTRAINT fk_rails_1f8241fae6 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: approval_decisions fk_rails_1fe5983c3d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_decisions
+    ADD CONSTRAINT fk_rails_1fe5983c3d FOREIGN KEY (request_id) REFERENCES public.approval_requests(id) ON DELETE CASCADE;
 
 
 --
@@ -9944,6 +10366,14 @@ ALTER TABLE ONLY public.agent_digest_preferences
 
 ALTER TABLE ONLY public.accounting_invoice_events
     ADD CONSTRAINT fk_rails_21a060b812 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
+-- Name: approval_decisions fk_rails_221b567d66; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_decisions
+    ADD CONSTRAINT fk_rails_221b567d66 FOREIGN KEY (on_behalf_of_id) REFERENCES public.users(id);
 
 
 --
@@ -10379,6 +10809,14 @@ ALTER TABLE ONLY public.organization_memberships
 
 
 --
+-- Name: approval_steps fk_rails_57d5ac51d1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_steps
+    ADD CONSTRAINT fk_rails_57d5ac51d1 FOREIGN KEY (policy_id) REFERENCES public.approval_policies(id) ON DELETE CASCADE;
+
+
+--
 -- Name: agent_tool_calls fk_rails_5808379b8f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10731,6 +11169,14 @@ ALTER TABLE ONLY public.accounting_fixed_assets
 
 
 --
+-- Name: approval_requests fk_rails_8a890dd2f6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_requests
+    ADD CONSTRAINT fk_rails_8a890dd2f6 FOREIGN KEY (submitted_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_line_allocations fk_rails_8bda82b65e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10768,6 +11214,14 @@ ALTER TABLE ONLY public.accounting_journal_entries
 
 ALTER TABLE ONLY public.user_entities
     ADD CONSTRAINT fk_rails_8e87e2e2aa FOREIGN KEY (custom_role_id) REFERENCES public.custom_roles(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: approval_steps fk_rails_8f009a4fb5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_steps
+    ADD CONSTRAINT fk_rails_8f009a4fb5 FOREIGN KEY (escalate_to_id) REFERENCES public.users(id);
 
 
 --
@@ -10915,6 +11369,14 @@ ALTER TABLE ONLY public.accounting_depreciation_entries
 
 
 --
+-- Name: approval_policies fk_rails_9e59ffe4e6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_policies
+    ADD CONSTRAINT fk_rails_9e59ffe4e6 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: dunning_item_lines fk_rails_a159bcc01d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10979,11 +11441,27 @@ ALTER TABLE ONLY public.agent_security_events
 
 
 --
+-- Name: approval_decisions fk_rails_a6b8a7f0b5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_decisions
+    ADD CONSTRAINT fk_rails_a6b8a7f0b5 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_entry_templates fk_rails_a85a054ffc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_entry_templates
     ADD CONSTRAINT fk_rails_a85a054ffc FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: approval_delegations fk_rails_a9053ccc33; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_delegations
+    ADD CONSTRAINT fk_rails_a9053ccc33 FOREIGN KEY (delegate_id) REFERENCES public.users(id);
 
 
 --
@@ -11435,6 +11913,14 @@ ALTER TABLE ONLY public.accounting_intracom_listings
 
 
 --
+-- Name: approval_requests fk_rails_d700eec2f0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_requests
+    ADD CONSTRAINT fk_rails_d700eec2f0 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: agent_messages fk_rails_d86808b0c3; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11795,6 +12281,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: approval_decisions fk_rails_f90054ca5d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_decisions
+    ADD CONSTRAINT fk_rails_f90054ca5d FOREIGN KEY (approver_id) REFERENCES public.users(id);
+
+
+--
 -- Name: agent_feedback fk_rails_f9118c016d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11849,6 +12343,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261009150000'),
 ('20261009140000'),
 ('20261009120000'),
 ('20261009090000'),

@@ -25,6 +25,8 @@ module Permissions
     "comments.write"         => %i[admin accountant assistant], # comment on what one can see (F08)
     "vat.file"               => %i[admin accountant],
     "payments.manage"        => %i[admin accountant],
+    "approvals.approve"      => %i[admin accountant],           # give or refuse a "bon à payer"; the policies still name who may (B01a)
+    "approvals.configure"    => %i[admin],                      # approval policies and delegations: the owner (B01a)
     "closing.prepare"        => %i[admin accountant],           # run the closing steps, validate the closing entries (F10)
     "closing.approve"        => %i[admin],                      # approve a closing, reopen a closed year: the owner (F10)
     "rates.override"         => %i[admin accountant],           # type an exchange rate by hand, or use one other than the official one (F11)
