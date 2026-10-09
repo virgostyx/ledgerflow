@@ -730,5 +730,16 @@ en:
       title: "Changes requested on invoice %{number}"
     invalidated:
       content_changed: "The content of the invoice changed after it was submitted."
+    delegation:
+      created: "The delegation was made."
+      ended: "The delegation was ended."
+    policy:
+      created: "The policy was saved."
+      updated: "The policy was updated."
+      revised: "Requests are in progress under this policy: it was kept for them and replaced by version %{version}."
+      errors:
+        no_level: "A policy needs at least one level."
+        level: "Level %{position}: %{message}"
+        amount: "\"%{amount}\" is not an amount."
     submitted: "The invoice was put to approval."
     not_required: "No approval policy applies to this invoice: it needs none."

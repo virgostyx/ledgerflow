@@ -3,10 +3,13 @@
 class Approvals::Policy < ApplicationRecord
   self.table_name = "approval_policies"
 
+  include Accounting::AuditTrailed # every edit of a policy is in the audit trail, field by field
+
   acts_as_tenant :entity
 
   enum :subject, { purchase_invoice: 0, payment_batch: 1 }
 
+  has_many :requests, class_name: "Approvals::Request", foreign_key: :policy_id, inverse_of: :policy, dependent: :nullify
   has_many :steps, -> { order(:position) }, class_name: "Approvals::Step", foreign_key: :policy_id, inverse_of: :policy, dependent: :destroy
 
   validates :name, presence: true

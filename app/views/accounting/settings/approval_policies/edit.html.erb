@@ -1,0 +1,7 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Settings", path: accounting_settings_root_path }, { label: "Invoice approval", path: accounting_settings_approval_policies_path }, { label: "Edit approval policy" } ]) %>
+<% end %>
+<div class="max-w-4xl">
+  <h1 class="mb-4 text-2xl font-bold text-gray-900">Edit approval policy</h1>
+  <%= render "form", policy: @policy, url: accounting_settings_approval_policy_path(@policy), method: :patch %>
+</div>

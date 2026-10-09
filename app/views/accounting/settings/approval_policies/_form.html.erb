@@ -1,0 +1,55 @@
+<%# Levels are rows steps[0], steps[1]...; the last row is left blank to add one (save, then edit again). %>
+<% c = policy.conditions || {} %>
+<% rows = (@typed_steps.presence || policy.steps.map { |s| { "mode" => s.mode, "approver_user_ids" => s.approver_user_ids, "approver_roles" => s.approver_roles, "service_hours" => s.service_hours, "escalate_to_id" => s.escalate_to_id } }) + [ {}, {} ] %>
+<% input = "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+<%= form_with scope: :policy, url: url, method: method, class: "space-y-6" do |f| %>
+  <div class="rounded-lg border border-gray-200 bg-white p-4 grid gap-4 sm:grid-cols-2">
+    <div class="sm:col-span-2"><%= f.label :name, "Name", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :name, value: policy.name, required: true, class: input %></div>
+    <div><%= f.label :priority, "Priority (smallest first)", class: "block text-sm font-medium text-gray-700" %><%= f.number_field :priority, value: policy.priority, class: input %></div>
+    <div><%= f.label :reminder_hours, "Reminders after (hours, comma separated)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :reminder_hours, value: Array(policy.reminder_hours).join(", "), class: input %></div>
+    <label class="flex items-center gap-2 text-sm text-gray-700"><%= f.check_box :active, { checked: policy.active != false, class: "rounded border-gray-300" } %> Active</label>
+  </div>
+
+  <fieldset class="rounded-lg border border-gray-200 bg-white p-4">
+    <legend class="px-1 text-sm font-semibold text-gray-900">Applies to an invoice that…</legend>
+    <p class="mb-3 text-xs text-gray-500">Leave a field empty to ignore it. Every field filled in must hold.</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div><label class="block text-sm font-medium text-gray-700">From (EUR, incl. VAT)</label><%= text_field_tag "policy[conditions][min_amount]", c["min_amount"], class: input %></div>
+      <div><label class="block text-sm font-medium text-gray-700">Up to (EUR, incl. VAT)</label><%= text_field_tag "policy[conditions][max_amount]", c["max_amount"], class: input %></div>
+      <div><label class="block text-sm font-medium text-gray-700">Suppliers (ids, comma separated)</label><%= text_field_tag "policy[conditions][partner_ids]", Array(c["partner_ids"]).join(", "), class: input %></div>
+      <div><label class="block text-sm font-medium text-gray-700">Expense accounts (ids, comma separated)</label><%= text_field_tag "policy[conditions][account_ids]", Array(c["account_ids"]).join(", "), class: input %></div>
+      <div><label class="block text-sm font-medium text-gray-700">Projects (ids, comma separated)</label><%= text_field_tag "policy[conditions][project_ids]", Array(c["project_ids"]).join(", "), class: input %></div>
+      <div><label class="block text-sm font-medium text-gray-700">Currencies (e.g. USD, GBP)</label><%= text_field_tag "policy[conditions][currencies]", Array(c["currencies"]).join(", "), class: input %></div>
+      <div class="flex gap-4 items-center text-sm text-gray-700">
+        <%= hidden_field_tag "policy[conditions][document_types][]", "" %>
+        <% %w[invoice credit_note].each do |type| %><label class="flex items-center gap-1"><%= check_box_tag "policy[conditions][document_types][]", type, Array(c["document_types"]).include?(type), id: "doc_#{type}", class: "rounded border-gray-300" %> <%= type.humanize %>s only</label><% end %>
+      </div>
+      <label class="flex items-center gap-2 text-sm text-gray-700"><%= check_box_tag "policy[conditions][first_payment]", "1", c["first_payment"], class: "rounded border-gray-300" %> First payment to the supplier</label>
+    </div>
+  </fieldset>
+
+  <fieldset class="rounded-lg border border-gray-200 bg-white p-4">
+    <legend class="px-1 text-sm font-semibold text-gray-900">Levels, in order</legend>
+    <p class="mb-3 text-xs text-gray-500">A refusal at any level stops the circuit. Roles can be Owner or Accountant: someone who cannot approve cannot be a level.</p>
+    <% rows.each_with_index do |row, index| %>
+      <% row = row.stringify_keys %>
+      <div class="mb-3 grid gap-3 rounded-md border border-gray-100 p-3 sm:grid-cols-6">
+        <div class="sm:col-span-6 text-xs font-medium text-gray-500">Level <%= index + 1 %></div>
+        <div><label class="block text-xs text-gray-600">Mode</label><%= select_tag "steps[#{index}][mode]", options_for_select([ [ "One of them", "any_of" ], [ "All of them", "all_of" ] ], row["mode"]), class: input %></div>
+        <div class="sm:col-span-2"><label class="block text-xs text-gray-600">People</label>
+          <%= hidden_field_tag "steps[#{index}][approver_user_ids][]", "", id: nil %>
+          <%= select_tag "steps[#{index}][approver_user_ids][]", options_from_collection_for_select(@members, :id, :full_name, Array(row["approver_user_ids"]).map(&:to_i)), multiple: true, id: "steps_#{index}_people", class: input %></div>
+        <div><label class="block text-xs text-gray-600">Roles</label>
+          <%= hidden_field_tag "steps[#{index}][approver_roles][]", "", id: nil %>
+          <% Approvals::Step::APPROVER_ROLES.each do |role| %><label class="flex items-center gap-1 text-sm"><%= check_box_tag "steps[#{index}][approver_roles][]", role, Array(row["approver_roles"]).include?(role), id: "steps_#{index}_role_#{role}", class: "rounded border-gray-300" %> <%= UserEntity.label_for(role) %></label><% end %></div>
+        <div><label class="block text-xs text-gray-600">Service time (h)</label><%= number_field_tag "steps[#{index}][service_hours]", row["service_hours"], min: 1, class: input %></div>
+        <div><label class="block text-xs text-gray-600">Then call in</label><%= select_tag "steps[#{index}][escalate_to_id]", options_from_collection_for_select(@members, :id, :full_name, row["escalate_to_id"].to_i), include_blank: "The owners", class: input %></div>
+      </div>
+    <% end %>
+  </fieldset>
+
+  <div class="flex items-center gap-3">
+    <%= f.submit "Save policy", class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
+    <%= link_to "Cancel", accounting_settings_approval_policies_path, class: "px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50" %>
+  </div>
+<% end %>

@@ -1,0 +1,32 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Settings", path: accounting_settings_root_path }, { label: "Invoice approval", path: accounting_settings_approval_policies_path }, { label: "Delegations" } ]) %>
+<% end %>
+
+<div class="max-w-4xl">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900">Delegations</h1>
+  <p class="mb-6 text-sm text-gray-500">Someone stands in for an approver for a while. A delegation is not passed on, ends on its date, and never lets anyone approve an invoice they entered themselves. Every owner sees them all.</p>
+
+  <% input = "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+  <%= form_with scope: :delegation, url: accounting_settings_approval_delegations_path, method: :post, class: "mb-6 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-3" do |f| %>
+    <div><%= f.label :delegator_id, "Who is away", class: "block text-sm font-medium text-gray-700" %><%= f.select :delegator_id, options_from_collection_for_select(@members, :id, :full_name), {}, class: input %></div>
+    <div><%= f.label :delegate_id, "Who stands in", class: "block text-sm font-medium text-gray-700" %><%= f.select :delegate_id, options_from_collection_for_select(@members, :id, :full_name), {}, class: input %></div>
+    <div><%= f.label :reason, "Reason", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :reason, required: true, class: input %></div>
+    <div><%= f.label :starts_on, "From", class: "block text-sm font-medium text-gray-700" %><%= f.date_field :starts_on, value: Date.current, required: true, class: input %></div>
+    <div><%= f.label :ends_on, "Until (included)", class: "block text-sm font-medium text-gray-700" %><%= f.date_field :ends_on, required: true, class: input %></div>
+    <div><%= f.label :policy_ids, "Policies (none picked: all)", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.hidden_field :policy_ids, value: "", multiple: true, id: nil %>
+      <%= f.select :policy_ids, options_from_collection_for_select(@policies, :id, :name), {}, multiple: true, class: input %></div>
+    <div class="sm:col-span-3"><%= f.submit "Make the delegation", class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 cursor-pointer" %></div>
+  <% end %>
+
+  <div class="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 text-sm">
+    <% @delegations.each do |d| %>
+      <div class="flex items-center justify-between px-4 py-3">
+        <span><strong><%= d.delegate.full_name %></strong> stands in for <strong><%= d.delegator.full_name %></strong>, <%= l d.starts_on %> to <%= l d.ends_on %> — <%= d.reason %>
+          <span class="text-xs text-gray-400"><%= d.policy_ids.empty? ? "all policies" : "#{d.policy_ids.size} polic#{d.policy_ids.size == 1 ? 'y' : 'ies'}" %><%= " · over" if d.ends_on < Date.current %></span></span>
+        <%= button_to "End", accounting_settings_approval_delegation_path(d), method: :delete, form: { data: { turbo_confirm: "End this delegation?" } }, class: "text-red-700 hover:underline cursor-pointer" %>
+      </div>
+    <% end %>
+    <% if @delegations.empty? %><p class="px-4 py-6 text-center text-gray-500">No delegation.</p><% end %>
+  </div>
+</div>

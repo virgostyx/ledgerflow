@@ -21,6 +21,12 @@ RSpec.describe "Approvals models" do
       expect(described_class.new(name: "x")).not_to be_valid
     end
 
+    it "is written to the audit trail" do
+      policy = described_class.create!(name: "Audited", subject: :purchase_invoice, priority: 5)
+
+      expect(Accounting::AuditLog.for_record(policy).for_action("create")).to exist
+    end
+
     it "keeps its steps in order" do
       policy = described_class.create!(name: "Two levels", subject: :purchase_invoice, priority: 1)
       policy.steps.create!(position: 2, mode: :all_of, approver_roles: %w[admin])
@@ -74,6 +80,26 @@ RSpec.describe "Approvals models" do
 
   describe Approvals::Delegation do
     let(:other) { create(:user) }
+
+    before do
+      create(:user_entity, :accountant, user: user, entity: entity)
+      create(:user_entity, :accountant, user: other, entity: entity)
+    end
+
+    it "is between two people who can approve in this entity" do
+      outsider = create(:user)
+      assistant = create(:user).tap { |u| create(:user_entity, :assistant, user: u, entity: entity) }
+
+      expect(described_class.new(delegator: user, delegate: outsider, starts_on: Date.current, ends_on: Date.current + 1, reason: "x")).not_to be_valid
+      expect(described_class.new(delegator: user, delegate: assistant, starts_on: Date.current, ends_on: Date.current + 1, reason: "x")).not_to be_valid
+      expect(described_class.new(delegator: outsider, delegate: user, starts_on: Date.current, ends_on: Date.current + 1, reason: "x")).not_to be_valid
+    end
+
+    it "is written to the audit trail" do
+      delegation = described_class.create!(delegator: user, delegate: other, starts_on: Date.current, ends_on: Date.current + 3, reason: "leave")
+
+      expect(Accounting::AuditLog.for_record(delegation).for_action("create")).to exist
+    end
 
     it "is limited in time and ends after it starts" do
       expect(described_class.new(delegator: user, delegate: other, starts_on: Date.current, ends_on: Date.current - 1, reason: "leave")).not_to be_valid

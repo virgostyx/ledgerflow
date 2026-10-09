@@ -1,0 +1,22 @@
+<%# The conditions and the levels of a policy, in a few lines. %>
+<% c = policy.conditions %>
+<p class="mt-1 text-xs text-gray-500">
+  <% parts = [] %>
+  <% parts << "from #{c['min_amount']} EUR" if c["min_amount"] %>
+  <% parts << "up to #{c['max_amount']} EUR" if c["max_amount"] %>
+  <% parts << "#{c['partner_ids'].size} supplier(s)" if c["partner_ids"] %>
+  <% parts << "#{c['account_ids'].size} account(s)" if c["account_ids"] %>
+  <% parts << "project #{c['project_ids'].join(', ')}" if c["project_ids"] %>
+  <% parts << c["currencies"].join("/") if c["currencies"] %>
+  <% parts << c["document_types"].map(&:humanize).join("/").downcase if c["document_types"] %>
+  <% parts << "first payment to a supplier" if c["first_payment"] %>
+  <%= parts.any? ? parts.join(" · ") : "Every purchase invoice" %>
+</p>
+<ol class="mt-2 space-y-1 text-sm text-gray-700">
+  <% policy.steps.each do |step| %>
+    <li>Level <%= step.position %> —
+      <%= step.any_of? ? "one of" : "all of" %>
+      <%= (User.where(id: step.approver_user_ids).pluck(:full_name) + step.approver_roles.map { |r| UserEntity.label_for(r) }).to_sentence %>
+      <% if step.service_hours %><span class="text-xs text-gray-500">· service time <%= step.service_hours %> h<%= ", then #{step.escalate_to.full_name}" if step.escalate_to %></span><% end %></li>
+  <% end %>
+</ol>

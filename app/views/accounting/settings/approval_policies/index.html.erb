@@ -1,0 +1,44 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Settings", path: accounting_settings_root_path }, { label: "Invoice approval" } ]) %>
+<% end %>
+
+<div class="max-w-4xl">
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="mb-1 text-2xl font-bold text-gray-900">Invoice approval</h1>
+      <p class="mb-6 text-sm text-gray-500">The first active policy that fits an invoice, by priority (smallest first), says who must approve it, level by level. With no policy that fits, an invoice needs no approval and can be paid.</p>
+    </div>
+    <div class="flex gap-2 shrink-0">
+      <%= link_to "Delegations", accounting_settings_approval_delegations_path, class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50" %>
+      <%= link_to "New policy", new_accounting_settings_approval_policy_path, class: "px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700" %>
+    </div>
+  </div>
+
+  <% if @active.empty? %>
+    <p class="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">No policy yet: an invoice needs no approval.</p>
+  <% end %>
+  <div class="space-y-3">
+    <% @active.each do |policy| %>
+      <div class="rounded-lg border border-gray-200 bg-white p-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-gray-900"><%= policy.name %> <span class="ml-2 text-xs font-normal text-gray-500">priority <%= policy.priority %> · version <%= policy.version %></span></h2>
+          <%= link_to "Edit", edit_accounting_settings_approval_policy_path(policy), class: "text-sm text-primary-700 hover:underline" %>
+        </div>
+        <%= render "summary", policy: policy %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @retired.any? %>
+    <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">Retired</h2>
+    <p class="mb-2 text-xs text-gray-500">Kept for the requests made under them; they no longer apply to new invoices.</p>
+    <div class="space-y-2">
+      <% @retired.each do |policy| %>
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+          <%= policy.name %> <span class="text-xs text-gray-400">version <%= policy.version %> · retired <%= l policy.updated_at.to_date %></span>
+          <%= render "summary", policy: policy %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

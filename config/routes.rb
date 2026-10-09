@@ -438,6 +438,9 @@ Rails.application.routes.draw do
           post :reset_two_factor, on: :member
         end
         resources :custom_roles, only: %i[index create update destroy]
+        # B01a: who must approve what, and who stands in for whom
+        resources :approval_policies, except: %i[show destroy]
+        resources :approval_delegations, only: %i[index create destroy]
         resources :bank_rules, only: %i[index update destroy]
         resources :webhook_subscriptions, except: :show do # F13c
           member do

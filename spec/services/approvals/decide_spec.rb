@@ -245,12 +245,12 @@ RSpec.describe Approvals::Decide do
       expect(decide(request, delegate)).to be_failure
     end
 
-    it "is refused when the delegate cannot approve at all" do
-      lowly = assistant
-      delegate!(to: lowly)
+    it "is refused when the delegate cannot approve any more (demoted since it was given)" do
+      delegate!
+      UserEntity.find_by(user: delegate, entity: entity).update!(role: :assistant)
       request = submit!
 
-      expect(decide(request, lowly)).to be_failure
+      expect(decide(request, delegate)).to be_failure
     end
   end
 end
