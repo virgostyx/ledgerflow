@@ -192,6 +192,19 @@ RSpec.describe "Public API approvals", type: :request do
       expect(request_record.reload).to be_pending
     end
 
+    it "is refused with 403 above the second-factor threshold, which a token cannot give: the approver decides in the application" do
+      entity.update!(step_up_threshold: 100)
+
+      decide(request_record, seen.merge(decision: "approved"))
+
+      expect(response).to have_http_status(:forbidden)
+      expect(json["type"]).to end_with("step-up-required")
+      expect(request_record.reload).to be_pending
+
+      decide(request_record, seen.merge(decision: "rejected", comment: "No"))
+      expect(response).to have_http_status(:ok) # refusing needs no second factor
+    end
+
     it "answers 409 once the request is decided" do
       decide(request_record, seen.merge(decision: "approved"))
       decide(request_record, seen.merge(decision: "approved"))

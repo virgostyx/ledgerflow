@@ -17,7 +17,7 @@
       <thead class="bg-gray-50 border-b border-gray-200">
         <tr>
           <% if @bulk %><th class="px-3 py-2"></th><% end %>
-          <% %w[Supplier Invoice Due Amount Level Waiting].each do |h| %><th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"><%= h %></th><% end %>
+          <% { 'Supplier' => '', 'Invoice' => 'hidden md:table-cell', 'Due' => '', 'Amount' => '', 'Level' => 'hidden md:table-cell', 'Waiting' => 'hidden md:table-cell' }.each do |h, visibility| %><th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase <%= visibility %>"><%= h %></th><% end %>
           <th class="px-3 py-2"></th>
         </tr>
       </thead>
@@ -34,12 +34,12 @@
               </td>
             <% end %>
             <td class="px-3 py-2 font-medium"><%= row.invoice.partner.name %></td>
-            <td class="px-3 py-2"><%= row.invoice.invoice_number || "Draft ##{row.invoice.id}" %><%= ' (credit note)' if row.invoice.credit_note? %></td>
+            <td class="px-3 py-2 hidden md:table-cell"><%= row.invoice.invoice_number || "Draft ##{row.invoice.id}" %><%= ' (credit note)' if row.invoice.credit_note? %></td>
             <td class="px-3 py-2 <%= 'text-red-700 font-medium' if row.invoice.due_date && row.invoice.due_date < Date.current %>"><%= row.invoice.due_date ? l(row.invoice.due_date) : '—' %><%= ' · late' if row.invoice.due_date && row.invoice.due_date < Date.current %></td>
             <td class="px-3 py-2 whitespace-nowrap"><%= render Accounting::MoneyDisplayComponent.new(amount: row.amount) %>
               <% if row.warnings.include?(:unusual_amount) %><span class="ml-1 text-xs px-1.5 rounded-full bg-amber-100 text-amber-800">unusual</span><% end %></td>
-            <td class="px-3 py-2">Level <%= request.current_step %></td>
-            <td class="px-3 py-2 text-gray-500"><%= time_ago_in_words(request.step_started_at || request.created_at) %></td>
+            <td class="px-3 py-2 hidden md:table-cell">Level <%= request.current_step %></td>
+            <td class="px-3 py-2 text-gray-500 hidden md:table-cell"><%= time_ago_in_words(request.step_started_at || request.created_at) %></td>
             <td class="px-3 py-2 text-right"><%= link_to 'Review', accounting_approval_path(request), class: 'text-primary-700 hover:underline' %></td>
           </tr>
         <% end %>

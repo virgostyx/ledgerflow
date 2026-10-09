@@ -227,6 +227,79 @@ RSpec.describe "Invoice approval screens (B01a)", type: :request do
     end
   end
 
+  describe "above the second-factor threshold" do
+    let(:invoice) { invoice_of("1000.00") } # 1,210.00 incl. VAT
+    let!(:request_record) { submit(invoice) }
+    let!(:secret) { owner.begin_totp_enrollment!.tap { |secret| owner.confirm_totp!(Totp.code(secret, Time.current - 30)) } }
+
+    around do |example|
+      previous = Rails.configuration.x.second_factor_required
+      Rails.configuration.x.second_factor_required = true
+      example.run
+    ensure
+      Rails.configuration.x.second_factor_required = previous
+    end
+
+    before { entity.update!(step_up_threshold: 1000) }
+
+    def pass_challenge! = post(two_factor_challenge_path, params: { code: Totp.code(secret, Time.current) })
+
+    def approve(request = request_record) = post(decide_accounting_approval_path(request), params: { decision: "approved", content_fingerprint: request.content_fingerprint })
+
+    it "approves on a second factor given a moment ago" do
+      pass_challenge!
+
+      approve
+
+      expect(request_record.reload).to be_approved
+    end
+
+    it "asks for the second factor again when the last one is old, and brings the approver back to the invoice" do
+      pass_challenge!
+      travel 10.minutes
+
+      approve
+      expect(response).to redirect_to(two_factor_challenge_path)
+      expect(request_record.reload).to be_pending
+
+      pass_challenge!
+      expect(response).to redirect_to(accounting_approval_path(request_record))
+
+      approve
+      expect(request_record.reload).to be_approved
+    end
+
+    it "does not ask below the threshold, however old the second factor" do
+      entity.update!(step_up_threshold: 5000)
+      pass_challenge!
+      travel 10.minutes
+
+      approve
+
+      expect(request_record.reload).to be_approved
+    end
+
+    it "does not ask to refuse" do
+      pass_challenge!
+      travel 10.minutes
+
+      post decide_accounting_approval_path(request_record), params: { decision: "rejected", comment: "No", content_fingerprint: request_record.content_fingerprint }
+
+      expect(request_record.reload).to be_rejected
+    end
+
+    it "leaves, in a bulk approval, what is above the threshold when the second factor is old" do
+      entity.update!(bulk_threshold: 2000)
+      pass_challenge!
+      travel 10.minutes
+
+      post bulk_accounting_approvals_path, params: { request_ids: [ request_record.id ], fingerprints: { request_record.id => request_record.content_fingerprint } }
+
+      expect(request_record.reload).to be_pending
+      expect(flash[:alert]).to match(/1 left/)
+    end
+  end
+
   describe "the section of the invoice" do
     let(:invoice) { invoice_of("1000.00") }
 
@@ -261,20 +334,21 @@ RSpec.describe "Invoice approval screens (B01a)", type: :request do
   end
 
   describe "the options" do
-    it "are the owner's: bap_before_posting, allow_self_approval, bulk_threshold" do
-      patch accounting_settings_entity_path, params: { entity: { bap_before_posting: "1", allow_self_approval: "1", bulk_threshold: "250" } }
+    it "are the owner's: bap_before_posting, allow_self_approval, bulk_threshold, step_up_threshold" do
+      patch accounting_settings_entity_path, params: { entity: { bap_before_posting: "1", allow_self_approval: "1", bulk_threshold: "250", step_up_threshold: "1000" } }
 
-      expect(entity.reload).to have_attributes(bap_before_posting: true, allow_self_approval: true, bulk_threshold: 250)
+      expect(entity.reload).to have_attributes(bap_before_posting: true, allow_self_approval: true, bulk_threshold: 250, step_up_threshold: 1000)
     end
 
     it "are recorded in the audit trail when they change, with who and from what to what, and only then" do
-      patch accounting_settings_entity_path, params: { entity: { allow_self_approval: "1", bulk_threshold: "250" } }
-      patch accounting_settings_entity_path, params: { entity: { allow_self_approval: "1", bulk_threshold: "250" } } # unchanged
+      patch accounting_settings_entity_path, params: { entity: { allow_self_approval: "1", bulk_threshold: "250", step_up_threshold: "1000" } }
+      patch accounting_settings_entity_path, params: { entity: { allow_self_approval: "1", bulk_threshold: "250", step_up_threshold: "1000" } } # unchanged
 
       logs = Accounting::AuditLog.for_record(entity).for_action("approval_option_changed")
       expect(logs.map { |l| l.payload.slice("option", "from", "to") }).to contain_exactly(
         { "option" => "allow_self_approval", "from" => false, "to" => true },
-        { "option" => "bulk_threshold", "from" => nil, "to" => "250.0" }
+        { "option" => "bulk_threshold", "from" => nil, "to" => "250.0" },
+        { "option" => "step_up_threshold", "from" => nil, "to" => "1000.0" }
       )
       expect(logs.map(&:user_id).uniq).to eq([ owner.id ])
     end

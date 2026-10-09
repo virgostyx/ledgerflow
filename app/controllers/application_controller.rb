@@ -82,10 +82,21 @@ class ApplicationController < ActionController::Base
   # Skipped where second factors are off (development, test), like require_second_factor!.
   # ponytail: a passkey-only person is sent to enrol a TOTP; a passkey step-up screen comes with the first screen that needs it.
   def require_recent_second_factor!(within: 5.minutes)
-    return unless current_user && Rails.configuration.x.second_factor_required
-    return if second_factor_passed? && session[:second_factor_at].to_i > within.ago.to_i
+    return if recent_second_factor?(within: within)
 
-    session[:after_second_factor_path] = request.fullpath if request.get?
+    ask_for_second_factor!(back_to: (request.fullpath if request.get?))
+  end
+
+  # Whether a second factor was given a moment ago. Always true where second factors are switched off (development, test), like require_second_factor!.
+  def recent_second_factor?(within: 5.minutes)
+    return true unless current_user && Rails.configuration.x.second_factor_required
+
+    second_factor_passed? && session[:second_factor_at].to_i > within.ago.to_i
+  end
+
+  # Sends the person to give their second factor, then back to `back_to`.
+  def ask_for_second_factor!(back_to: nil)
+    session[:after_second_factor_path] = back_to if back_to
     redirect_to current_user.totp_enabled? ? two_factor_challenge_path : two_factor_path, alert: t("errors.recent_second_factor_required")
   end
 

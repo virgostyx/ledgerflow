@@ -23,9 +23,12 @@ class Accounting::ApprovalsController < ApplicationController
     request = Approvals::Request.find(params[:id])
     authorize request
     result = Approvals::Decide.call(request: request, user: current_user, decision: params[:decision].to_s, comment: params[:comment].presence,
-                                    content_fingerprint: params[:content_fingerprint].to_s, channel: :web, device_fingerprint: device_fingerprint)
+                                    content_fingerprint: params[:content_fingerprint].to_s, channel: :web, device_fingerprint: device_fingerprint,
+                                    recent_second_factor: recent_second_factor?)
     if result.success?
       redirect_to accounting_approvals_path, notice: t("approvals.decided.#{params[:decision]}")
+    elsif result[:code] == :step_up_required
+      ask_for_second_factor!(back_to: accounting_approval_path(request))
     else
       # a request that is no longer waiting (decided, or invalidated because the invoice changed) has nothing to show but its place in the list
       redirect_to request.reload.pending? ? accounting_approval_path(request) : accounting_approvals_path, alert: result.message
@@ -44,7 +47,7 @@ class Accounting::ApprovalsController < ApplicationController
       next false unless row && row.amount <= threshold && row.warnings.empty?
 
       Approvals::Decide.call(request: row.request, user: current_user, decision: "approved", channel: :web, device_fingerprint: device_fingerprint,
-                             content_fingerprint: params.dig(:fingerprints, id).to_s).success?
+                             content_fingerprint: params.dig(:fingerprints, id).to_s, recent_second_factor: recent_second_factor?).success?
     end
     left = Array(params[:request_ids]).size - done
     flash[:notice] = t("approvals.bulk.approved", count: done) if done.positive?

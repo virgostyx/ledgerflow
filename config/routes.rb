@@ -1,6 +1,8 @@
 Rails.application.routes.draw do
   # Landing page publique
   get "/favicon.ico", to: redirect("/icon.png")
+  # B01a: the application can be installed on a phone; the manifest is public, a browser reads it before anyone signs in
+  get "/manifest.json", to: "rails/pwa#manifest", as: :pwa_manifest
   root "landing#index"
 
   # Devise — authentification

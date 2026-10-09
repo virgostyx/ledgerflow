@@ -164,6 +164,52 @@ RSpec.describe Approvals::Decide do
     end
   end
 
+  describe "a second factor above the threshold" do
+    before { policy!({ approver_roles: %w[admin] }) } # the invoice is 1,210.00 incl. VAT
+
+    it "is asked of an approval above the threshold, when none was given a moment ago" do
+      entity.update!(step_up_threshold: 1000)
+      request = submit!
+
+      result = decide(request, owner)
+
+      expect(result).to be_failure
+      expect(result[:code]).to eq(:step_up_required)
+      expect(request.reload).to be_pending
+    end
+
+    it "goes through with a recent second factor" do
+      entity.update!(step_up_threshold: 1000)
+
+      expect(decide(submit!, owner, recent_second_factor: true)).to be_success
+    end
+
+    it "is not asked at the threshold itself, nor below it, nor when there is none" do
+      request = submit!
+      expect(decide(request, owner)).to be_success # no threshold
+
+      entity.update!(step_up_threshold: 1210)
+      other = Approvals::Submit.call(invoice: create(:invoice, :supplier, fiscal_year: fiscal_year).tap { |i| create(:invoice_line, invoice: i, account: create(:account), unit_price: "1000.00") }, user: author)[:request]
+      expect(decide(other, owner)).to be_success # exactly 1,210.00: the threshold is exceeded, not reached
+    end
+
+    it "counts the amount in EUR" do
+      entity.update!(step_up_threshold: 1000)
+      usd = create(:invoice, :supplier, fiscal_year: fiscal_year, currency: "USD", exchange_rate: "2.0", exchange_rate_reason: "rate", created_by: author)
+      create(:invoice_line, invoice: usd, account: create(:account), unit_price: "1000.00") # 1,210 USD = 605 EUR
+      request = Approvals::Submit.call(invoice: usd, user: author)[:request]
+
+      expect(decide(request, owner)).to be_success
+    end
+
+    it "is not asked to refuse or to ask for changes" do
+      entity.update!(step_up_threshold: 1000)
+      request = submit!
+
+      expect(decide(request, owner, :rejected, comment: "No")).to be_success
+    end
+  end
+
   describe "levels" do
     it "moves to the next level once one of a level's approvers has approved" do
       policy!({ approver_roles: %w[accountant] }, { approver_roles: %w[admin] })

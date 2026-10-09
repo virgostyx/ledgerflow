@@ -6,10 +6,10 @@
 class Approvals::Decide
   DECISIONS = %w[approved rejected changes_requested].freeze
 
-  def self.call(request:, user:, decision:, content_fingerprint:, comment: nil, channel: :web, device_fingerprint: nil)
+  def self.call(request:, user:, decision:, content_fingerprint:, comment: nil, channel: :web, device_fingerprint: nil, recent_second_factor: false)
     ctx = LightService::Context.make(decision: nil)
     invoice = request.subject
-    code = refusal_for(request, invoice, user, decision.to_s, content_fingerprint, comment)
+    code = refusal_for(request, invoice, user, decision.to_s, content_fingerprint, comment, recent_second_factor)
     return refuse(ctx, code) if code
 
     ApplicationRecord.transaction do
@@ -32,7 +32,7 @@ class Approvals::Decide
   end
   private_class_method :refuse
 
-  def self.refusal_for(request, invoice, user, decision, content_fingerprint, comment)
+  def self.refusal_for(request, invoice, user, decision, content_fingerprint, comment, recent_second_factor)
     return :feature_off unless invoice.entity.feature?(:b01a)
     return :content_changed if request.invalidated? # the invoice changed after the approver opened it
     return :not_pending unless request.pending?
@@ -45,9 +45,18 @@ class Approvals::Decide
 
     on_behalf_of = approvers[user.id]
     return :own_entry if own_entry?(invoice, user, on_behalf_of)
-    (:already_decided if already_decided?(request, user, on_behalf_of))
+    return :already_decided if already_decided?(request, user, on_behalf_of)
+
+    :step_up_required if decision == "approved" && !recent_second_factor && step_up?(invoice)
   end
   private_class_method :refusal_for
+
+  # Above the threshold of the entity (incl. VAT, in EUR; the threshold itself is allowed), approving asks for a second factor given a moment ago.
+  def self.step_up?(invoice)
+    threshold = invoice.entity.step_up_threshold
+    threshold.present? && Approvals::Amount.eur(invoice) > threshold
+  end
+  private_class_method :step_up?
 
   def self.own_entry?(invoice, user, on_behalf_of)
     return false if invoice.entity.allow_self_approval?

@@ -17,6 +17,7 @@ class Api::V1::Public::ApprovalsController < Api::V1::Public::BaseController
     content_changed: [ :conflict, "The invoice changed", "content-changed" ],
     not_pending: [ :conflict, "Already decided", "already-decided" ],
     already_decided: [ :conflict, "Already decided", "already-decided" ],
+    step_up_required: [ :forbidden, "A second factor is needed", "step-up-required" ],
     reason_required: [ :unprocessable_content, "A reason is required", "reason-required" ],
     unknown_decision: [ :unprocessable_content, "Unknown decision", "unknown-decision" ]
   }.freeze

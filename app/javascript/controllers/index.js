@@ -86,3 +86,6 @@ application.register("agent-composer", AgentComposerController)
 
 import AgentExplainController from "controllers/agent_explain_controller"
 application.register("agent-explain", AgentExplainController)
+
+import DrawerController from "controllers/drawer_controller"
+application.register("drawer", DrawerController)

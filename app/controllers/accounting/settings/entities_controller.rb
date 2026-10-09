@@ -36,7 +36,7 @@ class Accounting::Settings::EntitiesController < Accounting::Settings::BaseContr
 
   # A waiver of the separation of tasks, or a change of the bulk threshold, is the owner's explicit and recorded choice (B01a).
   def audit_approval_options
-    %w[bap_before_posting allow_self_approval bulk_threshold].each do |option|
+    %w[bap_before_posting allow_self_approval bulk_threshold step_up_threshold].each do |option|
       next unless (change = @entity.saved_changes[option])
 
       Accounting::AuditLog.record!(auditable: @entity, action: "approval_option_changed", user: current_user,
@@ -47,7 +47,7 @@ class Accounting::Settings::EntitiesController < Accounting::Settings::BaseContr
   def entity_params
     allowed = %i[name legal_name legal_form vat_number country address_line1 address_line2 zip_code city]
     # the BudgetFlow declaration and the four-eyes rule are the owner's call
-    allowed.push(:budgetflow_enabled, :four_eyes, :four_eyes_threshold, :read_only_export, :auto_post_exact_bank_matches, :auto_reconcile_exact, :bank_rounding_tolerance, :bap_before_posting, :allow_self_approval, :bulk_threshold, features: Entity::FEATURES.map(&:to_sym)) if Accounting::Settings::BasePolicy.new(current_user, :settings).destroy?
+    allowed.push(:budgetflow_enabled, :four_eyes, :four_eyes_threshold, :read_only_export, :auto_post_exact_bank_matches, :auto_reconcile_exact, :bank_rounding_tolerance, :bap_before_posting, :allow_self_approval, :bulk_threshold, :step_up_threshold, features: Entity::FEATURES.map(&:to_sym)) if Accounting::Settings::BasePolicy.new(current_user, :settings).destroy?
     params.require(:entity).permit(*allowed)
   end
 end

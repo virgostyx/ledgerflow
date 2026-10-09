@@ -1,0 +1,9 @@
+<%= pluralize(@count, "invoice") %> <%= @count == 1 ? "is" : "are" %> waiting for your approval in <%= @entity.legal_name %>.
+<% if @overdue.positive? %>
+<%= @overdue %> of them <%= @overdue == 1 ? "is" : "are" %> past <%= @overdue == 1 ? "its" : "their" %> due date.
+<% end %>
+
+Sign in to look at them and decide:
+<%= @url %>
+
+Nothing can be approved from this e-mail.

@@ -478,3 +478,8 @@ html {
     transition: all 0.3s ease-in-out;
   }
 }
+
+/* The donation widget of Buy Me a Coffee floats over the page: on a phone it would sit on the amounts. */
+@media (max-width: 767px) {
+  [id^="bmc-w"] { display: none !important; }
+}

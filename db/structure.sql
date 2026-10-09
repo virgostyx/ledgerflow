@@ -4550,7 +4550,8 @@ CREATE TABLE public.entities (
     closing_loss_account_code character varying DEFAULT '140200'::character varying NOT NULL,
     bap_before_posting boolean DEFAULT false NOT NULL,
     allow_self_approval boolean DEFAULT false NOT NULL,
-    bulk_threshold numeric(15,2)
+    bulk_threshold numeric(15,2),
+    step_up_threshold numeric(15,2)
 );
 
 
@@ -12366,6 +12367,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261009190000'),
 ('20261009180000'),
 ('20261009170000'),
 ('20261009160000'),
