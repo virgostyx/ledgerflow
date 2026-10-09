@@ -79,6 +79,7 @@
   </div>
 <% end %>
 
+<% if @invoice.supplier? && feature?(:b01a) %><%= render 'approval', invoice: @invoice %><% end %>
 <%= render 'budgetflow_context', invoice: @invoice %>
 <%= render 'peppol_document', invoice: @invoice %>
 

@@ -714,7 +714,21 @@ en:
       own_entry: "You cannot approve an invoice you entered yourself."
       already_decided: "You have already decided at this step."
       approval_before_posting: "This invoice needs an approval (\"bon à payer\") before it can be posted."
+      bulk_off: "Bulk approval is not enabled for this entity."
+    decided:
+      approved: "Approved."
+      rejected: "Refused."
+      changes_requested: "Changes requested."
+    bulk:
+      approved:
+        one: "1 approved."
+        other: "%{count} approved."
+      left:
+        one: "1 left for individual review (over the threshold, with a warning, or changed since you saw it)."
+        other: "%{count} left for individual review (over the threshold, with a warning, or changed since you saw it)."
     task:
       title: "Changes requested on invoice %{number}"
     invalidated:
       content_changed: "The content of the invoice changed after it was submitted."
+    submitted: "The invoice was put to approval."
+    not_required: "No approval policy applies to this invoice: it needs none."

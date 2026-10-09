@@ -1,0 +1,14 @@
+<%# B01a: where a purchase invoice stands for payment, and its approval circuit. %>
+<% request = Approvals::Request.where(subject: invoice).order(:id).last %>
+<div class="bg-white rounded-lg border border-gray-200 p-6 mb-6" data-section="approval">
+  <div class="flex items-center justify-between">
+    <h2 class="text-sm font-semibold text-gray-900">Approval <span class="ml-2 text-xs font-medium text-gray-500"><%= { 'not_required' => 'Not required', 'to_approve' => 'To approve', 'approved' => 'Approved', 'on_hold' => 'On hold' }.fetch(invoice.payment_status, invoice.payment_status.humanize) %></span></h2>
+    <% if policy(invoice).submit_for_approval? && !invoice.cancelled? && !invoice.paid? && !invoice.payment_to_approve? && !invoice.payment_approved? %>
+      <%= button_to 'Submit for approval', submit_for_approval_accounting_invoice_path(invoice), method: :post, class: 'px-3 py-1 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer' %>
+    <% end %>
+  </div>
+  <% if request %>
+    <div class="mt-3"><%= render 'approvals/circuit', request: request %></div>
+    <% if request.status != 'pending' && request.status != 'approved' %><p class="mt-2 text-xs text-gray-500">Last request: <%= request.status.humanize.downcase %><%= " — #{request.invalidation_reason}" if request.invalidation_reason.present? %></p><% end %>
+  <% end %>
+</div>

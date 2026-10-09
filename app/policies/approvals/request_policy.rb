@@ -2,5 +2,8 @@
 # the circuit names the approvers (Approvals::Decide).
 class Approvals::RequestPolicy < ApplicationPolicy
   def index?   = can?("approvals.approve")
+  def show?    = can?("approvals.approve")
   def approve? = can?("approvals.approve")
+  def decide?  = can?("approvals.approve")
+  def bulk?    = can?("approvals.approve")
 end

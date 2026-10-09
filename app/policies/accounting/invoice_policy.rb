@@ -11,6 +11,9 @@ class Accounting::InvoicePolicy < ApplicationPolicy
     can?("invoices.issue") && journal_allowed?
   end
 
+  # B01a: whoever can write an invoice can put it to approval.
+  def submit_for_approval? = update? && record.supplier?
+
   def post?
     can?("invoices.issue") && journal_allowed?
   end

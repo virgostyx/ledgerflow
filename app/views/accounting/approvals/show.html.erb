@@ -1,0 +1,71 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: 'Dashboard', path: accounting_root_path }, { label: 'To approve', path: accounting_approvals_path }, { label: @invoice.invoice_number || "Draft ##{@invoice.id}" } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "#{@invoice.partner.name} — #{@invoice.invoice_number || "draft ##{@invoice.id}"}", back_path: accounting_approvals_path, back_text: 'To approve') %>
+
+<% if @history.warnings.include?(:unusual_amount) %>
+  <div class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    This invoice is more than twice what this supplier usually costs (average of their last <%= @history.recent.size %> invoices: <%= number_to_currency(@history.average, unit: @invoice.currency) %>).
+  </div>
+<% end %>
+<% unless @request.pending? %>
+  <div class="mb-4 rounded-md border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700">This request is <%= @request.status.humanize.downcase %>.</div>
+<% end %>
+
+<div class="grid lg:grid-cols-3 gap-6 mb-6">
+  <div class="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
+    <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mb-4">
+      <dt class="text-gray-500">Invoice date</dt><dd><%= l @invoice.invoice_date %></dd>
+      <dt class="text-gray-500">Due date</dt><dd><%= @invoice.due_date ? l(@invoice.due_date) : '—' %></dd>
+      <dt class="text-gray-500">Currency</dt><dd><%= @invoice.currency %></dd>
+      <dt class="text-gray-500">Total incl. VAT</dt><dd class="font-semibold"><%= number_to_currency(@total, unit: @invoice.currency) %></dd>
+    </dl>
+    <table class="w-full text-sm">
+      <thead class="border-b border-gray-200 text-xs text-gray-500 uppercase"><tr><th class="py-1 text-left">Account</th><th class="py-1 text-left">Description</th><th class="py-1 text-right">Incl. VAT</th></tr></thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @invoice.lines.includes(:account).each do |line| %>
+          <tr><td class="py-1"><%= line.account.code %> <%= line.account.label_fr %></td><td class="py-1"><%= line.description %></td><td class="py-1 text-right"><%= number_to_currency(line.total_incl_vat, unit: @invoice.currency) %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+    <% documents = Accounting::DocumentLink.where(target: @invoice).includes(:document).map(&:document) %>
+    <% if documents.any? %>
+      <h2 class="mt-4 text-sm font-semibold text-gray-900">Documents</h2>
+      <ul class="text-sm"><% documents.each do |document| %><li><%= link_to document.name, accounting_document_path(document), class: 'text-primary-700 hover:underline' %></li><% end %></ul>
+    <% end %>
+    <p class="mt-4 text-sm"><%= link_to 'Open the invoice', accounting_invoice_path(@invoice), class: 'text-primary-700 hover:underline' %></p>
+  </div>
+
+  <div class="space-y-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-6">
+      <h2 class="text-sm font-semibold text-gray-900 mb-3">Circuit</h2>
+      <%= render 'approvals/circuit', request: @request %>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-6">
+      <h2 class="text-sm font-semibold text-gray-900 mb-2">This supplier</h2>
+      <% if @history.recent.any? %>
+        <ul class="text-sm text-gray-700 space-y-1">
+          <% @history.recent.each do |past| %><li><%= l past.invoice_date %> — <%= number_to_currency(past.total_incl_vat, unit: past.currency) %></li><% end %>
+        </ul>
+        <p class="mt-2 text-xs text-gray-500">Average <%= number_to_currency(@history.average, unit: @invoice.currency) %></p>
+      <% else %>
+        <p class="text-sm text-gray-500">No earlier invoice.</p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% if @can_decide %>
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <%= form_with url: decide_accounting_approval_path(@request), method: :post do %>
+      <%= hidden_field_tag :content_fingerprint, @request.content_fingerprint %>
+      <%= text_area_tag :comment, nil, rows: 2, placeholder: 'Comment (required to refuse or ask for changes)', class: 'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm mb-3' %>
+      <div class="flex flex-wrap gap-3">
+        <%= button_tag 'Approve', name: 'decision', value: 'approved', class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 cursor-pointer' %>
+        <%= button_tag 'Ask for changes', name: 'decision', value: 'changes_requested', class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer' %>
+        <%= button_tag 'Refuse', name: 'decision', value: 'rejected', class: 'px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50 cursor-pointer' %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

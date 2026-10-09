@@ -30,7 +30,7 @@ class Approvals::Approvers
   end
 
   def self.approving_user_ids(user_ids)
-    UserEntity.current.where(user_id: user_ids).select { |membership| membership.allows?("approvals.approve") }.map(&:user_id)
+    UserEntity.current.includes(:custom_role).where(user_id: user_ids).select { |membership| membership.allows?("approvals.approve") }.map(&:user_id)
   end
   private_class_method :approving_user_ids, :called_in
 end

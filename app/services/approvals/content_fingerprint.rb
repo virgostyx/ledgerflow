@@ -14,7 +14,7 @@ class Approvals::ContentFingerprint
       currency: invoice.currency,
       exchange_rate: decimal(invoice.exchange_rate),
       due_date: invoice.due_date&.iso8601,
-      lines: invoice.lines.reload.map { |line| line_content(line) }.sort,
+      lines: Accounting::InvoiceLine.unscope(:order).where(invoice_id: invoice.id).map { |line| line_content(line) }.sort, # read afresh, never from a loaded association
       documents: Accounting::DocumentLink.where(target: invoice).joins(:document).pluck("accounting_documents.sha256").sort
     }
   end

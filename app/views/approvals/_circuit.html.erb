@@ -1,0 +1,19 @@
+<%# The levels of an approval and what was decided on each (B01a). `request` is an Approvals::Request. %>
+<% steps = request.policy&.steps.to_a %>
+<ol class="space-y-3 text-sm" data-section="approval-circuit">
+  <% steps.each do |step| %>
+    <% decisions = request.decisions.select { |d| d.step_position == step.position } %>
+    <li class="flex gap-3">
+      <span class="mt-0.5 shrink-0 w-6 h-6 rounded-full text-xs flex items-center justify-center <%= step.position < request.current_step || request.approved? ? 'bg-green-100 text-green-800' : (step.position == request.current_step && request.pending? ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-500') %>"><%= step.position %></span>
+      <div>
+        <div class="font-medium text-gray-900">Level <%= step.position %> <span class="text-xs font-normal text-gray-500"><%= step.any_of? ? 'one of' : 'all of' %> <%= (User.where(id: step.approver_user_ids).pluck(:full_name) + step.approver_roles.map { |r| UserEntity.label_for(r) }).to_sentence %></span></div>
+        <% decisions.each do |d| %>
+          <div class="text-gray-700"><%= d.approver.full_name %><%= " for #{d.on_behalf_of.full_name}" if d.on_behalf_of %> — <%= d.decision.humanize.downcase %>
+            <span class="text-gray-400"><%= l d.decided_at, format: :short %> · <%= d.channel %></span>
+            <% if d.comment.present? %><div class="text-gray-600 italic">“<%= d.comment %>”</div><% end %></div>
+        <% end %>
+        <% if decisions.empty? && step.position == request.current_step && request.pending? %><div class="text-gray-500">Waiting<%= ", escalated" if request.escalated_at %></div><% end %>
+      </div>
+    </li>
+  <% end %>
+</ol>

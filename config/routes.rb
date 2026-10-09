@@ -148,6 +148,7 @@ Rails.application.routes.draw do
           post :send_peppol
           post :peppol_fallback_email
           post :create_credit_note
+          post :submit_for_approval
           post :apply_credit_note
           get  :pdf
           get  "documents/:kind", action: :document, as: :document
@@ -256,6 +257,12 @@ Rails.application.routes.draw do
           post :resend
         end
         post :reprocess_all, on: :collection
+      end
+
+      # B01a: the invoices waiting for my approval, one to decide on, and bulk approval of the small ones
+      resources :approvals, only: %i[index show] do
+        member { post :decide }
+        collection { post :bulk }
       end
 
       resources :tasks, only: %i[index show new create edit update] do

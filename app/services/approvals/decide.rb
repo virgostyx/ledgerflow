@@ -26,6 +26,7 @@ class Approvals::Decide
 
   def self.refusal_for(request, invoice, user, decision, content_fingerprint, comment)
     return I18n.t("approvals.errors.feature_off") unless invoice.entity.feature?(:b01a)
+    return I18n.t("approvals.errors.content_changed") if request.invalidated? # the invoice changed after the approver opened it
     return I18n.t("approvals.errors.not_pending") unless request.pending?
     return I18n.t("approvals.errors.unknown_decision") unless DECISIONS.include?(decision)
     return I18n.t("approvals.errors.reason_required") if decision != "approved" && comment.blank?

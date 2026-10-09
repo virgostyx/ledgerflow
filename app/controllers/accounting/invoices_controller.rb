@@ -1,6 +1,6 @@
 class Accounting::InvoicesController < ApplicationController
   before_action :set_invoice, only: [ :peppol_fallback_email, :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :return_invoice, :send_peppol,
-                                      :create_credit_note, :apply_credit_note, :pdf, :document, :send_email, :duplicate ]
+                                      :create_credit_note, :apply_credit_note, :pdf, :document, :send_email, :duplicate, :submit_for_approval ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
@@ -72,6 +72,17 @@ class Accounting::InvoicesController < ApplicationController
       redirect_to list_path_for(invoice_type), notice: t("accounting.invoices.deleted")
     else
       head :unprocessable_content
+    end
+  end
+
+  # B01a: puts a purchase invoice to approval by hand (a draft too), or records that it needs none.
+  def submit_for_approval
+    authorize @invoice
+    result = Approvals::Submit.call(invoice: @invoice, user: current_user)
+    if result.success?
+      redirect_to accounting_invoice_path(@invoice), notice: t(result[:request] ? "approvals.submitted" : "approvals.not_required")
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: result.message
     end
   end
 
