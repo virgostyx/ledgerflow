@@ -140,6 +140,30 @@ RSpec.describe Approvals::Decide do
     end
   end
 
+  describe "asking for changes when the author is not around" do
+    before { policy!({ approver_roles: %w[admin] }) }
+
+    it "gives the task to the person who submitted it when the author is no longer a member of the entity" do
+      submitter = create(:user).tap { |u| create(:user_entity, :assistant, user: u, entity: entity) }
+      request = Approvals::Submit.call(invoice: invoice, user: submitter)[:request]
+
+      result = decide(request, owner, :changes_requested, comment: "Add the PO number")
+
+      expect(result).to be_success
+      expect(Accounting::Task.about(invoice).sole.assignee).to eq(submitter)
+    end
+
+    it "leaves the task unassigned when nobody who wrote or submitted it is a member any more, but still asks" do
+      request = submit! # the author and the submitter are the same person, outside the entity
+
+      result = decide(request, owner, :changes_requested, comment: "Add the PO number")
+
+      expect(result).to be_success
+      expect(request.reload).to be_changes_requested
+      expect(Accounting::Task.about(invoice).sole.assignee).to be_nil
+    end
+  end
+
   describe "levels" do
     it "moves to the next level once one of a level's approvers has approved" do
       policy!({ approver_roles: %w[accountant] }, { approver_roles: %w[admin] })
@@ -251,6 +275,41 @@ RSpec.describe Approvals::Decide do
       request = submit!
 
       expect(decide(request, delegate)).to be_failure
+    end
+  end
+
+  describe "the code of a refusal, for callers that must answer by kind (the API)" do
+    before { policy!({ approver_roles: %w[admin] }) }
+
+    it "names each kind of refusal" do
+      request = submit!
+
+      expect(decide(request, accountant)[:code]).to eq(:not_an_approver)
+      expect(decide(request, owner, :rejected)[:code]).to eq(:reason_required)
+      expect(decide(request, owner, :maybe)[:code]).to eq(:unknown_decision)
+      expect(described_class.call(request: request, user: owner, decision: :approved, content_fingerprint: "0" * 64)[:code]).to eq(:content_changed)
+      create(:user_entity, :admin, user: author, entity: entity)
+      expect(decide(request, author)[:code]).to eq(:own_entry)
+      decide(request, owner)
+      expect(decide(request, owner)[:code]).to eq(:not_pending)
+    end
+
+    it "names an invalidated request as a changed content, and a switched-off feature" do
+      request = submit!
+      invoice.lines.first.update!(unit_price: "5000.00")
+      expect(decide(request, owner)[:code]).to eq(:content_changed)
+
+      entity.update!(features: entity.features.merge("b01a" => false))
+      expect(decide(request, owner)[:code]).to eq(:feature_off)
+    end
+
+    it "names the second decision of a person at a level" do
+      second = create(:user).tap { |u| create(:user_entity, :accountant, user: u, entity: entity) }
+      Approvals::Policy.first.steps.first.update!(mode: :all_of, approver_user_ids: [ accountant.id, second.id ], approver_roles: [])
+      request = submit!
+      decide(request, accountant)
+
+      expect(decide(request, accountant)[:code]).to eq(:already_decided)
     end
   end
 end

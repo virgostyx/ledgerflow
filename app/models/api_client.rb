@@ -8,7 +8,8 @@ class ApiClient < ApplicationRecord
     "accounts:read" => "records.view", "partners:read" => "records.view", "journals:read" => "records.view", "entries:read" => "records.view",
     "entries:write" => "records.write", "entries:post" => "entries.post", "entries:reverse" => "entries.reverse", "documents:read" => "documents.view",
     "bank:read" => "records.view", "tasks:read" => "records.view", "periods:read" => "records.view", "reports:read" => "reports.view",
-    "letterings:read" => "records.view", "agent:use" => "agent.use"
+    "letterings:read" => "records.view", "agent:use" => "agent.use",
+    "approvals:read" => "approvals.approve", "approvals:decide" => "approvals.approve" # B01a: the same right as the screens
   }.freeze
   SCOPES = SCOPE_PERMISSIONS.keys.freeze
   PUBLIC_SCOPES = (SCOPES - BUDGETFLOW_SCOPES).freeze

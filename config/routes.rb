@@ -474,6 +474,10 @@ Rails.application.routes.draw do
 
       # F13c: the public API (personal tokens, problem+json, cursor pagination): the read-only collections come from Api::V1::Resources
       get "reports/:name", to: "public/reports#show", as: :public_report
+      # B01a: the invoices waiting for the approval of the owner of the token, one with its circuit, and a decision on it
+      resources :approvals, only: %i[index show], controller: "public/approvals", constraints: { id: /\d+/ } do
+        post :decision, on: :member
+      end
       resources :entries, only: %i[index show create update], controller: "public/entries", constraints: { id: /\d+/ } do
         member do
           post :post

@@ -70,6 +70,29 @@ RSpec.describe Api::V1::OpenApi, type: :request do
       expect(schema_violations(doc, doc.dig("paths", "/reports/{name}", "get", "responses", "200", "content", "application/json", "schema"), json)).to eq([])
     end
 
+    it "holds for approvals (list, one, decision, and the decision that is sent)" do
+      entity.update!(features: entity.features.merge("b01a" => true))
+      policy = Approvals::Policy.create!(name: "all", subject: :purchase_invoice, priority: 1)
+      policy.steps.create!(position: 1, mode: :any_of, approver_roles: %w[admin accountant])
+      invoice = create(:invoice, :supplier, fiscal_year: fiscal_year).tap { |i| create(:invoice_line, invoice: i, account: create(:account), unit_price: "100.00") }
+      request = Approvals::Submit.call(invoice: invoice, user: nil)[:request]
+      approver = token_for(%w[approvals:read approvals:decide], role: :accountant)
+
+      api_get("/api/v1/approvals", approver)
+      expect(schema_violations(doc, doc.dig("paths", "/approvals", "get", "responses", "200", "content", "application/json", "schema"), json)).to eq([])
+      expect(json["data"]).not_to be_empty
+
+      api_get("/api/v1/approvals/#{request.id}", approver)
+      expect(schema_violations(doc, doc.dig("paths", "/approvals/{id}", "get", "responses", "200", "content", "application/json", "schema"), json)).to eq([])
+
+      body = { decision: "approved", content_fingerprint: request.content_fingerprint }
+      expect(schema_violations(doc, doc.dig("paths", "/approvals/{id}/decision", "post", "requestBody", "content", "application/json", "schema"), JSON.parse(body.to_json))).to eq([])
+      api_post("/api/v1/approvals/#{request.id}/decision", approver, body)
+      expect(schema_violations(doc, doc.dig("paths", "/approvals/{id}/decision", "post", "responses", "200", "content", "application/json", "schema"), json)).to eq([])
+      expect(json["data"]["status"]).to eq("approved")
+      expect(json["data"]["levels"].first["decisions"]).not_to be_empty
+    end
+
     it "holds for the errors: they are problem+json" do
       api_get("/api/v1/accounts/0", token)
       expect(schema_violations(doc, doc.dig("components", "schemas", "Problem"), json)).to eq([])

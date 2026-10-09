@@ -41,3 +41,11 @@ Décisions prises par prudence pendant l'implémentation (règle du §14.1 de `d
 - **Ajouter un niveau** = enregistrer, puis rouvrir : le formulaire montre toujours deux lignes vides en plus. Pas de JavaScript pour l'instant (règle des index numériques de Stimulus si on en ajoute).
 - **Délégations faites par le propriétaire seulement** (`approvals.configure`). La spec dit seulement qu'elles sont « visibles de tous les propriétaires ». À décider : un approbateur peut-il déclarer lui-même son absence ? Les deux personnes doivent pouvoir approuver dans la société au moment où la délégation est faite (contrôlé à la création uniquement : un délégataire rétrogradé ensuite est refusé au moment de décider).
 - **Politiques et délégations sont dans le journal d'audit** champ par champ (`AuditTrailed`), plus une entrée « approval_policy_revised » pour une nouvelle version.
+
+## B01a — API
+- **Deux portées** `approvals:read` et `approvals:decide`, toutes deux rattachées au droit `approvals.approve` du propriétaire du jeton (comme les autres portées : retirer le droit coupe le jeton à l'appel suivant).
+- **Visibilité** : une demande n'est trouvée que si elle attend le propriétaire du jeton ou s'il a décidé dessus ; sinon 404 (on ne dit rien d'une demande qui n'est pas la sienne).
+- **Canal `api`** et empreinte d'appareil `token-<id>` dans les décisions. L'API ne donne pas la configuration (politiques, délégations) : l'écran du propriétaire reste le seul chemin.
+- **Seuil de second facteur** (`step_up_threshold`, lot mobile) : un jeton ne peut pas fournir de second facteur. Proposition : au-delà du seuil, l'API répond 403 `step-up-required` et la décision se prend dans l'application. À valider quand le seuil existera.
+- **Pas de transfert** à un autre approbateur dans l'API ni dans les écrans pour l'instant.
+- **« Demander une modification »** : la tâche va à l'auteur de la facture s'il est encore membre de la société, sinon à la personne qui a soumis, sinon elle reste sans assigné (un propriétaire l'assigne). Avant ce correctif, l'action échouait si l'auteur n'était plus membre.

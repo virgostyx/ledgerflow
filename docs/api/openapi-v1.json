@@ -2262,6 +2262,204 @@
           }
         }
       }
+    },
+    "/approvals": {
+      "get": {
+        "operationId": "listApprovals",
+        "summary": "The invoices waiting for the approval of the owner of the token",
+        "x-required-scope": "approvals:read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PageSize"
+          },
+          {
+            "$ref": "#/components/parameters/PageAfter"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "id",
+                "-id",
+                "created_at",
+                "-created_at"
+              ]
+            }
+          },
+          {
+            "name": "filter[supplier]",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Part of the name of the supplier."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Approval"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "429": {
+            "$ref": "#/components/responses/Problem429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    },
+    "/approvals/{id}": {
+      "get": {
+        "operationId": "getApproval",
+        "summary": "One request: the invoice, its lines, the circuit and the decisions taken",
+        "x-required-scope": "approvals:read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request, with its ETag",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ApprovalDetail"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Problem429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    },
+    "/approvals/{id}/decision": {
+      "post": {
+        "operationId": "decideApproval",
+        "summary": "Approve, refuse or ask for changes, on the content you read",
+        "x-required-scope": "approvals:decide",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Id"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalDecisionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The request after the decision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ApprovalDetail"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Problem429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3580,6 +3778,335 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "Approval": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "level",
+          "content_fingerprint",
+          "invoice"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "changes_requested",
+              "cancelled",
+              "invalidated"
+            ]
+          },
+          "level": {
+            "type": "integer"
+          },
+          "content_fingerprint": {
+            "type": "string",
+            "description": "SHA-256 of the content put to approval: send it back in the decision, it is what you saw."
+          },
+          "submitted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "invoice": {
+            "type": "object",
+            "required": [
+              "id",
+              "supplier",
+              "currency",
+              "amount_incl_vat",
+              "amount_eur"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "supplier": {
+                "type": "string"
+              },
+              "invoice_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "due_date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "amount_incl_vat": {
+                "type": "string",
+                "pattern": "^-?\\d+\\.\\d{2}$"
+              },
+              "amount_eur": {
+                "type": "string",
+                "pattern": "^-?\\d+\\.\\d{2}$",
+                "description": "The amount converted at the rate of the invoice, which is what the thresholds of the policies compare."
+              }
+            }
+          }
+        }
+      },
+      "ApprovalDecisionRecord": {
+        "type": "object",
+        "required": [
+          "decision",
+          "approver",
+          "channel",
+          "decided_at"
+        ],
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected",
+              "changes_requested",
+              "transferred"
+            ]
+          },
+          "approver": {
+            "type": "string"
+          },
+          "on_behalf_of": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "web",
+              "mobile",
+              "api"
+            ]
+          },
+          "decided_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApprovalLevel": {
+        "type": "object",
+        "required": [
+          "position",
+          "mode",
+          "current",
+          "decisions"
+        ],
+        "properties": {
+          "position": {
+            "type": "integer"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "any_of",
+              "all_of"
+            ]
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApprovalDecisionRecord"
+            }
+          }
+        }
+      },
+      "ApprovalDetail": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "level",
+          "content_fingerprint",
+          "invoice",
+          "can_decide",
+          "warnings",
+          "levels"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "changes_requested",
+              "cancelled",
+              "invalidated"
+            ]
+          },
+          "level": {
+            "type": "integer"
+          },
+          "content_fingerprint": {
+            "type": "string",
+            "description": "SHA-256 of the content put to approval: send it back in the decision, it is what you saw."
+          },
+          "submitted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "invoice": {
+            "type": "object",
+            "required": [
+              "id",
+              "supplier",
+              "currency",
+              "amount_incl_vat",
+              "amount_eur",
+              "lines"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "supplier": {
+                "type": "string"
+              },
+              "invoice_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "due_date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "amount_incl_vat": {
+                "type": "string",
+                "pattern": "^-?\\d+\\.\\d{2}$"
+              },
+              "amount_eur": {
+                "type": "string",
+                "pattern": "^-?\\d+\\.\\d{2}$",
+                "description": "The amount converted at the rate of the invoice, which is what the thresholds of the policies compare."
+              },
+              "lines": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "account",
+                    "description",
+                    "amount_incl_vat"
+                  ],
+                  "properties": {
+                    "account": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "amount_incl_vat": {
+                      "type": "string",
+                      "pattern": "^-?\\d+\\.\\d{2}$"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "can_decide": {
+            "type": "boolean"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "unusual_amount"
+              ]
+            }
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApprovalLevel"
+            }
+          }
+        }
+      },
+      "ApprovalDecisionInput": {
+        "type": "object",
+        "required": [
+          "decision",
+          "content_fingerprint"
+        ],
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected",
+              "changes_requested"
+            ]
+          },
+          "content_fingerprint": {
+            "type": "string",
+            "description": "The content_fingerprint you read. If the invoice changed since, the answer is 409 content-changed: read it again."
+          },
+          "comment": {
+            "type": "string",
+            "description": "Required to refuse and to ask for changes."
           }
         }
       }

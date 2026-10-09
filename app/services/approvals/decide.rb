@@ -9,12 +9,12 @@ class Approvals::Decide
   def self.call(request:, user:, decision:, content_fingerprint:, comment: nil, channel: :web, device_fingerprint: nil)
     ctx = LightService::Context.make(decision: nil)
     invoice = request.subject
-    refusal = refusal_for(request, invoice, user, decision.to_s, content_fingerprint, comment)
-    return ctx.tap { |c| c.fail!(refusal) } if refusal
+    code = refusal_for(request, invoice, user, decision.to_s, content_fingerprint, comment)
+    return refuse(ctx, code) if code
 
     ApplicationRecord.transaction do
       request.lock!
-      next ctx.fail!(I18n.t("approvals.errors.not_pending")) unless request.pending? # lost a race with another click
+      next refuse(ctx, :not_pending) unless request.pending? # lost a race with another click
 
       on_behalf_of = Approvals::Approvers.for(request)[user.id]
       ctx[:decision] = request.decisions.create!(step_position: request.current_step, approver: user, on_behalf_of_id: on_behalf_of, decision: decision,
@@ -24,20 +24,28 @@ class Approvals::Decide
     ctx
   end
 
+  # The refusal as a code (callers answer by kind) and as the sentence the screens show.
+  def self.refuse(ctx, code)
+    ctx[:code] = code
+    ctx.fail!(I18n.t("approvals.errors.#{code}"))
+    ctx
+  end
+  private_class_method :refuse
+
   def self.refusal_for(request, invoice, user, decision, content_fingerprint, comment)
-    return I18n.t("approvals.errors.feature_off") unless invoice.entity.feature?(:b01a)
-    return I18n.t("approvals.errors.content_changed") if request.invalidated? # the invoice changed after the approver opened it
-    return I18n.t("approvals.errors.not_pending") unless request.pending?
-    return I18n.t("approvals.errors.unknown_decision") unless DECISIONS.include?(decision)
-    return I18n.t("approvals.errors.reason_required") if decision != "approved" && comment.blank?
-    return I18n.t("approvals.errors.content_changed") unless content_fingerprint == request.content_fingerprint && Approvals::ContentFingerprint.call(invoice) == request.content_fingerprint
+    return :feature_off unless invoice.entity.feature?(:b01a)
+    return :content_changed if request.invalidated? # the invoice changed after the approver opened it
+    return :not_pending unless request.pending?
+    return :unknown_decision unless DECISIONS.include?(decision)
+    return :reason_required if decision != "approved" && comment.blank?
+    return :content_changed unless content_fingerprint == request.content_fingerprint && Approvals::ContentFingerprint.call(invoice) == request.content_fingerprint
 
     approvers = Approvals::Approvers.for(request)
-    return I18n.t("approvals.errors.not_an_approver") unless approvers.key?(user.id)
+    return :not_an_approver unless approvers.key?(user.id)
 
     on_behalf_of = approvers[user.id]
-    return I18n.t("approvals.errors.own_entry") if own_entry?(invoice, user, on_behalf_of)
-    I18n.t("approvals.errors.already_decided") if already_decided?(request, user, on_behalf_of)
+    return :own_entry if own_entry?(invoice, user, on_behalf_of)
+    (:already_decided if already_decided?(request, user, on_behalf_of))
   end
   private_class_method :refusal_for
 
@@ -100,7 +108,9 @@ class Approvals::Decide
 
   def self.ask_for_changes(request, invoice, decision, user)
     close(request, invoice, :changes_requested)
-    assignee = invoice.created_by || request.submitted_by
+    # whoever wrote it, else whoever submitted it, as long as they are still of the entity (a task needs a member); otherwise the task waits for an owner to assign it
+    members = UserEntity.current.where(user_id: [ invoice.created_by_id, request.submitted_by_id ].compact).pluck(:user_id)
+    assignee = User.find_by(id: [ invoice.created_by_id, request.submitted_by_id ].compact.find { |id| members.include?(id) })
     task = Accounting::Task.create!(title: I18n.t("approvals.task.title", number: invoice.invoice_number || invoice.id), description: decision.comment, kind: :to_check,
                                     priority: :high, assignee: assignee, author: user, target: invoice)
     Accounting::Notify.call(user: assignee, event: "task_assigned", subject: task, data: { by: user.full_name }) if assignee && assignee != user

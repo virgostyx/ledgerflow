@@ -40,6 +40,7 @@ module Api::V1::OpenApi
     paths["/entries/{id}/reverse"] = { "post" => action("reverseEntry", "Reverse a validated entry", "entries:reverse", 201, body: { "reason" => { "type" => "string" }, "date" => { "type" => "string", "format" => "date" } }) }
     paths["/reports/{name}"] = { "get" => report_operation }
     paths.merge!(Api::V1::OpenApi::AgentEndpoints.paths)
+    paths.merge!(Api::V1::OpenApi::ApprovalEndpoints.paths)
     paths
   end
 
@@ -49,6 +50,7 @@ module Api::V1::OpenApi
                 "EntryLine" => entry_line_schema, "Entry" => entry_schema, "EntryInput" => entry_input_schema, "Report" => report_schema }
     Api::V1::Resources::REGISTRY.each_value { |r| schemas[schema_name(r)] = resource_schema(r) }
     schemas.merge!(Api::V1::OpenApi::AgentEndpoints.schemas)
+    schemas.merge!(Api::V1::OpenApi::ApprovalEndpoints.schemas)
     { "securitySchemes" => { "bearerAuth" => { "type" => "http", "scheme" => "bearer", "description" => "A personal access token (lf_…)." } },
       "parameters" => { "PageSize" => { "name" => "page[size]", "in" => "query", "schema" => { "type" => "integer", "minimum" => 1, "maximum" => Api::V1::Public::BaseController::MAX_PAGE } },
                         "PageAfter" => { "name" => "page[after]", "in" => "query", "schema" => { "type" => "string" }, "description" => "The `next_cursor` of the previous page." },
