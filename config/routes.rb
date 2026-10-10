@@ -264,7 +264,10 @@ Rails.application.routes.draw do
       # B01a: the invoices waiting for my approval, one to decide on, and bulk approval of the small ones
       resources :approvals, only: %i[index show] do
         member { post :decide }
-        collection { post :bulk }
+        collection do
+          post :bulk
+          get :statistics
+        end
       end
 
       resources :tasks, only: %i[index show new create edit update] do

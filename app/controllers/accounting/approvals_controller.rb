@@ -10,6 +10,14 @@ class Accounting::ApprovalsController < ApplicationController
     @bulk = ActsAsTenant.current_tenant.bulk_threshold
   end
 
+  # The approvals table: delays, refusals and late requests, by approver and by supplier, for a period (the last 90 days by default).
+  def statistics
+    authorize Approvals::Request
+    @to = parse_date(params[:to]) || Date.current
+    @from = parse_date(params[:from]) || @to - 90
+    @stats = Approvals::Dashboard.call(from: @from, to: @to)
+  end
+
   def show
     @request = Approvals::Request.find(params[:id])
     authorize @request
@@ -57,6 +65,8 @@ class Accounting::ApprovalsController < ApplicationController
   end
 
   private
+
+  def parse_date(value) = (Date.iso8601(value.to_s) if value.present?) rescue nil
 
   # What the circuit keeps of the device: a short digest of the browser, never the browser itself.
   def device_fingerprint = Digest::SHA256.hexdigest(request.user_agent.to_s)[0, 16]

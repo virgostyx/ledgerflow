@@ -1,0 +1,78 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "To approve", path: accounting_approvals_path }, { label: "Statistics" } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Approval statistics", back_path: accounting_approvals_path, back_text: "To approve") %>
+
+<%= form_with url: statistics_accounting_approvals_path, method: :get, class: "mb-5 flex flex-wrap items-end gap-3 text-sm" do %>
+  <div><%= label_tag :from, "From", class: "block text-xs text-gray-600" %><%= date_field_tag :from, @from, class: "rounded-md border border-gray-300 px-2 py-1" %></div>
+  <div><%= label_tag :to, "To", class: "block text-xs text-gray-600" %><%= date_field_tag :to, @to, class: "rounded-md border border-gray-300 px-2 py-1" %></div>
+  <%= submit_tag "Show", class: "px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer" %>
+<% end %>
+
+<%# the requests submitted in the period, and what waits now (whatever the period) %>
+<% stats = @stats %>
+<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6" data-section="approval-summary">
+  <% [
+       [ "Requests submitted", stats.submitted ],
+       [ "Refusal rate", approval_percent(stats.refusal_rate), "Refused or sent back, among the requests decided." ],
+       [ "Mean time to approval", approval_hours(stats.mean_hours_to_approval) ],
+       [ "Waiting now", stats.pending_now ],
+       [ "Late: past the service time", stats.late_by_service_time, "Waiting longer than the service time of their level." ],
+       [ "Late: invoice past due", stats.late_by_due_date, "Waiting, and the invoice is already past its due date." ]
+     ].each do |label, value, help| %>
+    <div class="rounded-lg border border-gray-200 bg-white p-4" <%= "title=#{help.inspect}".html_safe if help %>>
+      <p class="text-xs uppercase tracking-wide text-gray-500"><%= label %></p>
+      <p class="mt-1 text-2xl font-semibold text-gray-900"><%= value %></p>
+    </div>
+  <% end %>
+</div>
+
+<% if stats.by_supplier.empty? && stats.by_approver.none? { |row| row.decisions.positive? } %>
+  <p class="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">No request in this period.</p>
+<% else %>
+  <h2 class="mb-2 text-sm font-semibold text-gray-700">By approver</h2>
+  <p class="mb-2 text-xs text-gray-500">Decisions taken in the period. The time is counted from the moment the request last moved (its submission, or the previous decision on it).</p>
+  <div class="mb-8 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <table class="min-w-full text-sm" data-section="by-approver">
+      <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr>
+        <% %w[Approver Decisions Approved Refused Changes Handed\ over Mean\ time Waiting\ now].each_with_index do |h, i| %><th class="px-3 py-2 <%= i.zero? ? 'text-left' : 'text-right' %>"><%= h %></th><% end %>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100">
+        <% stats.by_approver.each do |row| %>
+          <tr>
+            <td class="px-3 py-2 font-medium"><%= row.user.full_name %></td>
+            <td class="px-3 py-2 text-right"><%= row.decisions %></td>
+            <td class="px-3 py-2 text-right"><%= row.approved %></td>
+            <td class="px-3 py-2 text-right"><%= row.rejected %></td>
+            <td class="px-3 py-2 text-right"><%= row.changes_requested %></td>
+            <td class="px-3 py-2 text-right"><%= row.transferred %></td>
+            <td class="px-3 py-2 text-right"><%= approval_hours(row.mean_hours) %></td>
+            <td class="px-3 py-2 text-right"><%= row.waiting_now %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="mb-2 text-sm font-semibold text-gray-700">By supplier</h2>
+  <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <table class="min-w-full text-sm" data-section="by-supplier">
+      <thead class="bg-gray-50 text-xs uppercase text-gray-500"><tr>
+        <% %w[Supplier Requests Approved Refused Waiting Mean\ time\ to\ approval].each_with_index do |h, i| %><th class="px-3 py-2 <%= i.zero? ? 'text-left' : 'text-right' %>"><%= h %></th><% end %>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100">
+        <% stats.by_supplier.each do |row| %>
+          <tr>
+            <td class="px-3 py-2 font-medium"><%= row.partner.name %></td>
+            <td class="px-3 py-2 text-right"><%= row.requests %></td>
+            <td class="px-3 py-2 text-right"><%= row.approved %></td>
+            <td class="px-3 py-2 text-right"><%= row.refused %></td>
+            <td class="px-3 py-2 text-right"><%= row.pending %></td>
+            <td class="px-3 py-2 text-right"><%= approval_hours(row.mean_hours_to_approval) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

@@ -6,4 +6,7 @@ class Approvals::RequestPolicy < ApplicationPolicy
   def approve? = can?("approvals.approve")
   def decide?  = can?("approvals.approve")
   def bulk?    = can?("approvals.approve")
+
+  # The figures of the approvals, by approver and by supplier: for those who may see the audit trail (who did what is its business).
+  def statistics? = can?("audit.view")
 end

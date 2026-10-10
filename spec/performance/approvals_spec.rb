@@ -70,4 +70,19 @@ RSpec.describe "Performance — approvals", type: :model do
     puts "  menu count for 200: #{queries} queries"
     expect(queries).to be < 40
   end
+
+  it "builds the approvals table of 500 requests in under 500 ms, in a handful of queries whatever their number" do
+    pending_requests(20)
+    few = count_queries { Approvals::Dashboard.call(from: Date.current - 90, to: Date.current) }
+    pending_requests(480)
+
+    result = nil
+    many = count_queries { result = Approvals::Dashboard.call(from: Date.current - 90, to: Date.current) }
+    elapsed = Benchmark.realtime { Approvals::Dashboard.call(from: Date.current - 90, to: Date.current) }
+
+    puts "  dashboard of 500: #{(elapsed * 1000).round} ms, #{few} queries for 20, #{many} for 500"
+    expect(result.submitted).to eq(500)
+    expect(many).to be <= few + 5
+    expect(elapsed).to be < 0.5
+  end
 end
