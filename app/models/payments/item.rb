@@ -19,11 +19,20 @@ class Payments::Item < ApplicationRecord
   validates :amount, numericality: { greater_than: 0 }
   validates :end_to_end_id, presence: true, length: { maximum: 35 }
 
+  # The payment as it is in the file: what is paid, to whom and with which words, never changes once the batch was exported. Its status does (it is paid, rejected, returned).
+  FROZEN = %w[partner_id partner_bank_account_id iban bic holder_name amount currency end_to_end_id remittance structured_remittance].freeze
+
+  validate :frozen_once_exported, on: :update
+  before_destroy { throw :abort if batch.exported_file? }
   after_update :hold_or_free_invoices, if: :saved_change_to_status?
 
   def masked_iban = Accounting::PartnerBankAccount.new(iban: iban).masked_iban
 
   private
+
+  def frozen_once_exported
+    errors.add(:base, "The batch was exported: its payments cannot be changed.") if batch.exported_file? && (changed & FROZEN).any?
+  end
 
   # An excluded payment does not hold its invoices.
   def hold_or_free_invoices

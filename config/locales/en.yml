@@ -634,6 +634,17 @@ en:
       hmac_invalid:       "Invalid HMAC signature."
 
   payments:
+    export:
+      warnings_open: "A warning of the pre-flight checks has no reason written down: acknowledge it, or take the payment out."
+      file_not_made: "The file could not be made: %{message}"
+      errors:
+        feature_off: "Supplier payments are not enabled for this entity."
+        not_allowed: "You may not export payment files."
+        step_up_required: "Giving the file out needs a second factor given in the last five minutes: confirm it again."
+        not_approved: "Only an approved batch that was not exported yet gives a file."
+        content_changed: "The batch is not the one that was approved. Cancel it and make another."
+        preflight: "The pre-flight checks no longer pass."
+        no_profile: "The batch has no bank profile: the format of the file comes from the bank, and it is not guessed."
     bank_accounts:
       registered: "The bank account was registered. It is observed for a while and another person must verify it before it can be paid."
       verified: "The bank account was verified."
