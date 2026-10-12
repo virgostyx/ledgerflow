@@ -144,10 +144,7 @@ class Payments::Preflight
   end
 
   def warn_balance
-    account = @batch.bank_account.journal.default_account
-    return unless account
-
-    balance = Accounting::PostedLine.where(account_id: account.id).where("entry_date <= ?", Date.current).sum("debit - credit")
+    balance = Payments::Balance.of(@batch.bank_account) or return
     threshold = @profile&.balance_threshold || 0
     after = balance - @batch.total
     warning(:low_balance, "batch", "The balance of the account debited is #{money(balance)}; after this batch #{money(after)}, under #{money(threshold)}.") if after < threshold

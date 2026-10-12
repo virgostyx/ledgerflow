@@ -398,6 +398,21 @@ Rails.application.routes.draw do
         end
       end
 
+      # B01b: the payments in five steps (the legacy batches above stay readable)
+      resources :payments, only: %i[index new create show] do
+        member do
+          post :preflight
+          post :acknowledge
+          post :submit_for_approval
+          post :decide
+          post :export
+          get  :download
+          post :confirm_loaded
+          post :cancel
+          post :confirm_cancellation
+        end
+      end
+
       resources :cash_forecast_items, only: [ :create, :destroy ]
 
       namespace :reports do

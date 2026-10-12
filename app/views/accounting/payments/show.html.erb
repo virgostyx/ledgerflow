@@ -1,0 +1,145 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: 'Dashboard', path: accounting_root_path }, { label: 'Payments', path: accounting_payments_path }, { label: @batch.reference } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: @batch.reference) %>
+
+<% btn = 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700' %>
+<% field = 'rounded-md border border-gray-300 px-3 py-2 text-sm' %>
+
+<%# Summary: what the person compares with the bank %>
+<section class="bg-white rounded-lg border border-gray-200 p-4 mb-4" data-section="summary">
+  <dl class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+    <div><dt class="text-gray-500">Status</dt><dd class="font-medium text-gray-900"><%= @batch.status.humanize %></dd></div>
+    <div><dt class="text-gray-500">Account debited</dt><dd class="text-gray-900"><%= @batch.bank_account.label_fr %></dd></div>
+    <div><dt class="text-gray-500">Execution date</dt><dd class="text-gray-900"><%= l @batch.requested_execution_date %></dd></div>
+    <div><dt class="text-gray-500">Prepared by</dt><dd class="text-gray-900"><%= @batch.prepared_by&.full_name %></dd></div>
+    <div><dt class="text-gray-500">Payments</dt><dd class="font-mono text-gray-900"><%= @batch.payments_count %></dd></div>
+    <div><dt class="text-gray-500">Total</dt><dd class="font-mono text-gray-900"><%= number_with_precision(@batch.total, precision: 2, delimiter: ',') %></dd></div>
+    <% if @balance %>
+      <div><dt class="text-gray-500">Book balance now</dt><dd class="font-mono text-gray-900"><%= number_with_precision(@balance, precision: 2, delimiter: ',') %></dd></div>
+      <div><dt class="text-gray-500">Projected balance after this batch</dt><dd class="font-mono <%= (@balance - @batch.total).negative? ? 'text-red-700' : 'text-gray-900' %>"><%= number_with_precision(@balance - @batch.total, precision: 2, delimiter: ',') %></dd></div>
+    <% end %>
+  </dl>
+  <p class="mt-2 text-xs text-gray-400">The balance is the book balance of the account; the bank knows better.</p>
+  <% if @batch.cancel_reason.present? %><p class="mt-2 text-sm text-red-700">Cancellation: <%= @batch.cancel_reason %></p><% end %>
+</section>
+
+<%# Step 2: the payments %>
+<section class="bg-white rounded-lg border border-gray-200 mb-4 overflow-x-auto" data-section="payments">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 border-b border-gray-200">
+      <tr>
+        <% %w[Supplier Account Remittance Invoices Amount].each do |heading| %>
+          <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider <%= heading == 'Amount' ? 'text-right' : 'text-left' %>"><%= heading %></th>
+        <% end %>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      <% @items.each do |item| %>
+        <tr>
+          <td class="px-4 py-3"><%= item.holder_name %></td>
+          <td class="px-4 py-3 font-mono text-gray-600"><%= item.masked_iban %></td>
+          <td class="px-4 py-3 text-gray-600"><%= item.remittance %></td>
+          <td class="px-4 py-3 text-gray-600"><%= item.item_invoices.map { |link| link.invoice.invoice_number }.to_sentence %></td>
+          <td class="px-4 py-3 text-right font-mono"><%= number_with_precision(item.amount, precision: 2, delimiter: ',') %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+
+<%# Step 3: the pre-flight checks %>
+<section class="bg-white rounded-lg border border-gray-200 p-4 mb-4" data-section="preflight">
+  <div class="flex items-center justify-between mb-2">
+    <h2 class="text-sm font-semibold text-gray-900">Pre-flight checks</h2>
+    <% if @batch.draft? || @batch.pending_approval? || @batch.approved? %>
+      <%= button_to 'Run the checks again', preflight_accounting_payment_path(@batch), class: 'text-sm text-primary-600 hover:text-primary-800' %>
+    <% end %>
+  </div>
+  <% if @report.nil? %>
+    <p class="text-sm text-gray-500">Not run yet.</p>
+  <% else %>
+    <% acknowledged = @report['acknowledgements'] || {} %>
+    <% if @report['errors'].empty? && @report['warnings'].empty? %><p class="text-sm text-green-700">Nothing to report.</p><% end %>
+    <ul class="space-y-2 text-sm">
+      <% @report['errors'].each do |finding| %><li class="text-red-700">Error — <%= finding['message'] %></li><% end %>
+      <% @report['warnings'].each do |finding| %>
+        <li class="text-amber-700">
+          Warning — <%= finding['message'] %>
+          <% if (ack = acknowledged[finding['key']]) %>
+            <span class="text-gray-500">(acknowledged by <%= ack['user'] %>: “<%= ack['reason'] %>”)</span>
+          <% elsif @batch.draft? && policy(@batch).create? %>
+            <%= form_with url: acknowledge_accounting_payment_path(@batch), class: 'inline-flex gap-2 ml-2' do %>
+              <%= hidden_field_tag :key, finding['key'] %>
+              <%= text_field_tag :reason, nil, placeholder: 'Reason', class: field %>
+              <%= submit_tag 'Acknowledge', class: 'px-3 py-2 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50' %>
+            <% end %>
+          <% end %>
+        </li>
+      <% end %>
+      <% @report['infos'].each do |finding| %><li class="text-gray-600"><%= finding['message'] %></li><% end %>
+    </ul>
+    <p class="mt-2 text-xs text-gray-400">Run <%= @report['generated_at'] %></p>
+  <% end %>
+</section>
+
+<%# Step 4: the approval %>
+<section class="bg-white rounded-lg border border-gray-200 p-4 mb-4" data-section="approval">
+  <h2 class="text-sm font-semibold text-gray-900 mb-2">Approval</h2>
+  <% if @request %>
+    <%= render 'approvals/circuit', request: @request %>
+    <% if @request.pending? %><p class="mt-2 text-sm text-blue-700">Waiting for approval.</p><% end %>
+    <% if @can_decide %>
+      <%= form_with url: decide_accounting_payment_path(@batch), class: 'mt-3 flex flex-wrap gap-2 items-end' do %>
+        <%= hidden_field_tag :content_fingerprint, @request.content_fingerprint %>
+        <%= text_field_tag :comment, nil, placeholder: 'Reason (needed to refuse)', class: field %>
+        <%= submit_tag 'Authorize', name: nil, onclick: "this.form.decision.value='approved'", class: btn %>
+        <%= hidden_field_tag :decision, 'approved' %>
+        <%= submit_tag 'Refuse', name: nil, onclick: "this.form.decision.value='rejected'", class: 'px-4 py-2 border border-gray-300 text-sm rounded-md bg-white hover:bg-gray-50' %>
+      <% end %>
+    <% end %>
+  <% else %>
+    <p class="text-sm text-gray-500">Not put to approval yet.</p>
+    <% if @batch.draft? && policy(@batch).create? %>
+      <%= button_to 'Ask for the approval', submit_for_approval_accounting_payment_path(@batch), class: "mt-2 #{btn}" %>
+    <% end %>
+  <% end %>
+</section>
+
+<%# Step 5: the file and what follows %>
+<section class="bg-white rounded-lg border border-gray-200 p-4 mb-4" data-section="file">
+  <h2 class="text-sm font-semibold text-gray-900 mb-2">File and follow-up</h2>
+  <% if @batch.exported_file? %>
+    <p class="text-sm text-gray-700 mb-2">Compare these values with the summary of your bank before you authorize the file there:</p>
+    <dl class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm mb-3">
+      <div><dt class="text-gray-500">Payments</dt><dd class="font-mono"><%= @batch.payments_count %></dd></div>
+      <div><dt class="text-gray-500">Control sum</dt><dd class="font-mono"><%= format('%.2f', @batch.control_sum) %></dd></div>
+      <div><dt class="text-gray-500">Total</dt><dd class="font-mono"><%= format('%.2f', @batch.total) %></dd></div>
+      <div><dt class="text-gray-500">Message id</dt><dd class="font-mono"><%= @batch.message_id %></dd></div>
+      <div><dt class="text-gray-500">Fingerprint (SHA-256)</dt><dd class="font-mono"><%= @batch.file_sha256[0, 12] %>…</dd></div>
+    </dl>
+    <% if policy(@batch).export? %><%= link_to 'Download the file', download_accounting_payment_path(@batch), class: 'text-sm text-primary-600 hover:text-primary-800' %><% end %>
+    <p class="text-xs text-gray-400 mt-1">Exported by <%= @batch.exported_by&.full_name %> on <%= l @batch.exported_at, format: :short %>. The file does not change: to change a payment, cancel the batch and make another.</p>
+  <% elsif @batch.approved? && policy(@batch).export? %>
+    <%= button_to 'Make the file', export_accounting_payment_path(@batch), class: btn %>
+  <% else %>
+    <p class="text-sm text-gray-500">The file can be made once the batch is approved.</p>
+  <% end %>
+
+  <% if @batch.exported? && policy(@batch).confirm? %>
+    <%= button_to 'I loaded the file in my bank', confirm_loaded_accounting_payment_path(@batch), class: "mt-3 #{btn}" %>
+  <% elsif @batch.submitted? %>
+    <p class="mt-2 text-sm text-gray-700">Loaded in the bank by <%= @batch.submitted_by&.full_name %> on <%= l @batch.submitted_at, format: :short %>. The statement will tell what the bank did.</p>
+  <% end %>
+
+  <% if @batch.cancel_requested? %>
+    <p class="mt-3 text-sm text-amber-700">A cancellation was asked for. The invoices stay held until you say that the file is not, or no longer, authorized in your bank.</p>
+    <% if policy(@batch).confirm? %><%= button_to 'The file is not authorized in my bank', confirm_cancellation_accounting_payment_path(@batch), class: "mt-2 #{btn}" %><% end %>
+  <% elsif %w[draft pending_approval approved exported submitted].include?(@batch.status) %>
+    <%= form_with url: cancel_accounting_payment_path(@batch), class: 'mt-4 flex gap-2 items-end' do %>
+      <%= text_field_tag :reason, nil, placeholder: 'Reason for cancelling', class: field %>
+      <%= submit_tag 'Cancel the batch', class: 'px-4 py-2 border border-red-300 text-red-700 text-sm rounded-md bg-white hover:bg-red-50' %>
+    <% end %>
+  <% end %>
+</section>

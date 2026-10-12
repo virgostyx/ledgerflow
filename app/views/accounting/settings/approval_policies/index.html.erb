@@ -21,7 +21,7 @@
     <% @active.each do |policy| %>
       <div class="rounded-lg border border-gray-200 bg-white p-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-gray-900"><%= policy.name %> <span class="ml-2 text-xs font-normal text-gray-500">priority <%= policy.priority %> · version <%= policy.version %></span></h2>
+          <h2 class="text-sm font-semibold text-gray-900"><%= policy.name %> <span class="ml-2 text-xs font-normal text-gray-500"><%= policy.subject.humanize %> · priority <%= policy.priority %> · version <%= policy.version %></span></h2>
           <%= link_to "Edit", edit_accounting_settings_approval_policy_path(policy), class: "text-sm text-primary-700 hover:underline" %>
         </div>
         <%= render "summary", policy: policy %>

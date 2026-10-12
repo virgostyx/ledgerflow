@@ -58,6 +58,23 @@ RSpec.describe Approvals::SavePolicy do
       )
     end
 
+    it "of a payment batch are its total, its number of payments and its accounts, and the subject is kept" do
+      result = save(attrs: attributes.merge(subject: "payment_batch", conditions: { min_amount: "5000", min_payments: "2", max_payments: "", bank_account_ids: "3, 4", partner_ids: "9" }))
+
+      expect(result[:policy]).to be_payment_batch
+      expect(result[:policy].conditions).to eq("min_amount" => "5000", "min_payments" => 2, "bank_account_ids" => [ 3, 4 ])
+    end
+
+    it "never move a policy from one subject to the other once it exists" do
+      policy = save[:policy]
+
+      expect(save(policy: policy, attrs: attributes.merge(subject: "payment_batch"))[:policy]).to be_purchase_invoice
+    end
+
+    it "refuse an unknown subject" do
+      expect(save(attrs: attributes.merge(subject: "bogus"))).to be_failure
+    end
+
     it "refuse an amount that is not a number" do
       expect(save(attrs: attributes.merge(conditions: { min_amount: "lots" }))).to be_failure
     end

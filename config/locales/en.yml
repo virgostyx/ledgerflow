@@ -634,6 +634,17 @@ en:
       hmac_invalid:       "Invalid HMAC signature."
 
   payments:
+    screens:
+      composed: "The batch was made. Check it, then ask for its approval."
+      checked: "The pre-flight checks were run again."
+      acknowledged: "The warning was acknowledged."
+      submitted_for_approval: "The batch was put to approval."
+      decided: "Your decision was recorded."
+      exported: "The file was made. Compare its values with your bank before you authorize it there."
+      no_file: "There is no file for this batch yet."
+      loaded: "Recorded: the file was loaded in your bank."
+      cancelled: "The batch was cancelled, or its cancellation was asked for."
+      cancellation_done: "The batch is cancelled and its invoices are free."
     cancel:
       errors:
         feature_off: "Supplier payments are not enabled for this entity."
@@ -804,6 +815,7 @@ en:
       revised: "Requests are in progress under this policy: it was kept for them and replaced by version %{version}."
       errors:
         no_level: "A policy needs at least one level."
+        subject: "A policy is for purchase invoices or payment batches, not %{subject}."
         level: "Level %{position}: %{message}"
         amount: "\"%{amount}\" is not an amount."
     submitted: "The invoice was put to approval."

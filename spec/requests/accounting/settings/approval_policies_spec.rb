@@ -18,8 +18,8 @@ RSpec.describe "Approval policies and delegations (B01a)", type: :request do
   before { sign_in owner }
 
   describe "the right" do
-    it "is closed when the feature is off" do
-      entity.update!(features: entity.features.merge("b01a" => false))
+    it "is closed when both features it serves (invoice approval, supplier payments) are off" do
+      entity.update!(features: entity.features.merge("b01a" => false, "b01b" => false))
 
       get accounting_settings_approval_policies_path
 
@@ -102,6 +102,29 @@ RSpec.describe "Approval policies and delegations (B01a)", type: :request do
       expect(Approvals::Policy.active.sole.version).to eq(2)
       follow_redirect!
       expect(response.body).to include("Retired")
+    end
+  end
+
+  describe "the policies of payment batches" do
+    before { entity.update!(features: entity.features.merge("b01b" => true)) }
+
+    it "are written from the same screen, with the subject, and listed as such" do
+      post accounting_settings_approval_policies_path, params: valid_params.deep_merge(policy: { subject: "payment_batch", conditions: { min_payments: "3" } })
+
+      policy = Approvals::Policy.last
+      expect(policy).to be_payment_batch
+      expect(policy.conditions).to include("min_payments" => 3)
+      get accounting_settings_approval_policies_path
+      expect(response.body).to include("Payment batch").and include("at least 3 payments")
+    end
+
+    it "are open with only the payments feature on" do
+      entity.update!(features: entity.features.merge("b01a" => false))
+
+      get new_accounting_settings_approval_policy_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Payment batch")
     end
   end
 

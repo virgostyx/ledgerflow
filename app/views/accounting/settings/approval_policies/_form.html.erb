@@ -4,6 +4,12 @@
 <% input = "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
 <%= form_with scope: :policy, url: url, method: method, class: "space-y-6" do |f| %>
   <div class="rounded-lg border border-gray-200 bg-white p-4 grid gap-4 sm:grid-cols-2">
+    <div class="sm:col-span-2">
+      <%= f.label :subject, "What it applies to", class: "block text-sm font-medium text-gray-700" %>
+      <% subjects = [ ([ "Purchase invoice", "purchase_invoice" ] if feature?(:b01a)), ([ "Payment batch", "payment_batch" ] if feature?(:b01b)) ].compact %>
+      <%= f.select :subject, subjects, { selected: policy.subject || subjects.first&.last }, disabled: policy.persisted?, class: input %>
+      <% if policy.persisted? %><p class="mt-1 text-xs text-gray-500">A policy keeps its subject: requests were made under it.</p><% end %>
+    </div>
     <div class="sm:col-span-2"><%= f.label :name, "Name", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :name, value: policy.name, required: true, class: input %></div>
     <div><%= f.label :priority, "Priority (smallest first)", class: "block text-sm font-medium text-gray-700" %><%= f.number_field :priority, value: policy.priority, class: input %></div>
     <div><%= f.label :reminder_hours, "Reminders after (hours, comma separated)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :reminder_hours, value: Array(policy.reminder_hours).join(", "), class: input %></div>
@@ -11,11 +17,14 @@
   </div>
 
   <fieldset class="rounded-lg border border-gray-200 bg-white p-4">
-    <legend class="px-1 text-sm font-semibold text-gray-900">Applies to an invoice that…</legend>
-    <p class="mb-3 text-xs text-gray-500">Leave a field empty to ignore it. Every field filled in must hold.</p>
+    <legend class="px-1 text-sm font-semibold text-gray-900">Applies to what…</legend>
+    <p class="mb-3 text-xs text-gray-500">Leave a field empty to ignore it. Every field filled in must hold. A payment batch is told apart by its total (the amounts below), its number of payments and its account only.</p>
     <div class="grid gap-4 sm:grid-cols-2">
       <div><label class="block text-sm font-medium text-gray-700">From (EUR, incl. VAT)</label><%= text_field_tag "policy[conditions][min_amount]", c["min_amount"], class: input %></div>
       <div><label class="block text-sm font-medium text-gray-700">Up to (EUR, incl. VAT)</label><%= text_field_tag "policy[conditions][max_amount]", c["max_amount"], class: input %></div>
+      <div><label class="block text-sm font-medium text-gray-700">Payments, at least (payment batch)</label><%= text_field_tag "policy[conditions][min_payments]", c["min_payments"], class: input %></div>
+      <div><label class="block text-sm font-medium text-gray-700">Payments, at most (payment batch)</label><%= text_field_tag "policy[conditions][max_payments]", c["max_payments"], class: input %></div>
+      <div><label class="block text-sm font-medium text-gray-700">Accounts debited (ids, comma separated; payment batch)</label><%= text_field_tag "policy[conditions][bank_account_ids]", Array(c["bank_account_ids"]).join(", "), class: input %></div>
       <div><label class="block text-sm font-medium text-gray-700">Suppliers (ids, comma separated)</label><%= text_field_tag "policy[conditions][partner_ids]", Array(c["partner_ids"]).join(", "), class: input %></div>
       <div><label class="block text-sm font-medium text-gray-700">Expense accounts (ids, comma separated)</label><%= text_field_tag "policy[conditions][account_ids]", Array(c["account_ids"]).join(", "), class: input %></div>
       <div><label class="block text-sm font-medium text-gray-700">Projects (ids, comma separated)</label><%= text_field_tag "policy[conditions][project_ids]", Array(c["project_ids"]).join(", "), class: input %></div>

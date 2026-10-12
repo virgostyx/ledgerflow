@@ -1,6 +1,6 @@
 # B01a: the approval policies (who must approve which purchase invoices, level by level). The owner's, and closed while the feature is off.
 class Accounting::Settings::ApprovalPoliciesController < Accounting::Settings::BaseController
-  before_action { require_feature!(:b01a) }
+  before_action { require_feature!(feature?(:b01a) ? :b01a : :b01b) } # invoices (b01a) or payment batches (b01b)
   before_action { authorize Approvals::Policy }
   before_action :set_policy, only: %i[edit update]
 
@@ -45,7 +45,7 @@ class Accounting::Settings::ApprovalPoliciesController < Accounting::Settings::B
   end
 
   def policy_attributes
-    raw = params.require(:policy).permit(:name, :priority, :active, :reminder_hours, conditions: [ :min_amount, :max_amount, :partner_ids, :account_ids, :project_ids, :currencies, :first_payment, { document_types: [] } ])
+    raw = params.require(:policy).permit(:name, :priority, :active, :reminder_hours, :subject, conditions: [ :min_amount, :max_amount, :min_payments, :max_payments, :bank_account_ids, :partner_ids, :account_ids, :project_ids, :currencies, :first_payment, { document_types: [] } ])
     raw.to_h.symbolize_keys.merge(reminder_hours: raw[:reminder_hours].to_s.split(",").map(&:strip))
   end
 

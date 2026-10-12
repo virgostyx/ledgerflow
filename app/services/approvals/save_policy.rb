@@ -26,9 +26,10 @@ class Approvals::SavePolicy
 
   def self.write(policy, attributes, steps)
     return create(Approvals::Policy.new(attributes), steps) unless policy&.persisted?
-    return update_in_place(policy, attributes, steps) unless policy.requests.exists? && levels_differ?(policy, steps)
 
-    successor = create(Approvals::Policy.new(attributes.merge(version: policy.version + 1)), steps)
+    return update_in_place(policy, attributes.except(:subject), steps) unless policy.requests.exists? && levels_differ?(policy, steps)
+
+    successor = create(Approvals::Policy.new(attributes.merge(subject: policy.subject, version: policy.version + 1)), steps)
     policy.update!(active: false)
     Accounting::AuditLog.record!(auditable: successor, action: "approval_policy_revised", payload: { replaces: policy.id, version: successor.version })
     successor
@@ -81,18 +82,29 @@ class Approvals::SavePolicy
   def self.blank_step?(step) = step[:approver_user_ids].empty? && step[:approver_roles].empty? && step[:service_hours].nil? && step[:escalate_to_id].nil?
   private_class_method :blank_step?
 
+  SUBJECTS = %w[purchase_invoice payment_batch].freeze
+
+  def self.subject_of(value)
+    return :purchase_invoice if value.blank?
+
+    SUBJECTS.include?(value.to_s) ? value.to_sym : raise(ArgumentError, I18n.t("approvals.policy.errors.subject", subject: value))
+  end
+  private_class_method :subject_of
+
   def self.clean_attributes(attributes)
     attributes = attributes.to_h.symbolize_keys
-    cleaned = attributes.slice(:name, :priority, :active, :reminder_hours).merge(subject: :purchase_invoice)
-    cleaned[:conditions] = clean_conditions(attributes[:conditions] || {})
+    cleaned = attributes.slice(:name, :priority, :active, :reminder_hours).merge(subject: subject_of(attributes[:subject]))
+    cleaned[:conditions] = clean_conditions(attributes[:conditions] || {}, cleaned[:subject])
     cleaned[:reminder_hours] = Array(cleaned[:reminder_hours]).compact_blank.map(&:to_i).sort if cleaned.key?(:reminder_hours)
     cleaned.compact
   end
   private_class_method :clean_attributes
 
   # Only what is filled in, typed: amounts as given (digits), ids as integers, currencies upper case, a closed list of document types.
-  def self.clean_conditions(raw)
+  # A payment batch is told apart by its total, its number of payments and the account debited only.
+  def self.clean_conditions(raw, subject = :purchase_invoice)
     raw = raw.to_h.symbolize_keys
+    raw = raw.slice(:min_amount, :max_amount, :min_payments, :max_payments, :bank_account_ids) if subject.to_s == "payment_batch"
     conditions = {}
     %i[min_amount max_amount].each do |key|
       next if raw[key].blank?
@@ -104,6 +116,11 @@ class Approvals::SavePolicy
       ids = list(raw[key]).map(&:to_i)
       conditions[key.to_s] = ids if ids.any?
     end
+    %i[min_payments max_payments].each do |key|
+      conditions[key.to_s] = Integer(raw[key].to_s, 10) if raw[key].present?
+    end
+    ids = list(raw[:bank_account_ids]).map(&:to_i)
+    conditions["bank_account_ids"] = ids if ids.any?
     currencies = list(raw[:currencies]).map(&:upcase)
     conditions["currencies"] = currencies if currencies.any?
     types = list(raw[:document_types]) & DOCUMENT_TYPES
