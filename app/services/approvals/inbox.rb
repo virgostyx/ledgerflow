@@ -28,7 +28,7 @@ class Approvals::Inbox
   end
 
   def requests
-    @requests ||= Approvals::Request.pending.includes(policy: :steps, subject: %i[partner entity]).select { |request| Approvals::Approvers.for(request, @directory).key?(@user.id) }
+    @requests ||= Approvals::Request.pending.for_invoices.includes(policy: :steps, subject: %i[partner entity]).select { |request| Approvals::Approvers.for(request, @directory).key?(@user.id) }
   end
 
   private

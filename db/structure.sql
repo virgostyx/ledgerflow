@@ -4555,7 +4555,9 @@ CREATE TABLE public.entities (
     allow_self_approval boolean DEFAULT false NOT NULL,
     bulk_threshold numeric(15,2),
     step_up_threshold numeric(15,2),
-    iban_cooling_hours integer DEFAULT 24 NOT NULL
+    iban_cooling_hours integer DEFAULT 24 NOT NULL,
+    distinct_payment_authorizer boolean DEFAULT true NOT NULL,
+    authorizer_not_bap_giver boolean DEFAULT false NOT NULL
 );
 
 
@@ -7396,7 +7398,7 @@ CREATE INDEX idx_documents_entity_status ON public.accounting_documents USING bt
 -- Name: idx_documents_integrity_failed; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_documents_integrity_failed ON public.accounting_documents USING btree (integrity_status) WHERE ((integrity_status)::text = ANY ((ARRAY['mismatch'::character varying, 'missing'::character varying])::text[]));
+CREATE INDEX idx_documents_integrity_failed ON public.accounting_documents USING btree (integrity_status) WHERE ((integrity_status)::text = ANY (ARRAY[('mismatch'::character varying)::text, ('missing'::character varying)::text]));
 
 
 --
@@ -13189,6 +13191,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261012120000'),
 ('20261012110000'),
 ('20261012100000'),
 ('20261012090000'),

@@ -42,7 +42,7 @@ class Approvals::ProcessDue
   def escalate(request, step)
     return if request.escalated_at || step.service_hours.nil? || hours_waiting(request) < step.service_hours
 
-    target = step.escalate_to if step.escalate_to && can_approve?(step.escalate_to)
+    target = step.escalate_to if step.escalate_to && can_approve?(step.escalate_to, request)
     request.update!(escalated_at: Time.current, escalated_to_id: target&.id)
     tell(target ? [ target.id ] : owner_ids, "approval_escalated:#{request.id}:#{step.position}", request)
     audit(request, "approval_escalated", step: step.position, escalated_to: target&.id || "owners")
@@ -64,5 +64,5 @@ class Approvals::ProcessDue
 
   def owner_ids = @directory.owner_ids
 
-  def can_approve?(user) = @directory.approving?(user.id)
+  def can_approve?(user, request) = @directory.approving?(user.id, request.subject_type == "Payments::Batch" ? "payments.approve" : "approvals.approve")
 end

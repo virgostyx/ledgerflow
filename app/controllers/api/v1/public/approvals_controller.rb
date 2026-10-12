@@ -14,6 +14,8 @@ class Api::V1::Public::ApprovalsController < Api::V1::Public::BaseController
     feature_off: [ :forbidden, "Approvals are not enabled", "approvals-not-enabled" ],
     not_an_approver: [ :forbidden, "Not an approver", "not-an-approver" ],
     own_entry: [ :forbidden, "Separation of duties", "separation-of-duties" ],
+    own_batch: [ :forbidden, "Separation of duties", "separation-of-duties" ],
+    gave_the_approval: [ :forbidden, "Separation of duties", "separation-of-duties" ],
     content_changed: [ :conflict, "The invoice changed", "content-changed" ],
     not_pending: [ :conflict, "Already decided", "already-decided" ],
     already_decided: [ :conflict, "Already decided", "already-decided" ],
@@ -62,7 +64,7 @@ class Api::V1::Public::ApprovalsController < Api::V1::Public::BaseController
 
   # Found when it waits for the owner, or when the owner decided on it: nothing else is told to this token.
   def find_request
-    request = Approvals::Request.includes(:policy, decisions: %i[approver on_behalf_of transferred_to], subject: :partner).find(params[:id])
+    request = Approvals::Request.for_invoices.includes(:policy, decisions: %i[approver on_behalf_of transferred_to], subject: :partner).find(params[:id])
     raise ActiveRecord::RecordNotFound unless Approvals::Approvers.for(request).key?(owner.id) || request.decisions.any? { |d| d.approver_id == owner.id }
 
     request

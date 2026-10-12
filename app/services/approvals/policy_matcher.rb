@@ -9,10 +9,19 @@ class Approvals::PolicyMatcher
   end
 
   def call
-    Approvals::Policy.active.purchase_invoice.by_priority.detect { |policy| matches?(policy.conditions) }
+    scope = Approvals::Policy.active.by_priority
+    return scope.payment_batch.detect { |policy| batch_matches?(policy.conditions) } if @invoice.is_a?(Payments::Batch)
+
+    scope.purchase_invoice.detect { |policy| matches?(policy.conditions) }
   end
 
   private
+
+  # A payment batch: its total (EUR, bounds included), its number of payments and the account debited.
+  def batch_matches?(c)
+    amount_ok?(c) && listed?(c["bank_account_ids"], @invoice.bank_account_id) &&
+      (c["min_payments"].blank? || @invoice.payments_count >= c["min_payments"].to_i) && (c["max_payments"].blank? || @invoice.payments_count <= c["max_payments"].to_i)
+  end
 
   def matches?(c)
     amount_ok?(c) &&
@@ -39,6 +48,6 @@ class Approvals::PolicyMatcher
 
   # The amount including VAT, summed by the database, converted at the invoice's own rate.
   def amount
-    @amount ||= Fx::Convert.to_eur(@invoice.lines.sum(:total_incl_vat), @invoice.exchange_rate)
+    @amount ||= @invoice.is_a?(Payments::Batch) ? @invoice.total : Fx::Convert.to_eur(@invoice.lines.sum(:total_incl_vat), @invoice.exchange_rate)
   end
 end

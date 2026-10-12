@@ -11,7 +11,8 @@ class Approvals::Approvers
     direct = principals.index_with { nil }
     # who stands in for whom on this level: by delegation, or because the request was handed over to them
     delegated = directory.delegates_of(principals, request.policy_id).merge(request.transfers.to_h { |to, from| [ to.to_i, from.to_i ] })
-    allowed = (direct.keys + delegated.keys).uniq.select { |id| directory.approving?(id) }
+    permission = request.subject_type == "Payments::Batch" ? "payments.approve" : "approvals.approve"
+    allowed = (direct.keys + delegated.keys).uniq.select { |id| directory.approving?(id, permission) }
     delegated.merge(direct).slice(*allowed) # deciding for oneself wins over deciding for someone
   end
 

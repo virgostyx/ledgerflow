@@ -30,9 +30,9 @@ class Approvals::Dashboard
 
   WAITED = "EXTRACT(EPOCH FROM (approval_requests.decided_at - approval_requests.submitted_at))".freeze
 
-  def requests = Approvals::Request.where(submitted_at: @range)
+  def requests = Approvals::Request.for_invoices.where(submitted_at: @range)
 
-  def pending = Approvals::Request.pending
+  def pending = Approvals::Request.pending.for_invoices
 
   def hours(seconds) = seconds && (BigDecimal(seconds.to_s) / 3600).round(2)
 

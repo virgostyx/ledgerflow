@@ -14,10 +14,10 @@ class Approvals::Directory
 
   def role_of(user_id) = by_user[user_id]&.role
 
-  # Holders of `approvals.approve` here, by their system role or their custom role.
-  def approving_ids = @approving_ids ||= @memberships.select { |m| m.allows?("approvals.approve") }.map(&:user_id).to_set
+  # Holders of a right here (`approvals.approve` for invoices, `payments.approve` for a batch), by their system role or their custom role.
+  def approving_ids(permission = "approvals.approve") = (@approving_ids ||= {})[permission] ||= @memberships.select { |m| m.allows?(permission) }.map(&:user_id).to_set
 
-  def approving?(user_id) = approving_ids.include?(user_id)
+  def approving?(user_id, permission = "approvals.approve") = approving_ids(permission).include?(user_id)
 
   def owner_ids = @memberships.select(&:owner?).map(&:user_id)
 

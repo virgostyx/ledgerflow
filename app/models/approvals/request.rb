@@ -7,6 +7,9 @@ class Approvals::Request < ApplicationRecord
 
   enum :status, { pending: 0, approved: 1, rejected: 2, changes_requested: 3, cancelled: 4, invalidated: 5 }
 
+  scope :for_invoices, -> { where(subject_type: "Accounting::Invoice") }
+  scope :for_batches, -> { where(subject_type: "Payments::Batch") }
+
   belongs_to :policy, class_name: "Approvals::Policy", optional: true
   belongs_to :subject, polymorphic: true
   belongs_to :submitted_by, class_name: "User", optional: true

@@ -22,7 +22,7 @@ class Accounting::NotificationsController < ApplicationController
   def target_of(notification)
     subject = notification.subject
     return agent_digest_path(subject) if subject.is_a?(Agent::Digest)
-    return accounting_invoice_path(subject.subject) if subject.is_a?(Approvals::Request)
+    return accounting_invoice_path(subject.subject) if subject.is_a?(Approvals::Request) && subject.subject.is_a?(Accounting::Invoice) # a batch has its own screen (B01b, next step)
     return accounting_partner_bank_account_path(subject) if subject.is_a?(Accounting::PartnerBankAccount)
     return accounting_invoice_path(subject) if subject.is_a?(Accounting::Invoice)
 

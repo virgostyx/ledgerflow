@@ -171,6 +171,20 @@
           <%= f.number_field :iban_cooling_hours, min: 0, max: 720, step: 1, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
           <span class="block text-xs text-gray-400 mt-1">A new or changed account cannot be paid before this time has passed and another person verified it. 24 hours by default.</span>
         </div>
+        <div class="flex items-start gap-2 pt-2">
+          <%= f.check_box :distinct_payment_authorizer, class: "mt-1 rounded border-gray-300" %>
+          <%= f.label :distinct_payment_authorizer, class: "text-sm text-gray-700" do %>
+            The person who prepared a payment batch may not authorize it
+            <span class="block text-xs text-gray-400">On by default: who enters, who approves and who authorizes the payment are three people. Every change of this option is recorded.</span>
+          <% end %>
+        </div>
+        <div class="flex items-start gap-2 pt-2">
+          <%= f.check_box :authorizer_not_bap_giver, class: "mt-1 rounded border-gray-300" %>
+          <%= f.label :authorizer_not_bap_giver, class: "text-sm text-gray-700" do %>
+            Nobody who approved an invoice of a batch may authorize that batch
+            <span class="block text-xs text-gray-400">Off by default. Every change of this option is recorded.</span>
+          <% end %>
+        </div>
         <% end %>
       <% end %>
 

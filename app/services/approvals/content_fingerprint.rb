@@ -3,8 +3,9 @@
 # do not count; the supplier, the amounts, the accounts, the due date, the currency and the supporting documents do.
 # ponytail: the IBAN written on the invoice counts too once it is stored (audit §7.8); until then it is not part of the content.
 class Approvals::ContentFingerprint
-  def self.call(invoice)
-    Digest::SHA256.hexdigest(JSON.generate(canonical(invoice)))
+  def self.call(subject)
+    content = subject.is_a?(Payments::Batch) ? Payments::BatchContent.call(subject) : canonical(subject)
+    Digest::SHA256.hexdigest(JSON.generate(content))
   end
 
   def self.canonical(invoice)

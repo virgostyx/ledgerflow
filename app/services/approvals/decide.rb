@@ -3,13 +3,15 @@
 # The decision carries the fingerprint of the content the person had in front of them: it must still be the request's, and the invoice's.
 # Separation of tasks: the author of an invoice does not approve it, nor does a delegate for the author or for themselves,
 # unless the entity allows self-approval. Nobody decides twice on a level.
+# A payment batch goes through the same engine (B01b): the one who prepared it does not authorize it (option distinct_payment_authorizer, on by default), nor, when the
+# entity asks (authorizer_not_bap_giver), anyone who gave the approval of one of its invoices. Refused or sent back, a batch becomes a draft again.
 # => ctx[:decision]
 class Approvals::Decide
   DECISIONS = %w[approved rejected changes_requested transferred].freeze
 
   def self.call(request:, user:, decision:, content_fingerprint:, comment: nil, channel: :web, device_fingerprint: nil, recent_second_factor: false, transfer_to_id: nil)
     ctx = LightService::Context.make(decision: nil)
-    invoice = request.subject
+    invoice = request.subject # an Accounting::Invoice, or a Payments::Batch
     directory = Approvals::Directory.new(invoice.entity) # who is who in this entity, read once
     code = refusal_for(request, invoice, user, decision.to_s, content_fingerprint, comment, recent_second_factor, directory, transfer_to_id)
     return refuse(ctx, code) if code
@@ -36,7 +38,7 @@ class Approvals::Decide
   private_class_method :refuse
 
   def self.refusal_for(request, invoice, user, decision, content_fingerprint, comment, recent_second_factor, directory, transfer_to_id)
-    return :feature_off unless invoice.entity.feature?(:b01a)
+    return :feature_off unless invoice.entity.feature?(invoice.is_a?(Payments::Batch) ? :b01b : :b01a)
     return :content_changed if request.invalidated? # the invoice changed after the approver opened it
     return :not_pending unless request.pending?
     return :unknown_decision unless DECISIONS.include?(decision)
@@ -47,9 +49,12 @@ class Approvals::Decide
     return :not_an_approver unless approvers.key?(user.id)
 
     on_behalf_of = approvers[user.id]
-    return :own_entry if own_entry?(invoice, user, on_behalf_of)
+    return (invoice.is_a?(Payments::Batch) ? :own_batch : :own_entry) if own_entry?(invoice, user, on_behalf_of)
+
+    gave = batch_refusal(invoice, user, on_behalf_of) if invoice.is_a?(Payments::Batch)
+    return gave if gave
     return :already_decided if already_decided?(request, user, on_behalf_of)
-    return :invalid_transfer if decision == "transferred" && !valid_transfer?(transfer_to_id, user, directory)
+    return :invalid_transfer if decision == "transferred" && !valid_transfer?(transfer_to_id, user, directory, invoice)
 
     :step_up_required if decision == "approved" && !recent_second_factor && step_up?(invoice)
   end
@@ -63,17 +68,33 @@ class Approvals::Decide
   private_class_method :step_up?
 
   # Another person of this entity, who can approve here.
-  def self.valid_transfer?(transfer_to_id, user, directory)
-    transfer_to_id.present? && transfer_to_id != user.id && directory.approving?(transfer_to_id)
+  def self.valid_transfer?(transfer_to_id, user, directory, subject)
+    permission = subject.is_a?(Payments::Batch) ? "payments.approve" : "approvals.approve"
+    transfer_to_id.present? && transfer_to_id != user.id && directory.approving?(transfer_to_id, permission)
   end
   private_class_method :valid_transfer?
 
   def self.own_entry?(invoice, user, on_behalf_of)
+    if invoice.is_a?(Payments::Batch)
+      return false unless invoice.entity.distinct_payment_authorizer?
+
+      return [ user.id, on_behalf_of ].compact.include?(invoice.prepared_by_id)
+    end
     return false if invoice.entity.allow_self_approval?
 
     [ user.id, on_behalf_of ].compact.include?(invoice.created_by_id)
   end
   private_class_method :own_entry?
+
+  # Whoever approved an invoice of the batch (the entity may forbid them to authorize the payment too).
+  def self.batch_refusal(batch, user, on_behalf_of)
+    return nil unless batch.entity.authorizer_not_bap_giver?
+
+    invoice_ids = Payments::ItemInvoice.where(item_id: batch.items.where(status: :included).select(:id)).select(:invoice_id)
+    givers = Approvals::Decision.approved.joins(:request).where(approval_requests: { subject_type: "Accounting::Invoice", subject_id: invoice_ids })
+    :gave_the_approval if givers.where(approver_id: [ user.id, on_behalf_of ].compact).or(givers.where(on_behalf_of_id: [ user.id, on_behalf_of ].compact)).exists?
+  end
+  private_class_method :batch_refusal
 
   # Nobody decides twice on a level. Whoever handed the request over has decided (they cannot decide any more), but their having handed it over
   # does not stop the one they handed it to from deciding in their name.
@@ -105,7 +126,7 @@ class Approvals::Decide
       request.update!(current_step: following.position, step_started_at: Time.current, reminders_sent: 0, escalated_at: nil, escalated_to_id: nil, rerouted_at: nil, transfers: {})
     else
       request.update!(status: :approved, decided_at: Time.current)
-      invoice.update_columns(payment_status: Accounting::Invoice.payment_statuses[:approved])
+      invoice.is_a?(Payments::Batch) ? invoice.update!(status: :approved) : invoice.update_columns(payment_status: Accounting::Invoice.payment_statuses[:approved])
     end
   end
   private_class_method :approve
@@ -131,15 +152,16 @@ class Approvals::Decide
 
   def self.close(request, invoice, status)
     request.update!(status: status, decided_at: Time.current)
-    invoice.update_columns(payment_status: Accounting::Invoice.payment_statuses[:on_hold])
+    invoice.is_a?(Payments::Batch) ? invoice.update!(status: :draft) : invoice.update_columns(payment_status: Accounting::Invoice.payment_statuses[:on_hold])
   end
   private_class_method :close
 
   def self.ask_for_changes(request, invoice, decision, user, directory)
     close(request, invoice, :changes_requested)
     # whoever wrote it, else whoever submitted it, as long as they are still of the entity (a task needs a member); otherwise the task waits for an owner to assign it
-    assignee = User.find_by(id: [ invoice.created_by_id, request.submitted_by_id ].compact.find { |id| directory.member?(id) })
-    task = Accounting::Task.create!(title: I18n.t("approvals.task.title", number: invoice.invoice_number || invoice.id), description: decision.comment, kind: :to_check,
+    author_id = invoice.is_a?(Payments::Batch) ? invoice.prepared_by_id : invoice.created_by_id
+    assignee = User.find_by(id: [ author_id, request.submitted_by_id ].compact.find { |id| directory.member?(id) })
+    task = Accounting::Task.create!(title: I18n.t("approvals.task.title", number: invoice.is_a?(Payments::Batch) ? invoice.reference : (invoice.invoice_number || invoice.id)), description: decision.comment, kind: :to_check,
                                     priority: :high, assignee: assignee, author: user, target: invoice)
     Accounting::Notify.call(user: assignee, event: "task_assigned", subject: task, data: { by: user.full_name }) if assignee && assignee != user
   end

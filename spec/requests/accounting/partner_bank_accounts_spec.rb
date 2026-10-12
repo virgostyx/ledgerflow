@@ -255,6 +255,24 @@ RSpec.describe "Supplier bank details (B01b)", type: :request do
     end
   end
 
+  describe "who may authorize a payment batch" do
+    it "is the owner's to set, and every change is recorded" do
+      sign_in owner
+
+      patch accounting_settings_entity_path, params: { entity: { distinct_payment_authorizer: "0", authorizer_not_bap_giver: "1" } }
+
+      expect(entity.reload).to have_attributes(distinct_payment_authorizer: false, authorizer_not_bap_giver: true)
+      logs = Accounting::AuditLog.for_record(entity).for_action("payment_option_changed")
+      expect(logs.map { |log| [ log.payload["option"], log.payload["to"] ] }).to contain_exactly([ "distinct_payment_authorizer", false ], [ "authorizer_not_bap_giver", true ])
+    end
+
+    it "is not an accountant's to change" do
+      patch accounting_settings_entity_path, params: { entity: { distinct_payment_authorizer: "0" } }
+
+      expect(entity.reload.distinct_payment_authorizer).to be(true)
+    end
+  end
+
   describe "the journals" do
     it "never write an IBAN of a form or of the API: it is filtered in the request log" do
       filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
