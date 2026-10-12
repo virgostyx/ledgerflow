@@ -4863,7 +4863,10 @@ CREATE TABLE public.payment_bank_profiles (
     format_verified boolean DEFAULT false NOT NULL,
     coda_verified boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    max_batch_total numeric(15,2),
+    max_supplier_total numeric(15,2),
+    balance_threshold numeric(15,2) DEFAULT 0.0 NOT NULL
 );
 
 
@@ -13186,6 +13189,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261012110000'),
 ('20261012100000'),
 ('20261012090000'),
 ('20261009200000'),

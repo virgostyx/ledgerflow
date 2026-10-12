@@ -647,6 +647,16 @@ en:
         same_person: "Someone else than the person who registered this account must verify it."
         reason_required: "A reason is required."
         not_blockable: "Only an account that is waiting for verification or verified can be blocked."
+    compose:
+      feature_off: "Supplier payments are not enabled for this entity."
+      not_allowed: "You may not prepare a payment batch."
+      not_euro: "The account to debit is not in EUR: a SEPA batch is paid from a euro account."
+      nothing_selected: "Pick at least one invoice to pay."
+      nothing_to_pay: "There is nothing to pay: the credit notes cover the invoices picked (net them by hand)."
+      twice: "An invoice is picked twice."
+      unknown_invoice: "Invoice %{id} cannot be paid (it is not an open purchase invoice)."
+      bad_amount: "the amount must be above 0, within the rest to pay (%{rest}), and to the cent."
+      taken_meanwhile: "An invoice was taken by another batch meanwhile: nothing was made, look at the invoices again."
     payment_batches:
       created:   "Payment batch created."
       generated: "SEPA payment file generated."

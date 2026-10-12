@@ -27,6 +27,10 @@ module Permissions
     "payments.manage"        => %i[admin accountant],
     "approvals.approve"      => %i[admin accountant],           # give or refuse a "bon à payer"; the policies still name who may (B01a)
     "approvals.configure"    => %i[admin],                      # approval policies and delegations: the owner (B01a)
+    "payments.prepare"       => %i[admin accountant assistant], # compose a payment batch (B01b)
+    "payments.approve"       => %i[admin accountant],           # approve a batch, where the approval policies of the entity name them (B01b)
+    "payments.export"        => %i[admin accountant],           # produce the payment file; a recent second factor is needed (B01b)
+    "payments.confirm"       => %i[admin accountant],           # say the batch was loaded in the bank, and confirm the payments (B01b, B01c)
     "bank_accounts.verify"   => %i[admin accountant],           # verify the bank account of a supplier, after calling them; block one (B01b)
     "closing.prepare"        => %i[admin accountant],           # run the closing steps, validate the closing entries (F10)
     "closing.approve"        => %i[admin],                      # approve a closing, reopen a closed year: the owner (F10)

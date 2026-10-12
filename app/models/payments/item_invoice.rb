@@ -8,7 +8,17 @@ class Payments::ItemInvoice < ApplicationRecord
   belongs_to :item, class_name: "Payments::Item", inverse_of: :item_invoices
   belongs_to :invoice, class_name: "Accounting::Invoice"
 
-  validates :amount, numericality: { greater_than: 0 }
+  validates :amount, numericality: { other_than: 0 }
+  validate :sign_follows_the_document
 
   before_validation { self.active = item.batch.active? && item.included? if new_record? && item }
+
+  private
+
+  # An invoice is paid (positive); a credit note netted against it is used up (negative).
+  def sign_follows_the_document
+    return unless invoice && amount
+
+    errors.add(:amount, invoice.credit_note? ? "of a credit note must be negative" : "of an invoice must be positive") if invoice.credit_note? == amount.positive?
+  end
 end

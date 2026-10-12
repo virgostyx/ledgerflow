@@ -87,6 +87,18 @@ RSpec.describe "Payment batch models" do
     end
   end
 
+  describe "the sign of what a payment pays" do
+    it "is positive for an invoice, and negative for a credit note netted against it" do
+      item = batch.items.create!(partner: partner, iban: "BE68539007547034", holder_name: "A", amount: "50.00", end_to_end_id: "E1", remittance: "r")
+      note = create(:invoice, :supplier, :posted, document_type: :credit_note, fiscal_year: fiscal_year, partner: partner)
+
+      expect(item.item_invoices.build(invoice: invoice, amount: "-5")).not_to be_valid
+      expect(item.item_invoices.build(invoice: invoice, amount: "0")).not_to be_valid
+      expect(item.item_invoices.build(invoice: note, amount: "5")).not_to be_valid
+      expect(item.item_invoices.build(invoice: note, amount: "-5")).to be_valid
+    end
+  end
+
   describe Payments::Hold do
     it "blocks an invoice or a whole supplier, with a reason and an author, until released" do
       hold = Payments::Hold.create!(invoice: invoice, reason: "Goods not received", created_by: preparer)

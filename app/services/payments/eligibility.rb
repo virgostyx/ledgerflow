@@ -36,15 +36,24 @@ class Payments::Eligibility
   end
 
   def row_for(invoice)
-    reasons = invoice.credit_note? ? [ Reason.new(:credit_note, "A credit note is not paid: it is netted against the invoices of the supplier when a batch is made.") ] : reasons_for(invoice)
+    reasons = invoice.credit_note? ? credit_note_reasons(invoice) : reasons_for(invoice)
     due = invoice.due_date
     Row.new(invoice: invoice, reasons: reasons, rest: rests.fetch(invoice.id, BigDecimal("0")), account: usable_account(invoice.partner_id),
             early: due.present? && due > @window_end, late: due.present? && due < @today)
   end
 
-  def reasons_for(invoice)
+  # A credit note is never paid. It can be netted against the invoices of its supplier when nothing else stops it (so `[:credit_note]` alone means: usable for a netting).
+  CREDIT_NOTE_IRRELEVANT = %i[no_account account_unverified account_observed account_blocked iban_differs].freeze
+
+  def credit_note_reasons(invoice)
+    [ Reason.new(:credit_note, "A credit note is not paid: it is netted against the invoices of the supplier when a batch is made.") ] +
+      reasons_for(invoice, credit_note: true).reject { |reason| CREDIT_NOTE_IRRELEVANT.include?(reason.code) }
+  end
+
+  def reasons_for(invoice, credit_note: false)
     reasons = []
-    reasons << Reason.new(:nothing_open, "Nothing is left to pay on this invoice.") unless rests.fetch(invoice.id, 0).positive?
+    open = credit_note ? rests.fetch(invoice.id, 0).negative? : rests.fetch(invoice.id, 0).positive?
+    reasons << Reason.new(:nothing_open, "Nothing is left to pay on this invoice.") unless open
     reasons.concat(approval_reasons(invoice))
     reasons.concat(hold_reasons(invoice))
     reasons << in_batch_reason(invoice) if in_batch_reason(invoice)
