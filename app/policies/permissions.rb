@@ -27,6 +27,7 @@ module Permissions
     "payments.manage"        => %i[admin accountant],
     "approvals.approve"      => %i[admin accountant],           # give or refuse a "bon à payer"; the policies still name who may (B01a)
     "approvals.configure"    => %i[admin],                      # approval policies and delegations: the owner (B01a)
+    "bank_accounts.verify"   => %i[admin accountant],           # verify the bank account of a supplier, after calling them; block one (B01b)
     "closing.prepare"        => %i[admin accountant],           # run the closing steps, validate the closing entries (F10)
     "closing.approve"        => %i[admin],                      # approve a closing, reopen a closed year: the owner (F10)
     "rates.override"         => %i[admin accountant],           # type an exchange rate by hand, or use one other than the official one (F11)

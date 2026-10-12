@@ -634,6 +634,19 @@ en:
       hmac_invalid:       "Invalid HMAC signature."
 
   payments:
+    bank_accounts:
+      registered: "The bank account was registered. It is observed for a while and another person must verify it before it can be paid."
+      verified: "The bank account was verified."
+      blocked: "The bank account was blocked."
+      errors:
+        feature_off: "Supplier payments are not enabled for this entity."
+        not_allowed: "You may not do that with the bank accounts of the suppliers."
+        invalid: "The bank account is not valid."
+        method_required: "Say how the account was verified (a call to the supplier, a signed letter, a statement of the supplier, or another way)."
+        not_unverified: "This account is not waiting for verification."
+        same_person: "Someone else than the person who registered this account must verify it."
+        reason_required: "A reason is required."
+        not_blockable: "Only an account that is waiting for verification or verified can be blocked."
     payment_batches:
       created:   "Payment batch created."
       generated: "SEPA payment file generated."

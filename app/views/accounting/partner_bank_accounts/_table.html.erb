@@ -1,0 +1,26 @@
+<%# One row per bank account, masked. `columns` says which to show. %>
+<div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+  <table class="min-w-full text-sm">
+    <tbody class="divide-y divide-gray-100">
+      <% accounts.each do |account| %>
+        <tr>
+          <% columns.each do |column| %>
+            <% text = if column == :iban then account.masked_iban
+                      elsif column == :registered_by then "registered by #{account.created_by&.full_name || 'the system'}, #{l(account.created_at, format: :short)}"
+                      elsif column == :verified_by then "verified by #{account.verified_by&.full_name}, #{account.verified_at && l(account.verified_at, format: :short)}"
+                      elsif column == :observed_until then (account.cooling_until > Time.current ? "observed until #{l(account.cooling_until, format: :short)}" : "no longer observed")
+                      elsif column == :state then "#{account.status.humanize}#{" — #{account.blocked_reason}" if account.blocked? && account.blocked_reason.present?}"
+                      end %>
+            <td class="px-3 py-2 <%= 'font-mono' if column == :iban %> <%= 'font-medium' if column == :supplier %>">
+              <% if column == :supplier %>
+                <%= link_to account.partner.name, accounting_partner_bank_account_path(account), class: "text-primary-700 hover:underline" %>
+              <% else %>
+                <%= text %>
+              <% end %>
+            </td>
+          <% end %>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

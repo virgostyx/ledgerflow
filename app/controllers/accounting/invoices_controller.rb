@@ -1,6 +1,6 @@
 class Accounting::InvoicesController < ApplicationController
   before_action :set_invoice, only: [ :peppol_fallback_email, :show, :edit, :update, :destroy, :validate_invoice, :cancel_invoice, :return_invoice, :send_peppol,
-                                      :create_credit_note, :apply_credit_note, :pdf, :document, :send_email, :duplicate, :submit_for_approval ]
+                                      :create_credit_note, :apply_credit_note, :pdf, :document, :send_email, :duplicate, :submit_for_approval, :register_iban ]
   before_action :set_invoice_type_context, only: [ :index, :new, :create ]
 
   def index
@@ -81,6 +81,17 @@ class Accounting::InvoicesController < ApplicationController
     result = Approvals::Submit.call(invoice: @invoice, user: current_user)
     if result.success?
       redirect_to accounting_invoice_path(@invoice), notice: t(result[:request] ? "approvals.submitted" : "approvals.not_required")
+    else
+      redirect_to accounting_invoice_path(@invoice), alert: result.message
+    end
+  end
+
+  # B01b: a person registers the IBAN the invoice carries as a bank account of the supplier (unverified, observed, to be verified by someone else).
+  def register_iban
+    authorize @invoice, :show?
+    result = Payments::RegisterBankAccount.call(partner: @invoice.partner, iban: @invoice.iban, holder_name: @invoice.partner.name, user: current_user, source: :invoice)
+    if result.success?
+      redirect_to accounting_invoice_path(@invoice), notice: t("payments.bank_accounts.registered")
     else
       redirect_to accounting_invoice_path(@invoice), alert: result.message
     end

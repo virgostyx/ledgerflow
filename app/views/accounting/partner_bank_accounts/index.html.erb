@@ -1,0 +1,54 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Bank details" } ]) %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Supplier bank details") do |header| %>
+  <% header.with_actions do %>
+    <% if policy(Accounting::PartnerBankAccount).register? %>
+      <%= link_to "Register an account", new_accounting_partner_bank_account_path, class: "px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700" %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<p class="mb-6 max-w-3xl text-sm text-gray-500">A supplier is paid only on an account that another person verified, and after an observation period. An IBAN written on an invoice, or received from a supplier, is never taken as it comes: a person registers it, and someone else verifies it.</p>
+
+<% if [ @to_verify, @in_use, @over, @to_register ].all?(&:empty?) %>
+  <p class="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">No bank account yet.</p>
+<% end %>
+
+<% if @to_verify.any? %>
+  <h2 class="mb-2 text-sm font-semibold text-gray-700">To verify</h2>
+  <%= render "table", accounts: @to_verify, columns: %i[supplier iban registered_by observed_until] %>
+<% end %>
+
+<% if @in_use.any? %>
+  <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">In use</h2>
+  <%= render "table", accounts: @in_use, columns: %i[supplier iban verified_by observed_until] %>
+<% end %>
+
+<% if @to_register.any? %>
+  <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">To register</h2>
+  <p class="mb-2 text-xs text-gray-500">The IBAN written on the record of these suppliers is not registered as a bank account: it cannot be paid. Registering it is a person's act, and it must then be verified by someone else.</p>
+  <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <table class="min-w-full text-sm">
+      <tbody class="divide-y divide-gray-100">
+        <% @to_register.each do |partner| %>
+          <tr>
+            <td class="px-3 py-2 font-medium"><%= link_to partner.name, accounting_partner_path(partner), class: "text-primary-700 hover:underline" %></td>
+            <td class="px-3 py-2 font-mono text-gray-500"><%= Accounting::PartnerBankAccount.new(iban: partner.iban).masked_iban %></td>
+            <td class="px-3 py-2 text-right">
+              <% if policy(Accounting::PartnerBankAccount).register? %>
+                <%= button_to "Register", register_from_partner_accounting_partner_bank_accounts_path(partner_id: partner.id), method: :post, class: "text-primary-700 hover:underline cursor-pointer" %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
+
+<% if @over.any? %>
+  <h2 class="mt-8 mb-2 text-sm font-semibold text-gray-700">Blocked or replaced</h2>
+  <%= render "table", accounts: @over, columns: %i[supplier iban state] %>
+<% end %>

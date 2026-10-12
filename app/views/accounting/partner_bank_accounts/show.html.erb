@@ -1,0 +1,50 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Bank details", path: accounting_partner_bank_accounts_path }, { label: @account.partner.name } ]) %>
+<% end %>
+
+<% input = "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+<div class="max-w-3xl">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900"><%= @account.partner.name %></h1>
+  <p class="mb-4 text-sm text-gray-500">Bank account — <%= @account.status.humanize.downcase %><%= ", observed until #{l(@account.cooling_until, format: :short)}" if @account.cooling_until > Time.current && !@account.superseded? && !@account.blocked? %></p>
+
+  <dl class="mb-6 grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border border-gray-200 bg-white p-4 text-sm">
+    <dt class="text-gray-500">IBAN</dt><dd class="font-mono"><%= @full_iban ? @account.iban.scan(/.{1,4}/).join(" ") : @account.masked_iban %></dd>
+    <dt class="text-gray-500">Holder</dt><dd><%= @account.holder_name %></dd>
+    <% if @account.bic.present? %><dt class="text-gray-500">BIC</dt><dd><%= @account.bic %></dd><% end %>
+    <dt class="text-gray-500">Registered</dt><dd><%= @account.created_by&.full_name || "the system" %>, <%= l @account.first_seen_at, format: :short %> (<%= @account.source.humanize.downcase %>)</dd>
+    <% if @account.verified_at %>
+      <dt class="text-gray-500">Verified</dt><dd><%= @account.verified_by&.full_name %>, <%= l @account.verified_at, format: :short %> — <%= @account.verification_method.humanize %><%= ": #{@account.verification_note}" if @account.verification_note.present? %></dd>
+    <% end %>
+    <% if @account.blocked? %><dt class="text-gray-500">Blocked</dt><dd><%= @account.blocked_reason %></dd><% end %>
+    <% if @account.previous_account %><dt class="text-gray-500">Replaces</dt><dd><%= link_to @account.previous_account.masked_iban, accounting_partner_bank_account_path(@account.previous_account), class: "font-mono text-primary-700 hover:underline" %></dd><% end %>
+  </dl>
+
+  <% if @account.unverified? && policy(@account).verify? %>
+    <div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
+      <p class="mb-2 font-medium text-amber-900">Verify this account</p>
+      <p class="mb-3 text-amber-900">Call the supplier on a number you already had - the one in their file or their contract - never the number on the invoice or in the message that announced the change. Compare the IBAN above with what they tell you. Someone other than the person who registered it must do this.</p>
+      <%= form_with url: verify_accounting_partner_bank_account_path(@account), method: :post, class: "space-y-3" do %>
+        <div><%= label_tag :method, "How was it verified?", class: "block text-sm font-medium text-gray-700" %>
+          <%= select_tag :method, options_for_select([ [ "Call back on a known number", "phone_callback" ], [ "Signed letter", "signed_letter" ], [ "Statement of the supplier", "supplier_statement" ], [ "Another way", "other" ] ]), include_blank: "Choose…", class: input %></div>
+        <div><%= label_tag :note, "Note (who was called, what was said)", class: "block text-sm font-medium text-gray-700" %><%= text_field_tag :note, nil, class: input %></div>
+        <%= submit_tag "Verify the account", class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if (@account.unverified? || @account.verified?) && policy(@account).block? %>
+    <%= form_with url: block_accounting_partner_bank_account_path(@account), method: :post, class: "mb-6 flex flex-wrap items-end gap-3 text-sm" do %>
+      <div class="flex-1 min-w-48"><%= label_tag :reason, "Block this account (reason)", class: "block text-xs text-gray-600" %><%= text_field_tag :reason, nil, class: input %></div>
+      <%= submit_tag "Block", class: "px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 cursor-pointer" %>
+    <% end %>
+  <% end %>
+
+  <h2 class="mb-2 text-sm font-semibold text-gray-700">History</h2>
+  <ol class="space-y-1 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700">
+    <% @history.each do |log| %>
+      <li><span class="text-gray-400"><%= l log.created_at, format: :short %></span> — <%= { "bank_account_registered" => "registered", "bank_account_changed" => "change told to the owners", "bank_account_verified" => "verified",
+                                                                                           "bank_account_superseded" => "replaced by a newer account", "bank_account_blocked" => "blocked" }.fetch(log.action, log.action.humanize) %>
+        <% if log.user %> by <%= log.user.full_name %><% end %></li>
+    <% end %>
+  </ol>
+</div>

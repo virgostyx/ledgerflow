@@ -151,6 +151,7 @@ Rails.application.routes.draw do
           post :peppol_fallback_email
           post :create_credit_note
           post :submit_for_approval
+          post :register_iban
           post :apply_credit_note
           get  :pdf
           get  "documents/:kind", action: :document, as: :document
@@ -259,6 +260,15 @@ Rails.application.routes.draw do
           post :resend
         end
         post :reprocess_all, on: :collection
+      end
+
+      # B01b: the bank accounts of the suppliers: to register, to verify (by someone else), to block
+      resources :partner_bank_accounts, path: "bank_details", only: %i[index new create show] do
+        member do
+          post :verify
+          post :block
+        end
+        post :register_from_partner, on: :collection
       end
 
       # B01a: the invoices waiting for my approval, one to decide on, and bulk approval of the small ones

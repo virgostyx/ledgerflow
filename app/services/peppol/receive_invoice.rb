@@ -30,6 +30,7 @@ class Peppol::ReceiveInvoice
         supplier_reference: canonical.number,
         order_reference: canonical.references[:order],
         buyer_reference: canonical.references[:buyer],
+        iban:            (Accounting::Iban.normalize(canonical.supplier.iban) if Accounting::Iban.valid?(canonical.supplier.iban)),
         subtotal_excl_vat: totals.tax_exclusive || BigDecimal("0"),
         vat_amount:      canonical.tax_total || BigDecimal("0"),
         total_incl_vat:  totals.tax_inclusive,
@@ -41,6 +42,7 @@ class Peppol::ReceiveInvoice
         add_lines(created, plan) if plan
         keep_documents(created, xml, Nokogiri::XML(xml).tap(&:remove_namespaces!), canonical.number)
         announce(created)
+        Payments::CheckInvoiceIban.call(invoice: created) # B01b: another IBAN than the verified one is an alert and a task, never a change
       end
     end
 

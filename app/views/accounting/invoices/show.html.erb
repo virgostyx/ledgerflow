@@ -80,6 +80,12 @@
 <% end %>
 
 <% if @invoice.supplier? && feature?(:b01a) %><%= render 'approval', invoice: @invoice %><% end %>
+<% if @invoice.supplier? && feature?(:b01b) && @invoice.iban.present? && policy(Accounting::PartnerBankAccount).register? && !Accounting::PartnerBankAccount.live.exists?(partner_id: @invoice.partner_id, iban: Accounting::Iban.normalize(@invoice.iban)) %>
+  <div class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm" data-section="invoice-iban">
+    <p class="mb-2 text-gray-700">This invoice asks to be paid on <span class="font-mono"><%= Accounting::PartnerBankAccount.new(iban: @invoice.iban).masked_iban %></span>, which is not a bank account registered for <%= @invoice.partner.name %>.</p>
+    <%= button_to 'Register this IBAN', register_iban_accounting_invoice_path(@invoice), method: :post, class: 'px-3 py-1 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer' %>
+  </div>
+<% end %>
 <%= render 'budgetflow_context', invoice: @invoice %>
 <%= render 'peppol_document', invoice: @invoice %>
 

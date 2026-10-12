@@ -28,6 +28,7 @@ RSpec.describe Permissions do
     "payments.manage"        => [ [ Accounting::PaymentBatchPolicy, :generate? ], [ Accounting::PaymentBatchPolicy, :execute? ] ],
     "approvals.approve"      => [ [ Approvals::RequestPolicy, :approve? ], [ Approvals::RequestPolicy, :index? ] ],
     "approvals.configure"    => [ [ Approvals::PolicyPolicy, :create? ], [ Approvals::PolicyPolicy, :update? ], [ Approvals::DelegationPolicy, :index? ] ],
+    "bank_accounts.verify"   => [ [ Accounting::PartnerBankAccountPolicy, :verify? ], [ Accounting::PartnerBankAccountPolicy, :block? ] ],
     "closing.prepare"        => [ [ Accounting::ClosingRunPolicy, :create? ], [ Accounting::ClosingRunPolicy, :update? ] ],
     "closing.approve"        => [ [ Accounting::ClosingRunPolicy, :approve? ], [ Accounting::ClosingRunPolicy, :reopen? ] ],
     "rates.override"         => [ [ Accounting::ExchangeRatePolicy, :create? ] ],

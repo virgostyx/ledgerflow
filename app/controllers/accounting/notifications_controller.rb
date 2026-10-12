@@ -23,6 +23,8 @@ class Accounting::NotificationsController < ApplicationController
     subject = notification.subject
     return agent_digest_path(subject) if subject.is_a?(Agent::Digest)
     return accounting_invoice_path(subject.subject) if subject.is_a?(Approvals::Request)
+    return accounting_partner_bank_account_path(subject) if subject.is_a?(Accounting::PartnerBankAccount)
+    return accounting_invoice_path(subject) if subject.is_a?(Accounting::Invoice)
 
     task = subject.is_a?(Accounting::Task) ? subject : (subject.commentable if subject.respond_to?(:commentable) && subject.commentable.is_a?(Accounting::Task))
     accounting_task_path(task) if task

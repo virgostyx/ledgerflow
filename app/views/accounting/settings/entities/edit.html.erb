@@ -165,6 +165,13 @@
           <span class="block text-xs text-gray-400 mt-1">Above this amount, approving asks for a second factor given in the last five minutes (a token of the API cannot, so it decides in the application). Empty: never asked.</span>
         </div>
         <% end %>
+        <% if @entity.feature?(:b01b) %>
+        <div class="max-w-xs">
+          <%= f.label :iban_cooling_hours, "Observation of a new supplier bank account (hours)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.number_field :iban_cooling_hours, min: 0, max: 720, step: 1, class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+          <span class="block text-xs text-gray-400 mt-1">A new or changed account cannot be paid before this time has passed and another person verified it. 24 hours by default.</span>
+        </div>
+        <% end %>
       <% end %>
 
       <div class="flex items-center gap-3 pt-2">

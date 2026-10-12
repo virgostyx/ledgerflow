@@ -1510,7 +1510,8 @@ CREATE TABLE public.accounting_invoices (
     created_by_id bigint,
     payment_reference character varying,
     exchange_rate_reason text,
-    payment_status integer DEFAULT 0 NOT NULL
+    payment_status integer DEFAULT 0 NOT NULL,
+    iban character varying
 );
 
 
@@ -4553,7 +4554,8 @@ CREATE TABLE public.entities (
     bap_before_posting boolean DEFAULT false NOT NULL,
     allow_self_approval boolean DEFAULT false NOT NULL,
     bulk_threshold numeric(15,2),
-    step_up_threshold numeric(15,2)
+    step_up_threshold numeric(15,2),
+    iban_cooling_hours integer DEFAULT 24 NOT NULL
 );
 
 
@@ -4798,6 +4800,52 @@ CREATE SEQUENCE public.organizations_id_seq
 --
 
 ALTER SEQUENCE public.organizations_id_seq OWNED BY public.organizations.id;
+
+
+--
+-- Name: partner_bank_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.partner_bank_accounts (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    partner_id bigint NOT NULL,
+    iban character varying NOT NULL,
+    bic character varying,
+    holder_name character varying NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    source integer DEFAULT 0 NOT NULL,
+    created_by_id bigint,
+    verified_by_id bigint,
+    verified_at timestamp(6) without time zone,
+    verification_method integer,
+    verification_note text,
+    blocked_reason character varying,
+    first_seen_at timestamp(6) without time zone NOT NULL,
+    cooling_until timestamp(6) without time zone NOT NULL,
+    previous_account_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: partner_bank_accounts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.partner_bank_accounts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: partner_bank_accounts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.partner_bank_accounts_id_seq OWNED BY public.partner_bank_accounts.id;
 
 
 --
@@ -5925,6 +5973,13 @@ ALTER TABLE ONLY public.organizations ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
+-- Name: partner_bank_accounts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.partner_bank_accounts ALTER COLUMN id SET DEFAULT nextval('public.partner_bank_accounts_id_seq'::regclass);
+
+
+--
 -- Name: recovery_codes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6899,6 +6954,14 @@ ALTER TABLE ONLY public.organization_memberships
 
 ALTER TABLE ONLY public.organizations
     ADD CONSTRAINT organizations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: partner_bank_accounts partner_bank_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.partner_bank_accounts
+    ADD CONSTRAINT partner_bank_accounts_pkey PRIMARY KEY (id);
 
 
 --
@@ -9892,6 +9955,55 @@ CREATE INDEX index_organizations_on_created_by_id ON public.organizations USING 
 
 
 --
+-- Name: index_partner_bank_accounts_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_partner_bank_accounts_on_created_by_id ON public.partner_bank_accounts USING btree (created_by_id);
+
+
+--
+-- Name: index_partner_bank_accounts_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_partner_bank_accounts_on_entity_id ON public.partner_bank_accounts USING btree (entity_id);
+
+
+--
+-- Name: index_partner_bank_accounts_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_partner_bank_accounts_on_partner_id ON public.partner_bank_accounts USING btree (partner_id);
+
+
+--
+-- Name: index_partner_bank_accounts_on_partner_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_partner_bank_accounts_on_partner_id_and_status ON public.partner_bank_accounts USING btree (partner_id, status);
+
+
+--
+-- Name: index_partner_bank_accounts_on_previous_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_partner_bank_accounts_on_previous_account_id ON public.partner_bank_accounts USING btree (previous_account_id);
+
+
+--
+-- Name: index_partner_bank_accounts_on_verified_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_partner_bank_accounts_on_verified_by_id ON public.partner_bank_accounts USING btree (verified_by_id);
+
+
+--
+-- Name: index_partner_bank_accounts_one_live_iban_per_partner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_partner_bank_accounts_one_live_iban_per_partner ON public.partner_bank_accounts USING btree (partner_id, iban) WHERE (status = ANY (ARRAY[0, 1, 2]));
+
+
+--
 -- Name: index_recovery_codes_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10159,6 +10271,14 @@ ALTER TABLE ONLY public.approval_requests
 
 ALTER TABLE ONLY public.accounting_bank_statements
     ADD CONSTRAINT fk_rails_04d068db3c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: partner_bank_accounts fk_rails_0760cf18b5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.partner_bank_accounts
+    ADD CONSTRAINT fk_rails_0760cf18b5 FOREIGN KEY (created_by_id) REFERENCES public.users(id);
 
 
 --
@@ -10447,6 +10567,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 ALTER TABLE ONLY public.closing_steps
     ADD CONSTRAINT fk_rails_27616d7efe FOREIGN KEY (acknowledged_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: partner_bank_accounts fk_rails_284c295936; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.partner_bank_accounts
+    ADD CONSTRAINT fk_rails_284c295936 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
 
 
 --
@@ -11298,6 +11426,14 @@ ALTER TABLE ONLY public.accounting_peppol_messages
 
 
 --
+-- Name: partner_bank_accounts fk_rails_92eb4f517e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.partner_bank_accounts
+    ADD CONSTRAINT fk_rails_92eb4f517e FOREIGN KEY (previous_account_id) REFERENCES public.partner_bank_accounts(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_93cf61efdd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11559,6 +11695,14 @@ ALTER TABLE ONLY public.approval_requests
 
 ALTER TABLE ONLY public.accounting_vat_declarations
     ADD CONSTRAINT fk_rails_af4787f084 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: partner_bank_accounts fk_rails_b00a4df794; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.partner_bank_accounts
+    ADD CONSTRAINT fk_rails_b00a4df794 FOREIGN KEY (verified_by_id) REFERENCES public.users(id);
 
 
 --
@@ -11935,6 +12079,14 @@ ALTER TABLE ONLY public.accounting_controlled_windows
 
 ALTER TABLE ONLY public.consolidation_runs
     ADD CONSTRAINT fk_rails_d4a219bf3d FOREIGN KEY (consolidation_group_id) REFERENCES public.consolidation_groups(id);
+
+
+--
+-- Name: partner_bank_accounts fk_rails_d4a64008ac; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.partner_bank_accounts
+    ADD CONSTRAINT fk_rails_d4a64008ac FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -12384,6 +12536,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261012090000'),
 ('20261009200000'),
 ('20261009190000'),
 ('20261009180000'),

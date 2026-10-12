@@ -6,6 +6,8 @@ class Accounting::Invoice < ApplicationRecord
 
   include AASM
   include Accounting::MonetaryPrecision
+
+  encrypts :iban # the IBAN written on a purchase invoice, as received (B01b)
   include Accounting::FiscalYearScoped
 
   enum :invoice_type,   { customer: 0, supplier: 1 }

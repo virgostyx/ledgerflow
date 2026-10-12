@@ -45,7 +45,7 @@ class Entity < ApplicationRecord
 
   # The features of docs/dev/features/spec.md that are built, each shipped behind a per-entity flag. A function adds its
   # key here when it ships.
-  FEATURES = %w[f01 f02 f03 f08 f09 f10 f11 f12 f13 agent b01a].freeze
+  FEATURES = %w[f01 f02 f03 f08 f09 f10 f11 f12 f13 agent b01a b01b].freeze
   FEATURE_LABELS = {
     "f01" => [ "Roles, period locks and users", "Turns on the Periods and Users and roles screens and the four-eyes option. The safeguards (a locked period refuses entries, the last owner stays) stay active either way." ],
     "f02" => [ "Bank statements (CODA)", "Turns on the import of CODA bank statements and the automatic reconciliation of their lines." ],
@@ -57,10 +57,12 @@ class Entity < ApplicationRecord
     "f13" => [ "Imports, exports and API", "Turns on the guided imports of partners, accounts and entries from CSV and XLSX files (drafts only, taken back by batch), the data exports and the public API." ],
     "agent" => [ "AI assistant", "Turns on the assistant panel: questions about this entity's books, answered from the existing reports with cited figures. It only reads and proposes; nothing is validated, sent or posted without a person. Nothing goes to the language model until an owner has accepted the data-processing consent." ],
     "b01a" => [ "Invoice approval", "Turns on the approval circuit of purchase invoices (the \"bon à payer\"): policies by amount, supplier or project, approvers, delegations, escalation. Without a matching policy an invoice needs no approval, and payment stays possible." ],
+    "b01b" => [ "Supplier payments", "Turns on the bank details of suppliers (an account is verified by a second person, after an observation period, before it can be paid) and, later in this feature, the payment batches built from approved invoices. No bank login is ever kept: LedgerFlow prepares a file that you load and authorize in your own bank." ],
     "f09" => [ "Customer dunning", "Turns on the preparation of reminders from the open customer lines: levels, texts per language, preview, sending after validation, disputes and payment promises." ]
   }.freeze
 
   validate :features_are_known
+  validates :iban_cooling_hours, numericality: { only_integer: true, in: 0..720 } # B01b: how long a new bank account of a supplier is observed
 
   # A flag is off unless the owner turned it on. Asking about a feature that does not exist is a bug, not a "no".
   def feature?(name)

@@ -88,6 +88,15 @@
           <% end %>
         <% end %>
 
+        <% if feature?(:b01b) && policy(Accounting::PartnerBankAccount).index? %>
+          <%= link_to accounting_partner_bank_accounts_path, class: nav_class(accounting_partner_bank_accounts_path) do %>
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z"/>
+            </svg>
+            Bank details<% to_verify = Accounting::PartnerBankAccount.unverified.count %><% if to_verify.positive? %> <span class="ml-auto text-xs px-1.5 rounded-full bg-amber-100 text-amber-800"><%= to_verify %></span><% end %>
+          <% end %>
+        <% end %>
+
         <% if feature?(:b01a) && policy(Approvals::Request).index? %>
           <%= link_to accounting_approvals_path, class: nav_class(accounting_approvals_path) do %>
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">

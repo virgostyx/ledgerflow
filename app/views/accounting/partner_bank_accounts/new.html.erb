@@ -1,0 +1,16 @@
+<% content_for :breadcrumb do %>
+  <%= render Ui::BreadcrumbsComponent.new(items: [ { label: "Dashboard", path: accounting_root_path }, { label: "Bank details", path: accounting_partner_bank_accounts_path }, { label: "Register an account" } ]) %>
+<% end %>
+
+<div class="max-w-xl">
+  <h1 class="mb-4 text-2xl font-bold text-gray-900">Register a bank account</h1>
+  <p class="mb-4 text-sm text-gray-500">The account is unverified and observed for <%= ActsAsTenant.current_tenant.iban_cooling_hours %> hours; another person must verify it before it can be paid.</p>
+  <% input = "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+  <%= form_with scope: :partner_bank_account, url: accounting_partner_bank_accounts_path, method: :post, class: "space-y-4" do |f| %>
+    <div><%= f.label :partner_id, "Supplier", class: "block text-sm font-medium text-gray-700" %><%= f.select :partner_id, options_from_collection_for_select(@partners, :id, :name, @account.partner_id), {}, class: input %></div>
+    <div><%= f.label :iban, "IBAN", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :iban, value: @account.iban, required: true, autocomplete: "off", class: "#{input} font-mono" %></div>
+    <div><%= f.label :holder_name, "Name of the account holder (as on the invoice)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :holder_name, value: @account.holder_name, required: true, class: input %></div>
+    <div><%= f.label :bic, "BIC (optional)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :bic, value: @account.bic, class: input %></div>
+    <%= f.submit "Register", class: "px-4 py-2 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
+  <% end %>
+</div>
