@@ -634,6 +634,18 @@ en:
       hmac_invalid:       "Invalid HMAC signature."
 
   payments:
+    cancel:
+      errors:
+        feature_off: "Supplier payments are not enabled for this entity."
+        reason_required: "Say why the batch is cancelled."
+        not_allowed: "You may not cancel this batch."
+        cannot_cancel: "This batch can no longer be cancelled: it was paid, or already given up."
+        not_asked: "No cancellation was asked for on this batch."
+    confirm:
+      errors:
+        feature_off: "Supplier payments are not enabled for this entity."
+        not_allowed: "You may not say that a file was loaded in the bank."
+        not_exported: "Only a batch whose file was made, and not yet said to be loaded, can be confirmed."
     export:
       warnings_open: "A warning of the pre-flight checks has no reason written down: acknowledge it, or take the payment out."
       file_not_made: "The file could not be made: %{message}"
