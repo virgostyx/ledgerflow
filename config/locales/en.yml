@@ -647,6 +647,11 @@ en:
         same_person: "Someone else than the person who registered this account must verify it."
         reason_required: "A reason is required."
         not_blockable: "Only an account that is waiting for verification or verified can be blocked."
+    preflight:
+      errors:
+        not_allowed: "You may not acknowledge the warnings of a payment batch."
+        reason_required: "A reason is required to acknowledge a warning."
+        not_a_warning: "Only a warning can be acknowledged: a blocking problem has to be put right."
     compose:
       feature_off: "Supplier payments are not enabled for this entity."
       not_allowed: "You may not prepare a payment batch."

@@ -108,15 +108,7 @@ class Payments::Eligibility
     @accounts_by_partner ||= Accounting::PartnerBankAccount.where(partner_id: invoices.map(&:partner_id).uniq).live.group_by(&:partner_id)
   end
 
-  # What is left to pay on each invoice, in the currency of the entity: the open residual of the line of its entry on the suppliers' account (found through the entry,
-  # as the rest of the application finds it), added up by the database.
-  def rests
-    @rests ||= begin
-      by_entry = Accounting::OpenLineSql.open_scope(kind: :supplier, as_of: @today).where(journal_entry_id: invoices.filter_map(&:journal_entry_id))
-                                        .group("accounting_journal_entry_lines.journal_entry_id").sum(Arel.sql("(#{Accounting::OpenLineSql.residual(kind: :supplier, as_of: @today)})"))
-      invoices.to_h { |invoice| [ invoice.id, by_entry.fetch(invoice.journal_entry_id, BigDecimal("0")) ] }
-    end
-  end
+  def rests = @rests ||= Payments::OpenAmounts.rests(invoices, as_of: @today)
 
   def holds
     @holds ||= Hash.new { |hash, key| hash[key] = [] }.tap do |index|
