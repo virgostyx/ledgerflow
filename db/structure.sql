@@ -4849,6 +4849,215 @@ ALTER SEQUENCE public.partner_bank_accounts_id_seq OWNED BY public.partner_bank_
 
 
 --
+-- Name: payment_bank_profiles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.payment_bank_profiles (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    name character varying NOT NULL,
+    format_version character varying NOT NULL,
+    encoding character varying DEFAULT 'UTF-8'::character varying NOT NULL,
+    options jsonb DEFAULT '{}'::jsonb NOT NULL,
+    max_payments integer,
+    format_verified boolean DEFAULT false NOT NULL,
+    coda_verified boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: payment_bank_profiles_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.payment_bank_profiles_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: payment_bank_profiles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.payment_bank_profiles_id_seq OWNED BY public.payment_bank_profiles.id;
+
+
+--
+-- Name: payment_batches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.payment_batches (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    bank_account_id bigint NOT NULL,
+    bank_profile_id bigint,
+    reference character varying NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    requested_execution_date date NOT NULL,
+    total numeric(15,2) DEFAULT 0.0 NOT NULL,
+    payments_count integer DEFAULT 0 NOT NULL,
+    control_sum numeric(15,2),
+    message_id character varying,
+    format_version character varying,
+    file_sha256 character varying(64),
+    document_id bigint,
+    prepared_by_id bigint,
+    prepared_at timestamp(6) without time zone,
+    exported_by_id bigint,
+    exported_at timestamp(6) without time zone,
+    submitted_by_id bigint,
+    submitted_at timestamp(6) without time zone,
+    cancelled_by_id bigint,
+    cancelled_at timestamp(6) without time zone,
+    cancel_reason character varying,
+    approval_request_id bigint,
+    preflight_report jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: payment_batches_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.payment_batches_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: payment_batches_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.payment_batches_id_seq OWNED BY public.payment_batches.id;
+
+
+--
+-- Name: payment_holds; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.payment_holds (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    invoice_id bigint,
+    partner_id bigint,
+    reason character varying NOT NULL,
+    created_by_id bigint,
+    released_at timestamp(6) without time zone,
+    released_by_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: payment_holds_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.payment_holds_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: payment_holds_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.payment_holds_id_seq OWNED BY public.payment_holds.id;
+
+
+--
+-- Name: payment_item_invoices; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.payment_item_invoices (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    item_id bigint NOT NULL,
+    invoice_id bigint NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: payment_item_invoices_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.payment_item_invoices_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: payment_item_invoices_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.payment_item_invoices_id_seq OWNED BY public.payment_item_invoices.id;
+
+
+--
+-- Name: payment_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.payment_items (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    batch_id bigint NOT NULL,
+    partner_id bigint NOT NULL,
+    partner_bank_account_id bigint,
+    iban character varying NOT NULL,
+    bic character varying,
+    holder_name character varying NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    currency character varying DEFAULT 'EUR'::character varying NOT NULL,
+    end_to_end_id character varying(35) NOT NULL,
+    remittance character varying,
+    structured_remittance boolean DEFAULT false NOT NULL,
+    status integer DEFAULT 0 NOT NULL,
+    exclusion_reason character varying,
+    journal_entry_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: payment_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.payment_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: payment_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.payment_items_id_seq OWNED BY public.payment_items.id;
+
+
+--
 -- Name: posted_lines; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -5980,6 +6189,41 @@ ALTER TABLE ONLY public.partner_bank_accounts ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: payment_bank_profiles id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_bank_profiles ALTER COLUMN id SET DEFAULT nextval('public.payment_bank_profiles_id_seq'::regclass);
+
+
+--
+-- Name: payment_batches id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches ALTER COLUMN id SET DEFAULT nextval('public.payment_batches_id_seq'::regclass);
+
+
+--
+-- Name: payment_holds id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_holds ALTER COLUMN id SET DEFAULT nextval('public.payment_holds_id_seq'::regclass);
+
+
+--
+-- Name: payment_item_invoices id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_item_invoices ALTER COLUMN id SET DEFAULT nextval('public.payment_item_invoices_id_seq'::regclass);
+
+
+--
+-- Name: payment_items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_items ALTER COLUMN id SET DEFAULT nextval('public.payment_items_id_seq'::regclass);
+
+
+--
 -- Name: recovery_codes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6962,6 +7206,46 @@ ALTER TABLE ONLY public.organizations
 
 ALTER TABLE ONLY public.partner_bank_accounts
     ADD CONSTRAINT partner_bank_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payment_bank_profiles payment_bank_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_bank_profiles
+    ADD CONSTRAINT payment_bank_profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payment_batches payment_batches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT payment_batches_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payment_holds payment_holds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_holds
+    ADD CONSTRAINT payment_holds_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payment_item_invoices payment_item_invoices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_item_invoices
+    ADD CONSTRAINT payment_item_invoices_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payment_items payment_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_items
+    ADD CONSTRAINT payment_items_pkey PRIMARY KEY (id);
 
 
 --
@@ -10004,6 +10288,188 @@ CREATE UNIQUE INDEX index_partner_bank_accounts_one_live_iban_per_partner ON pub
 
 
 --
+-- Name: index_payment_bank_profiles_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_bank_profiles_on_entity_id ON public.payment_bank_profiles USING btree (entity_id);
+
+
+--
+-- Name: index_payment_batches_on_approval_request_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_approval_request_id ON public.payment_batches USING btree (approval_request_id);
+
+
+--
+-- Name: index_payment_batches_on_bank_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_bank_account_id ON public.payment_batches USING btree (bank_account_id);
+
+
+--
+-- Name: index_payment_batches_on_bank_profile_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_bank_profile_id ON public.payment_batches USING btree (bank_profile_id);
+
+
+--
+-- Name: index_payment_batches_on_cancelled_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_cancelled_by_id ON public.payment_batches USING btree (cancelled_by_id);
+
+
+--
+-- Name: index_payment_batches_on_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_document_id ON public.payment_batches USING btree (document_id);
+
+
+--
+-- Name: index_payment_batches_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_entity_id ON public.payment_batches USING btree (entity_id);
+
+
+--
+-- Name: index_payment_batches_on_entity_id_and_reference; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_payment_batches_on_entity_id_and_reference ON public.payment_batches USING btree (entity_id, reference);
+
+
+--
+-- Name: index_payment_batches_on_exported_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_exported_by_id ON public.payment_batches USING btree (exported_by_id);
+
+
+--
+-- Name: index_payment_batches_on_prepared_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_prepared_by_id ON public.payment_batches USING btree (prepared_by_id);
+
+
+--
+-- Name: index_payment_batches_on_submitted_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_submitted_by_id ON public.payment_batches USING btree (submitted_by_id);
+
+
+--
+-- Name: index_payment_holds_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_holds_on_created_by_id ON public.payment_holds USING btree (created_by_id);
+
+
+--
+-- Name: index_payment_holds_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_holds_on_entity_id ON public.payment_holds USING btree (entity_id);
+
+
+--
+-- Name: index_payment_holds_on_invoice_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_holds_on_invoice_id ON public.payment_holds USING btree (invoice_id);
+
+
+--
+-- Name: index_payment_holds_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_holds_on_partner_id ON public.payment_holds USING btree (partner_id);
+
+
+--
+-- Name: index_payment_holds_on_released_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_holds_on_released_by_id ON public.payment_holds USING btree (released_by_id);
+
+
+--
+-- Name: index_payment_item_invoices_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_item_invoices_on_entity_id ON public.payment_item_invoices USING btree (entity_id);
+
+
+--
+-- Name: index_payment_item_invoices_on_invoice_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_item_invoices_on_invoice_id ON public.payment_item_invoices USING btree (invoice_id);
+
+
+--
+-- Name: index_payment_item_invoices_on_item_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_item_invoices_on_item_id ON public.payment_item_invoices USING btree (item_id);
+
+
+--
+-- Name: index_payment_item_invoices_one_active_batch_per_invoice; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_payment_item_invoices_one_active_batch_per_invoice ON public.payment_item_invoices USING btree (invoice_id) WHERE active;
+
+
+--
+-- Name: index_payment_items_on_batch_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_items_on_batch_id ON public.payment_items USING btree (batch_id);
+
+
+--
+-- Name: index_payment_items_on_batch_id_and_end_to_end_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_payment_items_on_batch_id_and_end_to_end_id ON public.payment_items USING btree (batch_id, end_to_end_id);
+
+
+--
+-- Name: index_payment_items_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_items_on_entity_id ON public.payment_items USING btree (entity_id);
+
+
+--
+-- Name: index_payment_items_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_items_on_journal_entry_id ON public.payment_items USING btree (journal_entry_id);
+
+
+--
+-- Name: index_payment_items_on_partner_bank_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_items_on_partner_bank_account_id ON public.payment_items USING btree (partner_bank_account_id);
+
+
+--
+-- Name: index_payment_items_on_partner_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_items_on_partner_id ON public.payment_items USING btree (partner_id);
+
+
+--
 -- Name: index_recovery_codes_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10282,6 +10748,14 @@ ALTER TABLE ONLY public.partner_bank_accounts
 
 
 --
+-- Name: payment_batches fk_rails_0890910bf1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_0890910bf1 FOREIGN KEY (bank_account_id) REFERENCES public.accounting_bank_accounts(id);
+
+
+--
 -- Name: knowledge_gaps fk_rails_0a919200a4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10335,6 +10809,14 @@ ALTER TABLE ONLY public.consolidation_runs
 
 ALTER TABLE ONLY public.agent_conversations
     ADD CONSTRAINT fk_rails_10a03a536e FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: payment_batches fk_rails_10dfbe934a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_10dfbe934a FOREIGN KEY (prepared_by_id) REFERENCES public.users(id);
 
 
 --
@@ -10922,6 +11404,14 @@ ALTER TABLE ONLY public.accounting_peppol_messages
 
 
 --
+-- Name: payment_batches fk_rails_506ce031d5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_506ce031d5 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: agent_conversation_reviews fk_rails_50e14aca2e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11010,6 +11500,14 @@ ALTER TABLE ONLY public.user_entities
 
 
 --
+-- Name: payment_holds fk_rails_5b3b7a8b4b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_holds
+    ADD CONSTRAINT fk_rails_5b3b7a8b4b FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: agent_digests fk_rails_5b95312c2d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11058,6 +11556,14 @@ ALTER TABLE ONLY public.accounting_documents
 
 
 --
+-- Name: payment_batches fk_rails_63106b2dbb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_63106b2dbb FOREIGN KEY (cancelled_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_supplier_defaults fk_rails_63dbd18c54; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11103,6 +11609,14 @@ ALTER TABLE ONLY public.api_idempotency_keys
 
 ALTER TABLE ONLY public.consolidation_entries
     ADD CONSTRAINT fk_rails_69ef69e3ba FOREIGN KEY (consolidation_run_id) REFERENCES public.consolidation_runs(id);
+
+
+--
+-- Name: payment_item_invoices fk_rails_6b8e8c4cda; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_item_invoices
+    ADD CONSTRAINT fk_rails_6b8e8c4cda FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -11162,11 +11676,27 @@ ALTER TABLE ONLY public.organization_memberships
 
 
 --
+-- Name: payment_item_invoices fk_rails_7183be7174; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_item_invoices
+    ADD CONSTRAINT fk_rails_7183be7174 FOREIGN KEY (item_id) REFERENCES public.payment_items(id) ON DELETE CASCADE;
+
+
+--
 -- Name: consolidation_stakes fk_rails_7191575469; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.consolidation_stakes
     ADD CONSTRAINT fk_rails_7191575469 FOREIGN KEY (consolidation_member_id) REFERENCES public.consolidation_members(id);
+
+
+--
+-- Name: payment_batches fk_rails_71f90b2d25; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_71f90b2d25 FOREIGN KEY (document_id) REFERENCES public.accounting_documents(id);
 
 
 --
@@ -11311,6 +11841,14 @@ ALTER TABLE ONLY public.accounting_recurring_invoices
 
 ALTER TABLE ONLY public.accounting_peppol_messages
     ADD CONSTRAINT fk_rails_8823ec69c6 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id) ON DELETE SET NULL;
+
+
+--
+-- Name: payment_batches fk_rails_88fe01ca10; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_88fe01ca10 FOREIGN KEY (bank_profile_id) REFERENCES public.payment_bank_profiles(id);
 
 
 --
@@ -11466,6 +12004,22 @@ ALTER TABLE ONLY public.closing_steps
 
 
 --
+-- Name: payment_items fk_rails_956606bd4e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_items
+    ADD CONSTRAINT fk_rails_956606bd4e FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: payment_holds fk_rails_957c3c94bd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_holds
+    ADD CONSTRAINT fk_rails_957c3c94bd FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_9602ee956d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11479,6 +12033,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 ALTER TABLE ONLY public.agent_digests
     ADD CONSTRAINT fk_rails_9618818af5 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: payment_items fk_rails_99054d900f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_items
+    ADD CONSTRAINT fk_rails_99054d900f FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id);
 
 
 --
@@ -11514,6 +12076,14 @@ ALTER TABLE ONLY public.accounting_journals
 
 
 --
+-- Name: payment_batches fk_rails_9d443474f5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_9d443474f5 FOREIGN KEY (approval_request_id) REFERENCES public.approval_requests(id);
+
+
+--
 -- Name: agent_text_drafts fk_rails_9d7bc0ce0e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11543,6 +12113,14 @@ ALTER TABLE ONLY public.accounting_depreciation_entries
 
 ALTER TABLE ONLY public.approval_policies
     ADD CONSTRAINT fk_rails_9e59ffe4e6 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: payment_items fk_rails_a096e69e73; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_items
+    ADD CONSTRAINT fk_rails_a096e69e73 FOREIGN KEY (partner_bank_account_id) REFERENCES public.partner_bank_accounts(id);
 
 
 --
@@ -11818,6 +12396,14 @@ ALTER TABLE ONLY public.accounting_bank_accounts
 
 
 --
+-- Name: payment_holds fk_rails_be40a1a3dc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_holds
+    ADD CONSTRAINT fk_rails_be40a1a3dc FOREIGN KEY (released_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_lettering_suggestions fk_rails_beefef422f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11919,6 +12505,22 @@ ALTER TABLE ONLY public.accounting_invoice_events
 
 ALTER TABLE ONLY public.accounting_tasks
     ADD CONSTRAINT fk_rails_c64db72a80 FOREIGN KEY (assignee_id) REFERENCES public.users(id);
+
+
+--
+-- Name: payment_holds fk_rails_c67ef954c3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_holds
+    ADD CONSTRAINT fk_rails_c67ef954c3 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
+-- Name: payment_bank_profiles fk_rails_c6beb02f83; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_bank_profiles
+    ADD CONSTRAINT fk_rails_c6beb02f83 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -12114,6 +12716,22 @@ ALTER TABLE ONLY public.approval_requests
 
 
 --
+-- Name: payment_items fk_rails_d77dce023b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_items
+    ADD CONSTRAINT fk_rails_d77dce023b FOREIGN KEY (batch_id) REFERENCES public.payment_batches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payment_batches fk_rails_d830e92513; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_d830e92513 FOREIGN KEY (exported_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: agent_messages fk_rails_d86808b0c3; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12167,6 +12785,14 @@ ALTER TABLE ONLY public.webhook_subscriptions
 
 ALTER TABLE ONLY public.closing_snapshots
     ADD CONSTRAINT fk_rails_dc740f05cd FOREIGN KEY (closing_run_id) REFERENCES public.closing_runs(id);
+
+
+--
+-- Name: payment_items fk_rails_dc9989adc9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_items
+    ADD CONSTRAINT fk_rails_dc9989adc9 FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
 
 
 --
@@ -12263,6 +12889,14 @@ ALTER TABLE ONLY public.accounting_bank_statements
 
 ALTER TABLE ONLY public.accounting_journal_entries
     ADD CONSTRAINT fk_rails_eab1fe3205 FOREIGN KEY (closing_run_id) REFERENCES public.closing_runs(id);
+
+
+--
+-- Name: payment_item_invoices fk_rails_eb1ec1c869; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_item_invoices
+    ADD CONSTRAINT fk_rails_eb1ec1c869 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
 
 
 --
@@ -12402,6 +13036,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 
 --
+-- Name: payment_batches fk_rails_f5c700944d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_f5c700944d FOREIGN KEY (submitted_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: closing_steps fk_rails_f60ca6c8df; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12506,6 +13148,14 @@ ALTER TABLE ONLY public.dunning_runs
 
 
 --
+-- Name: payment_holds fk_rails_fbe7a0e09e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_holds
+    ADD CONSTRAINT fk_rails_fbe7a0e09e FOREIGN KEY (partner_id) REFERENCES public.accounting_partners(id);
+
+
+--
 -- Name: agent_settings fk_rails_fceb5a5a67; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12536,6 +13186,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261012100000'),
 ('20261012090000'),
 ('20261009200000'),
 ('20261009190000'),
