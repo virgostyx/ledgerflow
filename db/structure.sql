@@ -39,6 +39,58 @@ COMMENT ON EXTENSION unaccent IS 'text search dictionary that removes accents';
 
 
 --
+-- Name: assign_entry_posting(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.assign_entry_posting() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  v_last_seq bigint;
+  v_last_at timestamp;
+  v_stamp timestamp;
+  v_setting text;
+BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.posted_seq IS NOT NULL THEN
+    IF NEW.posted_at IS DISTINCT FROM OLD.posted_at OR NEW.posted_seq IS DISTINCT FROM OLD.posted_seq OR NEW.posted_at_source IS DISTINCT FROM OLD.posted_at_source THEN
+      RAISE EXCEPTION 'the instant and the place of the validated entry % cannot change (posted_at, posted_seq)', OLD.id USING ERRCODE = 'raise_exception';
+    END IF;
+    IF NEW.status = 0 THEN
+      RAISE EXCEPTION 'the validated entry % cannot go back to a draft (posted_at)', OLD.id USING ERRCODE = 'raise_exception';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.status = 0 THEN
+    IF NEW.posted_at IS NOT NULL OR NEW.posted_seq IS NOT NULL OR NEW.posted_at_source IS NOT NULL THEN
+      RAISE EXCEPTION 'a draft has no posted_at' USING ERRCODE = 'raise_exception';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  -- the entry becomes validated now (or is written validated): its place is the next one of the company, its instant is the clock of the database
+  PERFORM pg_advisory_xact_lock(hashtext('entry_posting'), NEW.entity_id::integer);
+  SELECT posted_seq, posted_at INTO v_last_seq, v_last_at
+    FROM accounting_journal_entries WHERE entity_id = NEW.entity_id AND posted_seq IS NOT NULL ORDER BY posted_seq DESC LIMIT 1;
+
+  -- one instant for what one transaction validates (txid|instant): a view at an instant shows all of it or none of it
+  v_setting := current_setting('ledgerflow.posted_at', true);
+  IF v_setting IS NOT NULL AND v_setting LIKE txid_current()::text || '|%' THEN
+    v_stamp := split_part(v_setting, '|', 2)::timestamp;
+  ELSE
+    v_stamp := clock_timestamp() AT TIME ZONE 'UTC';
+    PERFORM set_config('ledgerflow.posted_at', txid_current()::text || '|' || v_stamp::text, true);
+  END IF;
+
+  NEW.posted_seq := COALESCE(v_last_seq, 0) + 1;
+  NEW.posted_at := GREATEST(v_stamp, COALESCE(v_last_at, v_stamp));
+  NEW.posted_at_source := CASE WHEN NEW.import_batch_id IS NOT NULL THEN 'import' ELSE 'live' END;
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: date_in_locked_period(bigint, date); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1563,7 +1615,10 @@ CREATE TABLE public.accounting_journal_entries (
     lettering_id bigint,
     closing_run_id bigint,
     import_batch_id bigint,
-    external_id character varying
+    external_id character varying,
+    posted_at timestamp(6) without time zone,
+    posted_seq bigint,
+    posted_at_source character varying
 );
 
 
@@ -5091,7 +5146,9 @@ CREATE VIEW public.posted_lines AS
     l.vat_code,
     l.lettering_id,
     l.currency,
-    l.amount_currency
+    l.amount_currency,
+    e.posted_seq,
+    e.posted_at
    FROM (public.accounting_journal_entry_lines l
      JOIN public.accounting_journal_entries e ON ((e.id = l.journal_entry_id)))
   WHERE (e.status = ANY (ARRAY[1, 2]));
@@ -10120,6 +10177,13 @@ CREATE UNIQUE INDEX index_entities_on_vat_number_unique ON public.entities USING
 
 
 --
+-- Name: index_entries_on_entity_and_posted_seq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_entries_on_entity_and_posted_seq ON public.accounting_journal_entries USING btree (entity_id, posted_seq) WHERE (posted_seq IS NOT NULL);
+
+
+--
 -- Name: index_import_templates_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10656,6 +10720,13 @@ CREATE INDEX index_webhook_subscriptions_on_created_by_id ON public.webhook_subs
 --
 
 CREATE INDEX index_webhook_subscriptions_on_entity_id ON public.webhook_subscriptions USING btree (entity_id);
+
+
+--
+-- Name: accounting_journal_entries assign_entry_posting; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER assign_entry_posting BEFORE INSERT OR UPDATE ON public.accounting_journal_entries FOR EACH ROW EXECUTE FUNCTION public.assign_entry_posting();
 
 
 --
@@ -13252,6 +13323,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261014090000'),
 ('20261013090000'),
 ('20261012120000'),
 ('20261012110000'),
