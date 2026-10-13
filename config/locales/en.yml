@@ -634,6 +634,35 @@ en:
       hmac_invalid:       "Invalid HMAC signature."
 
   payments:
+    post:
+      errors:
+        feature_off: "Supplier payments are not enabled for this entity."
+        not_allowed: "You may not validate entries."
+        own_batch: "You prepared this batch: another person must validate its payments."
+        not_debited: "The debit of this batch was not confirmed yet."
+        nothing_to_post: "There is no payment of this batch left to validate."
+        refused: "An entry could not be validated: nothing was validated."
+    debit:
+      errors:
+        feature_off: "Supplier payments are not enabled for this entity."
+        not_allowed: "You may not confirm that a batch was debited."
+        not_waiting: "This batch is not waiting for its debit: it is a draft, given up, or already debited."
+        not_submitted: "Say first that the file was loaded in the bank: only then can a debit be confirmed by hand."
+        not_a_debit: "This line of the statement is not a debit."
+        line_not_pending: "This line of the statement was already dealt with."
+        wrong_account: "This line is not on the account the batch debits."
+        foreign_items: "These payments are not payments of this batch that still wait for their debit."
+        amount_mismatch: "The line is not for the total of these payments."
+        no_fiscal_year: "No open fiscal year covers the date of the debit."
+        already_confirmed: "These payments were confirmed already."
+        reason_required: "Say why the debit is confirmed without a line of the statement."
+        date_required: "Give the date of the debit."
+        reference_required: "Give the reference the bank gives to the debit."
+        not_a_credit: "This line of the statement is not a credit."
+        return_needs_reason: "A returned payment is reversed by a person who gives the reason: use Reverse the payment."
+        not_confirmed: "This payment was not confirmed as debited: nothing can have come back."
+        already_returned: "This payment was returned already."
+        reversal_failed: "The payment could not be reversed: %{message}"
     profiles:
       created: "The bank profile was recorded."
       updated: "The bank profile was updated."
@@ -650,6 +679,10 @@ en:
       no_file: "There is no file for this batch yet."
       loaded: "Recorded: the file was loaded in your bank."
       cancelled: "The batch was cancelled, or its cancellation was asked for."
+      debit_confirmed: "The debit was confirmed: one draft entry was made for each payment."
+      payments_validated: "The payments were validated and lettered with their invoices."
+      rejected: "The payments were rejected: their invoices are on hold and the accounts of the suppliers are unverified."
+      returned: "The payment was reversed: the invoice is open again and on hold, and the account of the supplier is unverified."
       cancellation_done: "The batch is cancelled and its invoices are free."
     cancel:
       errors:

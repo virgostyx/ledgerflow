@@ -160,4 +160,58 @@ RSpec.describe Accounting::CashForecastQuery, type: :query do
     expect(vat_week.sources[:vat]).to eq(210)
     expect(vat_week.from).to be <= Date.new(start.year, start.month, 20).then { |d| d < start ? d.next_month : d }
   end
+
+  # B01c §6 "Indicateurs": from the moment the file is made, a payment is counted at the execution date of its batch, not at the due date of its invoice; it stays in the
+  # forecast until the entry of the payment is validated (then the ledger cash and the open balance move by themselves).
+  describe "invoices in a payment batch (B01c)" do
+    def supplier_invoice(amount, due)
+      invoice = create(:invoice, :posted, :supplier, partner: supplier, fiscal_year: fiscal_year, due_date: due, payment_status: :approved)
+      entry = post(start - 1, [ expenses, amount, 0, nil ], [ suppliers, 0, amount, supplier ])
+      entry.lines.find_by(account: suppliers).update_columns(invoice_id: invoice.id, due_date: due)
+      invoice
+    end
+
+    def in_batch(invoice, paid, status: :submitted, on: start + 3)
+      batch = Payments::Batch.create!(bank_account: create(:bank_account), reference: "PAY-#{SecureRandom.hex(3)}", requested_execution_date: on, status: status, total: paid, payments_count: 1)
+      item = batch.items.create!(partner: supplier, iban: "BE68539007547034", holder_name: "S", amount: paid, end_to_end_id: "#{batch.reference}-1")
+      item.item_invoices.create!(invoice: invoice, amount: paid)
+      batch
+    end
+
+    let(:due_later) { start + 30 } # week 5
+    let!(:invoice) { supplier_invoice(400, due_later) }
+
+    def week(n) = forecast.weeks[n - 1]
+
+    it "counts the payment at the execution date of the batch once the file was made, not at the due date" do
+      in_batch(invoice, 400)
+
+      expect(week(1).sources[:payables_scheduled]).to eq(400)
+      expect(week(5).sources[:payables].to_d).to eq(0)
+    end
+
+    it "splits a part payment: the part at the execution date, the rest at the due date" do
+      in_batch(invoice, 100)
+
+      expect(week(1).sources[:payables_scheduled]).to eq(100)
+      expect(week(5).sources[:payables]).to eq(300)
+    end
+
+    it "does not change when the batch is only a draft, nor once it was given up" do
+      in_batch(invoice, 400, status: :draft)
+      expect(week(5).sources[:payables]).to eq(400)
+      Payments::Batch.update_all(status: Payments::Batch.statuses[:cancelled])
+      Payments::ItemInvoice.update_all(active: false)
+
+      expect(week(5).sources[:payables]).to eq(400)
+      expect(week(1).sources[:payables_scheduled].to_d).to eq(0)
+    end
+
+    it "keeps the total outflow the same: it only moves it" do
+      before = forecast.weeks.sum(&:outflows)
+      in_batch(invoice, 400)
+
+      expect(forecast.weeks.sum(&:outflows)).to eq(before)
+    end
+  end
 end

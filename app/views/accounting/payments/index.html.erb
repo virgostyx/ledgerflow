@@ -12,6 +12,18 @@
 
 <p class="text-sm text-gray-500 mb-4">LedgerFlow prepares the file; you load it and authorize it in your own bank. Nothing is paid from here.</p>
 
+<% i = @indicators %>
+<section class="mb-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm" data-section="indicators">
+  <div class="rounded-lg border border-gray-200 bg-white p-3"><div class="text-gray-500">Batches debited (90 days)</div><div class="font-mono text-gray-900"><%= i.batches %></div></div>
+  <div class="rounded-lg border border-gray-200 bg-white p-3"><div class="text-gray-500">Recognised from the statement</div><div class="font-mono text-gray-900"><%= i.recognition_rate ? "#{(i.recognition_rate * 100).round} %" : '—' %></div></div>
+  <div class="rounded-lg border border-gray-200 bg-white p-3"><div class="text-gray-500">Mean days after the due date</div><div class="font-mono text-gray-900"><%= i.mean_days_late ? number_with_precision(i.mean_days_late, precision: 1) : '—' %></div></div>
+  <div class="rounded-lg border border-gray-200 bg-white p-3"><div class="text-gray-500">Paid late</div><div class="font-mono text-gray-900"><%= i.late_payments %> · <%= number_with_precision(i.late_amount, precision: 2, delimiter: ',') %></div></div>
+  <div class="rounded-lg border border-gray-200 bg-white p-3"><div class="text-gray-500">Returned</div><div class="font-mono text-gray-900"><%= number_with_precision(i.returned_amount, precision: 2, delimiter: ',') %></div></div>
+</section>
+<p class="mb-4 text-sm"><span class="text-gray-500">Executed payments, invoice by invoice:</span>
+  <%= link_to 'CSV', executed_accounting_payments_path(format: :csv), class: 'text-primary-600 hover:text-primary-800' %> ·
+  <%= link_to 'XLSX', executed_accounting_payments_path(format: :xlsx), class: 'text-primary-600 hover:text-primary-800' %></p>
+
 <% if @batches.empty? %>
   <%= render Ui::EmptyStateComponent.new(title: 'No payment batches yet', description: 'Pick the approved invoices that fall due and make a batch.', icon: :clipboard) %>
 <% else %>

@@ -4922,7 +4922,13 @@ CREATE TABLE public.payment_batches (
     approval_request_id bigint,
     preflight_report jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    debited_at timestamp(6) without time zone,
+    debited_by_id bigint,
+    debit_kind character varying,
+    debit_reason character varying,
+    debit_reference character varying,
+    debit_date date
 );
 
 
@@ -5039,7 +5045,10 @@ CREATE TABLE public.payment_items (
     exclusion_reason character varying,
     journal_entry_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    bank_transaction_id bigint,
+    confirmed_by_id bigint,
+    confirmed_at timestamp(6) without time zone
 );
 
 
@@ -10328,6 +10337,13 @@ CREATE INDEX index_payment_batches_on_cancelled_by_id ON public.payment_batches 
 
 
 --
+-- Name: index_payment_batches_on_debited_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_batches_on_debited_by_id ON public.payment_batches USING btree (debited_by_id);
+
+
+--
 -- Name: index_payment_batches_on_document_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10433,6 +10449,13 @@ CREATE UNIQUE INDEX index_payment_item_invoices_one_active_batch_per_invoice ON 
 
 
 --
+-- Name: index_payment_items_on_bank_transaction_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_items_on_bank_transaction_id ON public.payment_items USING btree (bank_transaction_id);
+
+
+--
 -- Name: index_payment_items_on_batch_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10447,6 +10470,13 @@ CREATE UNIQUE INDEX index_payment_items_on_batch_id_and_end_to_end_id ON public.
 
 
 --
+-- Name: index_payment_items_on_confirmed_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_payment_items_on_confirmed_by_id ON public.payment_items USING btree (confirmed_by_id);
+
+
+--
 -- Name: index_payment_items_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10458,6 +10488,13 @@ CREATE INDEX index_payment_items_on_entity_id ON public.payment_items USING btre
 --
 
 CREATE INDEX index_payment_items_on_journal_entry_id ON public.payment_items USING btree (journal_entry_id);
+
+
+--
+-- Name: index_payment_items_on_journal_entry_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_payment_items_on_journal_entry_unique ON public.payment_items USING btree (journal_entry_id) WHERE (journal_entry_id IS NOT NULL);
 
 
 --
@@ -10910,6 +10947,14 @@ ALTER TABLE ONLY public.accounting_partners
 
 ALTER TABLE ONLY public.approval_delegations
     ADD CONSTRAINT fk_rails_1aebba5e0d FOREIGN KEY (delegator_id) REFERENCES public.users(id);
+
+
+--
+-- Name: payment_batches fk_rails_1b81c7e083; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_batches
+    ADD CONSTRAINT fk_rails_1b81c7e083 FOREIGN KEY (debited_by_id) REFERENCES public.users(id);
 
 
 --
@@ -11577,6 +11622,14 @@ ALTER TABLE ONLY public.accounting_supplier_defaults
 
 
 --
+-- Name: payment_items fk_rails_6793a7526f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_items
+    ADD CONSTRAINT fk_rails_6793a7526f FOREIGN KEY (bank_transaction_id) REFERENCES public.accounting_bank_transactions(id);
+
+
+--
 -- Name: agent_text_drafts fk_rails_679bf9874b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11694,6 +11747,14 @@ ALTER TABLE ONLY public.payment_item_invoices
 
 ALTER TABLE ONLY public.consolidation_stakes
     ADD CONSTRAINT fk_rails_7191575469 FOREIGN KEY (consolidation_member_id) REFERENCES public.consolidation_members(id);
+
+
+--
+-- Name: payment_items fk_rails_71cdff87cd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payment_items
+    ADD CONSTRAINT fk_rails_71cdff87cd FOREIGN KEY (confirmed_by_id) REFERENCES public.users(id);
 
 
 --
@@ -13191,6 +13252,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261013090000'),
 ('20261012120000'),
 ('20261012110000'),
 ('20261012100000'),

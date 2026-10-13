@@ -400,6 +400,7 @@ Rails.application.routes.draw do
 
       # B01b: the payments in five steps (the legacy batches above stay readable)
       resources :payments, only: %i[index new create show] do
+        get :executed, on: :collection
         member do
           post :preflight
           post :acknowledge
@@ -410,6 +411,9 @@ Rails.application.routes.draw do
           post :confirm_loaded
           post :cancel
           post :confirm_cancellation
+          post :confirm_debit_by_hand
+          post :post_payments
+          post :reject_payments
         end
       end
 

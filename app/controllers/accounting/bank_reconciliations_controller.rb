@@ -48,6 +48,8 @@ class Accounting::BankReconciliationsController < ApplicationController
       handle_allocations
     elsif bank_params[:accept_suggestion].present?
       handle_accept_suggestion
+    elsif bank_params[:register_return].present?
+      handle_register_return
     else
       handle_reconciliation
     end
@@ -178,6 +180,16 @@ class Accounting::BankReconciliationsController < ApplicationController
     return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.no_suggestion") unless result
 
     redirect_for(result)
+  end
+
+  # A credit that gives a payment back (B01c): the person gives the reason; the payment is reversed and the invoice held.
+  def handle_register_return
+    transaction = Accounting::BankTransaction.pending.find(bank_params[:bank_transaction_id])
+    item = Payments::RecognizeReturn.call(transaction)&.item
+    return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.no_suggestion") unless item
+
+    result = Payments::RegisterReturn.call(item: item, transaction: transaction, user: current_user, reason: bank_params[:reason])
+    redirect_to accounting_bank_reconciliation_path, **(result.success? ? { notice: t("payments.screens.returned") } : { alert: result.message })
   end
 
   # Whoever cannot validate an entry (an assistant) books a DRAFT: the payment entry exists, an accountant validates it.

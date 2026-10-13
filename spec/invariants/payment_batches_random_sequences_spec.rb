@@ -11,12 +11,12 @@ require "rails_helper"
 RSpec.describe "Invariant — payment batches hold after random sequences" do
   include_context "with approvable batch"
 
-  SEEDS = (1..12).to_a.freeze
-  OPERATIONS = 60
-  IBANS = %w[BE68539007547034 BE71096123456769 BE62510007547061].freeze
+  seeds = (1..12).to_a
+  operations = 60
+  ibans = %w[BE68539007547034 BE71096123456769 BE62510007547061]
 
   let(:suppliers) do
-    IBANS.each_with_index.map do |iban, i|
+    ibans.each_with_index.map do |iban, i|
       create(:partner, :supplier, name: "Supplier #{i}", iban: nil).tap { |p| create(:partner_bank_account, :verified, partner: p, iban: iban, created_by: owner, first_seen_at: 90.days.ago) }
     end
   end
@@ -134,12 +134,12 @@ RSpec.describe "Invariant — payment batches hold after random sequences" do
     end
   end
 
-  SEEDS.each do |seed|
+  seeds.each do |seed|
     it "holds for seed #{seed}" do
       rng = Random.new(seed)
       suppliers
       state = { invoices: [], files: {} }
-      OPERATIONS.times do |step|
+      operations.times do |step|
         operation(rng, state)
         check!(state, seed, step)
       end

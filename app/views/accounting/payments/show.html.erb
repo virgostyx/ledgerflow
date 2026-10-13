@@ -84,6 +84,58 @@
   <% end %>
 </section>
 
+<%# After the file: the debit, the entries, the timeline (B01c) %>
+<% if @batch.submitted? || @batch.exported? || @batch.cancel_requested? || @batch.debited? || @batch.partially_rejected? %>
+<section class="bg-white rounded-lg border border-gray-200 p-4 mb-4" data-section="debit">
+  <h2 class="text-sm font-semibold text-gray-900 mb-2">Debit and payments</h2>
+  <% if @batch.exported? || @batch.submitted? || @batch.cancel_requested? %>
+    <p class="text-sm text-gray-700">The debit is looked for in the <%= link_to 'Bank reconciliation', accounting_bank_reconciliation_path, class: 'text-primary-600 hover:text-primary-800' %>: when a line of the statement is the debit of this batch, it is proposed there and you confirm it in one click.</p>
+    <% if @batch.submitted? && policy(@batch).confirm? %>
+      <details class="mt-3">
+        <summary class="cursor-pointer text-sm text-primary-600">Confirm the debit by hand (no line of the statement found)</summary>
+        <%= form_with url: confirm_debit_by_hand_accounting_payment_path(@batch), class: 'mt-2 flex flex-wrap gap-2 items-end' do %>
+          <%= text_field_tag :reason, nil, placeholder: 'Why (the statement has no line yet)', required: true, class: field %>
+          <%= date_field_tag :date, nil, required: true, class: field %>
+          <%= text_field_tag :bank_reference, nil, placeholder: 'Reference of the bank', required: true, class: field %>
+          <%= submit_tag 'Confirm the debit by hand', class: btn %>
+        <% end %>
+        <p class="mt-1 text-xs text-gray-500">It stays flagged until the statement that holds the debit is reconciled.</p>
+      </details>
+    <% end %>
+  <% end %>
+
+  <% if @waiting_items.present? && @items.any?(&:confirmed?) && policy(@batch).confirm? %>
+    <%= form_with url: reject_payments_accounting_payment_path(@batch), class: 'mt-3' do %>
+      <p class="text-sm text-gray-700 mb-1">These payments were not in the debit:</p>
+      <% @waiting_items.each do |item| %>
+        <label class="flex items-center gap-2 text-sm text-gray-700"><%= check_box_tag 'item_ids[]', item.id, false, id: "reject_#{item.id}", class: 'rounded border-gray-300' %> <%= item.holder_name %> <span class="font-mono"><%= number_with_precision(item.amount, precision: 2, delimiter: ',') %></span></label>
+      <% end %>
+      <div class="mt-2 flex gap-2 items-end">
+        <%= text_field_tag :reason, nil, placeholder: 'Reason (what the bank says)', required: true, class: field %>
+        <%= submit_tag 'Reject the selected payments', class: 'px-4 py-2 border border-red-300 text-red-700 text-sm rounded-md bg-white hover:bg-red-50' %>
+      </div>
+      <p class="mt-1 text-xs text-gray-500">A rejected payment holds its invoice and sends the account of the supplier back to unverified.</p>
+    <% end %>
+  <% end %>
+
+  <% if @drafts.present? %>
+    <p class="mt-3 text-sm text-gray-700">One draft entry was made for each payment:</p>
+    <ul class="mt-1 text-sm text-gray-600">
+      <% @drafts.each do |item| %><li class="font-mono"><%= item.end_to_end_id %> — <%= item.holder_name %> <%= number_with_precision(item.amount, precision: 2, delimiter: ',') %></li><% end %>
+    </ul>
+    <% if policy(@batch).post_entries? %>
+      <%= button_to 'Validate the payments of the batch', post_payments_accounting_payment_path(@batch), class: "mt-2 #{btn}", data: { turbo_confirm: 'Validate these entries? Each payment is lettered with its invoice.' } %>
+    <% end %>
+  <% end %>
+  <% if @batch.debit_kind == 'manual' %><p class="mt-2 text-xs text-amber-700">The debit was confirmed by hand (<%= @batch.debit_reason %>, <%= @batch.debit_reference %>): reconcile the statement that holds it.</p><% end %>
+</section>
+<% end %>
+
+<section class="bg-white rounded-lg border border-gray-200 p-4 mb-4" data-section="timeline">
+  <h2 class="text-sm font-semibold text-gray-900 mb-2">Timeline</h2>
+  <%= render 'payments/timeline', steps: @timeline %>
+</section>
+
 <%# Step 4: the approval %>
 <section class="bg-white rounded-lg border border-gray-200 p-4 mb-4" data-section="approval">
   <h2 class="text-sm font-semibold text-gray-900 mb-2">Approval</h2>

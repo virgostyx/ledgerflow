@@ -12,8 +12,8 @@ require "rails_helper"
 RSpec.describe "Invariant — approvals hold after random sequences" do
   include_context "with entity"
 
-  SEEDS = (1..12).to_a.freeze
-  OPERATIONS = 30
+  seeds = (1..12).to_a
+  operations = 30
 
   let(:fiscal_year) { create(:fiscal_year, status: :open) }
   let(:account)     { create(:account) }
@@ -124,12 +124,12 @@ RSpec.describe "Invariant — approvals hold after random sequences" do
     end
   end
 
-  SEEDS.each do |seed|
-    it "holds after a sequence of #{OPERATIONS} operations (seed #{seed})" do
+  seeds.each do |seed|
+    it "holds after a sequence of #{operations} operations (seed #{seed})" do
       rng = Random.new(seed)
       invoices = []
       invoices << new_invoice(rng)
-      OPERATIONS.times do |step|
+      operations.times do |step|
         operation(rng, invoices)
         broken = violations(invoices)
         expect(broken).to be_empty, "seed #{seed}, operation #{step + 1}: #{broken.first(3).join(' | ')}"

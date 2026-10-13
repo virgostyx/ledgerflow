@@ -8,4 +8,6 @@ class Payments::BatchPolicy < ApplicationPolicy
   def approve? = can?("payments.approve")
   def export?  = can?("payments.export")
   def confirm? = can?("payments.confirm")
+  def reverse_payments? = confirm? && can?("entries.reverse") # a payment that came back: the entry of the payment is reversed (F07)
+  def post_entries? = can?("entries.post") # validating the entries of the payments of a debited batch
 end

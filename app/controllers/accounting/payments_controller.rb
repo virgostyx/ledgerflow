@@ -3,12 +3,25 @@
 # rules; nothing here pays anything or writes an entry. IBANs are shown masked; the file, which holds them, goes to those who may export or confirm.
 class Accounting::PaymentsController < ApplicationController
   before_action { require_feature!(:b01b) }
-  before_action :set_batch, except: %i[index new create]
+  before_action :set_batch, except: %i[index new create executed]
   before_action(only: %i[export download]) { require_recent_second_factor! } # the file holds the accounts paid: a second factor given a moment ago
 
   def index
     authorize Payments::Batch
     @batches = Payments::Batch.includes(:bank_account, :prepared_by).order(created_at: :desc).limit(200)
+    @indicators = Payments::Indicators.call((Date.current - 90)..Date.current)
+  end
+
+  # "Paiements exécutés": the payments the bank debited, invoice by invoice, for the auditor (CSV, XLSX).
+  def executed
+    authorize Payments::Batch, :index?
+    range = (date_param(params[:from]) || Date.current - 90)..(date_param(params[:to]) || Date.current)
+    result = Payments::ExecutedPayments.call(range)
+    name = "executed-payments-#{range.first.iso8601}-#{range.last.iso8601}"
+    respond_to do |format|
+      format.csv { send_data Reports::Exporters::Csv.call(result, columns: Payments::ExecutedPayments::COLUMNS), filename: "#{name}.csv", type: "text/csv" }
+      format.xlsx { send_data Reports::Exporters::Xlsx.call(result, columns: Payments::ExecutedPayments::COLUMNS, title: "Executed payments"), filename: "#{name}.xlsx", type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+    end
   end
 
   def new
@@ -39,11 +52,14 @@ class Accounting::PaymentsController < ApplicationController
 
   def show
     authorize @batch
-    @items = @batch.items.includes(:partner, :partner_bank_account, item_invoices: :invoice).order(:id)
+    @items = @batch.items.includes(:partner, :partner_bank_account, :journal_entry, item_invoices: :invoice).order(:id)
     @report = @batch.preflight_report.presence
     @balance = Payments::Balance.of(@batch.bank_account)
     @request = @batch.approval_request
     # the buttons are for who may decide; the one who prepared the batch is not offered them when the company keeps the tasks apart (Approvals::Decide refuses them anyway)
+    @timeline = Payments::Timeline.for_batch(@batch)
+    @waiting_items = @items.select(&:included?) if @batch.partially_rejected? || @items.any?(&:confirmed?)
+    @drafts = @items.select { |item| item.confirmed? && item.journal_entry&.draft? }
     @can_decide = @request&.pending? && Approvals::Approvers.for(@request).key?(current_user.id) && !(@batch.entity.distinct_payment_authorizer? && @batch.prepared_by_id == current_user.id)
   end
 
@@ -94,6 +110,23 @@ class Accounting::PaymentsController < ApplicationController
   def cancel
     authorize @batch, :show?
     answer(Payments::CancelBatch.call(batch: @batch, user: current_user, reason: params[:reason].to_s), t("payments.screens.cancelled"))
+  end
+
+  def confirm_debit_by_hand
+    authorize @batch, :confirm?
+    result = Payments::ConfirmDebit.manual(batch: @batch, user: current_user, reason: params[:reason].to_s, date: date_param(params[:date]), bank_reference: params[:bank_reference].to_s)
+    answer(result, t("payments.screens.debit_confirmed"))
+  end
+
+  def post_payments
+    authorize @batch, :post_entries?
+    answer(Payments::PostBatchPayments.call(batch: @batch, user: current_user), t("payments.screens.payments_validated"))
+  end
+
+  def reject_payments
+    authorize @batch, :confirm?
+    items = @batch.items.where(id: Array(params[:item_ids]))
+    answer(Payments::RejectPayments.call(batch: @batch, items: items.to_a, user: current_user, reason: params[:reason].to_s), t("payments.screens.rejected"))
   end
 
   def confirm_cancellation

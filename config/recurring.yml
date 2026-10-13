@@ -5,6 +5,10 @@ production:
     class: Approvals::DigestJob
     queue: default
     schedule: every day at 7:45am
+  payments_check_delays:
+    class: Payments::CheckDelaysJob
+    queue: default
+    schedule: every day at 8am
   approvals_process_due:
     class: Approvals::ProcessDueJob
     queue: default

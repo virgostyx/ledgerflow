@@ -2,7 +2,7 @@ require "rails_helper"
 
 # B01b, the screens: "Payments" in five steps - the invoices to pay, the composition, the checks, the approval, the file and what follows - and the history.
 RSpec.describe "Payments (B01b)", type: :request do
-  include_context "with approvable batch"
+  include_context "with submitted batch"
 
   let(:accountant) { authorizer }
   let(:assistant) { create(:user, full_name: "Anna Assistant").tap { |u| create(:user_entity, :assistant, user: u, entity: entity) } }
@@ -277,6 +277,130 @@ RSpec.describe "Payments (B01b)", type: :request do
       expect(response).to redirect_to(download_accounting_payment_path(batch))
       get download_accounting_payment_path(batch)
       expect(response.body).to eq(batch.document.file.download)
+    end
+  end
+
+  describe "after the file: the debit, the entries and the timeline" do
+    let(:poster) { create(:user, full_name: "Paula Poster").tap { |u| create(:user_entity, :accountant, user: u, entity: entity) } }
+    let(:batch) { submitted_batch }
+    let(:invoice) { Accounting::Invoice.find(batch.items.first.item_invoices.first.invoice_id) }
+
+    def debit!(date: nil)
+      Payments::ConfirmDebit.call(batch: batch, user: authorizer, transaction: debit_line(batch.total, description: batch.reference), items: batch.items.to_a).tap { |r| raise r.message if r.failure? }
+    end
+
+    it "says that the debit is looked for in the statement, and takes it by hand with a reason, a date and the reference of the bank" do
+      sign_in authorizer
+      get accounting_payment_path(batch)
+      expect(response.body).to include("Bank reconciliation").and include("Confirm the debit by hand")
+
+      post confirm_debit_by_hand_accounting_payment_path(batch), params: { reason: "The bank confirmed by phone", date: (execution + 1).iso8601, bank_reference: "REF-1" }
+
+      expect(batch.reload).to be_debited
+      expect(batch.debit_kind).to eq("manual")
+    end
+
+    it "wants all three of them" do
+      sign_in authorizer
+
+      post confirm_debit_by_hand_accounting_payment_path(batch), params: { reason: "", date: execution.iso8601, bank_reference: "REF-1" }
+
+      expect(flash[:alert]).to be_present
+      expect(batch.reload).to be_submitted
+    end
+
+    it "shows the drafts of the payments to validate, and validates them for a person who may, with the invoices lettered" do
+      debit!
+      sign_in poster
+      get accounting_payment_path(batch)
+      expect(response.body).to include("Validate the payments of the batch").and include(batch.items.first.end_to_end_id)
+
+      post post_payments_accounting_payment_path(batch)
+
+      expect(flash[:alert]).to be_nil
+      expect(batch.items.first.reload.journal_entry).to be_posted
+      expect(invoice.reload.status).to eq("paid")
+    end
+
+    it "does not offer the validation to a person who may not validate entries" do
+      debit!
+      sign_in assistant
+
+      get accounting_payment_path(batch)
+
+      expect(response.body).not_to include("Validate the payments of the batch")
+    end
+
+    it "rejects the payments that are missing from a partial debit, with a reason" do
+      two = submitted_batch(posted(unit_price: 1000), posted(partner: create(:partner, :supplier, name: "Beta Corp", iban: nil).tap { |p| create(:partner_bank_account, :verified, partner: p, iban: "BE71096123456769", holder_name: "Beta Corp", created_by: owner, first_seen_at: 90.days.ago) }, unit_price: 500))
+      acme = two.items.find_by(holder_name: "Acme Ltd")
+      beta = two.items.find_by(holder_name: "Beta Corp")
+      Payments::ConfirmDebit.call(batch: two, user: authorizer, transaction: debit_line(acme.amount, counterparty_iban: "BE68539007547034"), items: [ acme ]).tap { |r| raise r.message if r.failure? }
+      sign_in authorizer
+
+      get accounting_payment_path(two)
+      expect(response.body).to include("Reject the selected payments")
+
+      post reject_payments_accounting_payment_path(two), params: { item_ids: [ beta.id ], reason: "Rejected by the bank" }
+
+      expect(beta.reload).to be_rejected
+      expect(two.reload).to be_partially_rejected
+    end
+
+    it "shows the timeline of the batch, with who did what and when, and what is still to come" do
+      debit!
+      sign_in poster
+      post post_payments_accounting_payment_path(batch)
+
+      get accounting_payment_path(batch)
+
+      expect(response.body).to include("Timeline").and include("Prepared").and include("Approved").and include("File made").and include("Loaded in the bank").and include("Debited").and include("Payments validated")
+      expect(response.body).to include("Paula Poster").and include("Eve Exporter").and include("Alice Accountant")
+    end
+
+    it "shows the timeline of the payment on the invoice, from the invoice received to the lettering" do
+      debit!
+      sign_in poster
+      post post_payments_accounting_payment_path(batch)
+
+      get accounting_invoice_path(invoice)
+
+      expect(response.body).to include("Payment timeline").and include(batch.reference).and include("Debited").and include("Lettered")
+    end
+  end
+
+  describe "indicators and the export of executed payments" do
+    let(:poster) { create(:user).tap { |u| create(:user_entity, :accountant, user: u, entity: entity) } }
+
+    before do
+      batch = submitted_batch
+      Payments::ConfirmDebit.call(batch: batch, user: authorizer, transaction: debit_line(batch.total, description: batch.reference, bank_reference: "STMT-9"), items: batch.items.to_a).tap { |r| raise r.message if r.failure? }
+      Payments::PostBatchPayments.call(batch: batch.reload, user: poster).tap { |r| raise r.message if r.failure? }
+    end
+
+    it "shows how the company pays: batches debited, the share recognised from the statement, the late payments, what came back" do
+      get accounting_payments_path
+
+      expect(response.body).to include("Batches debited").and include("Recognised from the statement").and include("100 %").and include("Paid late").and include("Returned")
+    end
+
+    it "gives the executed payments as CSV, with the account masked, and as XLSX, to those who read the records" do
+      sign_in reader
+
+      get executed_accounting_payments_path(format: :csv)
+      expect(response.headers["Content-Type"]).to include("text/csv")
+      expect(response.body).to include("STMT-9").and include("BE68 **** **** 7034")
+      expect(response.body).not_to include(iban)
+
+      get executed_accounting_payments_path(format: :xlsx)
+      expect(response.headers["Content-Type"]).to include("spreadsheetml")
+      expect(response.body).to start_with("PK")
+    end
+
+    it "takes a period" do
+      get executed_accounting_payments_path(format: :csv, from: (Date.current + 60).iso8601, to: (Date.current + 90).iso8601)
+
+      expect(response.body).not_to include("STMT-9")
     end
   end
 

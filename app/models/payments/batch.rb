@@ -16,6 +16,7 @@ class Payments::Batch < ApplicationRecord
   belongs_to :exported_by, class_name: "User", optional: true
   belongs_to :submitted_by, class_name: "User", optional: true
   belongs_to :cancelled_by, class_name: "User", optional: true
+  belongs_to :debited_by, class_name: "User", optional: true
   belongs_to :approval_request, class_name: "Approvals::Request", optional: true
   has_many :items, class_name: "Payments::Item", foreign_key: :batch_id, inverse_of: :batch, dependent: :destroy
 
@@ -41,8 +42,6 @@ class Payments::Batch < ApplicationRecord
     errors.add(:base, "A batch that was exported cannot be changed: cancel it and make another.") if exported_file? && (changed & FROZEN).any?
   end
 
-  # The invoices of its payments are held while the batch is active, and freed when it is paid or given up.
-  def release_or_hold_invoices
-    Payments::ItemInvoice.where(item_id: items.where(status: :included).select(:id)).update_all(active: active?)
-  end
+  # The invoices of its payments are held while the batch is active (and, once debited, until the entry of each payment is validated), and freed when it is given up.
+  def release_or_hold_invoices = items.includes(:journal_entry).find_each(&:refresh_holds!)
 end

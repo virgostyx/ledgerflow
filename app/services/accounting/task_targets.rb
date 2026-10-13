@@ -2,11 +2,12 @@
 # entry (an access limited to some journals does not reach the lines of the others).
 module Accounting::TaskTargets
   TYPES = %w[Accounting::JournalEntry Accounting::JournalEntryLine Accounting::Account Accounting::Partner Accounting::Document
-             Accounting::BankTransaction Accounting::PeriodLock Accounting::Invoice].freeze
+             Accounting::BankTransaction Accounting::PeriodLock Accounting::Invoice Payments::Batch].freeze
 
   POLICIES = { "Accounting::JournalEntry" => Accounting::JournalEntryPolicy, "Accounting::JournalEntryLine" => Accounting::JournalEntryPolicy,
                "Accounting::Partner" => Accounting::PartnerPolicy, "Accounting::Document" => Accounting::DocumentPolicy,
-               "Accounting::BankTransaction" => Accounting::BankStatementPolicy, "Accounting::Invoice" => Accounting::InvoicePolicy }.freeze
+               "Accounting::BankTransaction" => Accounting::BankStatementPolicy, "Accounting::Invoice" => Accounting::InvoicePolicy,
+               "Payments::Batch" => Payments::BatchPolicy }.freeze
 
   # The entry a target belongs to (for the badge of the entry), or nil.
   def self.entry_of(target)

@@ -13,7 +13,7 @@
 # `confidence` stays :high (90 and more) or :medium for the screens that already read it.
 class Accounting::MatchBankTransaction
   # rounding: what the invoice still asked for minus what came in (positive: a few cents short), when within the tolerance.
-  Suggestion = Struct.new(:kind, :target, :confidence, :excess, :score, :rule, :rounding, keyword_init: true)
+  Suggestion = Struct.new(:kind, :target, :confidence, :excess, :score, :rule, :rounding, :proposal, keyword_init: true)
 
   SIMILARITY = 0.6
   GROUP_LIMIT = 10
@@ -24,7 +24,7 @@ class Accounting::MatchBankTransaction
     return unless transaction.pending?
     return if transaction.currency != "EUR" # amounts below are EUR: a foreign movement is never matched by amount
 
-    match_batch(transaction) || (transaction.credit? ? match_receipt(transaction, open_invoices) : match_payment(transaction)) ||
+    match_payment_batch_debit(transaction) || match_payment_return(transaction) || match_batch(transaction) || (transaction.credit? ? match_receipt(transaction, open_invoices) : match_payment(transaction)) ||
       match_rule(transaction) || match_fees(transaction)
   end
 
@@ -63,6 +63,23 @@ class Accounting::MatchBankTransaction
   end
 
   def self.open_customer_invoices = Accounting::Invoice.customer.invoice.posted.where.not(invoice_number: nil).includes(:credit_notes, :journal, :cash_journal, :credited_invoice, :entity, partner: :entity)
+
+  # Rule 0 (B01c): a debit that is the debit of a payment batch of the supplier payments (Payments::RecognizeDebit). Only ever proposed.
+  def self.match_payment_batch_debit(tx)
+    return unless ActsAsTenant.current_tenant&.feature?(:b01b) && tx.debit?
+
+    proposal = Payments::RecognizeDebit.call(tx) or return
+    Suggestion.new(kind: :payment_batch_debit, target: proposal.batch, confidence: proposal.score >= 90 ? :high : :medium, excess: 0, score: proposal.score, rule: "0#{proposal.rule}",
+                   rounding: BigDecimal("0"), proposal: proposal)
+  end
+
+  # A credit that gives a payment back (B01c): proposed as a return, never booked by itself (the person gives the reason and reverses the payment).
+  def self.match_payment_return(tx)
+    return unless ActsAsTenant.current_tenant&.feature?(:b01b) && tx.credit?
+
+    proposal = Payments::RecognizeReturn.call(tx) or return
+    Suggestion.new(kind: :payment_return, target: proposal.item, confidence: :high, excess: 0, score: 90, rule: "0R", rounding: BigDecimal("0"), proposal: proposal)
+  end
 
   def self.match_batch(tx)
     return unless tx.debit? && tx.reference.present?
@@ -174,6 +191,6 @@ class Accounting::MatchBankTransaction
     account = Accounting::Account.find_by(code: FEES_ACCOUNT_CODE)
     suggestion(:expense, account, 75, nil) if account
   end
-  private_class_method :rounding_for, :draft_payment_lines, :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_supplier_reference, :match_invoice_number, :match_by_partner,
+  private_class_method :rounding_for, :draft_payment_lines, :match_payment_batch_debit, :match_payment_return, :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_supplier_reference, :match_invoice_number, :match_by_partner,
                        :match_group, :open_invoices_of, :partners_by_iban, :partners_by_name, :match_rule
 end

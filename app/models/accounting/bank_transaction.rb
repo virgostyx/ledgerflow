@@ -5,6 +5,7 @@ class Accounting::BankTransaction < ApplicationRecord
 
   belongs_to :bank_account,  class_name: "Accounting::BankAccount"
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
+  has_many :payment_items, class_name: "Payments::Item", foreign_key: :bank_transaction_id, inverse_of: :bank_transaction, dependent: :restrict_with_error # B01c: the payments this debit paid
   belongs_to :statement, class_name: "Accounting::BankStatement", optional: true # set by the statement imports (F02)
 
   # pending: to deal with (with a suggestion in match_data when the engine found one); matched: a draft payment entry exists,

@@ -32,15 +32,15 @@ RSpec.shared_context "with payment batch" do
     entry.post!
   end
 
-  def posted(partner: supplier, unit_price: 1000, payment_reference: nil, due: Date.current + 3)
-    invoice = create(:invoice, invoice_type: :supplier, fiscal_year: fiscal_year, journal: purchase_journal, partner: partner, due_date: due, payment_reference: payment_reference)
+  def posted(partner: supplier, unit_price: 1000, payment_reference: nil, due: Date.current + 3, document_type: :invoice)
+    invoice = create(:invoice, invoice_type: :supplier, fiscal_year: fiscal_year, journal: purchase_journal, partner: partner, due_date: due, payment_reference: payment_reference, document_type: document_type)
     create(:invoice_line, invoice: invoice, account: account_604, unit_price: unit_price, quantity: 1, vat_rate: "21.00")
     Accounting::PostInvoice.call(invoice: invoice).tap { |r| raise r.message if r.failure? }
     invoice.reload
   end
 
   def batch_of(*invoices, date: execution, **options)
-    result = Payments::ComposeBatch.call(bank_account: bank, execution_date: date, selections: invoices.map { |i| { invoice_id: i.id } }, user: preparer, **options)
+    result = Payments::ComposeBatch.call(bank_account: bank, execution_date: date, selections: invoices.map { |i| i.is_a?(Hash) ? i : { invoice_id: i.id } }, user: preparer, **options)
     raise result.message if result.failure?
 
     result[:batch].tap { |b| b.update!(bank_profile: profile) }
@@ -51,13 +51,33 @@ end
 RSpec.shared_context "with approvable batch" do
   include_context "with payment batch"
 
-  def approved_batch(*invoices)
-    batch = batch_of(*(invoices.presence || [ posted ]))
+  def approved_batch(*invoices, net: false)
+    batch = batch_of(*(invoices.presence || [ posted ]), net_credit_notes: net)
     unless Approvals::Policy.payment_batch.exists?
       Approvals::Policy.create!(name: "batches", subject: :payment_batch, priority: 1).steps.create!(position: 1, mode: :any_of, approver_roles: %w[accountant admin])
     end
     request = Payments::SubmitBatch.call(batch: batch, user: preparer)[:request]
     Approvals::Decide.call(request: request, user: authorizer, decision: :approved, content_fingerprint: request.content_fingerprint).tap { |r| raise r.message if r.failure? }
     batch.reload
+  end
+end
+
+# A batch whose file was made and said to be loaded in the bank: what waits for the debit on the statement (B01c).
+RSpec.shared_context "with submitted batch" do
+  include_context "with approvable batch"
+
+  let(:exporter) { create(:user, full_name: "Eve Exporter").tap { |u| create(:user_entity, :accountant, user: u, entity: entity) } }
+
+  def submitted_batch(*invoices, date: execution, net: false)
+    batch = approved_batch(*invoices, net: net)
+    batch.update_columns(requested_execution_date: date) unless date == execution
+    Payments::ExportBatch.call(batch: batch, user: exporter, recent_second_factor: true).tap { |r| raise r.message if r.failure? }
+    Payments::ConfirmSubmission.call(batch: batch.reload, user: exporter).tap { |r| raise r.message if r.failure? }
+    batch.reload
+  end
+
+  # The debit line of the bank statement (as the CODA import keeps it).
+  def debit_line(amount, on: execution, bank_account: bank, **attrs)
+    create(:bank_transaction, bank_account: bank_account, amount: -amount.to_d, transaction_date: on, reference: nil, description: "Virement", **attrs)
   end
 end

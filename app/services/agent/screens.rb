@@ -21,6 +21,8 @@ module Agent::Screens
     "peppol"        => [ "Received invoices", ->(routes) { routes.accounting_peppol_messages_path } ],
     "cash_forecast" => [ "Cash forecast", ->(routes) { routes.accounting_reports_cash_forecast_path } ],
     "aged_balance"  => [ "Aged balance", ->(routes) { routes.accounting_reports_aged_balance_path } ],
+    "payments"      => [ "Payments", ->(routes) { routes.accounting_payments_path } ],
+    "bank_reconciliation" => [ "Bank reconciliation", ->(routes) { routes.accounting_bank_reconciliation_path } ],
     "consistency"   => [ "Consistency checks", ->(routes) { routes.accounting_consistency_runs_path } ]
   }.freeze
 

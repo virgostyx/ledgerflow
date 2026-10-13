@@ -38,7 +38,7 @@ class Banking::AutoMatch
 
   def handle(transaction)
     suggestion = Accounting::MatchBankTransaction.call(transaction: transaction)
-    return leave(transaction) unless suggestion && suggestion.score >= MIN_SCORE
+    return leave(transaction) unless suggestion && (suggestion.score >= MIN_SCORE || suggestion.kind == :payment_batch_debit) # a batch debited but for some payments is 70: a person decides
     return book_draft(transaction, suggestion) if book_automatically?(suggestion)
 
     transaction.update!(match_data: describe(suggestion))

@@ -13,6 +13,8 @@ class Payments::Item < ApplicationRecord
   belongs_to :partner, class_name: "Accounting::Partner"
   belongs_to :partner_bank_account, class_name: "Accounting::PartnerBankAccount", optional: true
   belongs_to :journal_entry, class_name: "Accounting::JournalEntry", optional: true
+  belongs_to :bank_transaction, class_name: "Accounting::BankTransaction", optional: true
+  belongs_to :confirmed_by, class_name: "User", optional: true
   has_many :item_invoices, class_name: "Payments::ItemInvoice", foreign_key: :item_id, inverse_of: :item, dependent: :destroy
 
   validates :iban, :holder_name, presence: true
@@ -26,6 +28,12 @@ class Payments::Item < ApplicationRecord
   before_destroy { throw :abort if batch.exported_file? }
   after_update :hold_or_free_invoices, if: :saved_change_to_status?
 
+  # An invoice is held by a payment while the batch is active and the payment included, and after the debit while the entry of the payment is still a draft: until
+  # it is validated and lettered the invoice is still open, and must not enter another batch (I16, no invoice paid twice).
+  def holds_invoices? = (batch.active? && included?) || (confirmed? && journal_entry&.draft?) || false
+
+  def refresh_holds! = item_invoices.update_all(active: holds_invoices?)
+
   def masked_iban = Accounting::PartnerBankAccount.new(iban: iban).masked_iban
 
   private
@@ -35,7 +43,5 @@ class Payments::Item < ApplicationRecord
   end
 
   # An excluded payment does not hold its invoices.
-  def hold_or_free_invoices
-    item_invoices.update_all(active: batch.active? && included?)
-  end
+  def hold_or_free_invoices = refresh_holds!
 end

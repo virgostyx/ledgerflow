@@ -1,0 +1,5 @@
+<%# B01c: where the payment of a purchase invoice stands, from the invoice received to its lettering. %>
+<div class="bg-white rounded-lg border border-gray-200 p-6 mb-6" data-section="payment-timeline">
+  <h2 class="text-sm font-semibold text-gray-900 mb-3">Payment timeline</h2>
+  <%= render 'payments/timeline', steps: Payments::Timeline.for_invoice(invoice) %>
+</div>

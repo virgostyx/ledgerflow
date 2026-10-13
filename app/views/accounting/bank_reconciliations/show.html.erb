@@ -102,12 +102,23 @@
                         when :expense          then "bank fees (#{suggestion.target.code})"
                         when :rule             then "rule “#{suggestion.target.name}” (#{suggestion.target.account.code})"
                         when :invoices         then "invoices #{suggestion.target.map(&:invoice_number).join(', ')}"
+                        when :payment_batch_debit then "debit of payment batch #{suggestion.target.reference} (#{pluralize(suggestion.proposal.items.size, 'payment')}, #{Accounting::MoneyPresenter.new(suggestion.proposal.items.sum(&:amount)).format}#{", #{suggestion.proposal.missing_items.size} missing: probably rejected" if suggestion.proposal.missing_items.any?})#{' - the cancellation of this batch was asked for: check that the file was not authorized' if suggestion.proposal.warnings.include?(:cancel_requested)}"
+                        when :payment_return   then "returned payment #{suggestion.target.end_to_end_id} to #{suggestion.target.holder_name}"
                         else "payment batch #{suggestion.target.message_id}#{' — will be marked as executed' if suggestion.target.generated?}"
                         end %> (<%= suggestion.confidence %> confidence, score <%= suggestion.score %><%= ", rule #{suggestion.rule}" if suggestion.rule %><%= ", overpaid by #{Accounting::MoneyPresenter.new(suggestion.excess).format}" if suggestion.excess&.positive? %><%= ", rounding difference #{Accounting::MoneyPresenter.new(suggestion.rounding.abs).format} booked to #{suggestion.rounding.positive? ? Accounting::AccountCodes::ROUNDING_LOSS : Accounting::AccountCodes::ROUNDING_GAIN}" if suggestion.rounding&.nonzero? %>)</span>
-                  <%= button_to 'Accept', accounting_bank_reconciliation_path, method: :patch,
-                        params: { 'bank_reconciliation[bank_transaction_id]' => tx.id, 'bank_reconciliation[accept_suggestion]' => 1 },
-                        form: { data: { bank_keys_action: 'accept' } },
-                        class: 'px-2 py-1 bg-primary-600 text-white rounded-md hover:bg-primary-700' %>
+                  <% if suggestion.kind == :payment_return %>
+                    <%= form_with url: accounting_bank_reconciliation_path, method: :patch, class: 'flex gap-1 items-center' do %>
+                      <%= hidden_field_tag 'bank_reconciliation[bank_transaction_id]', tx.id %>
+                      <%= hidden_field_tag 'bank_reconciliation[register_return]', 1 %>
+                      <%= text_field_tag 'bank_reconciliation[reason]', nil, placeholder: 'Reason', required: true, class: 'rounded-md border border-gray-300 px-2 py-1 text-xs' %>
+                      <%= submit_tag 'Reverse the payment', class: 'px-2 py-1 bg-primary-600 text-white rounded-md hover:bg-primary-700' %>
+                    <% end %>
+                  <% else %>
+                    <%= button_to 'Accept', accounting_bank_reconciliation_path, method: :patch,
+                          params: { 'bank_reconciliation[bank_transaction_id]' => tx.id, 'bank_reconciliation[accept_suggestion]' => 1 },
+                          form: { data: { bank_keys_action: 'accept' } },
+                          class: 'px-2 py-1 bg-primary-600 text-white rounded-md hover:bg-primary-700' %>
+                  <% end %>
                 </div>
               <% end %>
             </td>

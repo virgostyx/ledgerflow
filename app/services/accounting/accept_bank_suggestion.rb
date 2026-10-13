@@ -12,6 +12,11 @@ class Accounting::AcceptBankSuggestion
     fiscal_year = Accounting::FiscalYear.current
 
     case suggestion.kind
+    when :payment_batch_debit
+      proposal = suggestion.proposal
+      (proposal.link ? Payments::LinkManualDebit : Payments::ConfirmDebit).call(batch: suggestion.target, user: Current.user, transaction: transaction, items: proposal.items)
+    when :payment_return
+      LightService::Context.make(transaction: transaction).tap { |ctx| ctx.fail!(I18n.t("payments.debit.errors.return_needs_reason")) } # a person gives the reason: Payments::RegisterReturn
     when :payment_batch
       Accounting::LinkTransactionToSettlement.call(transaction: transaction, payment_batch: suggestion.target)
     when :expense

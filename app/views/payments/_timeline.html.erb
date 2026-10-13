@@ -1,0 +1,15 @@
+<%# The timeline of a payment (B01c): `steps` are Payments::Timeline::Step; a step not reached is shown to come. %>
+<ol class="space-y-2 text-sm" data-section="payment-timeline">
+  <% steps.each do |step| %>
+    <li class="flex gap-3">
+      <span class="mt-0.5 shrink-0 w-5 h-5 rounded-full text-xs flex items-center justify-center <%= step.done? ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-400' %>"><%= step.done? ? '✓' : '·' %></span>
+      <div class="<%= step.done? ? 'text-gray-900' : 'text-gray-400' %>">
+        <span class="font-medium"><%= step.label %></span>
+        <% if step.done? %>
+          <span class="text-xs text-gray-500"><%= l step.at, format: :short %><%= " · #{step.by}" if step.by.present? %></span>
+        <% end %>
+        <% if step.note.present? && (step.done? || step.note.start_with?('No approval')) %><span class="block text-xs text-gray-500"><%= step.note %></span><% end %>
+      </div>
+    </li>
+  <% end %>
+</ol>

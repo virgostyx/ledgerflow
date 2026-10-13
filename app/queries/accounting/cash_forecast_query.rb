@@ -83,7 +83,25 @@ class Accounting::CashForecastQuery
 
   # [[date, amount, source], ...]: what is owed to suppliers, by where it stands for payment (B01a). Everything is an outflow;
   # the source says whether it is approved (or needs no approval, or is not an invoice), still waits for approval, or is held.
-  def payable_items = open_items(:supplier).map { |_, amount, due, payment_status| [ due, amount, payable_source(payment_status) ] }
+  # From the moment its file is made (B01c), a payment is counted at the execution date of its batch, not at the due date of its invoice: the part that is in the batch there, the rest
+  # where it was. It is still in the forecast until the entry of the payment is validated (the ledger cash then moves, and the invoice stops being open).
+  def payable_items
+    scheduled = scheduled_payments
+    open_items(:supplier).flat_map do |_, amount, due, payment_status, invoice_id|
+      date, paid = scheduled[invoice_id]
+      next [ [ due, amount, payable_source(payment_status) ] ] unless paid
+
+      part = amount.positive? ? [ paid, amount ].min : [ paid, amount ].max
+      [ [ date, part, :payables_scheduled ], [ due, amount - part, payable_source(payment_status) ] ].reject { |_, value, _| value.zero? }
+    end
+  end
+
+  # { invoice_id => [execution date, amount in the batch] } for the invoices held by a batch whose file exists and whose debit is not confirmed yet.
+  def scheduled_payments
+    Payments::ItemInvoice.where(active: true).joins(item: :batch).where(payment_batches: { status: Payments::Batch.statuses.values_at(:exported, :submitted, :cancel_requested) })
+                         .group(:invoice_id, "payment_batches.requested_execution_date").pluck(:invoice_id, Arel.sql("payment_batches.requested_execution_date"), Arel.sql("SUM(payment_item_invoices.amount)"))
+                         .to_h { |invoice_id, date, amount| [ invoice_id, [ date, BigDecimal(amount.to_s) ] ] }
+  end
 
   PENDING_STATUSES = [ Accounting::Invoice.payment_statuses[:to_approve] ].freeze
   HELD_STATUSES = Accounting::Invoice.payment_statuses.values_at(:on_hold, :disputed).freeze
@@ -99,9 +117,9 @@ class Accounting::CashForecastQuery
     Accounting::OpenLineSql.open_scope(kind: kind, as_of: @start)
       .pluck(Arel.sql("accounting_journal_entry_lines.partner_id"),
              Arel.sql("(#{Accounting::OpenLineSql.residual(kind: kind, as_of: @start)})"),
-             Arel.sql(Accounting::OpenLineSql.due_date), Arel.sql("i.payment_status"))
-      .reject { |_, amount, _, _| amount.zero? }
-      .map { |partner_id, amount, due, payment_status| [ partner_id, BigDecimal(amount.to_s), due, payment_status ] }
+             Arel.sql(Accounting::OpenLineSql.due_date), Arel.sql("i.payment_status"), Arel.sql("i.id"))
+      .reject { |_, amount, _, _, _| amount.zero? }
+      .map { |partner_id, amount, due, payment_status, invoice_id| [ partner_id, BigDecimal(amount.to_s), due, payment_status, invoice_id ] }
   end
 
   # Payment delay observed per client on settled invoices: amount-weighted days between due date and
