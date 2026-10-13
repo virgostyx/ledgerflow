@@ -16,7 +16,7 @@ RSpec.describe "Payments (B01b)", type: :request do
     sign_in preparer
   end
 
-  def bank_form(invoice) = { bank_account_id: bank.id, requested_execution_date: execution.iso8601, invoice_ids: [ invoice.id ] }
+  def bank_form(invoice) = { bank_account_id: bank.id, bank_profile_id: profile.id, requested_execution_date: execution.iso8601, invoice_ids: [ invoice.id ] }
 
   describe "the flag and the rights" do
     it "is closed when the feature is off" do
@@ -56,6 +56,21 @@ RSpec.describe "Payments (B01b)", type: :request do
   end
 
   describe "step 2: the composition" do
+    it "keeps the bank profile that was picked, and offers the profiles of the company (none: it says where to make one)" do
+      profile
+      get new_accounting_payment_path
+      expect(response.body).to include("Test bank")
+
+      post accounting_payments_path, params: { payment: bank_form(posted) }
+      expect(Payments::Batch.last.bank_profile).to eq(profile)
+    end
+
+    it "says where to make a profile when there is none" do
+      get new_accounting_payment_path
+
+      expect(response.body).to include(accounting_settings_payment_bank_profiles_path)
+    end
+
     it "makes the batch and shows its payments with the account masked and the balance it leaves" do
       invoice = posted
 
@@ -203,6 +218,65 @@ RSpec.describe "Payments (B01b)", type: :request do
 
       post confirm_cancellation_accounting_payment_path(batch)
       expect(batch.reload).to be_cancelled
+    end
+  end
+
+  describe "another company" do
+    it "sees none of these batches and can act on none: the batches are those of one company" do
+      batch = approved_batch
+      stranger = create(:user, full_name: "Sam Stranger")
+      foreign = ActsAsTenant.without_tenant { create(:entity) }
+      ActsAsTenant.without_tenant { create(:user_entity, :admin, user: stranger, entity: foreign) }
+      sign_in stranger
+
+      get accounting_payments_path
+      expect(response.body).not_to include(batch.reference)
+
+      [ [ :get, accounting_payment_path(batch) ], [ :get, download_accounting_payment_path(batch) ], [ :post, export_accounting_payment_path(batch) ],
+        [ :post, cancel_accounting_payment_path(batch) ], [ :post, confirm_loaded_accounting_payment_path(batch) ] ].each do |verb, path|
+        public_send(verb, path, params: { reason: "x" })
+        expect(response).to have_http_status(:not_found), "#{verb} #{path}"
+      end
+      expect(batch.reload).to be_approved
+    end
+  end
+
+  describe "the second factor" do
+    let(:batch) { approved_batch }
+    let!(:secret) { authorizer.begin_totp_enrollment!.tap { |secret| authorizer.confirm_totp!(Totp.code(secret, Time.current - 30)) } }
+
+    around do |example|
+      previous = Rails.configuration.x.second_factor_required
+      Rails.configuration.x.second_factor_required = true
+      example.run
+    ensure
+      Rails.configuration.x.second_factor_required = previous
+    end
+
+    before { sign_in authorizer }
+
+    def pass_challenge! = post(two_factor_challenge_path, params: { code: Totp.code(secret, Time.current) })
+
+    it "is asked before the file is made, and before it is given out, however old the last one" do
+      pass_challenge!
+      travel 10.minutes
+
+      post export_accounting_payment_path(batch)
+      expect(response).to redirect_to(two_factor_challenge_path)
+      expect(batch.reload).to be_approved
+
+      pass_challenge!
+      post export_accounting_payment_path(batch)
+      expect(batch.reload).to be_exported
+
+      travel 10.minutes
+      get download_accounting_payment_path(batch)
+      expect(response).to redirect_to(two_factor_challenge_path)
+
+      pass_challenge!
+      expect(response).to redirect_to(download_accounting_payment_path(batch))
+      get download_accounting_payment_path(batch)
+      expect(response.body).to eq(batch.document.file.download)
     end
   end
 

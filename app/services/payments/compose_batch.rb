@@ -8,9 +8,10 @@
 class Payments::ComposeBatch
   REMITTANCE_LENGTH = 140
 
-  def self.call(bank_account:, execution_date:, selections:, user:, net_credit_notes: false) = new(bank_account, execution_date, selections, user, net_credit_notes).call
+  def self.call(bank_account:, execution_date:, selections:, user:, net_credit_notes: false, bank_profile: nil) = new(bank_account, execution_date, selections, user, net_credit_notes, bank_profile).call
 
-  def initialize(bank_account, execution_date, selections, user, net_credit_notes)
+  def initialize(bank_account, execution_date, selections, user, net_credit_notes, bank_profile = nil)
+    @bank_profile = bank_profile
     @bank_account = bank_account
     @execution_date = execution_date
     @selections = Array(selections)
@@ -131,7 +132,7 @@ class Payments::ComposeBatch
   end
 
   def persist(payments)
-    batch = Payments::Batch.create!(bank_account: @bank_account, reference: next_reference, requested_execution_date: @execution_date, prepared_by: @user, prepared_at: Time.current)
+    batch = Payments::Batch.create!(bank_account: @bank_account, bank_profile: @bank_profile, reference: next_reference, requested_execution_date: @execution_date, prepared_by: @user, prepared_at: Time.current)
     payments.each_with_index do |payment, index|
       account = payment.account
       item = batch.items.create!(partner: payment.partner, partner_bank_account: account, iban: account.iban, bic: account.bic, holder_name: account.holder_name, amount: payment.amount,

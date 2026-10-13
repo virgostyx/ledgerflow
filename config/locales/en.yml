@@ -634,6 +634,12 @@ en:
       hmac_invalid:       "Invalid HMAC signature."
 
   payments:
+    profiles:
+      created: "The bank profile was recorded."
+      updated: "The bank profile was updated."
+      bad_date: "A closed day must be a date written like 2026-12-24."
+    legacy:
+      closed: "Payment batches are now made in Payments: the account paid is verified, the file is approved and always the same. The old batches stay here, to read."
     screens:
       composed: "The batch was made. Check it, then ask for its approval."
       checked: "The pre-flight checks were run again."
@@ -782,6 +788,7 @@ en:
       gave_the_approval: "You gave the approval of an invoice in this batch: another person must authorize it."
       batch_feature_off: "Supplier payments are not enabled for this entity."
       batch_not_draft: "Only a draft batch can be put to approval."
+      batch_no_profile: "The batch has no bank profile with a file format this application can make: pick one when you make the batch (Settings > Bank profiles)."
       batch_no_policy: "No approval policy covers this batch: create one for payment batches before asking for an authorization."
       batch_not_ready: "The pre-flight checks found errors or warnings nobody acknowledged: the batch cannot be put to approval."
       batch_not_allowed: "You may not prepare payment batches."

@@ -15,7 +15,11 @@ RSpec.describe 'Accounting::PaymentBatches', type: :request do
     create(:invoice, :supplier, :posted, :with_lines, partner: supplier, fiscal_year: fiscal_year)
   end
 
-  before { sign_in accountant }
+  # The flow below is the one of an entity without the supplier payments feature (b01b); with it, see the last describe.
+  before do
+    entity.update!(features: entity.features.merge('b01b' => false))
+    sign_in accountant
+  end
 
   describe 'GET /accounting/payment_batches' do
     it 'returns 200' do
@@ -207,6 +211,51 @@ RSpec.describe 'Accounting::PaymentBatches', type: :request do
     it 'denies generate for a budget_user' do
       post generate_accounting_payment_batch_path(payment_batch)
       expect(response).to redirect_to(accounting_root_path)
+    end
+  end
+
+  # B01b replaces this flow: with the feature on, the legacy batches are kept to be read, and nothing more is made, generated or settled from here.
+  describe 'with the supplier payments feature (b01b) on' do
+    let!(:legacy_draft)     { create(:payment_batch, bank_account: bank_account) }
+    let!(:legacy_generated) { create(:payment_batch, :generated, bank_account: bank_account, message_id: 'LEGACY1') }
+
+    before { entity.update!(features: entity.features.merge('b01b' => true)) }
+
+    it 'still lists and shows the old batches, and says they are read-only' do
+      get accounting_payment_batches_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(accounting_payment_batch_path(legacy_generated)).and include('read-only')
+
+      get accounting_payment_batch_path(legacy_generated)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include('Mark as executed')
+      expect(response.body).not_to include('Generate SEPA file')
+    end
+
+    it 'does not let a new old-style batch be made' do
+      get new_accounting_payment_batch_path
+      expect(response).to redirect_to(accounting_payments_path)
+
+      expect { post accounting_payment_batches_path, params: { accounting_payment_batch: { bank_account_id: bank_account.id, invoice_ids: [ invoice.id ], requested_execution_date: Date.current.to_s } } }
+        .not_to change(Accounting::PaymentBatch, :count)
+      expect(response).to redirect_to(accounting_payments_path)
+    end
+
+    it 'does not generate a file with an unverified IBAN, nor settle invoices at "execute"' do
+      post generate_accounting_payment_batch_path(legacy_draft)
+      expect(response).to redirect_to(accounting_payments_path)
+      expect(legacy_draft.reload).to be_draft
+
+      expect { post execute_accounting_payment_batch_path(legacy_generated) }.not_to change(Accounting::JournalEntry, :count)
+      expect(response).to redirect_to(accounting_payments_path)
+      expect(legacy_generated.reload).to be_generated
+    end
+
+    it 'still gives the file that was generated, and lets a draft be dropped to free its invoices' do
+      get download_accounting_payment_batch_path(legacy_generated)
+      expect(response).to have_http_status(:ok)
+
+      expect { delete accounting_payment_batch_path(legacy_draft) }.to change(Accounting::PaymentBatch, :count).by(-1)
     end
   end
 end

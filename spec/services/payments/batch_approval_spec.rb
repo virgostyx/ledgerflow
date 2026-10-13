@@ -43,7 +43,7 @@ RSpec.describe "Approval of a payment batch" do
     result = Payments::ComposeBatch.call(bank_account: bank, execution_date: Date.new(2026, 10, 14), selections: invoices.map { |i| { invoice_id: i.id } }, user: preparer)
     raise result.message if result.failure?
 
-    result[:batch]
+    result[:batch].tap { |b| b.update!(bank_profile: profile) } # the format of the file comes from the bank
   end
 
   def policy!(conditions: {}, **step)
@@ -52,6 +52,7 @@ RSpec.describe "Approval of a payment batch" do
     end
   end
 
+  let(:profile) { Payments::BankProfile.create!(name: "Test bank", format_version: "pain.001.001.03") }
   let(:batch) { batch_of(posted) } # 1 210.00 incl. VAT, 1 payment
 
   def submit(batch = self.batch, user: preparer) = Payments::SubmitBatch.call(batch: batch, user: user)
@@ -107,6 +108,17 @@ RSpec.describe "Approval of a payment batch" do
 
       expect(result).to be_failure
       expect(result.message).to match(/policy/i)
+      expect(batch.reload).to be_draft
+    end
+
+    it "refuses a batch without a bank profile that names a version the builder knows: the format is not guessed" do
+      policy!
+      batch.update!(bank_profile: nil)
+      expect(submit).to be_failure
+
+      batch.update!(bank_profile: Payments::BankProfile.create!(name: "Other", format_version: "pain.001.001.09"))
+      expect(submit).to be_failure
+      expect(submit.message).to match(/format|version/i)
       expect(batch.reload).to be_draft
     end
 

@@ -29,6 +29,12 @@ RSpec.describe Payments::ComposeBatch do
     described_class.call(bank_account: bank, execution_date: execution, selections: selections.map { |s| s.is_a?(Hash) ? s : { invoice_id: s.id } }, user: user, **options)
   end
 
+  it "keeps the bank profile it is given on the batch" do
+    profile = Payments::BankProfile.create!(name: "Test bank", format_version: "pain.001.001.03")
+
+    expect(compose(posted, bank_profile: profile)[:batch].bank_profile).to eq(profile)
+  end
+
   def audit(action) = Accounting::AuditLog.where(auditable_type: "Payments::Batch", action: action)
 
   describe "a batch of invoices" do

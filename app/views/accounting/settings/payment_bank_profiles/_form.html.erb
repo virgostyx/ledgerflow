@@ -1,0 +1,21 @@
+<% input = "mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+<%= form_with scope: :payment_bank_profile, url: url, method: method, class: "space-y-4 max-w-2xl" do |f| %>
+  <div class="rounded-lg border border-gray-200 bg-white p-4 grid gap-4 sm:grid-cols-2">
+    <div><%= f.label :name, "Name (the bank)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :name, value: profile.name, required: true, class: input %></div>
+    <div>
+      <%= f.label :format_version, "File format (from the bank's documentation)", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :format_version, Payments::Sepa::Pain001Builder::VERSIONS, { selected: profile.format_version }, class: input %>
+    </div>
+    <div><%= f.label :max_payments, "Payments per file, at most", class: "block text-sm font-medium text-gray-700" %><%= f.number_field :max_payments, value: profile.max_payments, min: 1, class: input %></div>
+    <div><%= f.label :max_batch_total, "Total of a batch, at most (EUR)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :max_batch_total, value: profile.max_batch_total, class: input %></div>
+    <div><%= f.label :max_supplier_total, "Total to one supplier in a batch, at most (EUR)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :max_supplier_total, value: profile.max_supplier_total, class: input %></div>
+    <div><%= f.label :balance_threshold, "Warn when the balance after a batch is under (EUR)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :balance_threshold, value: profile.balance_threshold, class: input %></div>
+    <div class="sm:col-span-2"><%= f.label :closed_days, "Days the bank does not settle (dates like 2026-12-24, comma separated; the TARGET holidays are already known)", class: "block text-sm font-medium text-gray-700" %><%= f.text_field :closed_days, value: Array(profile.options&.dig("closed_days")).join(", "), class: input %></div>
+    <label class="flex items-center gap-2 text-sm text-gray-700"><%= f.check_box :format_verified, { checked: profile.format_verified, class: "rounded border-gray-300" } %> A file of this format was seen to be taken by the bank</label>
+    <label class="flex items-center gap-2 text-sm text-gray-700"><%= f.check_box :coda_verified, { checked: profile.coda_verified, class: "rounded border-gray-300" } %> A statement (CODA) of this bank was seen</label>
+  </div>
+  <div class="flex gap-3">
+    <%= f.submit "Save", class: "px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700" %>
+    <%= link_to "Cancel", accounting_settings_payment_bank_profiles_path, class: "px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50" %>
+  </div>
+<% end %>

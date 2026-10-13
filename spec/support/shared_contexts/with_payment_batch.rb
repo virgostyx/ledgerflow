@@ -24,9 +24,11 @@ RSpec.shared_context "with payment batch" do
   def fund(amount)
     capital = create(:account, code: "100000", label_fr: "Capital", account_type: :equity, normal_balance: :credit, account_class: 1)
     entry = create(:journal_entry, :draft, journal: bank.journal, fiscal_year: fiscal_year, entry_date: Date.current - 40, reference: "FUND-#{SecureRandom.hex(3)}")
-    ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
-    create(:journal_entry_line, journal_entry: entry, account: bank.journal.default_account, debit: amount, credit: 0)
-    create(:journal_entry_line, journal_entry: entry, account: capital, debit: 0, credit: amount)
+    ApplicationRecord.transaction do # the double-entry check is deferred to the end of a transaction (the usual one of the specs is rolled back, a concurrency one is not)
+      ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+      create(:journal_entry_line, journal_entry: entry, account: bank.journal.default_account, debit: amount, credit: 0)
+      create(:journal_entry_line, journal_entry: entry, account: capital, debit: 0, credit: amount)
+    end
     entry.post!
   end
 

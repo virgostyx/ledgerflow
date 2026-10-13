@@ -7,6 +7,7 @@ class Payments::SubmitBatch
     return fail(ctx, :batch_feature_off) unless batch.entity.feature?(:b01b)
     return fail(ctx, :batch_not_allowed) unless Payments::BatchPolicy.new(user, batch).prepare?
     return fail(ctx, :batch_not_draft) unless batch.draft?
+    return fail(ctx, :batch_no_profile) unless Payments::Sepa::Pain001Builder::VERSIONS.include?(batch.bank_profile&.format_version) # the format comes from the bank, not from a guess
 
     ApplicationRecord.transaction do
       Payments::Batch.lock.find(batch.id) # one submission at a time per batch

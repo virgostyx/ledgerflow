@@ -4,7 +4,7 @@
 class Accounting::PaymentsController < ApplicationController
   before_action { require_feature!(:b01b) }
   before_action :set_batch, except: %i[index new create]
-  before_action(only: :export) { require_recent_second_factor! }
+  before_action(only: %i[export download]) { require_recent_second_factor! } # the file holds the accounts paid: a second factor given a moment ago
 
   def index
     authorize Payments::Batch
@@ -15,20 +15,22 @@ class Accounting::PaymentsController < ApplicationController
     authorize Payments::Batch, :create?
     @execution_date = date_param(params[:execution_date]) || Payments::SettlementCalendar.next_open(Date.current + 1)
     @bank_accounts = Accounting::BankAccount.active.where(currency: "EUR")
+    @profiles = Payments::BankProfile.order(:name)
     @rows = Payments::Eligibility.call(execution_date: @execution_date)
   end
 
   def create
     authorize Payments::Batch, :create?
-    attrs = params.require(:payment).permit(:bank_account_id, :requested_execution_date, :net_credit_notes, invoice_ids: [])
+    attrs = params.require(:payment).permit(:bank_account_id, :bank_profile_id, :requested_execution_date, :net_credit_notes, invoice_ids: [])
     result = Payments::ComposeBatch.call(bank_account: Accounting::BankAccount.find(attrs[:bank_account_id]), execution_date: date_param(attrs[:requested_execution_date]),
                                          selections: Array(attrs[:invoice_ids]).reject(&:blank?).map { |id| { invoice_id: id.to_i } }, user: current_user,
-                                         net_credit_notes: attrs[:net_credit_notes] == "1")
+                                         net_credit_notes: attrs[:net_credit_notes] == "1", bank_profile: Payments::BankProfile.find_by(id: attrs[:bank_profile_id]))
     if result.success?
       redirect_to accounting_payment_path(result[:batch]), notice: t("payments.screens.composed")
     else
       @execution_date = date_param(attrs[:requested_execution_date]) || Date.current
       @bank_accounts = Accounting::BankAccount.active.where(currency: "EUR")
+      @profiles = Payments::BankProfile.order(:name)
       @rows = Payments::Eligibility.call(execution_date: @execution_date)
       flash.now[:alert] = result.message
       render :new, status: :unprocessable_content
@@ -41,7 +43,8 @@ class Accounting::PaymentsController < ApplicationController
     @report = @batch.preflight_report.presence
     @balance = Payments::Balance.of(@batch.bank_account)
     @request = @batch.approval_request
-    @can_decide = @request&.pending? && Approvals::Approvers.for(@request).key?(current_user.id)
+    # the buttons are for who may decide; the one who prepared the batch is not offered them when the company keeps the tasks apart (Approvals::Decide refuses them anyway)
+    @can_decide = @request&.pending? && Approvals::Approvers.for(@request).key?(current_user.id) && !(@batch.entity.distinct_payment_authorizer? && @batch.prepared_by_id == current_user.id)
   end
 
   def preflight

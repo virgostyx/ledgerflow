@@ -29,7 +29,7 @@ RSpec.describe "Performance — payment batches", type: :model do
 
   # valid IBANs, one per payment: Belgian ones whose check digits are worked out
   def ibans
-    @ibans ||= Array.new(600) do |i|
+    @ibans ||= Array.new(5100) do |i|
       bban = format("%012d", 539_000_000_000 + i)
       check = 98 - (("#{bban}111400").to_i % 97)
       "BE#{format('%02d', check)}#{bban}"
@@ -44,6 +44,18 @@ RSpec.describe "Performance — payment batches", type: :model do
 
     puts "  pre-flight of 500: #{(elapsed * 1000).round} ms"
     expect(elapsed).to be < 5
+  end
+
+  it "makes the file of 5,000 payments in under 10 seconds, valid against the schema" do
+    batch = batch_of(5000)
+    batch.update!(bank_profile: Payments::BankProfile.create!(name: "Test bank", format_version: "pain.001.001.03"))
+
+    file = nil
+    elapsed = Benchmark.realtime { file = Payments::Sepa::Pain001Builder.call(batch, created_at: Time.current) }
+
+    puts "  file of 5000: #{(elapsed * 1000).round} ms, #{file.bytesize / 1024} KiB"
+    expect(Nokogiri::XML(file).tap(&:remove_namespaces!).xpath("//CdtTrfTxInf").size).to eq(5000)
+    expect(elapsed).to be < 10
   end
 
   it "does not ask the database once per payment: ten times the payments, about the same queries" do

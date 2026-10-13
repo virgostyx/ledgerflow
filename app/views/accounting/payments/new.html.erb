@@ -18,6 +18,14 @@
     <%= f.label :bank_account_id, 'Account to debit', class: 'block text-sm font-medium text-gray-700 mb-1' %>
     <%= f.select :bank_account_id, @bank_accounts.map { |a| [ a.label_fr, a.id ] }, {}, class: 'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm' %>
   </div>
+  <div class="max-w-sm">
+    <%= f.label :bank_profile_id, 'How the bank takes the file', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+    <% if @profiles.any? %>
+      <%= f.select :bank_profile_id, @profiles.map { |p| [ "#{p.name} (#{p.format_version})#{' - not verified' unless p.format_verified?}", p.id ] }, {}, class: 'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm' %>
+    <% else %>
+      <p class="text-sm text-amber-700">No bank profile yet: <%= link_to 'make one', accounting_settings_payment_bank_profiles_path, class: 'underline' %> (the format of the file comes from your bank).</p>
+    <% end %>
+  </div>
 
   <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto">
     <table class="w-full text-sm">

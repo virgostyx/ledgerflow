@@ -471,6 +471,7 @@ Rails.application.routes.draw do
         # B01a: who must approve what, and who stands in for whom
         resources :approval_policies, except: %i[show destroy]
         resources :approval_delegations, only: %i[index create destroy]
+        resources :payment_bank_profiles, except: %i[show destroy] # B01b: how each bank takes its payment file
         resources :bank_rules, only: %i[index update destroy]
         resources :webhook_subscriptions, except: :show do # F13c
           member do

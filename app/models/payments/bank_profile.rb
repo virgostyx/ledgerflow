@@ -4,6 +4,8 @@
 class Payments::BankProfile < ApplicationRecord
   self.table_name = "payment_bank_profiles"
 
+  include Accounting::AuditTrailed # what is said of a bank (version, limits, verified) is in the audit trail, field by field
+
   acts_as_tenant :entity
 
   validates :name, :format_version, :encoding, presence: true

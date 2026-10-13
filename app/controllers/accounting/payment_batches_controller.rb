@@ -1,4 +1,7 @@
 class Accounting::PaymentBatchesController < ApplicationController
+  # B01b replaces this flow (the account paid was not verified, the settlement was booked at "execute", the message id was random): with the feature on the
+  # old batches stay to be read and downloaded, and nothing is made, generated or settled from here any more.
+  before_action :close_to_new_work, only: %i[new create generate execute]
   before_action :set_payment_batch, only: [ :show, :destroy, :generate, :execute, :download ]
 
   def index
@@ -83,6 +86,10 @@ class Accounting::PaymentBatchesController < ApplicationController
   end
 
   private
+
+  def close_to_new_work
+    redirect_to accounting_payments_path, alert: t("payments.legacy.closed") if feature?(:b01b)
+  end
 
   def set_payment_batch
     @payment_batch = Accounting::PaymentBatch.find(params[:id])

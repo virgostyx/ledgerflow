@@ -16,7 +16,7 @@
   <% header.with_actions do %>
     <%= render Accounting::StatusBadgeComponent.new(status: @payment_batch.status.to_sym) %>
 
-    <% if @payment_batch.draft? && policy(@payment_batch).generate? %>
+    <% if @payment_batch.draft? && policy(@payment_batch).generate? && !feature?(:b01b) %>
       <%= button_to 'Generate SEPA file', generate_accounting_payment_batch_path(@payment_batch), method: :post,
             class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>
     <% end %>
@@ -24,7 +24,7 @@
     <% if @payment_batch.generated? %>
       <%= link_to 'Download SEPA file', download_accounting_payment_batch_path(@payment_batch),
             class: 'px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors' %>
-      <% if policy(@payment_batch).execute? %>
+      <% if policy(@payment_batch).execute? && !feature?(:b01b) %>
         <%= button_to 'Mark as executed', execute_accounting_payment_batch_path(@payment_batch), method: :post,
               data: { turbo_confirm: 'Confirm the SEPA file was uploaded to the bank? This will settle the invoices as paid.' },
               class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors' %>

@@ -14,6 +14,10 @@
   <% end %>
 <% end %>
 
+<% if feature?(:b01b) %>
+  <p class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">These batches are read-only. New payments are made in <%= link_to 'Payments', accounting_payments_path, class: 'underline' %>.</p>
+<% end %>
+
 <% if @payment_batches.empty? && !filters_active? %>
   <%= render Ui::EmptyStateComponent.new(
         title: 'No payment batches yet',
