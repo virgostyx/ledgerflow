@@ -868,6 +868,41 @@ ALTER SEQUENCE public.accounting_cash_forecast_items_id_seq OWNED BY public.acco
 
 
 --
+-- Name: accounting_change_reviews; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_change_reviews (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    change_key character varying NOT NULL,
+    reviewer_id bigint NOT NULL,
+    reviewed_at timestamp(6) without time zone NOT NULL,
+    comment text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_change_reviews_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_change_reviews_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_change_reviews_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_change_reviews_id_seq OWNED BY public.accounting_change_reviews.id;
+
+
+--
 -- Name: accounting_comments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2698,6 +2733,39 @@ CREATE SEQUENCE public.accounting_tasks_id_seq
 --
 
 ALTER SEQUENCE public.accounting_tasks_id_seq OWNED BY public.accounting_tasks.id;
+
+
+--
+-- Name: accounting_user_visits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_user_visits (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    visited_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_user_visits_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_user_visits_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_user_visits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_user_visits_id_seq OWNED BY public.accounting_user_visits.id;
 
 
 --
@@ -4811,7 +4879,8 @@ CREATE TABLE public.entities (
     step_up_threshold numeric(15,2),
     iban_cooling_hours integer DEFAULT 24 NOT NULL,
     distinct_payment_authorizer boolean DEFAULT true NOT NULL,
-    authorizer_not_bap_giver boolean DEFAULT false NOT NULL
+    authorizer_not_bap_giver boolean DEFAULT false NOT NULL,
+    track_visits boolean DEFAULT true NOT NULL
 );
 
 
@@ -5738,6 +5807,13 @@ ALTER TABLE ONLY public.accounting_cash_forecast_items ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: accounting_change_reviews id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_change_reviews ALTER COLUMN id SET DEFAULT nextval('public.accounting_change_reviews_id_seq'::regclass);
+
+
+--
 -- Name: accounting_comments id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6050,6 +6126,13 @@ ALTER TABLE ONLY public.accounting_supplier_defaults ALTER COLUMN id SET DEFAULT
 --
 
 ALTER TABLE ONLY public.accounting_tasks ALTER COLUMN id SET DEFAULT nextval('public.accounting_tasks_id_seq'::regclass);
+
+
+--
+-- Name: accounting_user_visits id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_user_visits ALTER COLUMN id SET DEFAULT nextval('public.accounting_user_visits_id_seq'::regclass);
 
 
 --
@@ -6668,6 +6751,14 @@ ALTER TABLE ONLY public.accounting_cash_forecast_items
 
 
 --
+-- Name: accounting_change_reviews accounting_change_reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_change_reviews
+    ADD CONSTRAINT accounting_change_reviews_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_comments accounting_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7025,6 +7116,14 @@ ALTER TABLE ONLY public.accounting_supplier_defaults
 
 ALTER TABLE ONLY public.accounting_tasks
     ADD CONSTRAINT accounting_tasks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_user_visits accounting_user_visits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_user_visits
+    ADD CONSTRAINT accounting_user_visits_pkey PRIMARY KEY (id);
 
 
 --
@@ -8230,6 +8329,27 @@ CREATE INDEX index_accounting_cash_forecast_items_on_entity_id ON public.account
 
 
 --
+-- Name: index_accounting_change_reviews_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_change_reviews_on_entity_id ON public.accounting_change_reviews USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_change_reviews_on_entity_id_and_change_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_change_reviews_on_entity_id_and_change_key ON public.accounting_change_reviews USING btree (entity_id, change_key);
+
+
+--
+-- Name: index_accounting_change_reviews_on_reviewer_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_change_reviews_on_reviewer_id ON public.accounting_change_reviews USING btree (reviewer_id);
+
+
+--
 -- Name: index_accounting_comments_on_author_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9410,6 +9530,27 @@ CREATE INDEX index_accounting_tasks_on_entity_id_and_status ON public.accounting
 --
 
 CREATE INDEX index_accounting_tasks_on_target_type_and_target_id ON public.accounting_tasks USING btree (target_type, target_id);
+
+
+--
+-- Name: index_accounting_user_visits_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_user_visits_on_entity_id ON public.accounting_user_visits USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_user_visits_on_entity_id_and_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_user_visits_on_entity_id_and_user_id ON public.accounting_user_visits USING btree (entity_id, user_id);
+
+
+--
+-- Name: index_accounting_user_visits_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_user_visits_on_user_id ON public.accounting_user_visits USING btree (user_id);
 
 
 --
@@ -11792,6 +11933,14 @@ ALTER TABLE ONLY public.accounting_fixed_assets
 
 
 --
+-- Name: accounting_change_reviews fk_rails_45a770eae4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_change_reviews
+    ADD CONSTRAINT fk_rails_45a770eae4 FOREIGN KEY (reviewer_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoices fk_rails_470177bd08; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13280,6 +13429,14 @@ ALTER TABLE ONLY public.agent_security_events
 
 
 --
+-- Name: accounting_change_reviews fk_rails_db2732a47b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_change_reviews
+    ADD CONSTRAINT fk_rails_db2732a47b FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: entities fk_rails_dc402a0917; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13365,6 +13522,14 @@ ALTER TABLE ONLY public.accounting_invoice_lines
 
 ALTER TABLE ONLY public.consolidation_members
     ADD CONSTRAINT fk_rails_e2003c529d FOREIGN KEY (consolidation_group_id) REFERENCES public.consolidation_groups(id);
+
+
+--
+-- Name: accounting_user_visits fk_rails_e40dc76852; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_user_visits
+    ADD CONSTRAINT fk_rails_e40dc76852 FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -13656,6 +13821,14 @@ ALTER TABLE ONLY public.accounting_depreciation_entries
 
 
 --
+-- Name: accounting_user_visits fk_rails_f94dac033c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_user_visits
+    ADD CONSTRAINT fk_rails_f94dac033c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: dunning_runs fk_rails_fb346d725c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13702,6 +13875,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261014130000'),
 ('20261014120000'),
 ('20261014110000'),
 ('20261014100000'),

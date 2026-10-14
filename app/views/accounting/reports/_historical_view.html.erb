@@ -13,3 +13,6 @@
   </div>
   <%= f.submit t("accounting.known_at.selector_apply"), class: "btn-secondary" %>
 <% end %>
+<% if feature?(:b03b) && Accounting::ChangesPolicy.new(current_user, :changes).index? %>
+  <p class="mb-4 text-sm"><%= link_to t("changes.compare"), accounting_changes_path({ fiscal_year_id: hidden[:fiscal_year_id], from: (known_at.time.utc.iso8601(6) if historical_view?) }.compact), class: "underline" %></p>
+<% end %>

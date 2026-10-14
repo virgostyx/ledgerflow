@@ -2,11 +2,11 @@
 # entity's administrators of blocking anomalies that were not there in the previous run and are not
 # acknowledged. A check that raises is recorded on the run and never stops the others.
 class Accounting::Consistency::Runner
-  def self.call(trigger: "manual", fiscal_year: nil)
+  def self.call(trigger: "manual", fiscal_year: nil, checks: nil)
     started = Time.current
     run = Accounting::ConsistencyRun.create!(trigger: trigger, started_at: started)
     errors = {}
-    findings = Accounting::Consistency::Check.registry.flat_map do |check|
+    findings = (checks || Accounting::Consistency::Check.registry).flat_map do |check|
       check.new(fiscal_year: fiscal_year).call
     rescue StandardError => e
       Rails.logger.error("[Consistency] #{check.check_id}: #{e.class}: #{e.message}")

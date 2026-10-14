@@ -298,3 +298,22 @@
     - 'note:'
     answer_includes:
     - According to the note
+- id: A10-013
+  capability: A10
+  language: en
+  tags:
+  - changes
+  - tool_choice
+  source: reference_dataset
+  role: accountant
+  input: What changed in the books since the start of January?
+  script:
+  - tool: get_changes_between
+    args:
+      from: '2026-01-01T00:00:00Z'
+  - say: Since the start of January the books gained entries, and the figures close, as the sum of the variations equals the sum of the movements.
+  expect:
+    tools:
+    - name: get_changes_between
+    answer_includes:
+    - close

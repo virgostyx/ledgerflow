@@ -1,0 +1,49 @@
+<% if result.statements.present? %>
+  <h2 class="mb-2 text-lg font-semibold text-gray-900"><%= t("changes.statements.title") %></h2>
+  <table class="mb-8 min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50"><tr>
+      <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("changes.statements.statement") %></th>
+      <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("changes.impact.at_from") %></th>
+      <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("changes.impact.at_to") %></th>
+      <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("changes.impact.variation") %></th>
+    </tr></thead>
+    <tbody class="divide-y divide-gray-100 bg-white">
+      <% result.statements.each do |row| %>
+        <tr>
+          <td class="px-4 py-2"><%= t("changes.statements.sections.#{row.section}") %> - <%= row.code %> <%= row.label %></td>
+          <td class="px-4 py-2 text-right"><%= money.(row.at_t1) %></td>
+          <td class="px-4 py-2 text-right"><%= money.(row.at_t2) %></td>
+          <td class="px-4 py-2 text-right font-medium"><%= money.(row.variation) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
+<h2 class="mb-2 text-lg font-semibold text-gray-900"><%= t("changes.statements.by_account") %></h2>
+<% if result.impact.empty? %>
+  <p class="py-6 text-center text-gray-400"><%= t("changes.nothing") %></p>
+<% else %>
+  <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("changes.impact.account") %></th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("changes.impact.at_from") %></th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("changes.impact.at_to") %></th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("changes.impact.variation") %></th>
+        <th class="px-4 py-2 text-right font-medium text-gray-600"><%= t("changes.impact.movements") %></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100 bg-white">
+      <% result.impact.sort_by { |r| -r.variation.abs }.each do |row| %>
+        <% ledger = { fiscal_year_id: @fiscal_year.id, account_id: row.account_id, known_at: result.to&.utc&.iso8601(6) }.compact %>
+        <tr class="<%= 'bg-red-50' if result.closing.gaps.key?(row.account_id) %>">
+          <td class="px-4 py-2"><%= link_to "#{row.code} #{row.label}", accounting_reports_general_ledger_path(ledger), class: "underline" %></td>
+          <td class="px-4 py-2 text-right"><%= money.(row.at_t1) %></td>
+          <td class="px-4 py-2 text-right"><%= money.(row.at_t2) %></td>
+          <td class="px-4 py-2 text-right font-medium"><%= money.(row.variation) %></td>
+          <td class="px-4 py-2 text-right"><%= money.(row.movements) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

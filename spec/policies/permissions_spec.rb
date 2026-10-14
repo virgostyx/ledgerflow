@@ -33,6 +33,7 @@ RSpec.describe Permissions do
     "payments.export"        => [ [ Payments::BatchPolicy, :export? ] ],
     "payments.confirm"       => [ [ Payments::BatchPolicy, :confirm? ] ],
     "bank_accounts.verify"   => [ [ Accounting::PartnerBankAccountPolicy, :verify? ], [ Accounting::PartnerBankAccountPolicy, :block? ] ],
+    "changes.review"         => [ [ Accounting::ChangesPolicy, :review? ] ],
     "time_travel.view"       => [ [ Accounting::ReportPolicy, :time_travel? ] ],
     "closing.prepare"        => [ [ Accounting::ClosingRunPolicy, :create? ], [ Accounting::ClosingRunPolicy, :update? ] ],
     "closing.approve"        => [ [ Accounting::ClosingRunPolicy, :approve? ], [ Accounting::ClosingRunPolicy, :reopen? ] ],

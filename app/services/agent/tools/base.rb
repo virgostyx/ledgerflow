@@ -40,7 +40,7 @@ class Agent::Tools::Base
   def call(_args, _context) = raise(NotImplementedError)
 
   # B03a: the argument a report tool takes to read the books as they were known at a past instant.
-  KNOWN_AT_PROPERTY = { known_at: { type: "string", maxLength: 40, description: "Books as known at this instant (ISO 8601 with offset). Read only; say \"state known at\" it." } }.freeze
+  KNOWN_AT_PROPERTY = { known_at: { type: "string", maxLength: 40, description: "Books as known at this instant (ISO 8601)." } }.freeze
 
   private
 
@@ -66,6 +66,13 @@ class Agent::Tools::Base
     known = Accounting::KnownAt.wrap(Accounting::KnownAt.parse(args["known_at"]), fiscal_year: fiscal_year).ensure_viewable!
     known.current? ? nil : known
   rescue Accounting::KnownAt::Invalid, Accounting::KnownAt::Refused => e
+    raise Agent::ToolError.new("invalid_arguments", e.message)
+  end
+
+  # R21 between two moments (B03b): the instants are parsed and refused here, like `known_at`; the tool only reads the report.
+  def changes_report(args, year)
+    Changes::Report.call(fiscal_year: year, from: Accounting::KnownAt.parse(args["from"]), to: (Accounting::KnownAt.parse(args["to"]) if args["to"]), per: 1, statements: false)
+  rescue Accounting::KnownAt::Invalid, Accounting::KnownAt::Refused, Changes::Between::Invalid => e
     raise Agent::ToolError.new("invalid_arguments", e.message)
   end
 

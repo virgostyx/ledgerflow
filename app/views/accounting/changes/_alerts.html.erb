@@ -1,0 +1,12 @@
+<% if result.alerts.empty? %>
+  <p class="py-6 text-center text-gray-400"><%= t("changes.no_alerts") %></p>
+<% else %>
+  <ul class="space-y-2 text-sm">
+    <% result.alerts.each do |alert| %>
+      <li class="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-amber-900">
+        <strong><%= t("changes.alerts.#{alert.kind}") %></strong>
+        <%= alert.detail.map { |k, v| "#{k.to_s.humanize.downcase}: #{v}" }.join(", ") %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

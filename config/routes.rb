@@ -419,6 +419,10 @@ Rails.application.routes.draw do
 
       resources :cash_forecast_items, only: [ :create, :destroy ]
 
+      get "changes", to: "changes#index", as: :changes # B03b: what changed between two moments
+      post "changes/review", to: "changes#review", as: :changes_review
+      delete "changes/visit", to: "changes#erase_visit", as: :changes_visit
+
       namespace :reports do
         get :trial_balance
         get :cash_forecast

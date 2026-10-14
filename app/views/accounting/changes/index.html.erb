@@ -1,0 +1,85 @@
+<% money = ->(v) { number_to_currency(v, unit: "€") } %>
+<% stamp = ->(t) { t ? l(t.in_time_zone, format: "%Y-%m-%d %H:%M:%S %z") : t("changes.now") } %>
+<% keep = { fiscal_year_id: @fiscal_year.id, from: @from&.utc&.iso8601(6), to: @to&.utc&.iso8601(6), as_of: @as_of } %>
+<div class="mx-auto max-w-7xl px-4 py-8">
+  <h1 class="mb-2 text-2xl font-bold text-gray-900"><%= t("changes.title") %></h1>
+
+  <% if @error %>
+    <p class="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900" role="alert"><%= @error %></p>
+  <% end %>
+
+  <%= form_with url: accounting_changes_path, method: :get, class: "mb-4 flex flex-wrap items-end gap-3 text-sm" do |f| %>
+    <%= hidden_field_tag :fiscal_year_id, @fiscal_year.id %>
+    <%= hidden_field_tag :tab, @tab %>
+    <div>
+      <%= f.label :from, t("changes.from"), class: "block font-medium text-gray-700" %>
+      <%= f.datetime_local_field :from, step: 1, value: @from&.in_time_zone&.strftime("%Y-%m-%dT%H:%M:%S"), class: "mt-1 form-input" %>
+    </div>
+    <div>
+      <%= f.label :to, t("changes.to"), class: "block font-medium text-gray-700" %>
+      <%= f.datetime_local_field :to, step: 1, value: @to&.in_time_zone&.strftime("%Y-%m-%dT%H:%M:%S"), class: "mt-1 form-input" %>
+    </div>
+    <div>
+      <%= f.label :as_of, t("changes.as_of"), class: "block font-medium text-gray-700" %>
+      <%= f.date_field :as_of, value: @as_of, class: "mt-1 form-input" %>
+    </div>
+    <label class="flex items-center gap-2"><%= check_box_tag :hide_neutral, "1", params[:hide_neutral] == "1" %> <%= t("changes.hide_neutral") %></label>
+    <%= f.submit t("changes.apply"), class: "btn-secondary" %>
+  <% end %>
+
+  <p class="mb-4 text-sm text-gray-600">
+    <% { "yesterday_18" => "since_yesterday", "last_visit" => "since_visit", "last_lock" => "since_lock" }.each do |preset, label| %>
+      <% if @presets.key?(preset) %>
+        <%= link_to t("changes.#{label}"), accounting_changes_path(fiscal_year_id: @fiscal_year.id, preset: preset, tab: @tab), class: "mr-3 underline" %>
+      <% end %>
+    <% end %>
+    <span class="mr-3 text-gray-400" title="<%= t("changes.not_yet") %>"><%= t("changes.since_certificate") %></span>
+  </p>
+
+  <% if @result %>
+    <p class="mb-4 text-sm text-gray-700">
+      <%= t("changes.between", from: stamp.(@result.from), to: stamp.(@result.to), as_of: l(@result.as_of)) %>
+    </p>
+
+    <% summary = @result.summary %>
+    <dl class="mb-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
+      <% { entries: summary.entries, reversals: summary.reversals, letterings: summary.letterings, unletterings: summary.unletterings, setup_changes: summary.setup_changes,
+           locks: summary.locks, unlocks: summary.unlocks, accounts: summary.accounts, actors: summary.actors, movements: money.(summary.movements) }.each do |key, value| %>
+        <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+          <dt class="text-gray-500"><%= t("changes.summary.#{key}") %></dt>
+          <dd class="text-lg font-semibold text-gray-900"><%= value %></dd>
+        </div>
+      <% end %>
+    </dl>
+
+    <% if @result.closing.balanced? %>
+      <p class="mb-4 text-sm font-medium text-green-700"><%= t("changes.closing.balanced") %></p>
+    <% else %>
+      <p class="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800" role="alert"><%= t("changes.closing.gap", gap: format("%.2f", @result.closing.gap)) %></p>
+    <% end %>
+
+    <nav class="mb-4 flex gap-4 border-b border-gray-200 text-sm" aria-label="<%= t("changes.title") %>">
+      <% Accounting::ChangesController::TABS.each do |tab| %>
+        <%= link_to t("changes.tabs.#{tab}"), accounting_changes_path(keep.merge(tab: tab, hide_neutral: params[:hide_neutral])), class: "px-1 pb-2 #{tab == @tab ? 'border-b-2 border-indigo-600 font-semibold text-indigo-700' : 'text-gray-600'}", "aria-current": (tab == @tab ? "page" : nil) %>
+      <% end %>
+      <% if @can_export %>
+        <span class="ml-auto flex gap-3">
+          <% %i[pdf xlsx csv].each do |format| %>
+            <%= link_to format.to_s.upcase, accounting_changes_path(keep.merge(format: format)), class: "underline" %>
+          <% end %>
+        </span>
+      <% end %>
+    </nav>
+
+    <% case @tab %>
+    <% when "impact" %>
+      <%= render "impact", result: @result, money: money %>
+    <% when "detail" %>
+      <%= render "detail", result: @result, money: money, keep: keep %>
+    <% else %>
+      <%= render "alerts", result: @result %>
+    <% end %>
+
+    <%= button_to t("changes.erase_visit"), accounting_changes_visit_path, method: :delete, class: "mt-8 text-xs text-gray-500 underline" %>
+  <% end %>
+</div>

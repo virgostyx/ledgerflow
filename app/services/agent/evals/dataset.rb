@@ -203,6 +203,7 @@ module Agent::Evals
         entity = Entity.create!(name: ENTITY_NAME, legal_name: ENTITY_NAME, legal_form: "SRL", country: "BE", active: true, created_by: accountant, features: Entity::FEATURES.index_with { true })
         UserEntity.create!(user: accountant, entity: entity, role: :accountant)
         UserEntity.create!(user: reader, entity: entity, role: :manager)
+        ActsAsTenant.with_tenant(entity) { Accounting::HistoryStart.create!(starts_at: Time.utc(2020, 1, 1), reason: "reference dataset") } # the history of the books is shown from there (B03a)
         ActsAsTenant.with_tenant(entity) { fill }
         knowledge(entity, accountant)
         memory(entity, accountant, reader)
