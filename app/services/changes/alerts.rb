@@ -7,6 +7,11 @@ class Changes::Alerts
 
   def self.call(**args) = new(**args).call
 
+  # The thresholds the company set (the defaults are the specification's).
+  def self.thresholds_of(entity)
+    { late_days: entity.changes_late_days, reversals_per_author: entity.changes_reversals_per_author, mass_import: entity.changes_mass_import, unletterings: entity.changes_unletterings }
+  end
+
   def initialize(changes:, events:, **thresholds)
     @changes = changes
     @events = events

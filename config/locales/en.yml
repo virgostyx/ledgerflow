@@ -629,6 +629,29 @@ en:
 
   changes:
     title: "What changed"
+    ask_hint: "Ask the assistant to explain this entry"
+    ask_all_hint: "Ask the assistant what changed between these two moments"
+    subscription_saved: "Your subscription to the alerts was saved."
+    subscription:
+      legend: "Tell me about"
+      hint: "One notification a day at most, with a count and a link: no amount, no name."
+      save: "Save"
+    notification:
+      late:
+        one: "%{count} late entry"
+        other: "%{count} late entries"
+      locked_period:
+        one: "%{count} entry in a period that was locked"
+        other: "%{count} entries in a period that was locked"
+      iban_change:
+        one: "%{count} change of IBAN"
+        other: "%{count} changes of IBAN"
+    task_title: "Check the change: %{what}"
+    task_description: "Raised from the report of changes (%{key})."
+    create_task: "Create a task"
+    task_created: "The task was created."
+    ask: "Ask the assistant"
+    limited: "Your access is limited to some journals: the detail and the alerts show only their entries. The closing is computed on the whole fiscal year."
     statements:
       title: "Impact on the statements"
       statement: "Statement"
@@ -719,6 +742,7 @@ en:
       balanced: "Sum of variations = sum of movements, gap 0.00"
       gap: "Sum of variations differs from the sum of movements, gap %{gap}"
     errors:
+      unknown_change: "This change is not known."
       already_reviewed: "This change was already marked as reviewed."
       inverted: "The first instant is after the second one: swap them (the earlier moment goes first)."
   peppol:

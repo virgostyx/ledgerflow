@@ -165,6 +165,35 @@
           <span class="block text-xs text-gray-400 mt-1">Above this amount, approving asks for a second factor given in the last five minutes (a token of the API cannot, so it decides in the application). Empty: never asked.</span>
         </div>
         <% end %>
+        <% if @entity.feature?(:b03b) %>
+        <% input = "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+        <fieldset class="space-y-3 pt-4">
+          <legend class="text-sm font-semibold text-gray-800">What changed: review alerts</legend>
+          <div class="max-w-xs">
+            <%= f.label :changes_late_days, "Late entry: days between its date and its validation", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.number_field :changes_late_days, min: 1, max: 1000, step: 1, class: input %>
+          </div>
+          <div class="max-w-xs">
+            <%= f.label :changes_reversals_per_author, "Frequent reversals: from this many by one author", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.number_field :changes_reversals_per_author, min: 1, max: 1000, step: 1, class: input %>
+          </div>
+          <div class="max-w-xs">
+            <%= f.label :changes_mass_import, "Mass import: from this many entries of one import", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.number_field :changes_mass_import, min: 1, max: 1000, step: 1, class: input %>
+          </div>
+          <div class="max-w-xs">
+            <%= f.label :changes_unletterings, "Unletterings: from this many", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.number_field :changes_unletterings, min: 1, max: 1000, step: 1, class: input %>
+          </div>
+          <div class="flex items-start gap-2">
+            <%= f.check_box :track_visits, class: "mt-1 rounded border-gray-300" %>
+            <%= f.label :track_visits, class: "text-sm text-gray-700" do %>
+              Remember the last visit of each person to "What changed"
+              <span class="block text-xs text-gray-400">It only proposes the first moment of the next report. Each person can erase theirs. Every change of this option is recorded.</span>
+            <% end %>
+          </div>
+        </fieldset>
+        <% end %>
         <% if @entity.feature?(:b01b) %>
         <div class="max-w-xs">
           <%= f.label :iban_cooling_hours, "Observation of a new supplier bank account (hours)", class: "block text-sm font-medium text-gray-700 mb-1" %>

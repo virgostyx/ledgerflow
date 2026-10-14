@@ -7,7 +7,7 @@
     </tr></thead>
     <tbody class="divide-y divide-gray-100 bg-white">
       <% result.by_month.each do |row| %>
-        <tr><td class="px-4 py-2"><%= l(row[:month], format: "%Y-%m") %></td><td class="px-4 py-2 text-right"><%= row[:entries] %></td><td class="px-4 py-2 text-right"><%= money.(row[:amount]) %></td></tr>
+        <tr><td class="px-4 py-2"><%= link_to l(row[:month], format: "%Y-%m"), accounting_changes_path(keep.merge(tab: "detail", month: l(row[:month], format: "%Y-%m"))), class: "underline" %></td><td class="px-4 py-2 text-right"><%= row[:entries] %></td><td class="px-4 py-2 text-right"><%= money.(row[:amount]) %></td></tr>
       <% end %>
     </tbody>
   </table>
@@ -33,13 +33,20 @@
           <td class="px-4 py-2">
             <% if d.reviewed_at %>
               <%= t("changes.reviewed_by", who: d.reviewed_by, at: l(d.reviewed_at.in_time_zone, format: "%Y-%m-%d")) %>
-            <% elsif @can_review %>
+            <% end %>
+            <% if !d.reviewed_at && @can_review %>
               <%= form_with url: accounting_changes_review_path, class: "flex gap-1" do |f| %>
                 <%= hidden_field_tag :key, d.key %>
                 <% keep.compact.each { |k, v| concat hidden_field_tag(k, v, id: nil) } %>
                 <%= text_field_tag :comment, nil, placeholder: t("changes.comment"), "aria-label": t("changes.comment"), class: "form-input w-32" %>
                 <%= f.submit t("changes.mark_reviewed"), class: "btn-secondary" %>
               <% end %>
+            <% end %>
+            <% if @tasks_on %>
+              <%= button_to t("changes.create_task"), accounting_changes_task_path, params: keep.compact.merge(key: d.key), class: "text-xs text-indigo-700 hover:underline cursor-pointer" %>
+            <% end %>
+            <% if d.subject_type == "Accounting::JournalEntry" %>
+              <%= render "agent/explain_button", subject_type: "entry", subject_id: d.subject_id, label: t("changes.ask"), hint: t("changes.ask_hint") %>
             <% end %>
           </td>
         </tr>

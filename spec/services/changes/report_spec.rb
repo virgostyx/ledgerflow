@@ -82,6 +82,17 @@ RSpec.describe Changes::Report do
     expect(detail.reviewed_at).to be_present
   end
 
+  it "gives the detail of one month on request, when the span is summed by month" do
+    from = instant
+    entry = post_entry(10)
+    to = instant
+    month = Date.current.strftime("%Y-%m")
+
+    expect(report(from, to, month: month).details.map(&:key)).to eq([ "entry:#{entry.id}" ])
+    expect(report(from, to, month: (Date.current << 1).strftime("%Y-%m")).details).to be_empty
+    expect(report(from, to, month: "nonsense").details.map(&:key)).to eq([ "entry:#{entry.id}" ]) # not a month: no filter
+  end
+
   it "keeps the entries of a journal, an author, an account, and the categories asked for" do
     from = instant
     a = post_entry(10)
@@ -93,6 +104,21 @@ RSpec.describe Changes::Report do
     expect(report(from, to, account_codes: [ "9" ]).details).to be_empty
     expect(report(from, to, account_codes: [ "604" ]).impact.map(&:code)).to eq([ "604000" ])
     expect(report(from, to, categories: %i[locks]).details).to be_empty
+  end
+
+  it "shows a person limited to some journals only the entries of those journals, in the detail and in the alerts, and says it is limited" do
+    from = instant
+    old = post_entry(10)
+    kept = post_entry(20, journal: other_journal)
+    to = instant
+
+    result = report(from, to, allowed_journal_ids: [ other_journal.id ], late_days: -1)
+
+    expect(result.details.map(&:key)).to eq([ "entry:#{kept.id}" ])
+    expect(report(from, to, late_days: -1).alerts.map(&:subject_id)).to include(old.id) # without the limit the entry would be told
+    expect(result.alerts.map(&:subject_id)).to eq([ kept.id ])
+    expect(result.limited).to be(true)
+    expect(report(from, to).limited).to be(false)
   end
 
   it "hides the neutral pairs on request, and says how many there are" do

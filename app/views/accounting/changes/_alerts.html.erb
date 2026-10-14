@@ -10,3 +10,19 @@
     <% end %>
   </ul>
 <% end %>
+<% if @can_review %>
+  <%= form_with url: accounting_changes_subscription_path, method: :patch, class: "mt-6 text-sm" do |f| %>
+    <% keep.compact.slice(:fiscal_year_id, :from, :to, :as_of).each { |k, v| concat hidden_field_tag(k, v, id: nil) } %>
+    <%= hidden_field_tag "kinds[]", "", id: nil %>
+    <fieldset>
+      <legend class="font-medium text-gray-700"><%= t("changes.subscription.legend") %></legend>
+      <% Accounting::ChangeSubscription::KINDS.each do |kind| %>
+        <label class="mr-4 inline-flex items-center gap-1">
+          <%= check_box_tag "kinds[]", kind, @subscription&.kinds&.include?(kind), id: "kinds_#{kind}" %> <%= t("changes.alerts.#{kind}") %>
+        </label>
+      <% end %>
+    </fieldset>
+    <p class="mt-1 text-xs text-gray-500"><%= t("changes.subscription.hint") %></p>
+    <%= f.submit t("changes.subscription.save"), class: "btn-secondary mt-2" %>
+  <% end %>
+<% end %>

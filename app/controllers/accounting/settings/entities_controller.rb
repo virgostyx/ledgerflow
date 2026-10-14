@@ -9,6 +9,7 @@ class Accounting::Settings::EntitiesController < Accounting::Settings::BaseContr
     if @entity.update(entity_params)
       audit_approval_options
       audit_payment_options
+      audit_changes_options
       redirect_to edit_accounting_settings_entity_path, notice: t("accounting.settings.entity.updated")
     else
       render :edit, status: :unprocessable_content
@@ -54,10 +55,19 @@ class Accounting::Settings::EntitiesController < Accounting::Settings::BaseContr
     end
   end
 
+  # The thresholds of the review alerts of "What changed" and the memory of the last visit are the owner's choice, and recorded (B03b).
+  def audit_changes_options
+    %w[changes_late_days changes_reversals_per_author changes_mass_import changes_unletterings track_visits].each do |option|
+      next unless (change = @entity.saved_changes[option])
+
+      Accounting::AuditLog.record!(auditable: @entity, action: "changes_option_changed", user: current_user, payload: { option: option, from: change.first, to: change.last })
+    end
+  end
+
   def entity_params
     allowed = %i[name legal_name legal_form vat_number country address_line1 address_line2 zip_code city]
     # the BudgetFlow declaration and the four-eyes rule are the owner's call
-    allowed.push(:budgetflow_enabled, :four_eyes, :four_eyes_threshold, :read_only_export, :auto_post_exact_bank_matches, :auto_reconcile_exact, :bank_rounding_tolerance, :bap_before_posting, :allow_self_approval, :bulk_threshold, :step_up_threshold, :iban_cooling_hours, :distinct_payment_authorizer, :authorizer_not_bap_giver, features: Entity::FEATURES.map(&:to_sym)) if Accounting::Settings::BasePolicy.new(current_user, :settings).destroy?
+    allowed.push(:budgetflow_enabled, :four_eyes, :four_eyes_threshold, :read_only_export, :auto_post_exact_bank_matches, :auto_reconcile_exact, :bank_rounding_tolerance, :bap_before_posting, :allow_self_approval, :bulk_threshold, :step_up_threshold, :iban_cooling_hours, :distinct_payment_authorizer, :authorizer_not_bap_giver, :changes_late_days, :changes_reversals_per_author, :changes_mass_import, :changes_unletterings, :track_visits, features: Entity::FEATURES.map(&:to_sym)) if Accounting::Settings::BasePolicy.new(current_user, :settings).destroy?
     params.require(:entity).permit(*allowed)
   end
 end

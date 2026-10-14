@@ -15,6 +15,8 @@ class Accounting::ChangesController < ApplicationController
     @presets = presets
     @can_review = changes_policy.review?
     @can_export = changes_policy.export?
+    @subscription = Accounting::ChangeSubscription.find_by(user: current_user)
+    @tasks_on = feature?(:f08) && Accounting::TaskPolicy.new(current_user, Accounting::Task.new).create?
     @tab = TABS.include?(params[:tab]) ? params[:tab] : "impact"
     @from, @to = instants
     @as_of = Date.iso8601(params[:as_of].to_s) rescue @fiscal_year.end_date # rubocop:disable Style/RescueModifier
@@ -38,6 +40,22 @@ class Accounting::ChangesController < ApplicationController
     result = Changes::Review.call(key: params[:key].to_s, user: current_user, comment: params[:comment])
     redirect_to accounting_changes_path(params.permit(:fiscal_year_id, :from, :to, :as_of, :tab).to_h.merge(tab: "detail")),
                 (result.success? ? { notice: t("changes.reviewed") } : { alert: result.message })
+  end
+
+  # "Create a task" (F08) from a change: about what changed when a task can be about it, always naming the change.
+  def task
+    authorize :changes, :index?, policy_class: Accounting::ChangesPolicy
+
+    result = Changes::Task.call(key: params[:key].to_s, user: current_user)
+    redirect_to accounting_changes_path(params.permit(:fiscal_year_id, :from, :to, :as_of).to_h.merge(tab: "detail")),
+                (result.success? ? { notice: t("changes.task_created") } : { alert: result.message })
+  end
+
+  def subscription
+    authorize :changes, :review?, policy_class: Accounting::ChangesPolicy
+
+    Changes::Subscription.set(user: current_user, kinds: params[:kinds])
+    redirect_to accounting_changes_path(params.permit(:fiscal_year_id, :from, :to, :as_of).to_h.merge(tab: "alerts")), notice: t("changes.subscription_saved")
   end
 
   def erase_visit
@@ -68,15 +86,17 @@ class Accounting::ChangesController < ApplicationController
     from = if params[:from].present?
       Accounting::KnownAt.parse(params[:from])
     else
-      @presets[params[:preset]] || @presets["last_visit"] || @presets["yesterday_18"]
+      [ @presets[params[:preset]] || @presets["last_visit"] || @presets["yesterday_18"], earliest ].max # a preset never asks for what the history cannot show
     end
     [ from, to ]
   end
 
+  def earliest = Accounting::KnownAt.new(Time.current, fiscal_year: @fiscal_year).history_start
+
   def build_report
     Changes::Report.call(fiscal_year: @fiscal_year, from: @from, to: @to, as_of: @as_of, show_authors: changes_policy.authors?, categories: params[:categories].presence,
-                         hide_neutral: params[:hide_neutral] == "1", page: params[:page], per: (params[:format].present? ? nil : 100), journal_ids: params[:journal_ids].presence,
-                         account_codes: params[:account_codes].presence, actor_ids: params[:actor_ids].presence&.map(&:to_i))
+                         hide_neutral: params[:hide_neutral] == "1", month: params[:month], page: params[:page], per: (params[:format].present? ? nil : 100), journal_ids: params[:journal_ids].presence,
+                         account_codes: params[:account_codes].presence, allowed_journal_ids: UserEntity.current.find_by(user: current_user, entity: ActsAsTenant.current_tenant)&.journal_ids, actor_ids: params[:actor_ids].presence&.map(&:to_i))
   end
 
   def record_view

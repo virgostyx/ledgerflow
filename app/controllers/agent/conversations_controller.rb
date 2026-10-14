@@ -4,7 +4,9 @@ class Agent::ConversationsController < Agent::BaseController
   # The question is the same every time for a kind of object, whatever the button sent.
   # The texts the assistant may be asked to draft from a button (A11): the question is fixed on the server.
   WRITE_QUESTIONS = { "dunning_letter" => "Write the reminder for this customer.", "client_request" => "Write a request for the missing documents to this partner." }.freeze
-  EXPLAIN_QUESTIONS = { "R19" => "Explain this anomaly.", "R19top" => "Explain the five first open anomalies, in the order to fix them.", "I7" => "Explain this difference.", "doc" => "Prepare the entry for this document." }.freeze
+  EXPLAIN_QUESTIONS = { "R19" => "Explain this anomaly.", "R19top" => "Explain the five first open anomalies, in the order to fix them.", "I7" => "Explain this difference.", "doc" => "Prepare the entry for this document.", "entry" => "Explain this entry: who made it, when it was validated and what it changed." }.freeze
+  # What changed between two moments (B03b): the question names the two instants, read from the reference by its shape only, never as free text.
+  CHANGES_REFERENCE = /\A\d+:(?<from>\d{8}T\d{6}Z):(?<to>\d{8}T\d{6}Z|now)\z/
 
   def index
     @screen = params[:screen].to_s[SCREEN]
@@ -26,7 +28,7 @@ class Agent::ConversationsController < Agent::BaseController
     if asked
       ask_to_explain(conversation, asked)
     elsif params[:explain] == "1"
-      ask_to_explain(conversation, EXPLAIN_QUESTIONS.fetch(reference["type"], EXPLAIN_QUESTION))
+      ask_to_explain(conversation, explain_question(reference))
     end
     redirect_to agent_conversation_path(conversation), status: :see_other
   end
@@ -50,6 +52,16 @@ class Agent::ConversationsController < Agent::BaseController
   end
 
   private
+
+  def explain_question(reference)
+    return EXPLAIN_QUESTIONS.fetch(reference["type"], EXPLAIN_QUESTION) unless reference["type"] == "R21" && (moments = CHANGES_REFERENCE.match(reference["id"].to_s))
+
+    stamp = ->(text) { Time.utc(text[0, 4], text[4, 2], text[6, 2], text[9, 2], text[11, 2], text[13, 2]).iso8601 } # the Z is UTC: no local zone in it
+    to = moments[:to] == "now" ? "now" : stamp.(moments[:to])
+    "Explain what changed in the books between #{stamp.(moments[:from])} and #{to}."
+  rescue ArgumentError # a date that does not exist
+    EXPLAIN_QUESTION
+  end
 
   # The "Explain" button of a figure: the question is the same every time, whatever the button sent, and the answer is started at once. The panel shows the question and the live bubble.
   def ask_to_explain(conversation, question)

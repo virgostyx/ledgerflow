@@ -903,6 +903,40 @@ ALTER SEQUENCE public.accounting_change_reviews_id_seq OWNED BY public.accountin
 
 
 --
+-- Name: accounting_change_subscriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_change_subscriptions (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    kinds character varying[] DEFAULT '{}'::character varying[] NOT NULL,
+    last_notified_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_change_subscriptions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_change_subscriptions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_change_subscriptions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_change_subscriptions_id_seq OWNED BY public.accounting_change_subscriptions.id;
+
+
+--
 -- Name: accounting_comments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4880,7 +4914,11 @@ CREATE TABLE public.entities (
     iban_cooling_hours integer DEFAULT 24 NOT NULL,
     distinct_payment_authorizer boolean DEFAULT true NOT NULL,
     authorizer_not_bap_giver boolean DEFAULT false NOT NULL,
-    track_visits boolean DEFAULT true NOT NULL
+    track_visits boolean DEFAULT true NOT NULL,
+    changes_late_days integer DEFAULT 15 NOT NULL,
+    changes_reversals_per_author integer DEFAULT 5 NOT NULL,
+    changes_mass_import integer DEFAULT 50 NOT NULL,
+    changes_unletterings integer DEFAULT 3 NOT NULL
 );
 
 
@@ -5811,6 +5849,13 @@ ALTER TABLE ONLY public.accounting_cash_forecast_items ALTER COLUMN id SET DEFAU
 --
 
 ALTER TABLE ONLY public.accounting_change_reviews ALTER COLUMN id SET DEFAULT nextval('public.accounting_change_reviews_id_seq'::regclass);
+
+
+--
+-- Name: accounting_change_subscriptions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_change_subscriptions ALTER COLUMN id SET DEFAULT nextval('public.accounting_change_subscriptions_id_seq'::regclass);
 
 
 --
@@ -6756,6 +6801,14 @@ ALTER TABLE ONLY public.accounting_cash_forecast_items
 
 ALTER TABLE ONLY public.accounting_change_reviews
     ADD CONSTRAINT accounting_change_reviews_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_change_subscriptions accounting_change_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_change_subscriptions
+    ADD CONSTRAINT accounting_change_subscriptions_pkey PRIMARY KEY (id);
 
 
 --
@@ -8347,6 +8400,27 @@ CREATE UNIQUE INDEX index_accounting_change_reviews_on_entity_id_and_change_key 
 --
 
 CREATE INDEX index_accounting_change_reviews_on_reviewer_id ON public.accounting_change_reviews USING btree (reviewer_id);
+
+
+--
+-- Name: index_accounting_change_subscriptions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_change_subscriptions_on_entity_id ON public.accounting_change_subscriptions USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_change_subscriptions_on_entity_id_and_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounting_change_subscriptions_on_entity_id_and_user_id ON public.accounting_change_subscriptions USING btree (entity_id, user_id);
+
+
+--
+-- Name: index_accounting_change_subscriptions_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_change_subscriptions_on_user_id ON public.accounting_change_subscriptions USING btree (user_id);
 
 
 --
@@ -11629,6 +11703,14 @@ ALTER TABLE ONLY public.approval_decisions
 
 
 --
+-- Name: accounting_change_subscriptions fk_rails_223011df8f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_change_subscriptions
+    ADD CONSTRAINT fk_rails_223011df8f FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: agent_proposals fk_rails_22c62a2bda; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11906,6 +11988,14 @@ ALTER TABLE ONLY public.accounting_tasks
 
 ALTER TABLE ONLY public.accounting_journal_entry_lines
     ADD CONSTRAINT fk_rails_42f8a23db1 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
+-- Name: accounting_change_subscriptions fk_rails_4347976529; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_change_subscriptions
+    ADD CONSTRAINT fk_rails_4347976529 FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -13875,6 +13965,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261014140000'),
 ('20261014130000'),
 ('20261014120000'),
 ('20261014110000'),

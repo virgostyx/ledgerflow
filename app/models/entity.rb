@@ -64,6 +64,7 @@ class Entity < ApplicationRecord
   }.freeze
 
   validate :features_are_known
+  validates :changes_late_days, :changes_reversals_per_author, :changes_mass_import, :changes_unletterings, numericality: { only_integer: true, in: 1..1000 } # B03b: thresholds of the review alerts
   validates :iban_cooling_hours, numericality: { only_integer: true, in: 0..720 } # B01b: how long a new bank account of a supplier is observed
 
   # A flag is off unless the owner turned it on. Asking about a feature that does not exist is a bug, not a "no".

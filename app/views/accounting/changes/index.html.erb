@@ -39,6 +39,7 @@
   <% if @result %>
     <p class="mb-4 text-sm text-gray-700">
       <%= t("changes.between", from: stamp.(@result.from), to: stamp.(@result.to), as_of: l(@result.as_of)) %>
+      <%= render "agent/explain_button", subject_type: "R21", subject_id: [ @fiscal_year.id, @result.from.utc.strftime("%Y%m%dT%H%M%SZ"), (@result.to ? @result.to.utc.strftime("%Y%m%dT%H%M%SZ") : "now") ].join(":"), label: t("changes.ask"), hint: t("changes.ask_all_hint") %>
     </p>
 
     <% summary = @result.summary %>
@@ -51,6 +52,10 @@
         </div>
       <% end %>
     </dl>
+
+    <% if @result.limited %>
+      <p class="mb-4 text-sm text-gray-600"><%= t("changes.limited") %></p>
+    <% end %>
 
     <% if @result.closing.balanced? %>
       <p class="mb-4 text-sm font-medium text-green-700"><%= t("changes.closing.balanced") %></p>
@@ -77,7 +82,7 @@
     <% when "detail" %>
       <%= render "detail", result: @result, money: money, keep: keep %>
     <% else %>
-      <%= render "alerts", result: @result %>
+      <%= render "alerts", result: @result, keep: keep %>
     <% end %>
 
     <%= button_to t("changes.erase_visit"), accounting_changes_visit_path, method: :delete, class: "mt-8 text-xs text-gray-500 underline" %>

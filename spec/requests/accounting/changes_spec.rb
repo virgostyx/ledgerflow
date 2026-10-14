@@ -76,12 +76,35 @@ RSpec.describe "What changed (R21)", type: :request do
     expect(response).to have_http_status(:ok)
   end
 
+  it "never asks for what the history cannot show when T1 comes from a preset: it starts at the start of the history" do
+    Accounting::HistoryStart.where(fiscal_year_id: nil).update_all(starts_at: 1.hour.ago)
+
+    changes(preset: "yesterday_18")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("cannot be shown as they were known")
+    expect(response.body).to include("Entries added")
+  end
+
   it "refuses T1 before the start of the history, and T1 after T2 with the proposal to swap them" do
     changes(from: iso(3.days.ago), to: iso(t2))
     expect(response.body).to include("history")
 
     changes(from: iso(t2), to: iso(t1))
     expect(response.body).to include("swap")
+  end
+
+  it "alerts with the thresholds of the company" do
+    entity.update!(changes_late_days: 3)
+    from = instant
+    old = create(:journal_entry, :draft, journal: journal, fiscal_year: fiscal_year, entry_date: [ Date.current, fiscal_year.end_date ].min - 5, reference: "OLD-1", created_by_id: accountant.id)
+    ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")
+    create(:journal_entry_line, journal_entry: old, account: expense, debit: 5, credit: 0)
+    create(:journal_entry_line, journal_entry: old, account: payable, debit: 0, credit: 5)
+    old.post!
+    changes(from: iso(from), to: iso(instant), tab: "alerts")
+
+    expect(response.body).to include("Late entry")
   end
 
   it "is closed when the feature is off, and for who may not read the reports" do
@@ -110,6 +133,56 @@ RSpec.describe "What changed (R21)", type: :request do
       post accounting_changes_review_path, params: { key: "entry:#{entry.id}" }
 
       expect(Accounting::ChangeReview.count).to eq(0)
+    end
+  end
+
+  describe "the follow-up of a change" do
+    it "creates a task about the change, when tasks are on, and goes back to the detail" do
+      post accounting_changes_task_path, params: { key: "entry:#{entry.id}", fiscal_year_id: fiscal_year.id, from: iso(t1), to: iso(t2) }
+
+      expect(response).to have_http_status(:redirect)
+      expect(Accounting::Task.where(target: entry, author: accountant)).to exist
+    end
+
+    it "offers the task and the assistant on each entry of the detail" do
+      changes(from: iso(t1), to: iso(t2), tab: "detail")
+
+      expect(response.body).to include("Create a task")
+    end
+
+    it "is refused to who may not manage tasks" do
+      sign_in reader
+      post accounting_changes_task_path, params: { key: "entry:#{entry.id}" }
+
+      expect(Accounting::Task.count).to eq(0)
+    end
+
+    it "subscribes to the alerts, and ends the subscription" do
+      patch accounting_changes_subscription_path, params: { kinds: %w[late iban_change] }
+      expect(Accounting::ChangeSubscription.find_by(user: accountant).kinds).to eq(%w[late iban_change])
+
+      patch accounting_changes_subscription_path, params: { kinds: [ "" ] }
+      expect(Accounting::ChangeSubscription.where(user: accountant)).to be_empty
+    end
+
+    it "does not let a reader subscribe" do
+      sign_in reader
+      patch accounting_changes_subscription_path, params: { kinds: %w[late] }
+
+      expect(Accounting::ChangeSubscription.count).to eq(0)
+    end
+
+    it "shows the subscription on the page, and the notification in the list of notifications" do
+      Accounting::ChangeSubscription.create!(user: accountant, kinds: %w[late])
+      changes(from: iso(t1), to: iso(t2), tab: "alerts")
+      expect(response.body).to include("Tell me about")
+
+      note = Accounting::Notify.call(user: accountant, event: "changes_alerts:2026-10-14", subject: Accounting::ChangeSubscription.last, data: { message: "1 late entry", from: iso(t1) })
+      get accounting_notifications_path
+      expect(response.body).to include("Changes to review").and include("1 late entry")
+
+      post read_accounting_notification_path(note)
+      expect(response).to redirect_to(%r{/accounting/changes})
     end
   end
 

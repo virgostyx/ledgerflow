@@ -12,12 +12,12 @@ class Changes::Report
   Detail = Struct.new(:key, :category, :at, :action, :author_id, :author, :reason, :subject_type, :subject_id, :label, :amount, :neutral, :reviewed_by, :reviewed_at, :comment, :detail,
                       keyword_init: true)
   Summary = Struct.new(:entries, :reversals, :neutral_pairs, :movements, :accounts, :letterings, :unletterings, :setup_changes, :locks, :unlocks, :actors, keyword_init: true)
-  Result = Struct.new(:from, :to, :as_of, :summary, :impact, :closing, :details, :total, :alerts, :by_month, :statements, :page, :per, keyword_init: true)
+  Result = Struct.new(:from, :to, :as_of, :summary, :impact, :closing, :details, :total, :alerts, :by_month, :statements, :limited, :page, :per, keyword_init: true)
 
   def self.call(**args) = new(**args).call
 
   def initialize(fiscal_year:, from:, to: nil, as_of: nil, show_authors: false, categories: nil, journal_ids: nil, actor_ids: nil, account_codes: nil, hide_neutral: false,
-                 page: 1, per: 100, month_threshold: 300, statements: true, **thresholds)
+                 page: 1, per: 100, month_threshold: 300, statements: true, allowed_journal_ids: nil, month: nil, **thresholds)
     @fiscal_year = fiscal_year
     @from = from
     @to = to
@@ -32,7 +32,9 @@ class Changes::Report
     @per = per
     @month_threshold = month_threshold
     @statements = statements
-    @thresholds = thresholds
+    @month = month.to_s.match?(/\A\d{4}-(0[1-9]|1[0-2])\z/) ? Date.iso8601("#{month}-01") : nil # the detail of one month of a wide span
+    @allowed_journal_ids = allowed_journal_ids.presence&.map(&:to_i) # a person limited to some journals (F01): nil sees them all
+    @thresholds = Changes::Alerts.thresholds_of(ActsAsTenant.current_tenant).merge(thresholds) # the company's, unless the caller says otherwise
   end
 
   def call
@@ -41,6 +43,7 @@ class Changes::Report
     details = entry_details(between) + event_details(events)
     details = details.sort_by { |d| [ d.at, d.key ] }
     details = details.reject(&:neutral) if @hide_neutral
+    details = details.select { |d| d.at.in_time_zone.to_date.beginning_of_month == @month } if @month
     reviews = Changes::Review.reviewed(details.map(&:key))
     details.each { |d| review_of(d, reviews[d.key]) }
     names = names_of(details.map(&:author_id).compact)
@@ -48,7 +51,7 @@ class Changes::Report
 
     Result.new(from: between.from, to: between.to, as_of: between.as_of, summary: summary(between, events), impact: impact(between), closing: between.closing, total: details.size,
                details: page_of(details), alerts: alerts(between, events, names), by_month: (by_month(between) if wide?(between)), statements: (Changes::Statements.call(fiscal_year: @fiscal_year, from: between.from, to: between.to, as_of: between.as_of) if @statements),
-               page: @page, per: @per)
+               limited: @allowed_journal_ids.present?, page: @page, per: @per)
   end
 
   private
@@ -68,10 +71,11 @@ class Changes::Report
 
   # The journals and accounts asked for narrow the entries: those in the journals, with a line in the accounts.
   def allowed_entry_ids(ids)
-    return ids.to_set if ids.empty? || (@journal_ids.nil? && @account_codes.nil?)
+    return ids.to_set if ids.empty? || (@journal_ids.nil? && @account_codes.nil? && @allowed_journal_ids.nil?)
 
     scope = Accounting::JournalEntry.where(id: ids)
     scope = scope.where(journal_id: @journal_ids) if @journal_ids
+    scope = scope.where(journal_id: @allowed_journal_ids) if @allowed_journal_ids
     scope = scope.where(id: Accounting::JournalEntryLine.joins(:account).where(account_code_sql, *code_patterns).select(:journal_entry_id)) if @account_codes
     scope.pluck(:id).to_set
   end
@@ -121,13 +125,22 @@ class Changes::Report
 
   # The people named in an alert are shown to who may see them only.
   def alerts(between, events, names)
-    Changes::Alerts.call(changes: between, events: events, **@thresholds).map do |a|
+    list = Changes::Alerts.call(changes: between, events: events, **@thresholds)
+    list = hide_entries_out_of_reach(list) if @allowed_journal_ids
+    list.map do |a|
       next a if @show_authors
 
       a.detail = a.detail.except(:actor_id)
       a.subject_id = nil if a.subject_type == "User"
       a
     end
+  end
+
+  # An alert about an entry of a journal the person may not see would tell that it exists.
+  def hide_entries_out_of_reach(list)
+    ids = list.select { |a| a.subject_type == "Accounting::JournalEntry" }.map(&:subject_id)
+    visible = allowed_entry_ids(ids)
+    list.reject { |a| a.subject_type == "Accounting::JournalEntry" && !visible.include?(a.subject_id) }
   end
 
   def wide?(between) = ((between.to || Time.current) - between.from) / 1.day > @month_threshold

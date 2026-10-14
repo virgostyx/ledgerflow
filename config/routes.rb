@@ -421,6 +421,8 @@ Rails.application.routes.draw do
 
       get "changes", to: "changes#index", as: :changes # B03b: what changed between two moments
       post "changes/review", to: "changes#review", as: :changes_review
+      post "changes/task", to: "changes#task", as: :changes_task
+      patch "changes/subscription", to: "changes#subscription", as: :changes_subscription
       delete "changes/visit", to: "changes#erase_visit", as: :changes_visit
 
       namespace :reports do

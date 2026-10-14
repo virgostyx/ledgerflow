@@ -28,6 +28,28 @@ RSpec.describe "Explaining an anomaly (A08)", type: :request do
     expect { explain("I7", "9") }.to have_enqueued_job(Agent::AnswerJob).with(an_instance_of(Agent::Conversation), "Explain this difference.", "en")
   end
 
+  it "asks what changed between two moments (B03b), the instants read from the shape of the reference only" do
+    expect { explain("R21", "1:20261014T060000Z:20261014T180000Z") }.to have_enqueued_job(Agent::AnswerJob)
+      .with(an_instance_of(Agent::Conversation), "Explain what changed in the books between 2026-10-14T06:00:00Z and 2026-10-14T18:00:00Z.", "en")
+  end
+
+  it "asks what changed since a moment, up to now" do
+    expect { explain("R21", "1:20261014T060000Z:now") }.to have_enqueued_job(Agent::AnswerJob)
+      .with(an_instance_of(Agent::Conversation), "Explain what changed in the books between 2026-10-14T06:00:00Z and now.", "en")
+  end
+
+  it "asks the plain question, never a text of the page, when the reference of a change is not shaped like one" do
+    expect { explain("R21", "1:not-a-moment:now") }.to have_enqueued_job(Agent::AnswerJob).with(an_instance_of(Agent::Conversation), "Explain this figure.", "en")
+  end
+
+  it "asks the plain question for a moment that does not exist" do
+    expect { explain("R21", "1:20261340T256100Z:now") }.to have_enqueued_job(Agent::AnswerJob).with(an_instance_of(Agent::Conversation), "Explain this figure.", "en")
+  end
+
+  it "asks to explain an entry" do
+    expect { explain("entry", "7") }.to have_enqueued_job(Agent::AnswerJob).with(an_instance_of(Agent::Conversation), a_string_starting_with("Explain this entry"), "en")
+  end
+
   it "shows an Explain button on each anomaly of the list and one for the first five" do
     entry = create(:journal_entry, journal: create(:journal, :purchase), fiscal_year: fiscal_year, entry_date: fiscal_year.start_date + 3, status: :draft, reference: nil, description: "X")
     ApplicationRecord.connection.execute("SET CONSTRAINTS enforce_double_entry DEFERRED")

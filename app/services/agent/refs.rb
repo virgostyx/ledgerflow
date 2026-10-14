@@ -19,6 +19,7 @@ module Agent::Refs
     "R07"     => ->(routes, fiscal_year, *)            { routes.accounting_reports_balance_sheet_path(fiscal_year_id: fiscal_year) },
     "R08"     => ->(routes, fiscal_year, *)            { routes.accounting_reports_income_statement_path(fiscal_year_id: fiscal_year) },
     "R09"     => ->(routes, *)                         { routes.accounting_vat_declarations_path },
+    "R21"     => ->(routes, fiscal_year, from, *)      { routes.accounting_changes_path(fiscal_year_id: fiscal_year, from: Time.at(from.to_i).utc.iso8601) },
     "R19"     => ->(routes, *)             { routes.accounting_consistency_runs_path },
     "kpi"     => ->(routes, *)             { routes.accounting_root_path }
   }.freeze
