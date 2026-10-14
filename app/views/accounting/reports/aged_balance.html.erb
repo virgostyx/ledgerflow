@@ -9,6 +9,7 @@
 <% t_ab = ->(key, **opts) { t("accounting.reports.aged_balance.#{key}", **opts) } %>
 
 <div class="mx-auto max-w-7xl px-4 py-8">
+  <%= render "accounting/reports/historical_view", path: accounting_reports_aged_balance_path, hidden: { kind: @kind, as_of: @as_of } %>
   <div class="mb-6 flex items-center justify-between">
     <h1 class="text-2xl font-bold text-gray-900"><%= t_ab.(:title) %></h1>
     <%= link_to t("accounting.reports.export_csv"),
@@ -24,6 +25,7 @@
   <% end %>
 
   <%= form_with url: accounting_reports_aged_balance_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
+    <% historical_params.each do |key, value| %><%= hidden_field_tag key, value %><% end %>
     <div>
       <%= f.label :kind, t_ab.(:kind), class: "block text-sm font-medium text-gray-700" %>
       <%= f.select :kind, [ [ t_ab.(:customer), "customer" ], [ t_ab.(:supplier), "supplier" ] ], { selected: @kind }, class: "mt-1 form-input" %>

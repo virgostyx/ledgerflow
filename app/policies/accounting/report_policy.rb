@@ -1,6 +1,7 @@
 class Accounting::ReportPolicy < ApplicationPolicy
   def export? = can_export?
   def export_readonly? = can?("reports.export_readonly")
+  def time_travel? = can?("time_travel.view") && can?("reports.view") # B03a: never more than the usual right to read
 
   def trial_balance?    = can?("reports.view")
   def balance_sheet?    = trial_balance?

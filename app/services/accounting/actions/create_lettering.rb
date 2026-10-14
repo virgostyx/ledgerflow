@@ -20,6 +20,6 @@ class Accounting::Actions::CreateLettering
     ids = ctx.lines.map(&:id)
     Accounting::JournalEntryLine.where(id: ids).update_all(lettering_id: ctx.lettering.id)
     Accounting::JournalEntryLine.resync_amount_residual!(ids)
-    Accounting::LetteringEvent.record!(lines: ctx.lines, action: "letter", code: ctx.lettering.code, user: ctx[:user], auto: ctx[:auto] || false, reason: (ctx[:reason] if cross))
+    Accounting::LetteringEvent.record!(lines: ctx.lines, action: "letter", code: ctx.lettering.code, user: ctx[:user], auto: ctx[:auto] || false, reason: (ctx[:reason] if cross), lettered_on: ctx.lettering.lettered_on)
   end
 end

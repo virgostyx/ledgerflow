@@ -5,26 +5,27 @@ class Agent::Tools::GetVatReturn < Agent::Tools::Base
               "Use it to say what VAT is due or recoverable for a month or a quarter, or what is in a grid. " \
               "Do not use it to prepare or file a return (the agent cannot), or for the balance of the VAT accounts (use get_trial_balance with prefix 45 or 41)."
   permission "reports.view"
-  tool_version 1
+  tool_version 2
   input_schema type: "object", additionalProperties: false, required: %w[period_start period_end],
                properties: { period_start: { type: "string", format: "date", description: "First day of the period, YYYY-MM-DD." },
                              period_end: { type: "string", format: "date", description: "Last day of the period, YYYY-MM-DD." },
-                             fiscal_year: { type: "integer", minimum: 1900, maximum: 2200, description: "The fiscal year, by its year number (default: the one holding the period)." } }
+                             fiscal_year: { type: "integer", minimum: 1900, maximum: 2200, description: "The fiscal year, by its year number (default: the one holding the period)." } }.merge(KNOWN_AT_PROPERTY)
   classify "data.*.grid" => :public_ref
 
-  def call(args, _context)
+  def call(args, context)
     from, to = Date.iso8601(args["period_start"]), Date.iso8601(args["period_end"])
     raise Agent::ToolError.new("invalid_arguments", "period_start must not be after period_end.") if from > to
 
     year = args["fiscal_year"] ? fiscal_year_from(args) : (Accounting::FiscalYear.where("start_date <= ? AND end_date >= ?", from, from).first || fiscal_year_from({}))
-    grids = Accounting::VatGridQuery.call(fiscal_year_id: year.id, period_start: from, period_end: to)
+    known = known_at_arg(args, context, fiscal_year: year)
+    grids = Accounting::VatGridQuery.call(fiscal_year_id: year.id, period_start: from, period_end: to, known_at: known)
     ref = Agent::Refs.build("R09", year.id, "#{from.iso8601}..#{to.iso8601}")
     Agent::ToolResult.build(
       data: grids.map { |grid, amount| { "grid" => grid, "amount" => money(amount), "ref" => ref } },
       totals: { "declarations" => declarations(year, from, to), "ref" => ref },
       currency: "EUR", as_of: to,
-      filters_applied: { "fiscal_year" => year.year, "period_start" => from.iso8601, "period_end" => to.iso8601, "entries" => "validated only" },
-      warnings: grids.empty? ? [ "No VAT movement in this period." ] : []
+      filters_applied: { "fiscal_year" => year.year, "period_start" => from.iso8601, "period_end" => to.iso8601, "entries" => "validated only", "known_at" => known&.time&.utc&.iso8601 }.compact,
+      warnings: known_at_notes(known) + (grids.empty? ? [ "No VAT movement in this period." ] : [])
     )
   end
 

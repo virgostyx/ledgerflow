@@ -6,6 +6,7 @@
   ]) %>
 <% end %>
 
+<%= render "accounting/reports/historical_view", path: accounting_reports_annual_accounts_path, hidden: { fiscal_year_id: @report.fiscal_year.id, view: params[:view] } %>
 <%= render Ui::PageHeaderComponent.new(title: "Annual accounts #{@report.fiscal_year.year}",
       description: 'Balance sheet and income statement by legal heading, following the abridged model for companies (BNB codes).') do |header| %>
   <% header.with_actions do %>

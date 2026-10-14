@@ -32,6 +32,7 @@ module Permissions
     "payments.export"        => %i[admin accountant],           # produce the payment file; a recent second factor is needed (B01b)
     "payments.confirm"       => %i[admin accountant],           # say the batch was loaded in the bank, and confirm the payments (B01b, B01c)
     "bank_accounts.verify"   => %i[admin accountant],           # verify the bank account of a supplier, after calling them; block one (B01b)
+    "time_travel.view"       => %i[admin accountant assistant manager auditor], # read the reports as the books were known at a past instant; never more than the usual right to read (B03a)
     "closing.prepare"        => %i[admin accountant],           # run the closing steps, validate the closing entries (F10)
     "closing.approve"        => %i[admin],                      # approve a closing, reopen a closed year: the owner (F10)
     "rates.override"         => %i[admin accountant],           # type an exchange rate by hand, or use one other than the official one (F11)

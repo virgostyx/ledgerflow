@@ -3,18 +3,24 @@
 # AgedBalanceQuery via Accounting::OpenLineSql, so subtotals per partner always match
 # R04's total for that partner (critère d'acceptation #4).
 class Accounting::UnletteredLinesQuery
+  include Accounting::HistoricalCaching
+
   Row = Struct.new(:line_id, :account_id, :account_code, :partner_id, :partner_name, :entry_date, :journal_code,
                     :reference, :due_date, :debit, :credit, :residual, :age_days, :lettering_code, :journal_entry_id, keyword_init: true)
   Group = Struct.new(:partner_id, :partner_name, :account_id, :account_code, :lines, keyword_init: true)
 
-  def initialize(kind:, as_of: Date.current, min_age_days: nil)
+  # known_at (B03a): as known at that instant (a Time or an Accounting::KnownAt).
+  def initialize(kind:, as_of: Date.current, min_age_days: nil, known_at: nil)
     @kind         = kind.to_sym
     @as_of        = as_of
     @min_age_days = min_age_days
+    @known_at     = Accounting::KnownAt.wrap(known_at).ensure_viewable!
   end
 
   def call
-    kinds.flat_map { |k| rows_for(k) }.sort_by { |r| [ r.partner_name.to_s, r.entry_date ] }
+    cached do
+      kinds.flat_map { |k| rows_for(k) }.sort_by { |r| [ r.partner_name.to_s, r.entry_date ] }
+    end
   end
 
   # Tiers dont les lignes ouvertes se soldent à zéro sans être lettrées — candidats à
@@ -31,10 +37,12 @@ class Accounting::UnletteredLinesQuery
 
   private
 
+  def cache_parts = { kind: @kind, as_of: @as_of, min_age: @min_age_days }
+
   def kinds = @kind == :both ? %i[customer supplier] : [ @kind ]
 
   def rows_for(kind)
-    Accounting::JournalEntryLine
+    @known_at.restrict(Accounting::JournalEntryLine, table: "e")
       .joins("JOIN accounting_journal_entries e ON e.id = accounting_journal_entry_lines.journal_entry_id")
       .joins("JOIN accounting_journals j ON j.id = e.journal_id")
       .joins("JOIN accounting_accounts a ON a.id = accounting_journal_entry_lines.account_id")
@@ -43,14 +51,14 @@ class Accounting::UnletteredLinesQuery
       .joins("LEFT JOIN accounting_letterings lt ON lt.id = accounting_journal_entry_lines.lettering_id")
       .where("e.status IN (?) AND e.entry_date <= ?", Accounting::JournalEntry.ledger_status_values, @as_of)
       .where("a.code LIKE ? AND a.reconcilable", Accounting::OpenLineSql::PREFIX.fetch(kind))
-      .where(Accounting::OpenLineSql.carried_forward_sql(@as_of))
+      .where(Accounting::OpenLineSql.carried_forward_sql(@as_of, known_at: @known_at))
       .pluck(
         Arel.sql("accounting_journal_entry_lines.id"), Arel.sql("a.id"), Arel.sql("a.code"),
-        Arel.sql("p.id"), Arel.sql("p.name"), Arel.sql("e.entry_date"), Arel.sql("j.code"),
+        Arel.sql("p.id"), Arel.sql(Accounting::MasterData.partner_name_sql(@known_at)), Arel.sql("e.entry_date"), Arel.sql("j.code"),
         Arel.sql("e.reference"), Arel.sql(Accounting::OpenLineSql.due_date),
         Arel.sql("accounting_journal_entry_lines.debit"), Arel.sql("accounting_journal_entry_lines.credit"),
-        Arel.sql("(#{Accounting::OpenLineSql.residual(kind: kind, as_of: @as_of)})"),
-        Arel.sql("lt.code"), Arel.sql("e.id")
+        Arel.sql("(#{Accounting::OpenLineSql.residual(kind: kind, as_of: @as_of, known_at: @known_at)})"),
+        Arel.sql(@known_at.current? ? "lt.code" : "NULL"), Arel.sql("e.id")
       )
       .filter_map do |line_id, account_id, account_code, partner_id, partner_name, entry_date, journal_code,
                        reference, due_date, debit, credit, residual, lettering_code, journal_entry_id|

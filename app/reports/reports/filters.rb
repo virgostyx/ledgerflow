@@ -15,6 +15,7 @@ class Reports::Filters
   attribute :partner_id, :integer
   attribute :include_drafts, :boolean, default: false
   attribute :comparative, :string
+  attribute :known_at, :datetime # B03a: the books as they were known at that instant (nil: today)
 
   validate :date_from_before_date_to
 

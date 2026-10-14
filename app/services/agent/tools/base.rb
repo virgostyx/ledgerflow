@@ -39,6 +39,9 @@ class Agent::Tools::Base
 
   def call(_args, _context) = raise(NotImplementedError)
 
+  # B03a: the argument a report tool takes to read the books as they were known at a past instant.
+  KNOWN_AT_PROPERTY = { known_at: { type: "string", maxLength: 40, description: "Books as known at this instant (ISO 8601 with offset). Read only; say \"state known at\" it." } }.freeze
+
   private
 
   # Rows of a relation (or an array) from the cursor, and the cursor of the page after, or nil at the end.
@@ -54,6 +57,20 @@ class Agent::Tools::Base
     found = year ? Accounting::FiscalYear.find_by(year: year) : (Accounting::FiscalYear.current || Accounting::FiscalYear.order(:year).last)
     found || raise(Agent::ToolError.new("not_found", year ? "There is no fiscal year #{year} for this entity." : "This entity has no fiscal year yet."))
   end
+
+  # The instant asked for (an Accounting::KnownAt), nil for today's view. It needs the feature and the right to look at the past, and it is refused before the start of the history.
+  def known_at_arg(args, context, fiscal_year: nil)
+    return nil unless args["known_at"]
+    raise Agent::ToolError.new("forbidden", "The historical view is not available for this entity or this person.") unless context.entity.feature?(:b03a) && context.allows?("time_travel.view")
+
+    known = Accounting::KnownAt.wrap(Accounting::KnownAt.parse(args["known_at"]), fiscal_year: fiscal_year).ensure_viewable!
+    known.current? ? nil : known
+  rescue Accounting::KnownAt::Invalid, Accounting::KnownAt::Refused => e
+    raise Agent::ToolError.new("invalid_arguments", e.message)
+  end
+
+  # What the answer must say when it rests on a past instant.
+  def known_at_notes(known) = known ? [ "State known at #{known.time.utc.iso8601}: the books as they were then, not as they are today." ] : []
 
   def date_arg(args, key, default) = args[key] ? Date.iso8601(args[key]) : default
 

@@ -9,6 +9,7 @@ class ApplicationController < ActionController::Base
   before_action :set_locale
   before_action :set_current_entity
   before_action :require_entity!
+  before_action :refuse_changes_in_historical_view!
 
   include Pundit::Authorization
   include Pagy::Backend
@@ -18,6 +19,13 @@ class ApplicationController < ActionController::Base
   helper_method :filter_params, :filters_active?, :autofilter_params, :budgetflow_enabled?, :feature?
 
   private
+
+  # B03a: while an instant is given, nothing is written, whatever the screen.
+  def refuse_changes_in_historical_view!
+    return if request.get? || request.head? || (request.query_parameters["known_at"].blank? && request.headers["X-Known-At"].blank?) # the query only: the body may not be parsable yet
+
+    render plain: "historical_view: #{t('accounting.known_at.historical_view')}", status: :conflict
+  end
 
   # Who / where / which request, read by the audit trail (Accounting::AuditLog.record!).
   def set_audit_context

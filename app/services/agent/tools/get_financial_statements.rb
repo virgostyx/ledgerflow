@@ -5,25 +5,26 @@ class Agent::Tools::GetFinancialStatements < Agent::Tools::Base
               "Use it to compare years, to read the result, the equity or the structure of the balance sheet. Validated entries only. " \
               "Do not use it for an account's balance (use get_trial_balance) or for the lines behind a figure (use get_ledger)."
   permission "reports.view"
-  tool_version 1
+  tool_version 2
   input_schema type: "object", additionalProperties: false, required: %w[statement],
                properties: { statement: { type: "string", enum: %w[assets liabilities income], description: "assets and liabilities make the balance sheet." },
                              fiscal_year: { type: "integer", minimum: 1900, maximum: 2200, description: "The fiscal year, by its year number (default: the current one)." },
-                             as_of: { type: "string", format: "date", description: "A situation inside the year, at this date (default: the whole year)." } }.merge(paging(max: 100))
+                             as_of: { type: "string", format: "date", description: "A situation inside the year, at this date (default: the whole year)." } }.merge(paging(max: 100)).merge(KNOWN_AT_PROPERTY)
   classify "data.*.label" => :public_ref, "data.*.code" => :public_ref
 
-  def call(args, _context)
+  def call(args, context)
     year = fiscal_year_from(args)
+    known = known_at_arg(args, context, fiscal_year: year)
     statement = args["statement"].to_sym
-    report = Accounting::AnnualAccounts.new(fiscal_year: year, as_of: (Date.iso8601(args["as_of"]) if args["as_of"])).call
+    report = Accounting::AnnualAccounts.new(fiscal_year: year, as_of: (Date.iso8601(args["as_of"]) if args["as_of"]), known_at: known).call
     rows, next_cursor = page(report.rows(statement), args, default: 60, max: 100)
     ref = Agent::Refs.build(statement == :income ? "R08" : "R07", year.id)
     Agent::ToolResult.build(
       data: rows.map { |row| row_for(row, ref) },
       totals: { "balance_sheet_difference" => money(report.difference), "balanced" => report.balanced?.to_s, "ref" => ref },
       currency: "EUR", as_of: args["as_of"] ? Date.iso8601(args["as_of"]) : year.end_date, next_cursor: next_cursor,
-      filters_applied: { "statement" => args["statement"], "fiscal_year" => year.year, "previous_fiscal_year" => report.previous_year&.year, "as_of" => args["as_of"], "entries" => "validated only" }.compact,
-      warnings: warnings(report, year)
+      filters_applied: { "statement" => args["statement"], "fiscal_year" => year.year, "previous_fiscal_year" => report.previous_year&.year, "as_of" => args["as_of"], "entries" => "validated only", "known_at" => known&.time&.utc&.iso8601 }.compact,
+      warnings: known_at_notes(known) + warnings(report, year)
     )
   end
 

@@ -21,7 +21,7 @@ class Accounting::UnletterLines
 
       reopen_invoices(lettering)
       Accounting::LineAllocation.touching(line_ids).destroy_all
-      Accounting::LetteringEvent.record!(lines: lines, action: "unletter", code: lettering.code, user: user, auto: false, reason: reason)
+      Accounting::LetteringEvent.record!(lines: lines, action: "unletter", code: lettering.code, user: user, auto: false, reason: reason, lettered_on: lettering.lettered_on)
       fx_entries = Accounting::JournalEntry.where(lettering_id: lettering.id).to_a
       lettering.destroy!
       Accounting::JournalEntryLine.resync_amount_residual!(line_ids)

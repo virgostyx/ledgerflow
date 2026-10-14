@@ -142,6 +142,17 @@ en:
     not_found:           "Entity not found."
 
   accounting:
+    known_at:
+      invalid: "That is not an instant: give a date and a time, for example 2026-01-15 09:30."
+      ambiguous: "That local time exists twice, or not at all, because of the change of hour: add the offset from UTC, for example 2026-10-25T02:30+01:00."
+      historical_view: "Historical view: nothing can be changed while looking at the books as they were known."
+      not_available: "The historical view is not available on this report yet."
+      banner: "Historical view — books as known on %{at}. Read only."
+      back_to_today: "Back to today"
+      watermark: "Historical view at %{at}"
+      selector_label: "Historical view"
+      selector_apply: "Show"
+      before_history: "The books cannot be shown as they were known before %{start}: the history is not guaranteed before that."
     tasks:
       created: "Task created."
       updated: "Task updated."

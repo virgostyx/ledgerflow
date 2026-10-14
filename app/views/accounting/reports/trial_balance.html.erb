@@ -7,26 +7,28 @@
 <% end %>
 
 <div class="mx-auto max-w-7xl px-4 py-8">
+  <%= render "accounting/reports/historical_view", path: accounting_reports_trial_balance_path, hidden: { fiscal_year_id: @fiscal_year.id, as_of: @as_of, comparative: params[:comparative] } %>
   <div class="mb-6 flex items-center justify-between">
     <h1 class="text-2xl font-bold text-gray-900"><%= t("accounting.reports.trial_balance.title") %></h1>
     <div class="flex gap-2">
       <%= link_to t("accounting.reports.export_csv"),
             accounting_reports_trial_balance_path(fiscal_year_id: @fiscal_year.id,
-                                                  as_of: @as_of, comparative: params[:comparative], format: :csv),
+                                                  as_of: @as_of, comparative: params[:comparative], format: :csv, **historical_params),
             class: "btn-secondary text-sm" %>
       <%= link_to t("accounting.reports.export_xlsx"),
             accounting_reports_trial_balance_path(fiscal_year_id: @fiscal_year.id,
-                                                  as_of: @as_of, comparative: params[:comparative], format: :xlsx),
+                                                  as_of: @as_of, comparative: params[:comparative], format: :xlsx, **historical_params),
             class: "btn-secondary text-sm" %>
       <%= link_to "PDF",
             accounting_reports_trial_balance_path(fiscal_year_id: @fiscal_year.id,
-                                                  as_of: @as_of, comparative: params[:comparative], format: :pdf),
+                                                  as_of: @as_of, comparative: params[:comparative], format: :pdf, **historical_params),
             class: "btn-secondary text-sm" %>
     </div>
   </div>
 
   <%= form_with url: accounting_reports_trial_balance_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
     <%= hidden_field_tag :fiscal_year_id, @fiscal_year.id %>
+    <% historical_params.each do |key, value| %><%= hidden_field_tag key, value %><% end %>
     <div>
       <%= f.label :as_of, t("accounting.reports.trial_balance.as_of"), class: "block text-sm font-medium text-gray-700" %>
       <%= f.date_field :as_of, value: @as_of, class: "mt-1 form-input" %>

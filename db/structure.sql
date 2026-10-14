@@ -105,6 +105,20 @@ $$;
 
 
 --
+-- Name: date_lettering_event(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.date_lettering_event() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.created_at := clock_timestamp() AT TIME ZONE 'UTC';
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: enforce_double_entry_check(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -213,6 +227,19 @@ $_$;
 
 
 --
+-- Name: prevent_allocation_version_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.prevent_allocation_version_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RAISE EXCEPTION 'the history of the allocations is never changed' USING ERRCODE = 'raise_exception';
+END;
+$$;
+
+
+--
 -- Name: prevent_audit_log_modification(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -234,6 +261,74 @@ CREATE FUNCTION public.prevent_bank_reconciliation_report_modification() RETURNS
     AS $$
 BEGIN
   RAISE EXCEPTION 'accounting_bank_reconciliation_reports are immutable';
+END;
+$$;
+
+
+--
+-- Name: prevent_master_data_version_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.prevent_master_data_version_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RAISE EXCEPTION 'a version of the reference data is never changed' USING ERRCODE = 'raise_exception';
+END;
+$$;
+
+
+--
+-- Name: record_allocation_version(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.record_allocation_version() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP IN ('UPDATE', 'DELETE') THEN
+    INSERT INTO accounting_allocation_versions (entity_id, allocation_id, debit_line_id, credit_line_id, amount, allocated_on, action, at)
+    VALUES (OLD.entity_id, OLD.id, OLD.debit_line_id, OLD.credit_line_id, OLD.amount, OLD.allocated_on, 'remove', clock_timestamp() AT TIME ZONE 'UTC');
+  END IF;
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN
+    INSERT INTO accounting_allocation_versions (entity_id, allocation_id, debit_line_id, credit_line_id, amount, allocated_on, action, at)
+    VALUES (NEW.entity_id, NEW.id, NEW.debit_line_id, NEW.credit_line_id, NEW.amount, NEW.allocated_on, 'add', clock_timestamp() AT TIME ZONE 'UTC');
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+
+--
+-- Name: version_accounts(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.version_accounts() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'INSERT' OR NEW.code IS DISTINCT FROM OLD.code OR NEW.label_fr IS DISTINCT FROM OLD.label_fr OR NEW.label_nl IS DISTINCT FROM OLD.label_nl OR NEW.account_class IS DISTINCT FROM OLD.account_class OR NEW.account_type IS DISTINCT FROM OLD.account_type OR NEW.normal_balance IS DISTINCT FROM OLD.normal_balance OR NEW.currency IS DISTINCT FROM OLD.currency THEN
+    INSERT INTO accounting_master_data_versions (entity_id, record_type, record_id, attrs, valid_from)
+    VALUES (NEW.entity_id, 'Accounting::Account', NEW.id, jsonb_build_object('code', NEW.code, 'label_fr', NEW.label_fr, 'label_nl', NEW.label_nl, 'account_class', NEW.account_class, 'account_type', NEW.account_type, 'normal_balance', NEW.normal_balance, 'currency', NEW.currency), clock_timestamp() AT TIME ZONE 'UTC');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: version_partners(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.version_partners() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'INSERT' OR NEW.name IS DISTINCT FROM OLD.name OR NEW.vat_number IS DISTINCT FROM OLD.vat_number OR NEW.partner_type IS DISTINCT FROM OLD.partner_type THEN
+    INSERT INTO accounting_master_data_versions (entity_id, record_type, record_id, attrs, valid_from)
+    VALUES (NEW.entity_id, 'Accounting::Partner', NEW.id, jsonb_build_object('name', NEW.name, 'vat_number', NEW.vat_number, 'partner_type', NEW.partner_type), clock_timestamp() AT TIME ZONE 'UTC');
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
@@ -335,6 +430,42 @@ CREATE SEQUENCE public.accounting_accruals_id_seq
 --
 
 ALTER SEQUENCE public.accounting_accruals_id_seq OWNED BY public.accounting_accruals.id;
+
+
+--
+-- Name: accounting_allocation_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_allocation_versions (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    allocation_id bigint NOT NULL,
+    debit_line_id bigint NOT NULL,
+    credit_line_id bigint NOT NULL,
+    amount numeric(15,2) NOT NULL,
+    allocated_on date NOT NULL,
+    action character varying NOT NULL,
+    at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_allocation_versions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_allocation_versions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_allocation_versions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_allocation_versions_id_seq OWNED BY public.accounting_allocation_versions.id;
 
 
 --
@@ -1246,6 +1377,40 @@ ALTER SEQUENCE public.accounting_fixed_assets_id_seq OWNED BY public.accounting_
 
 
 --
+-- Name: accounting_history_starts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_history_starts (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    fiscal_year_id bigint,
+    starts_at timestamp(6) without time zone NOT NULL,
+    reason character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_history_starts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_history_starts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_history_starts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_history_starts_id_seq OWNED BY public.accounting_history_starts.id;
+
+
+--
 -- Name: accounting_import_batches; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1750,7 +1915,8 @@ CREATE TABLE public.accounting_lettering_events (
     auto boolean DEFAULT false NOT NULL,
     reason character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    lettered_on date
 );
 
 
@@ -1921,6 +2087,39 @@ CREATE SEQUENCE public.accounting_line_allocations_id_seq
 --
 
 ALTER SEQUENCE public.accounting_line_allocations_id_seq OWNED BY public.accounting_line_allocations.id;
+
+
+--
+-- Name: accounting_master_data_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_master_data_versions (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    record_type character varying NOT NULL,
+    record_id bigint NOT NULL,
+    attrs jsonb NOT NULL,
+    valid_from timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_master_data_versions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_master_data_versions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_master_data_versions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_master_data_versions_id_seq OWNED BY public.accounting_master_data_versions.id;
 
 
 --
@@ -5462,6 +5661,13 @@ ALTER TABLE ONLY public.accounting_accruals ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: accounting_allocation_versions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_allocation_versions ALTER COLUMN id SET DEFAULT nextval('public.accounting_allocation_versions_id_seq'::regclass);
+
+
+--
 -- Name: accounting_analytical_accounts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5623,6 +5829,13 @@ ALTER TABLE ONLY public.accounting_fixed_assets ALTER COLUMN id SET DEFAULT next
 
 
 --
+-- Name: accounting_history_starts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_history_starts ALTER COLUMN id SET DEFAULT nextval('public.accounting_history_starts_id_seq'::regclass);
+
+
+--
 -- Name: accounting_import_batches id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5732,6 +5945,13 @@ ALTER TABLE ONLY public.accounting_letterings ALTER COLUMN id SET DEFAULT nextva
 --
 
 ALTER TABLE ONLY public.accounting_line_allocations ALTER COLUMN id SET DEFAULT nextval('public.accounting_line_allocations_id_seq'::regclass);
+
+
+--
+-- Name: accounting_master_data_versions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_master_data_versions ALTER COLUMN id SET DEFAULT nextval('public.accounting_master_data_versions_id_seq'::regclass);
 
 
 --
@@ -6360,6 +6580,14 @@ ALTER TABLE ONLY public.accounting_accruals
 
 
 --
+-- Name: accounting_allocation_versions accounting_allocation_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_allocation_versions
+    ADD CONSTRAINT accounting_allocation_versions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_analytical_accounts accounting_analytical_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6544,6 +6772,14 @@ ALTER TABLE ONLY public.accounting_fixed_assets
 
 
 --
+-- Name: accounting_history_starts accounting_history_starts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_history_starts
+    ADD CONSTRAINT accounting_history_starts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_import_batches accounting_import_batches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6669,6 +6905,14 @@ ALTER TABLE ONLY public.accounting_letterings
 
 ALTER TABLE ONLY public.accounting_line_allocations
     ADD CONSTRAINT accounting_line_allocations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_master_data_versions accounting_master_data_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_master_data_versions
+    ADD CONSTRAINT accounting_master_data_versions_pkey PRIMARY KEY (id);
 
 
 --
@@ -7776,6 +8020,27 @@ CREATE INDEX index_accounting_accruals_on_fiscal_year_id ON public.accounting_ac
 
 
 --
+-- Name: index_accounting_allocation_versions_on_allocation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_allocation_versions_on_allocation_id ON public.accounting_allocation_versions USING btree (allocation_id);
+
+
+--
+-- Name: index_accounting_allocation_versions_on_credit_line_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_allocation_versions_on_credit_line_id ON public.accounting_allocation_versions USING btree (credit_line_id);
+
+
+--
+-- Name: index_accounting_allocation_versions_on_debit_line_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_allocation_versions_on_debit_line_id ON public.accounting_allocation_versions USING btree (debit_line_id);
+
+
+--
 -- Name: index_accounting_analytical_accounts_on_analytical_axis_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8214,6 +8479,20 @@ CREATE INDEX index_accounting_fixed_assets_on_invoice_line_id ON public.accounti
 --
 
 CREATE UNIQUE INDEX index_accounting_fixed_assets_on_invoice_line_id_unique ON public.accounting_fixed_assets USING btree (invoice_line_id) WHERE (invoice_line_id IS NOT NULL);
+
+
+--
+-- Name: index_accounting_history_starts_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_history_starts_on_entity_id ON public.accounting_history_starts USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_history_starts_on_fiscal_year_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_history_starts_on_fiscal_year_id ON public.accounting_history_starts USING btree (fiscal_year_id);
 
 
 --
@@ -8746,6 +9025,13 @@ CREATE INDEX index_accounting_line_allocations_on_debit_line_id ON public.accoun
 --
 
 CREATE INDEX index_accounting_line_allocations_on_entity_id ON public.accounting_line_allocations USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_master_data_versions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_master_data_versions_on_entity_id ON public.accounting_master_data_versions USING btree (entity_id);
 
 
 --
@@ -10177,10 +10463,31 @@ CREATE UNIQUE INDEX index_entities_on_vat_number_unique ON public.entities USING
 
 
 --
+-- Name: index_entries_on_entity_and_posted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_entity_and_posted_at ON public.accounting_journal_entries USING btree (entity_id, posted_at) WHERE (posted_seq IS NOT NULL);
+
+
+--
 -- Name: index_entries_on_entity_and_posted_seq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX index_entries_on_entity_and_posted_seq ON public.accounting_journal_entries USING btree (entity_id, posted_seq) WHERE (posted_seq IS NOT NULL);
+
+
+--
+-- Name: index_history_starts_on_entity_alone; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_history_starts_on_entity_alone ON public.accounting_history_starts USING btree (entity_id) WHERE (fiscal_year_id IS NULL);
+
+
+--
+-- Name: index_history_starts_on_entity_and_year; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_history_starts_on_entity_and_year ON public.accounting_history_starts USING btree (entity_id, fiscal_year_id) WHERE (fiscal_year_id IS NOT NULL);
 
 
 --
@@ -10286,6 +10593,20 @@ CREATE INDEX index_knowledge_gaps_on_message_id ON public.knowledge_gaps USING b
 --
 
 CREATE INDEX index_knowledge_gaps_on_user_id ON public.knowledge_gaps USING btree (user_id);
+
+
+--
+-- Name: index_lettering_events_on_line_and_instant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lettering_events_on_line_and_instant ON public.accounting_lettering_events USING btree (line_id, created_at);
+
+
+--
+-- Name: index_master_data_versions_on_record_and_instant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_master_data_versions_on_record_and_instant ON public.accounting_master_data_versions USING btree (record_type, record_id, valid_from);
 
 
 --
@@ -10730,6 +11051,13 @@ CREATE TRIGGER assign_entry_posting BEFORE INSERT OR UPDATE ON public.accounting
 
 
 --
+-- Name: accounting_lettering_events date_lettering_event; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER date_lettering_event BEFORE INSERT ON public.accounting_lettering_events FOR EACH ROW EXECUTE FUNCTION public.date_lettering_event();
+
+
+--
 -- Name: accounting_audit_logs enforce_audit_log_immutability; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -10762,6 +11090,41 @@ CREATE TRIGGER enforce_period_lock_entries BEFORE INSERT OR DELETE OR UPDATE ON 
 --
 
 CREATE TRIGGER enforce_period_lock_lines BEFORE INSERT OR DELETE OR UPDATE ON public.accounting_journal_entry_lines FOR EACH ROW EXECUTE FUNCTION public.enforce_period_lock_on_lines();
+
+
+--
+-- Name: accounting_allocation_versions prevent_allocation_version_change; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER prevent_allocation_version_change BEFORE DELETE OR UPDATE ON public.accounting_allocation_versions FOR EACH ROW EXECUTE FUNCTION public.prevent_allocation_version_change();
+
+
+--
+-- Name: accounting_master_data_versions prevent_master_data_version_change; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER prevent_master_data_version_change BEFORE DELETE OR UPDATE ON public.accounting_master_data_versions FOR EACH ROW EXECUTE FUNCTION public.prevent_master_data_version_change();
+
+
+--
+-- Name: accounting_line_allocations record_allocation_version; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER record_allocation_version AFTER INSERT OR DELETE OR UPDATE ON public.accounting_line_allocations FOR EACH ROW EXECUTE FUNCTION public.record_allocation_version();
+
+
+--
+-- Name: accounting_accounts version_accounts; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER version_accounts AFTER INSERT OR UPDATE ON public.accounting_accounts FOR EACH ROW EXECUTE FUNCTION public.version_accounts();
+
+
+--
+-- Name: accounting_partners version_partners; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER version_partners AFTER INSERT OR UPDATE ON public.accounting_partners FOR EACH ROW EXECUTE FUNCTION public.version_partners();
 
 
 --
@@ -11677,6 +12040,14 @@ ALTER TABLE ONLY public.accounting_documents
 
 
 --
+-- Name: accounting_history_starts fk_rails_60081a3a03; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_history_starts
+    ADD CONSTRAINT fk_rails_60081a3a03 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: payment_batches fk_rails_63106b2dbb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11906,6 +12277,14 @@ ALTER TABLE ONLY public.accounting_comments
 
 ALTER TABLE ONLY public.knowledge_documents
     ADD CONSTRAINT fk_rails_785836c099 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_history_starts fk_rails_79323c9dbc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_history_starts
+    ADD CONSTRAINT fk_rails_79323c9dbc FOREIGN KEY (fiscal_year_id) REFERENCES public.accounting_fiscal_years(id);
 
 
 --
@@ -13323,6 +13702,9 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261014120000'),
+('20261014110000'),
+('20261014100000'),
 ('20261014090000'),
 ('20261013090000'),
 ('20261012120000'),

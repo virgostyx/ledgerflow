@@ -3,10 +3,18 @@ class Api::V1::Public::ReportsController < Api::V1::Public::BaseController
   REPORTS = %w[trial_balance aged_balance].freeze
 
   self.action_scopes = { show: "reports:read" }
+  HISTORICAL = %w[trial_balance].freeze # B03a: the reports that can be read as known at an instant (`known_at`, ISO 8601 with its offset)
+
+  rescue_from(Accounting::KnownAt::Invalid) { |e| problem(:bad_request, "Invalid instant", detail: e.message, slug: "invalid-instant") }
+  rescue_from(Accounting::KnownAt::Refused) { |e| problem(:unprocessable_content, "Before the history", detail: e.message, slug: "before-history", code: "before_history_start") }
 
   def show
     name = params[:name].to_s
     return problem(:not_found, "Not found", detail: "Known reports: #{REPORTS.join(', ')}.", slug: "not-found") unless REPORTS.include?(name)
+
+    return problem(:unprocessable_content, "Not available", detail: I18n.t("accounting.known_at.not_available"), slug: "historical-view-not-available") if params[:known_at].present? && HISTORICAL.exclude?(name)
+
+    return problem(:forbidden, "Forbidden", detail: "The historical view is off, or not allowed to the owner of this token.", slug: "historical-view-forbidden") if params[:known_at].present? && !historical_allowed?
 
     result = send(name)
     return if performed?
@@ -17,11 +25,13 @@ class Api::V1::Public::ReportsController < Api::V1::Public::BaseController
 
   private
 
+  def historical_allowed? = ActsAsTenant.current_tenant.feature?(:b03a) && Accounting::ReportPolicy.new(Current.user, :report).time_travel?
+
   def trial_balance
     year = params[:fiscal_year].present? ? Accounting::FiscalYear.find_by!(year: params[:fiscal_year]) : Accounting::FiscalYear.current
     return problem(:not_found, "Not found", detail: "No open fiscal year: give fiscal_year.", slug: "not-found") unless year
 
-    filters = Reports::Filters.new(fiscal_year_id: year.id, date_to: date_param(:as_of) || year.end_date)
+    filters = Reports::Filters.new(fiscal_year_id: year.id, date_to: date_param(:as_of) || year.end_date, known_at: (Accounting::KnownAt.parse(params[:known_at]) if params[:known_at].present?))
     Accounting::TrialBalanceReport.new(filters: filters).call
   end
 

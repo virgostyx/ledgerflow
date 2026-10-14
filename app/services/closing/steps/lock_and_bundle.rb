@@ -75,18 +75,7 @@ class Closing::Steps::LockAndBundle < Closing::Step
     Accounting::ClosingSnapshot.create!(run: run, content: content, sha256: Accounting::ClosingSnapshot.fingerprint(content))
   end
 
-  # The books at the closing, as numbers (strings, so that the JSON is the same whatever reads it): the trial balance, the balance sheet and the income statement.
-  def snapshot_content
-    rows = Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, as_of: year_end).call
-    report = Accounting::AnnualAccounts.new(fiscal_year: fiscal_year).call
-    figures = ->(statement) { report.rows(statement).map { |r| { "code" => r.code, "label" => r.label, "amount" => money(r.amount), "previous" => r.previous && money(r.previous) } } }
-    {
-      "fiscal_year" => { "year" => fiscal_year.year, "start_date" => fiscal_year.start_date.to_s, "end_date" => year_end.to_s },
-      "trial_balance" => rows.map { |r| { "code" => r.code, "label" => r.label_fr, "debit" => money(r.total_debit), "credit" => money(r.total_credit) } },
-      "balance_sheet" => { "assets" => figures.(:assets), "liabilities" => figures.(:liabilities) },
-      "income_statement" => figures.(:income)
-    }
-  end
+  def snapshot_content = Closing::SnapshotContent.call(fiscal_year: fiscal_year)
 
   def make_bundle
     return if run.bundle.attached?

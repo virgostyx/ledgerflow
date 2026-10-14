@@ -8,7 +8,7 @@ class Agent::Tools::GetLedger < Agent::Tools::Base
               "Use it to see what is behind the balance of an account or to find the biggest movements. " \
               "Do not use it to compare many accounts (use get_trial_balance) or for what a customer owes in total (use get_aged_balance)."
   permission "reports.view"
-  tool_version 1
+  tool_version 2
   input_schema type: "object", additionalProperties: false, required: %w[account],
                properties: { account: { type: "string", pattern: "^\\d{1,10}$", maxLength: 10, description: "The exact account code, e.g. 604000. Find it with search_accounts." },
                              fiscal_year: { type: "integer", minimum: 1900, maximum: 2200, description: "The fiscal year, by its year number (default: the current one)." },
@@ -16,16 +16,17 @@ class Agent::Tools::GetLedger < Agent::Tools::Base
                              date_to: { type: "string", format: "date", description: "End of the period (default: end of the year)." },
                              partner_id: { type: "integer", minimum: 1, description: "Only this partner's lines: the ID of a partner reference (partner:ID)." },
                              journal: { type: "string", maxLength: 8, description: "Only this journal, by its code." },
-                             lettering: { type: "string", enum: %w[lettered unlettered], description: "Only lettered or only unlettered lines." } }.merge(paging(max: 100))
+                             lettering: { type: "string", enum: %w[lettered unlettered], description: "Only lettered or only unlettered lines." } }.merge(paging(max: 100)).merge(KNOWN_AT_PROPERTY)
   classify "data.*.label" => :free_text, "data.*.partner" => :personal, "data.*.reference" => :public_ref
 
   def call(args, context)
     account = Accounting::Account.find_by(code: args["account"]) or raise Agent::ToolError.new("not_found", "There is no account #{args['account']}: look for it with search_accounts.")
     year = fiscal_year_from(args)
+    known = known_at_arg(args, context, fiscal_year: year)
     from, to = date_arg(args, "date_from", year.start_date), date_arg(args, "date_to", year.end_date)
     raise Agent::ToolError.new("invalid_arguments", "date_from must not be after date_to.") if from > to
 
-    query = Accounting::GeneralLedgerQuery.new(account: account, fiscal_year: year, date_from: from, date_to: to, partner: partner_from(args), journal: journal_from(args), lettering: args["lettering"]&.to_sym)
+    query = Accounting::GeneralLedgerQuery.new(account: account, fiscal_year: year, date_from: from, date_to: to, partner: partner_from(args), journal: journal_from(args), lettering: args["lettering"]&.to_sym, known_at: known)
     count = query.line_count
     raise Agent::ToolError.new("too_large", "This account has #{count} lines in the period: narrow the dates or give a partner or a journal.") if count > MAX_LINES
 
@@ -39,8 +40,8 @@ class Agent::Tools::GetLedger < Agent::Tools::Base
       currency: "EUR", as_of: to, next_cursor: next_cursor,
       filters_applied: { "account" => account.code, "account_label" => account.label_fr, "balance_sense" => "#{account.normal_balance} (a positive balance is a #{account.normal_balance} balance)",
                          "fiscal_year" => year.year, "date_from" => from.iso8601, "date_to" => to.iso8601, "partner_id" => args["partner_id"], "journal" => args["journal"],
-                         "lettering" => args["lettering"], "entries" => "validated only" }.compact,
-      warnings: Array(("The fiscal year #{year.year} is not closed: these figures can still change." unless year.closed?))
+                         "lettering" => args["lettering"], "entries" => "validated only", "known_at" => known&.time&.utc&.iso8601 }.compact,
+      warnings: known_at_notes(known) + Array(("The fiscal year #{year.year} is not closed: these figures can still change." unless year.closed?))
     )
   end
 

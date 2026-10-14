@@ -1,0 +1,15 @@
+<%# B03a: the selector of the historical view, and the banner that stays while it is on. `path`: the report; `hidden`: the filters to keep. %>
+<% if historical_view? %>
+  <div class="mb-4 flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
+    <span><%= t("accounting.known_at.banner", at: l(known_at.time.in_time_zone, format: :long)) %></span>
+    <%= link_to t("accounting.known_at.back_to_today"), path + "?" + hidden.compact_blank.to_query, class: "font-semibold underline" %>
+  </div>
+<% end %>
+<%= form_with url: path, method: :get, class: "mb-4 flex items-end gap-3 text-sm" do |f| %>
+  <% hidden.compact_blank.each do |key, value| %><%= hidden_field_tag key, value %><% end %>
+  <div>
+    <%= f.label :known_at, t("accounting.known_at.selector_label"), class: "block font-medium text-gray-700" %>
+    <%= f.datetime_local_field :known_at, step: 1, value: (known_at.time.in_time_zone.strftime("%Y-%m-%dT%H:%M:%S") if historical_view?), class: "mt-1 form-input" %>
+  </div>
+  <%= f.submit t("accounting.known_at.selector_apply"), class: "btn-secondary" %>
+<% end %>

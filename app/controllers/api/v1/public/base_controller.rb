@@ -10,6 +10,7 @@ class Api::V1::Public::BaseController < Api::V1::BaseController
 
   before_action :throttle!
   before_action :act_as_the_owner
+  before_action :refuse_changes_in_historical_view
   after_action :audit_write
   rescue_from ActiveRecord::RecordNotFound do |_e|
     problem(:not_found, "Not found", detail: "No such resource in this entity.", slug: "not-found")
@@ -19,6 +20,13 @@ class Api::V1::Public::BaseController < Api::V1::BaseController
   end
 
   private
+
+  # B03a: with an instant given (`known_at`, or the header X-Known-At) nothing is written.
+  def refuse_changes_in_historical_view
+    return if request.get? || request.head? || (request.query_parameters["known_at"].blank? && request.headers["X-Known-At"].blank?)
+
+    problem(:conflict, "Historical view", detail: "Nothing can be changed while looking at the books as they were known.", slug: "historical-view", code: "historical_view")
+  end
 
   # --- errors -------------------------------------------------------------------------------------------------------
 

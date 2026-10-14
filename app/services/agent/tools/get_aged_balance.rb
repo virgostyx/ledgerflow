@@ -6,12 +6,12 @@ class Agent::Tools::GetAgedBalance < Agent::Tools::Base
               "Use it for who owes the most, who is late, or what a given customer owes. " \
               "Do not use it for the entries behind a partner's balance (use list_unreconciled or get_ledger) or for the balance of an account (use get_trial_balance)."
   permission "reports.view"
-  tool_version 1
+  tool_version 2
   input_schema type: "object", additionalProperties: false, required: %w[kind],
                properties: { kind: { type: "string", enum: %w[customer supplier], description: "customer: receivables; supplier: payables." },
                              as_of: { type: "string", format: "date", description: "Aged at this date (default: today)." },
                              partner_id: { type: "integer", minimum: 1, description: "Only this partner: the ID of a partner reference (partner:ID)." },
-                             sort: { type: "string", enum: %w[total overdue name], description: "Order of the rows (default total, biggest first)." } }.merge(paging(max: 50))
+                             sort: { type: "string", enum: %w[total overdue name], description: "Order of the rows (default total, biggest first)." } }.merge(paging(max: 50)).merge(KNOWN_AT_PROPERTY)
   classify "data.*.partner" => :personal
 
   BUCKETS = Accounting::AgedBalanceQuery::BUCKETS
@@ -19,15 +19,16 @@ class Agent::Tools::GetAgedBalance < Agent::Tools::Base
   def call(args, context)
     kind = args["kind"].to_sym
     as_of = date_arg(args, "as_of", context.today)
-    rows = Accounting::AgedBalanceQuery.new(kind: kind, as_of: as_of).call
+    known = known_at_arg(args, context)
+    rows = Accounting::AgedBalanceQuery.new(kind: kind, as_of: as_of, known_at: known).call
     rows = rows.select { |row| row.partner_id == args["partner_id"] } if args["partner_id"]
     ordered = sorted(rows, args["sort"] || "total")
     page_rows, next_cursor = page(ordered, args, default: 10, max: 50)
     Agent::ToolResult.build(
       data: page_rows.map { |row| row_for(row, as_of, kind) },
       totals: totals_for(rows, as_of, kind), currency: "EUR", as_of: as_of, next_cursor: next_cursor,
-      filters_applied: { "kind" => args["kind"], "as_of" => as_of.iso8601, "partner_id" => args["partner_id"], "sort" => args["sort"] || "total", "entries" => "validated only" }.compact,
-      warnings: warnings(rows)
+      filters_applied: { "kind" => args["kind"], "as_of" => as_of.iso8601, "partner_id" => args["partner_id"], "sort" => args["sort"] || "total", "entries" => "validated only", "known_at" => known&.time&.utc&.iso8601 }.compact,
+      warnings: known_at_notes(known) + warnings(rows)
     )
   end
 

@@ -1,7 +1,9 @@
 <div class="mx-auto max-w-7xl px-4 py-8">
+  <%= render "accounting/reports/historical_view", path: accounting_reports_unlettered_lines_path, hidden: { kind: @kind, as_of: @as_of } %>
   <h1 class="mb-6 text-2xl font-bold text-gray-900">Unlettered lines</h1>
 
   <%= form_with url: accounting_reports_unlettered_lines_path, method: :get, class: "mb-6 flex gap-4 items-end" do |f| %>
+    <% historical_params.each do |key, value| %><%= hidden_field_tag key, value %><% end %>
     <div>
       <label class="block text-sm font-medium text-gray-700">Type</label>
       <%= f.select :kind, [ [ "Both", "both" ], [ "Customers", "customer" ], [ "Suppliers", "supplier" ] ],

@@ -1,5 +1,6 @@
 # One line of the history of a line (F04): lettered or unlettered, under which code, by whom (nil: the system), whether
-# automatically, and why. Kept after the lettering itself is deleted. Never changed.
+# automatically, and why. Kept after the lettering itself is deleted. Never changed. `lettered_on`: the date of the lettering (B03a: it is gone once the lettering is
+# deleted, and a residual as of a date needs it). `created_at` is the clock of the database (a trigger), like the validation of an entry.
 class Accounting::LetteringEvent < ApplicationRecord
   self.table_name = "accounting_lettering_events"
 
@@ -15,7 +16,7 @@ class Accounting::LetteringEvent < ApplicationRecord
   before_update { raise Accounting::ImmutableRecordError, "The history of a lettering is never changed" }
   before_destroy { raise Accounting::ImmutableRecordError, "The history of a lettering is never changed" }
 
-  def self.record!(lines:, action:, code:, user: nil, auto: false, reason: nil)
-    lines.each { |line| create!(line_id: line.id, action: action, code: code, user: user, auto: auto, reason: reason.presence) }
+  def self.record!(lines:, action:, code:, user: nil, auto: false, reason: nil, lettered_on: nil)
+    lines.each { |line| create!(line_id: line.id, action: action, code: code, user: user, auto: auto, reason: reason.presence, lettered_on: lettered_on) }
   end
 end

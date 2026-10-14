@@ -25,7 +25,7 @@ class Accounting::TrialBalanceReport
     date_from   = @filters.date_from || fiscal_year.start_date
     as_of       = @filters.date_to   || fiscal_year.end_date
 
-    rows = Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, date_from: date_from, as_of: as_of).call
+    rows = Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, date_from: date_from, as_of: as_of, known_at: @filters.known_at).call
     rows = decorate_with_comparative(rows, fiscal_year, as_of) if @filters.comparative.present?
 
     Reports::Result.new(rows: rows, totals: totals(rows), filters: @filters, currency: "EUR")
@@ -37,7 +37,7 @@ class Accounting::TrialBalanceReport
     comparative_fiscal_year = comparative_fiscal_year_for(fiscal_year)
     comparative_by_code =
       if comparative_fiscal_year
-        Accounting::TrialBalanceQuery.new(fiscal_year: comparative_fiscal_year, as_of: as_of - 1.year)
+        Accounting::TrialBalanceQuery.new(fiscal_year: comparative_fiscal_year, as_of: as_of - 1.year, known_at: @filters.known_at)
           .call.index_by(&:code)
       else
         {}

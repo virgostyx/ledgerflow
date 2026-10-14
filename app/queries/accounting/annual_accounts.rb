@@ -5,6 +5,8 @@
 # Balances come from Accounting::TrialBalanceQuery without the closing entry, so a closed year reads like an open one. The
 # result of the year (heading 9904) is added to the profit carried forward (14) and the result account is left out.
 class Accounting::AnnualAccounts
+  include Accounting::HistoricalCaching
+
   MODEL = Rails.root.join("config/annual_accounts/company_abridged.yml")
   STATEMENTS = %i[assets liabilities income].freeze
   IGNORED_PREFIXES = %w[0 69 79].freeze # off-balance accounts; appropriations of the result, including the result account
@@ -25,31 +27,35 @@ class Accounting::AnnualAccounts
   # l'exercice (pas calendaires — Reports::Period.month), + cumul, + cumul N-1.
   MonthlyRow = Struct.new(:code, :label, :level, :months, :cumulative, :previous_cumulative, keyword_init: true)
 
-  Report = Struct.new(:fiscal_year, :previous_year, :rows_by_statement, :difference, :unmapped, keyword_init: true) do
+  Report = Struct.new(:fiscal_year, :previous_year, :rows_by_statement, :difference, :unmapped, :known_at, keyword_init: true) do
     def rows(statement) = rows_by_statement.fetch(statement)
     def balanced? = difference.zero?
-    def monthly_income = Accounting::AnnualAccounts.new(fiscal_year: fiscal_year).monthly_income_rows(previous_year)
+    def monthly_income = Accounting::AnnualAccounts.new(fiscal_year: fiscal_year, known_at: known_at).monthly_income_rows(previous_year)
   end
 
   # as_of: an intermediate situation of the year (R07), the balances at that day instead of at the end of the year (used by the consolidation, F12b).
-  def initialize(fiscal_year:, as_of: nil)
+  # known_at (B03a): the statements as they were known at that instant (a Time or an Accounting::KnownAt), the previous year too.
+  def initialize(fiscal_year:, as_of: nil, known_at: nil)
     @fiscal_year = fiscal_year
     @as_of = as_of
+    @known_at = Accounting::KnownAt.wrap(known_at, fiscal_year: fiscal_year).ensure_viewable!
   end
 
   def call
-    previous_year = Accounting::FiscalYear.where("end_date < ?", @fiscal_year.start_date).order(end_date: :desc).first
-    balances = balances_of(@fiscal_year)
-    figures = figures_for(balances)
-    previous = previous_year && figures_for(balances_of(previous_year))
+    cached do
+      previous_year = Accounting::FiscalYear.where("end_date < ?", @fiscal_year.start_date).order(end_date: :desc).first
+      balances = balances_of(@fiscal_year)
+      figures = figures_for(balances)
+      previous = previous_year && figures_for(balances_of(previous_year))
 
-    rows = STATEMENTS.index_with do |statement|
-      definition.fetch(statement.to_s).map do |row|
-        Row.new(code: row["code"], label: row["label"], level: row["level"], amount: figures.fetch(row["code"]), previous: previous&.fetch(row["code"]))
+      rows = STATEMENTS.index_with do |statement|
+        definition.fetch(statement.to_s).map do |row|
+          Row.new(code: row["code"], label: row["label"], level: row["level"], amount: figures.fetch(row["code"]), previous: previous&.fetch(row["code"]))
+        end
       end
+      Report.new(fiscal_year: @fiscal_year, previous_year: previous_year, rows_by_statement: rows,
+                 difference: figures.fetch("20/58") - figures.fetch("10/49"), unmapped: unmapped(balances), known_at: @known_at)
     end
-    Report.new(fiscal_year: @fiscal_year, previous_year: previous_year, rows_by_statement: rows,
-               difference: figures.fetch("20/58") - figures.fetch("10/49"), unmapped: unmapped(balances))
   end
 
   # Public so Report#monthly_income can call it on a fresh instance.
@@ -67,16 +73,18 @@ class Accounting::AnnualAccounts
 
   private
 
+  def cache_parts = { year: @fiscal_year.id, as_of: @as_of }
+
   def definition = @definition ||= YAML.safe_load_file(MODEL)
 
   def balances_of(fiscal_year)
-    Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, exclude_closing: true, as_of: (@as_of if fiscal_year == @fiscal_year)).call
+    Accounting::TrialBalanceQuery.new(fiscal_year: fiscal_year, exclude_closing: true, as_of: (@as_of if fiscal_year == @fiscal_year), known_at: @known_at).call
   end
 
   def balances_of_month(n)
     period = Reports::Period.month(@fiscal_year, n)
     Accounting::TrialBalanceQuery.new(fiscal_year: @fiscal_year, date_from: period.start_date, as_of: period.end_date,
-                                       exclude_closing: true).call
+                                       exclude_closing: true, known_at: @known_at).call
   end
 
   # { heading code => amount }; the income statement first: the balance sheet uses its result.

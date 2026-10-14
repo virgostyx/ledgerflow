@@ -1,8 +1,10 @@
 <div class="mx-auto max-w-7xl px-4 py-8">
   <h1 class="mb-6 text-2xl font-bold text-gray-900"><%= t("accounting.reports.general_ledger.title") %></h1>
+  <%= render "accounting/reports/historical_view", path: accounting_reports_general_ledger_path, hidden: { fiscal_year_id: @fiscal_year.id, account_id: @account&.id, partner_id: @partner&.id, date_from: @date_from, date_to: @date_to } %>
 
   <%= form_with url: accounting_reports_general_ledger_path, method: :get, class: "mb-6 flex flex-wrap gap-4 items-end" do |f| %>
     <%= hidden_field_tag :fiscal_year_id, @fiscal_year.id %>
+    <% historical_params.each do |key, value| %><%= hidden_field_tag key, value %><% end %>
     <div>
       <%= f.label :account_id, t("accounting.reports.general_ledger.account"), class: "block text-sm font-medium text-gray-700" %>
       <%= f.select :account_id,
@@ -41,7 +43,7 @@
                                                    account_id: @account.id,
                                                    date_from: @date_from,
                                                    date_to: @date_to,
-                                                   format: :csv),
+                                                   format: :csv, **historical_params),
             class: "btn-secondary text-sm" %>
     <% end %>
   <% end %>
@@ -89,7 +91,7 @@
             <td class="px-4 py-2">
               <% if row.partner_id %>
                 <%= link_to row.partner_name,
-                      accounting_reports_general_ledger_path(fiscal_year_id: @fiscal_year.id, account_id: @account.id, partner_id: row.partner_id),
+                      accounting_reports_general_ledger_path(fiscal_year_id: @fiscal_year.id, account_id: @account.id, partner_id: row.partner_id, **historical_params),
                       class: "text-primary-700 hover:underline" %>
               <% end %>
             </td>

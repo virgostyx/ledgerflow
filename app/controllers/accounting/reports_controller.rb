@@ -1,5 +1,7 @@
 class Accounting::ReportsController < ApplicationController
   before_action :set_fiscal_year
+  include HistoricalView
+  self.historical_actions = %i[trial_balance balance_sheet income_statement annual_accounts journal_summary aged_balance unlettered_lines general_ledger] # B03a: the reports that can be shown as known at an instant
   # Downloads (CSV, Excel, PDF) are exports: the read-only roles get them only when the entity allows it (F01).
   before_action(if: -> { %i[csv xlsx pdf].include?(request.format.symbol) }) { authorize :report, :export?, policy_class: Accounting::ReportPolicy }
 
@@ -10,19 +12,19 @@ class Accounting::ReportsController < ApplicationController
 
     @as_of = parse_date(params[:as_of], @fiscal_year.end_date)
     filters = Reports::Filters.new(fiscal_year_id: @fiscal_year.id, date_to: @as_of,
-                                    comparative: params[:comparative])
+                                    comparative: params[:comparative], known_at: known_at&.time)
     @result = Accounting::TrialBalanceReport.new(filters: filters).call
     @rows   = @result.rows # kept for any other view still reading it directly
 
     respond_to do |format|
       format.html
       format.csv  { send_data Reports::Exporters::Csv.call(@result, columns: trial_balance_export_columns),
-                              filename: "balance_#{@fiscal_year.year}.csv", type: "text/csv; charset=utf-8" }
+                              filename: "balance_#{@fiscal_year.year}#{historical_suffix}.csv", type: "text/csv; charset=utf-8" }
       format.xlsx { send_data Reports::Exporters::Xlsx.call(@result, columns: trial_balance_export_columns, title: "Trial balance"),
-                              filename: "balance_#{@fiscal_year.year}.xlsx",
+                              filename: "balance_#{@fiscal_year.year}#{historical_suffix}.xlsx",
                               type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
-      format.pdf  { send_data Reports::Exporters::Pdf.call(@result, columns: trial_balance_export_columns, title: "Trial balance", watermark: export_watermark),
-                              filename: "balance_#{@fiscal_year.year}.pdf", type: "application/pdf" }
+      format.pdf  { send_data Reports::Exporters::Pdf.call(@result, columns: trial_balance_export_columns, title: "Trial balance", watermark: report_watermark),
+                              filename: "balance_#{@fiscal_year.year}#{historical_suffix}.pdf", type: "application/pdf" }
     end
   rescue ArgumentError
     @as_of  = @fiscal_year.end_date
@@ -35,7 +37,7 @@ class Accounting::ReportsController < ApplicationController
     authorize :report, :balance_sheet?, policy_class: Accounting::ReportPolicy
 
     @as_of  = @fiscal_year.end_date
-    all_rows = Accounting::TrialBalanceQuery.new(fiscal_year: @fiscal_year, as_of: @as_of).call
+    all_rows = Accounting::TrialBalanceQuery.new(fiscal_year: @fiscal_year, as_of: @as_of, known_at: known_at).call
     @rows   = all_rows.reject { |r| r.account_type.in?(%w[expense revenue]) }
   end
 
@@ -43,14 +45,14 @@ class Accounting::ReportsController < ApplicationController
     authorize :report, :income_statement?, policy_class: Accounting::ReportPolicy
 
     @as_of  = @fiscal_year.end_date
-    all_rows = Accounting::TrialBalanceQuery.new(fiscal_year: @fiscal_year, as_of: @as_of).call
+    all_rows = Accounting::TrialBalanceQuery.new(fiscal_year: @fiscal_year, as_of: @as_of, known_at: known_at).call
     @rows   = all_rows.select { |r| r.account_type.in?(%w[expense revenue]) }
   end
 
   def annual_accounts
     authorize :report, :annual_accounts?, policy_class: Accounting::ReportPolicy
 
-    @report = Accounting::AnnualAccounts.new(fiscal_year: @fiscal_year).call
+    @report = Accounting::AnnualAccounts.new(fiscal_year: @fiscal_year, known_at: known_at).call
     @monthly = params[:view] == "monthly"
 
     respond_to do |format|
@@ -76,7 +78,7 @@ class Accounting::ReportsController < ApplicationController
         account: @account, fiscal_year: @fiscal_year,
         date_from: @date_from, date_to: @date_to,
         partner: @partner, journal: @journal_filter,
-        lettering: params[:lettering]&.to_sym
+        lettering: params[:lettering]&.to_sym, known_at: known_at
       )
       @rows = @query.call
     else
@@ -87,7 +89,7 @@ class Accounting::ReportsController < ApplicationController
       format.html
       format.csv do
         send_data Reports::Exporters::Csv.call(general_ledger_result, columns: general_ledger_export_columns),
-                  filename: "grand_livre_#{@account&.code}_#{@fiscal_year.year}.csv",
+                  filename: "grand_livre_#{@account&.code}_#{@fiscal_year.year}#{historical_suffix}.csv",
                   type: "text/csv; charset=utf-8"
       end
     end
@@ -99,7 +101,7 @@ class Accounting::ReportsController < ApplicationController
   def journal_summary
     authorize :report, :general_ledger?, policy_class: Accounting::ReportPolicy
 
-    @rows = Accounting::JournalSummaryQuery.new(fiscal_year: @fiscal_year).call
+    @rows = Accounting::JournalSummaryQuery.new(fiscal_year: @fiscal_year, known_at: known_at).call
     @gaps = Accounting::Journal.active.each_with_object({}) do |journal, memo|
       gaps = Accounting::JournalNumberingGaps.new(journal: journal, fiscal_year: @fiscal_year).call
       memo[journal.id] = gaps if gaps.any?
@@ -115,17 +117,17 @@ class Accounting::ReportsController < ApplicationController
     rescue ArgumentError
       Date.current
     end
-    @rows   = Accounting::AgedBalanceQuery.new(kind: @kind, as_of: @as_of).call
+    @rows   = Accounting::AgedBalanceQuery.new(kind: @kind, as_of: @as_of, known_at: known_at).call
     @totals = Accounting::AgedBalanceQuery.totals(@rows)
 
-    @by_currency = Accounting::AgedBalanceByCurrencyQuery.new(kind: @kind, as_of: @as_of, at_closing_rate: params[:at_closing_rate].present?).call if params[:by_currency].present?
+    @by_currency = Accounting::AgedBalanceByCurrencyQuery.new(kind: @kind, as_of: @as_of, at_closing_rate: params[:at_closing_rate].present?).call if params[:by_currency].present? && !historical_view?
 
     @stale_days    = params[:stale_days].presence&.to_i || 90
-    @stale_credits = Accounting::StaleCreditsQuery.new(kind: @kind, as_of: @as_of, min_age_days: @stale_days).call
+    @stale_credits = Accounting::StaleCreditsQuery.new(kind: @kind, as_of: @as_of, min_age_days: @stale_days, known_at: known_at).call
 
     respond_to do |format|
       format.html
-      format.csv { send_data aged_balance_csv, filename: "aged_balance_#{@kind}_#{@as_of}.csv",
+      format.csv { send_data aged_balance_csv, filename: "aged_balance_#{@kind}_#{@as_of}#{historical_suffix}.csv",
                               type: "text/csv; charset=utf-8" }
     end
   end
@@ -143,7 +145,7 @@ class Accounting::ReportsController < ApplicationController
     end
     @min_age_days = params[:min_age_days].presence&.to_i
 
-    query  = Accounting::UnletteredLinesQuery.new(kind: @kind, as_of: @as_of, min_age_days: @min_age_days)
+    query  = Accounting::UnletteredLinesQuery.new(kind: @kind, as_of: @as_of, min_age_days: @min_age_days, known_at: known_at)
     @rows  = query.call
     @balanced_groups = query.balanced_unlettered_groups
   end
@@ -309,6 +311,13 @@ class Accounting::ReportsController < ApplicationController
 
   private
 
+  # known_at in the name of an export, and on the PDF next to the auditor's name (B03a); the XLSX lists it among its parameters.
+  def historical_suffix = historical_view? ? "_known_at_#{known_at.time.utc.strftime('%Y%m%dT%H%M%SZ')}" : ""
+
+  def report_watermark
+    [ export_watermark, (t("accounting.known_at.watermark", at: known_at.time.utc.iso8601) if historical_view?) ].compact.join(" - ").presence
+  end
+
   def set_fiscal_year
     @fiscal_year = if params[:fiscal_year_id].present?
       Accounting::FiscalYear.find(params[:fiscal_year_id])
@@ -331,7 +340,7 @@ class Accounting::ReportsController < ApplicationController
       next column unless column[:key] == :code
 
       column.merge(link: ->(row) {
-        accounting_reports_general_ledger_path(fiscal_year_id: @fiscal_year.id, account_id: account_id_for(row))
+        accounting_reports_general_ledger_path(fiscal_year_id: @fiscal_year.id, account_id: account_id_for(row), **historical_params)
       })
     end
   end

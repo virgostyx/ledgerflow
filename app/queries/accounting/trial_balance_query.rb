@@ -1,4 +1,6 @@
 class Accounting::TrialBalanceQuery
+  include Accounting::HistoricalCaching
+
   Result = Struct.new(:id, :code, :label_fr, :account_type, :normal_balance,
                       :total_debit, :total_credit, :balance,
                       :opening_debit, :opening_credit, :movement_debit, :movement_credit,
@@ -24,58 +26,66 @@ class Accounting::TrialBalanceQuery
   # opening — matches this query's original, still-used-by-balance_sheet/income_statement
   # behavior). Lines before it become the opening balance; from it to as_of, the movements.
   # exclude_closing: leave out the closing entry (and so the result account it fills), to read the income of a closed year.
-  def initialize(fiscal_year:, as_of: nil, date_from: nil, exclude_closing: false)
+  # known_at (B03a): the books as they were known at that instant (a Time or an Accounting::KnownAt); refused before the start of the history.
+  def initialize(fiscal_year:, as_of: nil, date_from: nil, exclude_closing: false, known_at: nil)
     @fiscal_year = fiscal_year
+    @known_at = Accounting::KnownAt.wrap(known_at, fiscal_year: fiscal_year).ensure_viewable!
     @as_of = as_of || fiscal_year.end_date
     @date_from = date_from || fiscal_year.start_date
     @exclude_closing = exclude_closing
   end
 
   def call
-    quoted_from = Accounting::JournalEntryLine.connection.quote(@date_from)
+    cached do
+      quoted_from = Accounting::JournalEntryLine.connection.quote(@date_from)
 
-    rows = base_scope
-      .group(:account_id)
-      .select(
-        "account_id",
-        "COALESCE(SUM(accounting_journal_entry_lines.debit)  FILTER (WHERE accounting_journal_entries.entry_date < #{quoted_from}), 0) AS opening_debit",
-        "COALESCE(SUM(accounting_journal_entry_lines.credit) FILTER (WHERE accounting_journal_entries.entry_date < #{quoted_from}), 0) AS opening_credit",
-        "COALESCE(SUM(accounting_journal_entry_lines.debit)  FILTER (WHERE accounting_journal_entries.entry_date >= #{quoted_from}), 0) AS movement_debit",
-        "COALESCE(SUM(accounting_journal_entry_lines.credit) FILTER (WHERE accounting_journal_entries.entry_date >= #{quoted_from}), 0) AS movement_credit",
-        "SUM(accounting_journal_entry_lines.debit) AS total_debit",
-        "SUM(accounting_journal_entry_lines.credit) AS total_credit"
-      )
+      rows = base_scope
+        .group(:account_id)
+        .select(
+          "account_id",
+          "COALESCE(SUM(accounting_journal_entry_lines.debit)  FILTER (WHERE accounting_journal_entries.entry_date < #{quoted_from}), 0) AS opening_debit",
+          "COALESCE(SUM(accounting_journal_entry_lines.credit) FILTER (WHERE accounting_journal_entries.entry_date < #{quoted_from}), 0) AS opening_credit",
+          "COALESCE(SUM(accounting_journal_entry_lines.debit)  FILTER (WHERE accounting_journal_entries.entry_date >= #{quoted_from}), 0) AS movement_debit",
+          "COALESCE(SUM(accounting_journal_entry_lines.credit) FILTER (WHERE accounting_journal_entries.entry_date >= #{quoted_from}), 0) AS movement_credit",
+          "SUM(accounting_journal_entry_lines.debit) AS total_debit",
+          "SUM(accounting_journal_entry_lines.credit) AS total_credit"
+        )
 
-    account_ids = rows.map(&:account_id)
-    accounts    = Accounting::Account.where(id: account_ids).index_by(&:id)
-    in_currency = balances_in_currency(accounts.values.select(&:currency))
+      account_ids = rows.map(&:account_id)
+      accounts    = Accounting::Account.where(id: account_ids).index_by(&:id)
+      as_known    = @known_at.current? ? {} : Accounting::MasterData.at(Accounting::Account, account_ids, @known_at.time)
+      in_currency = balances_in_currency(accounts.values.select(&:currency))
 
-    rows.map do |row|
-      account = accounts[row.account_id]
-      debit   = BigDecimal(row.total_debit.to_s)
-      credit  = BigDecimal(row.total_credit.to_s)
-      balance = account.normal_balance == "debit" ? debit - credit : credit - debit
+      rows.map do |row|
+        account = accounts[row.account_id]
+        shown   = as_known.fetch(account.id, {}) # the name and the class the account had at the instant (B03a)
+        debit   = BigDecimal(row.total_debit.to_s)
+        credit  = BigDecimal(row.total_credit.to_s)
+        balance = shown.fetch("normal_balance", account.normal_balance) == "debit" ? debit - credit : credit - debit
 
-      Result.new(
-        id:             account.id,
-        code:           account.code,
-        label_fr:       account.label_fr,
-        account_type:   account.account_type,
-        normal_balance: account.normal_balance,
-        total_debit:    debit,
-        total_credit:   credit,
-        balance:        balance,
-        opening_debit:  BigDecimal(row.opening_debit.to_s),
-        opening_credit: BigDecimal(row.opening_credit.to_s),
-        movement_debit: BigDecimal(row.movement_debit.to_s),
-        movement_credit: BigDecimal(row.movement_credit.to_s),
-        currency:       account.currency,
-        balance_in_currency: (in_currency.fetch(account.id, BigDecimal("0")) if account.currency)
-      )
-    end.sort_by(&:code)
+        Result.new(
+          id:             account.id,
+          code:           shown.fetch("code", account.code),
+          label_fr:       shown.fetch("label_fr", account.label_fr),
+          account_type:   shown.fetch("account_type", account.account_type),
+          normal_balance: shown.fetch("normal_balance", account.normal_balance),
+          total_debit:    debit,
+          total_credit:   credit,
+          balance:        balance,
+          opening_debit:  BigDecimal(row.opening_debit.to_s),
+          opening_credit: BigDecimal(row.opening_credit.to_s),
+          movement_debit: BigDecimal(row.movement_debit.to_s),
+          movement_credit: BigDecimal(row.movement_credit.to_s),
+          currency:       account.currency,
+          balance_in_currency: (in_currency.fetch(account.id, BigDecimal("0")) if account.currency)
+        )
+      end.sort_by(&:code)
+    end
   end
 
   private
+
+  def cache_parts = { year: @fiscal_year.id, as_of: @as_of, from: @date_from, exclude_closing: @exclude_closing }
 
   # Σ of the amounts in the account's currency on the lines in that currency, up to the date (what the account holds in that currency).
   def balances_in_currency(accounts)
@@ -87,8 +97,7 @@ class Accounting::TrialBalanceQuery
   end
 
   def base_scope
-    Accounting::JournalEntryLine
-      .joins(:journal_entry)
+    @known_at.restrict(Accounting::JournalEntryLine.joins(:journal_entry))
       .where(
         accounting_journal_entries: {
           fiscal_year_id: @fiscal_year.id,
