@@ -23,6 +23,11 @@ class Rack::Attack
     req.ip if req.path.start_with?("/reply/")
   end
 
+  # The public page of a certificate (B03c) is open to anyone who has the address: tried a few times a minute per IP
+  throttle("verify/ip", limit: 30, period: 1.minute) do |req|
+    req.ip if req.path.start_with?("/verify/")
+  end
+
   # API throttle: 300 requests per minute per IP
   throttle("api/ip", limit: 300, period: 1.minute) do |req|
     req.ip if req.path.start_with?("/api/")

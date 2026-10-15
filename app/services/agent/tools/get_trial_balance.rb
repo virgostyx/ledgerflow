@@ -2,12 +2,12 @@
 class Agent::Tools::GetTrialBalance < Agent::Tools::Base
   tool_name "get_trial_balance"
   description "Returns the trial balance: for each account that moved, the opening balance, the debit and credit movements of the period and the closing balance, with the totals. " \
-              "Use it for the balance of an account or a family of accounts at a date, or to see where the movements are. Validated entries only; drafts are not included. " \
+              "Use it for the balance of an account or a family of accounts at a date, or to see where the movements are. Validated entries only. " \
               "Do not use it to list the entries behind a balance (use get_ledger) or for customers' and suppliers' open amounts (use get_aged_balance)."
   permission "reports.view"
   tool_version 2
   input_schema type: "object", additionalProperties: false,
-               properties: { fiscal_year: { type: "integer", minimum: 1900, maximum: 2200, description: "The fiscal year, by its year number (default: the current one)." },
+               properties: { fiscal_year: { type: "integer", minimum: 1900, maximum: 2200, description: "The fiscal year number (default: current)." },
                              as_of: { type: "string", format: "date", description: "Balance at this date, YYYY-MM-DD (default: today, or the end of the year)." },
                              date_from: { type: "string", format: "date", description: "Start of the period shown; what is before is the opening balance (default: start of the year)." },
                              account_prefix: { type: "string", pattern: "^\\d{1,10}$", maxLength: 10, description: "Only accounts whose code starts with these digits, e.g. 40 for customers." } }.merge(paging(max: 100)).merge(KNOWN_AT_PROPERTY)

@@ -1,7 +1,7 @@
 # What customers owe, or what is owed to suppliers, aged by due date (A02, R04). One row per partner, biggest first by default.
 class Agent::Tools::GetAgedBalance < Agent::Tools::Base
   tool_name "get_aged_balance"
-  description "Returns the aged balance of customers (what they owe) or of suppliers (what is owed to them) at a date: per partner, the open amount not yet due and overdue by 1-30, 31-60, 61-90 and over 90 days, " \
+  description "Returns the aged balance of customers or of suppliers at a date: per partner, the open amount not yet due and overdue by 1-30, 31-60, 61-90 and over 90 days, " \
               "the unallocated amounts (payments or credit notes not yet matched) and the total, with the overdue share. Biggest first by default. " \
               "Use it for who owes the most, who is late, or what a given customer owes. " \
               "Do not use it for the entries behind a partner's balance (use list_unreconciled or get_ledger) or for the balance of an account (use get_trial_balance)."

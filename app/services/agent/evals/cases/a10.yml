@@ -317,3 +317,21 @@
     - name: get_changes_between
     answer_includes:
     - close
+- id: A10-014
+  capability: A10
+  language: en
+  tags:
+  - integrity
+  - tool_choice
+  source: reference_dataset
+  role: accountant
+  input: Is the integrity of the books verified?
+  script:
+  - tool: get_integrity_status
+    args: {}
+  - say: The tool shows no anchor and no check yet, so nothing certifies the books at this point.
+  expect:
+    tools:
+    - name: get_integrity_status
+    answer_includes:
+    - no anchor

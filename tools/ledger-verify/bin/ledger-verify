@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# ledger-verify: verifies a package of LedgerFlow (or a certificate alone) without the application. Ruby standard library and OpenSSL only.
+#
+#   ledger-verify PACKAGE [--fingerprint HEX] [--passphrase-env VAR | --passphrase-file FILE] [--authority-ca FILE] [--documents DIR] [--json]
+#
+# Exit status: 0 PASS, 1 FAIL, 2 the command is wrong.
+require "optparse"
+require "json"
+require_relative "../lib/ledger_verify"
+
+options = { documents: {} }
+parser = OptionParser.new do |o|
+  o.banner = "Usage: ledger-verify PACKAGE [options]"
+  o.on("--fingerprint HEX", "the SHA-256 fingerprint of the public key you expect (compare it by another channel)") { |v| options[:fingerprint] = v }
+  o.on("--passphrase-env VAR", "the environment variable that holds the passphrase of the package") { |v| options[:passphrase] = ENV.fetch(v) { abort "ledger-verify: #{v} is not set" } }
+  o.on("--passphrase-file FILE", "the file that holds the passphrase of the package") { |v| options[:passphrase] = File.read(v).chomp }
+  o.on("--authority-ca FILE", "the certificate (PEM) of the timestamp authority") { |v| options[:authority_ca] = File.read(v) }
+  o.on("--documents DIR", "a folder with the supporting documents, to compare with their fingerprints") { |v| options[:documents_dir] = v }
+  o.on("--json", "the result as JSON") { options[:json] = true }
+end
+begin
+  parser.parse!
+rescue OptionParser::ParseError => e
+  warn "ledger-verify: #{e.message}"
+  exit 2
+end
+path = ARGV.first or (warn parser.help; exit 2)
+abort "ledger-verify: #{path} is not a file" unless File.file?(path)
+
+documents = options[:documents_dir] ? Dir.children(options[:documents_dir]).sort.to_h { |name| [ name, File.binread(File.join(options[:documents_dir], name)) ] } : {}
+report = LedgerVerify::Verifier.call(File.binread(path), expected_fingerprint: options[:fingerprint], passphrase: options[:passphrase], authority_ca: options[:authority_ca], documents: documents)
+if options[:json]
+  puts JSON.pretty_generate("verdict" => report.verdict, "checks" => report.checks.map { |c| { "code" => c.code, "status" => c.status.to_s, "message" => c.message } })
+else
+  puts report.to_text
+end
+exit(report.pass? ? 0 : 1)

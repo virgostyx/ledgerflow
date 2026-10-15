@@ -10,7 +10,7 @@ class Agent::Tools::GetConsistencyFindings < Agent::Tools::Base
                properties: { severity: { type: "string", enum: Accounting::ConsistencyFinding::SEVERITIES, description: "Only this severity." },
                              check_id: { type: "string", pattern: "^C\\d{2}$", maxLength: 3, description: "Only this check, e.g. C04." },
                              include_acknowledged: { type: "boolean", description: "Also the anomalies already acknowledged (default false)." },
-                             prioritize: { type: "boolean", description: "Rank the open anomalies in the order to fix them (severity, blocking effect on a closing or a VAT filing, amount involved, age), at most 20, with the reasons of each rank." } }.merge(paging(max: 50))
+                             prioritize: { type: "boolean", description: "Rank the open anomalies in the order to fix them, at most 20, with the reason of each rank." } }.merge(paging(max: 50))
   classify "data.*.message" => :free_text
 
   def call(args, _context)

@@ -1,0 +1,19 @@
+<div class="mx-auto max-w-2xl px-4 py-8 text-sm">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900"><%= t("integrity.public.title") %></h1>
+  <% valid = @verification.state == :valid %>
+  <p class="mb-4 rounded-md border px-4 py-3 font-medium <%= valid ? 'border-green-300 bg-green-50 text-green-900' : 'border-red-300 bg-red-50 text-red-900' %>" role="status"><%= t("integrity.states.#{@verification.state}") %></p>
+
+  <dl class="mb-4 space-y-2">
+    <% if @show_company %><div><dt class="text-gray-500"><%= t("integrity.public.company") %></dt><dd><%= @document["company"]["name"] %></dd></div><% end %>
+    <div><dt class="text-gray-500"><%= t("integrity.public.issued") %></dt><dd><%= @document["issued_at"] %></dd></div>
+    <div><dt class="text-gray-500"><%= t("integrity.public.covers") %></dt><dd><%= @document["covered_at"] %> (<%= t("integrity.anchor") %> #<%= @document["coverage"]["anchors"]["to"] %>, <%= t("integrity.public.entries", count: @document["coverage"]["entries"]) %>)</dd></div>
+    <div><dt class="text-gray-500"><%= t("integrity.public.level") %></dt><dd><%= t("integrity.levels.#{@document['disclosure']}") %></dd></div>
+    <div><dt class="text-gray-500"><%= t("integrity.public.anchor_hash") %></dt><dd class="break-all font-mono text-xs"><%= @document["coverage"]["anchors"]["last_anchor_hash"] %></dd></div>
+    <div><dt class="text-gray-500"><%= t("integrity.public.key") %></dt><dd class="break-all font-mono text-xs"><%= @document["public_key"]["key_id"] %> - <%= @document["public_key"]["fingerprint"] %> (<%= @verification.key_status %>)</dd></div>
+    <div><dt class="text-gray-500"><%= t("integrity.public.timestamp") %></dt><dd><%= t("integrity.public.timestamp_#{@document['timestamp']['status']}") %></dd></div>
+  </dl>
+
+  <p class="mb-4"><%= @verification.since[:entries].zero? ? t("integrity.public.nothing_since") : t("integrity.public.since", count: @verification.since[:entries], in_period: @verification.since[:in_period]) %></p>
+  <p class="mb-4 text-xs text-gray-500"><%= t("integrity.public.compare_key") %></p>
+  <p class="text-xs text-gray-500"><%= t("integrity.public.not_proved") %></p>
+</div>

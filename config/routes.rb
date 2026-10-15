@@ -419,6 +419,18 @@ Rails.application.routes.draw do
 
       resources :cash_forecast_items, only: [ :create, :destroy ]
 
+      get "integrity", to: "integrity#index", as: :integrity # B03c: anchors, checks, keys and certificates of integrity
+      patch "integrity/settings", to: "integrity#settings", as: :integrity_settings
+      post "integrity/check", to: "integrity#check", as: :integrity_check
+      resources :integrity_certificates, only: [ :create, :show ], path: "integrity/certificates", param: :uuid do
+        member do
+          get :download
+          post :package
+          post :revoke
+          post :verify
+        end
+      end
+
       get "changes", to: "changes#index", as: :changes # B03b: what changed between two moments
       post "changes/review", to: "changes#review", as: :changes_review
       post "changes/task", to: "changes#task", as: :changes_task
@@ -558,6 +570,8 @@ Rails.application.routes.draw do
 
   # Webhooks Peppol (public; the token designates the entity, the signature is checked with its Access Point secret)
   # F08: a third party answers a question through a signed link, with no account
+  get "/verify/:uuid", to: "verifications#show", as: :verification # B03c: the public page of a certificate of integrity
+  get "/.well-known/ledgerflow/keys.json", to: "signing_keys#index", as: :published_signing_keys
   get  "/reply/:token", to: "external_replies#show", as: :external_reply
   post "/reply/:token", to: "external_replies#create"
   post "/peppol/webhooks/:token", to: "peppol/webhooks#receive", as: :peppol_webhook

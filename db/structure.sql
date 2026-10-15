@@ -279,6 +279,73 @@ $$;
 
 
 --
+-- Name: protect_entry_content_hash(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.protect_entry_content_hash() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.content_hash IS NOT NULL AND (NEW.content_hash IS DISTINCT FROM OLD.content_hash OR NEW.content_hash_source IS DISTINCT FROM OLD.content_hash_source) THEN
+    RAISE EXCEPTION 'the content_hash of entry % cannot change', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF OLD.content_hash IS NULL AND NEW.content_hash IS NOT NULL AND NEW.posted_seq IS NULL THEN
+    RAISE EXCEPTION 'entry % is not validated: it has no content_hash', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF OLD.posted_seq IS NOT NULL AND NEW.posted_by_id IS DISTINCT FROM OLD.posted_by_id THEN
+    RAISE EXCEPTION 'the author of the validation of entry % cannot change (posted_by_id)', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: protect_integrity_certificate(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.protect_integrity_certificate() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'integrity certificates cannot be deleted' USING ERRCODE = 'raise_exception';
+  END IF;
+  IF (to_jsonb(NEW) - 'revoked_at' - 'revoked_by_id' - 'revocation_reason' - 'updated_at') IS DISTINCT FROM (to_jsonb(OLD) - 'revoked_at' - 'revoked_by_id' - 'revocation_reason' - 'updated_at') THEN
+    RAISE EXCEPTION 'integrity certificate % cannot be changed', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF OLD.revoked_at IS NOT NULL AND (NEW.revoked_at IS DISTINCT FROM OLD.revoked_at OR NEW.revocation_reason IS DISTINCT FROM OLD.revocation_reason) THEN
+    RAISE EXCEPTION 'integrity certificate % is already revoked', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: protect_ledger_anchor(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.protect_ledger_anchor() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'ledger anchors cannot be deleted' USING ERRCODE = 'raise_exception';
+  END IF;
+  IF (to_jsonb(NEW) - 'timestamp_token' - 'timestamp_authority' - 'timestamped_at' - 'timestamp_error' - 'updated_at')
+     IS DISTINCT FROM (to_jsonb(OLD) - 'timestamp_token' - 'timestamp_authority' - 'timestamped_at' - 'timestamp_error' - 'updated_at') THEN
+    RAISE EXCEPTION 'ledger anchor % cannot be changed', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF OLD.timestamp_token IS NOT NULL AND NEW.timestamp_token IS DISTINCT FROM OLD.timestamp_token THEN
+    RAISE EXCEPTION 'the timestamp of ledger anchor % cannot change', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: record_allocation_version(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -597,7 +664,11 @@ CREATE TABLE public.accounting_audit_logs (
     reason text,
     user_agent character varying,
     request_id character varying,
-    actor_type character varying DEFAULT 'user'::character varying NOT NULL
+    actor_type character varying DEFAULT 'user'::character varying NOT NULL,
+    content_digest character varying(64),
+    chain_version smallint,
+    CONSTRAINT chk_audit_logs_chain_version CHECK (((chain_version IS NULL) OR (chain_version = 2))),
+    CONSTRAINT chk_audit_logs_content_digest CHECK ((COALESCE((chain_version = 2), false) = (content_digest IS NOT NULL)))
 );
 
 
@@ -1852,7 +1923,13 @@ CREATE TABLE public.accounting_journal_entries (
     external_id character varying,
     posted_at timestamp(6) without time zone,
     posted_seq bigint,
-    posted_at_source character varying
+    posted_at_source character varying,
+    content_hash character varying(64),
+    content_hash_source character varying,
+    posted_by_id bigint,
+    CONSTRAINT chk_entries_content_hash_hex CHECK (((content_hash IS NULL) OR ((content_hash)::text ~ '^[0-9a-f]{64}$'::text))),
+    CONSTRAINT chk_entries_content_hash_source CHECK (((content_hash IS NULL) = (content_hash_source IS NULL))),
+    CONSTRAINT chk_entries_content_hash_source_values CHECK (((content_hash_source IS NULL) OR ((content_hash_source)::text = ANY (ARRAY[('live'::character varying)::text, ('retroactive'::character varying)::text]))))
 );
 
 
@@ -4115,6 +4192,45 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: certificate_signing_keys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.certificate_signing_keys (
+    id bigint NOT NULL,
+    key_id character varying NOT NULL,
+    algorithm character varying DEFAULT 'Ed25519'::character varying NOT NULL,
+    public_key character varying NOT NULL,
+    fingerprint character varying(64) NOT NULL,
+    status character varying DEFAULT 'active'::character varying NOT NULL,
+    retired_at timestamp(6) without time zone,
+    revoked_at timestamp(6) without time zone,
+    revocation_reason character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_signing_keys_status CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('retired'::character varying)::text, ('revoked'::character varying)::text])))
+);
+
+
+--
+-- Name: certificate_signing_keys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.certificate_signing_keys_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: certificate_signing_keys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.certificate_signing_keys_id_seq OWNED BY public.certificate_signing_keys.id;
+
+
+--
 -- Name: closing_runs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4918,7 +5034,11 @@ CREATE TABLE public.entities (
     changes_late_days integer DEFAULT 15 NOT NULL,
     changes_reversals_per_author integer DEFAULT 5 NOT NULL,
     changes_mass_import integer DEFAULT 50 NOT NULL,
-    changes_unletterings integer DEFAULT 3 NOT NULL
+    changes_unletterings integer DEFAULT 3 NOT NULL,
+    timestamp_authority_url character varying,
+    timestamp_authority_ca text,
+    integrity_default_disclosure character varying DEFAULT 'standard'::character varying NOT NULL,
+    integrity_public_company_name boolean DEFAULT false NOT NULL
 );
 
 
@@ -4974,6 +5094,91 @@ CREATE SEQUENCE public.import_templates_id_seq
 --
 
 ALTER SEQUENCE public.import_templates_id_seq OWNED BY public.import_templates.id;
+
+
+--
+-- Name: integrity_certificates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.integrity_certificates (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    uuid character varying NOT NULL,
+    issued_by_id bigint NOT NULL,
+    fiscal_year_id bigint,
+    covered_at timestamp(6) without time zone NOT NULL,
+    through_seq bigint NOT NULL,
+    anchor_number integer NOT NULL,
+    disclosure_level character varying NOT NULL,
+    recipient_label character varying,
+    payload jsonb NOT NULL,
+    body text NOT NULL,
+    key_id character varying NOT NULL,
+    signature text NOT NULL,
+    revoked_at timestamp(6) without time zone,
+    revoked_by_id bigint,
+    revocation_reason character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_certificates_level CHECK (((disclosure_level)::text = ANY (ARRAY[('minimal'::character varying)::text, ('standard'::character varying)::text, ('full'::character varying)::text]))),
+    CONSTRAINT chk_certificates_revocation CHECK (((revoked_at IS NULL) = (revocation_reason IS NULL)))
+);
+
+
+--
+-- Name: integrity_certificates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.integrity_certificates_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: integrity_certificates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.integrity_certificates_id_seq OWNED BY public.integrity_certificates.id;
+
+
+--
+-- Name: integrity_check_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.integrity_check_runs (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    mode character varying NOT NULL,
+    entries_checked integer DEFAULT 0 NOT NULL,
+    findings_count integer DEFAULT 0 NOT NULL,
+    started_at timestamp(6) without time zone NOT NULL,
+    finished_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_integrity_runs_mode CHECK (((mode)::text = ANY ((ARRAY['nightly'::character varying, 'full'::character varying])::text[])))
+);
+
+
+--
+-- Name: integrity_check_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.integrity_check_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: integrity_check_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.integrity_check_runs_id_seq OWNED BY public.integrity_check_runs.id;
 
 
 --
@@ -5098,6 +5303,56 @@ CREATE SEQUENCE public.knowledge_gaps_id_seq
 --
 
 ALTER SEQUENCE public.knowledge_gaps_id_seq OWNED BY public.knowledge_gaps.id;
+
+
+--
+-- Name: ledger_anchors; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ledger_anchors (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    number integer NOT NULL,
+    kind character varying NOT NULL,
+    from_seq bigint NOT NULL,
+    to_seq bigint NOT NULL,
+    entries_count integer NOT NULL,
+    retroactive_entries integer DEFAULT 0 NOT NULL,
+    merkle_root character varying(64) NOT NULL,
+    audit_head character varying(64),
+    audit_length bigint DEFAULT 0 NOT NULL,
+    previous_anchor_hash character varying(64),
+    anchor_hash character varying(64) NOT NULL,
+    anchored_at timestamp(6) without time zone NOT NULL,
+    timestamp_token text,
+    timestamp_authority character varying,
+    timestamped_at timestamp(6) without time zone,
+    timestamp_error character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_ledger_anchors_hex CHECK ((((merkle_root)::text ~ '^[0-9a-f]{64}$'::text) AND ((anchor_hash)::text ~ '^[0-9a-f]{64}$'::text))),
+    CONSTRAINT chk_ledger_anchors_kind CHECK (((kind)::text = ANY (ARRAY[('nightly'::character varying)::text, ('on_demand'::character varying)::text, ('retroactive'::character varying)::text]))),
+    CONSTRAINT chk_ledger_anchors_range CHECK (((to_seq >= (from_seq - 1)) AND (entries_count >= 0)))
+);
+
+
+--
+-- Name: ledger_anchors_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ledger_anchors_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ledger_anchors_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ledger_anchors_id_seq OWNED BY public.ledger_anchors.id;
 
 
 --
@@ -6419,6 +6674,13 @@ ALTER TABLE ONLY public.approval_steps ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: certificate_signing_keys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificate_signing_keys ALTER COLUMN id SET DEFAULT nextval('public.certificate_signing_keys_id_seq'::regclass);
+
+
+--
 -- Name: closing_runs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6566,6 +6828,20 @@ ALTER TABLE ONLY public.import_templates ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: integrity_certificates id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.integrity_certificates ALTER COLUMN id SET DEFAULT nextval('public.integrity_certificates_id_seq'::regclass);
+
+
+--
+-- Name: integrity_check_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.integrity_check_runs ALTER COLUMN id SET DEFAULT nextval('public.integrity_check_runs_id_seq'::regclass);
+
+
+--
 -- Name: knowledge_chunks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6584,6 +6860,13 @@ ALTER TABLE ONLY public.knowledge_documents ALTER COLUMN id SET DEFAULT nextval(
 --
 
 ALTER TABLE ONLY public.knowledge_gaps ALTER COLUMN id SET DEFAULT nextval('public.knowledge_gaps_id_seq'::regclass);
+
+
+--
+-- Name: ledger_anchors id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ledger_anchors ALTER COLUMN id SET DEFAULT nextval('public.ledger_anchors_id_seq'::regclass);
 
 
 --
@@ -7460,6 +7743,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: certificate_signing_keys certificate_signing_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificate_signing_keys
+    ADD CONSTRAINT certificate_signing_keys_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: closing_runs closing_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7628,6 +7919,22 @@ ALTER TABLE ONLY public.import_templates
 
 
 --
+-- Name: integrity_certificates integrity_certificates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.integrity_certificates
+    ADD CONSTRAINT integrity_certificates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: integrity_check_runs integrity_check_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.integrity_check_runs
+    ADD CONSTRAINT integrity_check_runs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: knowledge_chunks knowledge_chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7649,6 +7956,14 @@ ALTER TABLE ONLY public.knowledge_documents
 
 ALTER TABLE ONLY public.knowledge_gaps
     ADD CONSTRAINT knowledge_gaps_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ledger_anchors ledger_anchors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ledger_anchors
+    ADD CONSTRAINT ledger_anchors_pkey PRIMARY KEY (id);
 
 
 --
@@ -10265,6 +10580,20 @@ CREATE UNIQUE INDEX index_approval_steps_on_policy_id_and_position ON public.app
 
 
 --
+-- Name: index_certificate_signing_keys_on_fingerprint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_certificate_signing_keys_on_fingerprint ON public.certificate_signing_keys USING btree (fingerprint);
+
+
+--
+-- Name: index_certificate_signing_keys_on_key_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_certificate_signing_keys_on_key_id ON public.certificate_signing_keys USING btree (key_id);
+
+
+--
 -- Name: index_closing_runs_on_approved_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10678,6 +11007,13 @@ CREATE UNIQUE INDEX index_entities_on_vat_number_unique ON public.entities USING
 
 
 --
+-- Name: index_entries_not_yet_fingerprinted; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_not_yet_fingerprinted ON public.accounting_journal_entries USING btree (entity_id, posted_seq) WHERE ((content_hash IS NULL) AND (posted_seq IS NOT NULL));
+
+
+--
 -- Name: index_entries_on_entity_and_posted_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10717,6 +11053,55 @@ CREATE INDEX index_import_templates_on_entity_id ON public.import_templates USIN
 --
 
 CREATE UNIQUE INDEX index_import_templates_on_entity_id_and_kind_and_name ON public.import_templates USING btree (entity_id, kind, name);
+
+
+--
+-- Name: index_integrity_certificates_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_integrity_certificates_on_entity_id ON public.integrity_certificates USING btree (entity_id);
+
+
+--
+-- Name: index_integrity_certificates_on_fiscal_year_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_integrity_certificates_on_fiscal_year_id ON public.integrity_certificates USING btree (fiscal_year_id);
+
+
+--
+-- Name: index_integrity_certificates_on_issued_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_integrity_certificates_on_issued_by_id ON public.integrity_certificates USING btree (issued_by_id);
+
+
+--
+-- Name: index_integrity_certificates_on_revoked_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_integrity_certificates_on_revoked_by_id ON public.integrity_certificates USING btree (revoked_by_id);
+
+
+--
+-- Name: index_integrity_certificates_on_uuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_integrity_certificates_on_uuid ON public.integrity_certificates USING btree (uuid);
+
+
+--
+-- Name: index_integrity_check_runs_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_integrity_check_runs_on_entity_id ON public.integrity_check_runs USING btree (entity_id);
+
+
+--
+-- Name: index_integrity_check_runs_on_entity_id_and_finished_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_integrity_check_runs_on_entity_id_and_finished_at ON public.integrity_check_runs USING btree (entity_id, finished_at);
 
 
 --
@@ -10808,6 +11193,27 @@ CREATE INDEX index_knowledge_gaps_on_message_id ON public.knowledge_gaps USING b
 --
 
 CREATE INDEX index_knowledge_gaps_on_user_id ON public.knowledge_gaps USING btree (user_id);
+
+
+--
+-- Name: index_ledger_anchors_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ledger_anchors_on_entity_id ON public.ledger_anchors USING btree (entity_id);
+
+
+--
+-- Name: index_ledger_anchors_on_entity_id_and_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_ledger_anchors_on_entity_id_and_number ON public.ledger_anchors USING btree (entity_id, number);
+
+
+--
+-- Name: index_ledger_anchors_on_entity_id_and_to_seq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ledger_anchors_on_entity_id_and_to_seq ON public.ledger_anchors USING btree (entity_id, to_seq);
 
 
 --
@@ -11126,6 +11532,13 @@ CREATE INDEX index_recovery_codes_on_user_id_and_kind ON public.recovery_codes U
 
 
 --
+-- Name: index_signing_keys_one_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_signing_keys_one_active ON public.certificate_signing_keys USING btree (status) WHERE ((status)::text = 'active'::text);
+
+
+--
 -- Name: index_user_entities_on_custom_role_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11319,6 +11732,27 @@ CREATE TRIGGER prevent_allocation_version_change BEFORE DELETE OR UPDATE ON publ
 --
 
 CREATE TRIGGER prevent_master_data_version_change BEFORE DELETE OR UPDATE ON public.accounting_master_data_versions FOR EACH ROW EXECUTE FUNCTION public.prevent_master_data_version_change();
+
+
+--
+-- Name: accounting_journal_entries protect_entry_content_hash; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER protect_entry_content_hash BEFORE UPDATE ON public.accounting_journal_entries FOR EACH ROW EXECUTE FUNCTION public.protect_entry_content_hash();
+
+
+--
+-- Name: integrity_certificates protect_integrity_certificate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER protect_integrity_certificate BEFORE DELETE OR UPDATE ON public.integrity_certificates FOR EACH ROW EXECUTE FUNCTION public.protect_integrity_certificate();
+
+
+--
+-- Name: ledger_anchors protect_ledger_anchor; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER protect_ledger_anchor BEFORE DELETE OR UPDATE ON public.ledger_anchors FOR EACH ROW EXECUTE FUNCTION public.protect_ledger_anchor();
 
 
 --
@@ -11791,6 +12225,14 @@ ALTER TABLE ONLY public.accounting_lettering_write_offs
 
 
 --
+-- Name: accounting_journal_entries fk_rails_2fc6cc6b64; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entries
+    ADD CONSTRAINT fk_rails_2fc6cc6b64 FOREIGN KEY (posted_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_invoice_emails fk_rails_310b9a27ad; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11868,6 +12310,14 @@ ALTER TABLE ONLY public.accounting_partners
 
 ALTER TABLE ONLY public.accounting_invoice_line_annotations
     ADD CONSTRAINT fk_rails_35cd3761f9 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: integrity_certificates fk_rails_35fcae84a7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.integrity_certificates
+    ADD CONSTRAINT fk_rails_35fcae84a7 FOREIGN KEY (revoked_by_id) REFERENCES public.users(id);
 
 
 --
@@ -12487,6 +12937,14 @@ ALTER TABLE ONLY public.accounting_recurring_entries
 
 
 --
+-- Name: integrity_certificates fk_rails_76f51eb320; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.integrity_certificates
+    ADD CONSTRAINT fk_rails_76f51eb320 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_bank_rules fk_rails_77c6b626d4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12599,6 +13057,14 @@ ALTER TABLE ONLY public.accounting_peppol_messages
 
 
 --
+-- Name: ledger_anchors fk_rails_88906032c7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ledger_anchors
+    ADD CONSTRAINT fk_rails_88906032c7 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: payment_batches fk_rails_88fe01ca10; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12636,6 +13102,14 @@ ALTER TABLE ONLY public.approval_requests
 
 ALTER TABLE ONLY public.accounting_line_allocations
     ADD CONSTRAINT fk_rails_8bda82b65e FOREIGN KEY (debit_line_id) REFERENCES public.accounting_journal_entry_lines(id);
+
+
+--
+-- Name: integrity_check_runs fk_rails_8c8a54696d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.integrity_check_runs
+    ADD CONSTRAINT fk_rails_8c8a54696d FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -12948,6 +13422,14 @@ ALTER TABLE ONLY public.agent_security_events
 
 ALTER TABLE ONLY public.approval_decisions
     ADD CONSTRAINT fk_rails_a6b8a7f0b5 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: integrity_certificates fk_rails_a6c0e17e8f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.integrity_certificates
+    ADD CONSTRAINT fk_rails_a6c0e17e8f FOREIGN KEY (issued_by_id) REFERENCES public.users(id);
 
 
 --
@@ -13711,6 +14193,14 @@ ALTER TABLE ONLY public.organizations
 
 
 --
+-- Name: integrity_certificates fk_rails_ee49d6a1c1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.integrity_certificates
+    ADD CONSTRAINT fk_rails_ee49d6a1c1 FOREIGN KEY (fiscal_year_id) REFERENCES public.accounting_fiscal_years(id);
+
+
+--
 -- Name: closing_runs fk_rails_ee6bb7d745; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13965,6 +14455,13 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261014210000'),
+('20261014200000'),
+('20261014190000'),
+('20261014180000'),
+('20261014170000'),
+('20261014160000'),
+('20261014150000'),
 ('20261014140000'),
 ('20261014130000'),
 ('20261014120000'),

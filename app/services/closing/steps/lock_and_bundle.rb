@@ -21,7 +21,7 @@ class Closing::Steps::LockAndBundle < Closing::Step
     ApplicationRecord.transaction do
       lock_year(user)
       ctx[:snapshot] = take_snapshot
-      make_bundle
+      make_bundle(user)
       Accounting::AuditLog.record!(auditable: run, action: "closing_locked", user: user, payload: { snapshot_sha256: ctx[:snapshot].sha256 })
     end
     ctx
@@ -77,10 +77,25 @@ class Closing::Steps::LockAndBundle < Closing::Step
 
   def snapshot_content = Closing::SnapshotContent.call(fiscal_year: fiscal_year)
 
-  def make_bundle
+  def make_bundle(user)
     return if run.bundle.attached?
 
-    result = Accounting::ClosingBundle.call(fiscal_year: fiscal_year)
+    result = Accounting::ClosingBundle.call(fiscal_year: fiscal_year, integrity: integrity_for(user))
     run.bundle.attach(io: StringIO.new(result.zip), filename: "closing-#{fiscal_year.year}.zip", content_type: "application/zip")
+  end
+
+  # B03c: a certificate of the standard level for the year, in the file. One that cannot be issued (no key, a book that does not hold) does not stop the closing, which has its own
+  # checks: the file says why, and so does the audit trail.
+  def integrity_for(user)
+    return nil unless ActsAsTenant.current_tenant.feature?(:b03c)
+
+    existing = IntegrityCertificate.where(fiscal_year_id: fiscal_year.id, disclosure_level: "standard", revoked_at: nil).recent.first
+    return { certificate: existing } if existing
+
+    result = Integrity::IssueCertificate.call(user: user, recent_second_factor: true, disclosure: "standard", recipient: "Closing #{fiscal_year.year}", fiscal_year: fiscal_year)
+    return { certificate: result[:certificate] } if result.success?
+
+    Accounting::AuditLog.record!(auditable: run, action: "closing_certificate_not_issued", user: user, payload: { reason: result.message })
+    { reason: result.message }
   end
 end

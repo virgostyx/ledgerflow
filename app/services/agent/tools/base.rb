@@ -40,7 +40,7 @@ class Agent::Tools::Base
   def call(_args, _context) = raise(NotImplementedError)
 
   # B03a: the argument a report tool takes to read the books as they were known at a past instant.
-  KNOWN_AT_PROPERTY = { known_at: { type: "string", maxLength: 40, description: "Books as known at this instant (ISO 8601)." } }.freeze
+  KNOWN_AT_PROPERTY = { known_at: { type: "string", maxLength: 40, description: "Instant of the books (ISO 8601)." } }.freeze
 
   private
 

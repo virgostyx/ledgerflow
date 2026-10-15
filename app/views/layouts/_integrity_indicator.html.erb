@@ -1,0 +1,12 @@
+<%# B03c: when the integrity of the books was last checked, a discreet line in the footer (only where the feature is on, and for who may read the page). %>
+<% if feature?(:b03c) && current_user && Integrity::CertificatePolicy.new(current_user, :certificate).index? %>
+  <% run = IntegrityCheckRun.recent.first %>
+  <% if run.nil? %>
+    <%= link_to t("integrity.indicator.never"), accounting_integrity_path, class: "text-gray-400 hover:underline" %>
+  <% elsif !run.clean? %>
+    <%= link_to t("integrity.indicator.found"), accounting_integrity_path, class: "text-red-600 font-medium hover:underline" %>
+  <% else %>
+    <%= link_to t(run.finished_at.to_date == Date.current ? "integrity.indicator.today" : "integrity.indicator.on", at: l(run.finished_at.in_time_zone, format: "%H:%M"), date: l(run.finished_at.to_date, format: :short)),
+                accounting_integrity_path, class: "text-gray-400 hover:underline" %>
+  <% end %>
+<% end %>

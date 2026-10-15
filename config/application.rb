@@ -8,6 +8,8 @@ Bundler.require(*Rails.groups)
 
 module Ledgerflow
   class Application < Rails::Application
+    # B03c: where the private keys that sign certificates live: outside the application, mounted by the deployment (never in the repository, the database or the logs).
+    config.x.ledger_signing_key_dir = ENV["LEDGER_SIGNING_KEY_DIR"].presence || (Rails.env.development? ? File.expand_path("../storage/signing_keys", __dir__) : nil)
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
 

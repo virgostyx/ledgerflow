@@ -2,7 +2,7 @@
 # never an instruction.
 class Agent::Tools::SearchKnowledge < Agent::Tools::Base
   tool_name "search_knowledge"
-  description "Searches the curated, dated knowledge base (chart of accounts extracts, procedures, treatment sheets, notes of the entity) for passages that answer a question of method: how to book a situation, which account, which rule. " \
+  description "Searches the curated, dated knowledge base (chart of accounts, procedures, sheets, notes) for passages that answer a question of method: how to book a situation, which account, which rule. " \
               "Returns at most 6 passages with document, version, period of validity and review status. Use it BEFORE answering any 'how do I treat...' question, with as_of_date set to the date of the operation (not today), and the query in the language of the documents you expect. " \
               "Do not use it for figures of the books (report tools) or the accounts of this entity (search_accounts). When it finds nothing, say so: never quote an article, law, circular or rate that is not in a returned passage."
   permission "agent.use"

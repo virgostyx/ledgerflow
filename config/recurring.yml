@@ -5,6 +5,24 @@ production:
     class: Approvals::DigestJob
     queue: default
     schedule: every day at 7:45am
+  integrity_self_check_nightly:
+    class: Integrity::SelfCheckJob
+    args: [ nightly ]
+    queue: default
+    schedule: every day at 3:45am
+  integrity_self_check_full:
+    class: Integrity::SelfCheckJob
+    args: [ full ]
+    queue: default
+    schedule: every sunday at 4:30am
+  ledger_timestamp:
+    class: Ledger::TimestampJob
+    queue: default
+    schedule: every hour
+  ledger_anchor:
+    class: Ledger::AnchorJob
+    queue: default
+    schedule: every day at 3:15am
   changes_notify_alerts:
     class: Changes::NotifyAlertsJob
     queue: default

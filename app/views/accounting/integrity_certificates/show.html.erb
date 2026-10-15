@@ -1,0 +1,65 @@
+<div class="mx-auto max-w-4xl px-4 py-8">
+  <p class="mb-2 text-sm"><%= link_to t("integrity.back"), accounting_integrity_path, class: "underline" %></p>
+  <h1 class="mb-1 text-2xl font-bold text-gray-900"><%= t("integrity.certificate") %> <span class="font-mono text-base text-gray-500"><%= @certificate.uuid %></span></h1>
+  <p class="mb-4 text-sm text-gray-600">
+    <%= t("integrity.covers", at: l(@certificate.covered_at.in_time_zone, format: :long), anchor: @certificate.anchor_number) %>
+    <%= t("integrity.level_for", level: t("integrity.levels.#{@certificate.disclosure_level}")) %><%= " - #{@certificate.recipient_label}" if @certificate.recipient_label.present? %>
+  </p>
+
+  <% if @certificate.revoked? %>
+    <p class="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-900" role="alert"><%= t("integrity.revoked_on", at: l(@certificate.revoked_at.in_time_zone, format: :short), reason: @certificate.revocation_reason) %></p>
+  <% end %>
+
+  <% if @verification %>
+    <p class="mb-4 rounded-md border px-4 py-2 text-sm <%= @verification.state == :valid ? 'border-green-300 bg-green-50 text-green-900' : 'border-red-300 bg-red-50 text-red-900' %>" role="status">
+      <%= t("integrity.states.#{@verification.state}") %>
+      <%= t("integrity.since", entries: @verification.since[:entries], in_period: @verification.since[:in_period]) %>
+    </p>
+  <% end %>
+
+  <p class="mb-6 flex flex-wrap items-center gap-4 text-sm">
+    <%= button_to t("integrity.verify_now"), verify_accounting_integrity_certificate_path(@certificate), method: :post, class: "underline cursor-pointer" %>
+    <%= link_to "JSON", download_accounting_integrity_certificate_path(@certificate, kind: "json"), class: "underline" %>
+    <%= link_to "PDF", download_accounting_integrity_certificate_path(@certificate, kind: "pdf"), class: "underline" %>
+    <%= link_to t("integrity.public_page"), verification_path(@certificate.uuid), class: "underline" %>
+  </p>
+
+  <% if @certificate.disclosure_level == "full" %>
+    <%= form_with url: package_accounting_integrity_certificate_path(@certificate), class: "mb-6 flex flex-wrap items-end gap-3 text-sm" do |f| %>
+      <div>
+        <%= f.label :passphrase, t("integrity.passphrase"), class: "block font-medium text-gray-700" %>
+        <%= f.password_field :passphrase, autocomplete: "new-password", class: "mt-1 form-input" %>
+      </div>
+      <%= f.submit t("integrity.download_package"), class: "btn-secondary" %>
+      <span class="text-xs text-gray-500"><%= t("integrity.package_hint") %></span>
+    <% end %>
+  <% end %>
+
+  <h2 class="mb-1 text-lg font-semibold text-gray-900"><%= t("integrity.reservations") %></h2>
+  <% if @document["reservations"].empty? %>
+    <p class="mb-6 text-sm text-gray-500"><%= t("integrity.no_reservations") %></p>
+  <% else %>
+    <ul class="mb-6 list-disc space-y-1 pl-5 text-sm text-amber-900"><% @document["reservations"].each do |text| %><li><%= text %></li><% end %></ul>
+  <% end %>
+
+  <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+    <section><h2 class="mb-1 text-lg font-semibold text-gray-900"><%= t("integrity.proves") %></h2><ul class="list-disc space-y-1 pl-5 text-sm"><% @document["proves"].each do |text| %><li><%= text %></li><% end %></ul></section>
+    <section><h2 class="mb-1 text-lg font-semibold text-gray-900"><%= t("integrity.does_not_prove") %></h2><ul class="list-disc space-y-1 pl-5 text-sm"><% @document["does_not_prove"].each do |text| %><li><%= text %></li><% end %></ul></section>
+  </div>
+
+  <h2 class="mb-1 text-lg font-semibold text-gray-900"><%= t("integrity.invariants") %></h2>
+  <p class="mb-6 text-sm"><%= @document["invariants"].map { |id, r| "#{id}: #{t("integrity.statuses.#{r['status']}")}" }.join(" - ") %></p>
+
+  <h2 class="mb-1 text-lg font-semibold text-gray-900"><%= t("integrity.key") %></h2>
+  <p class="mb-6 break-all font-mono text-xs"><%= @document["public_key"]["key_id"] %> - <%= @document["public_key"]["fingerprint"] %></p>
+
+  <% if @can_issue && !@certificate.revoked? %>
+    <%= form_with url: revoke_accounting_integrity_certificate_path(@certificate), class: "flex flex-wrap items-end gap-3 text-sm" do |f| %>
+      <div>
+        <%= f.label :reason, t("integrity.revocation_reason"), class: "block font-medium text-gray-700" %>
+        <%= f.text_field :reason, required: true, class: "mt-1 form-input w-80" %>
+      </div>
+      <%= f.submit t("integrity.revoke"), class: "btn-secondary", data: { turbo_confirm: t("integrity.revoke_confirm") } %>
+    <% end %>
+  <% end %>
+</div>

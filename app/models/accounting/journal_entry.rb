@@ -55,6 +55,11 @@ class Accounting::JournalEntry < ApplicationRecord
   # (an entry a service writes as posted from the start, like a reversal, is told too)
   after_commit :emit_status_webhook, if: -> { (saved_change_to_status? || previously_new_record?) && (posted? || reversed?) }
 
+  # B03c: who validates is part of what is fingerprinted, and the fingerprint is written in the transaction of the validation (an entry written validated from the start, a
+  # reversal, is fingerprinted when its lines are in: see Ledger::Seal).
+  before_save :remember_who_validates, if: -> { posted_by_id.nil? && (posted? || reversed?) && (new_record? || status_in_database == "draft") } # only when it becomes validated: the author is fixed with the place
+  after_save :seal_content, if: -> { (saved_change_to_status? || previously_new_record?) && (posted? || reversed?) }
+
   validates :entry_date, presence: true
   validates :reference,  presence: true, unless: :draft?
   validates :reference,  uniqueness: { scope: :entity_id, case_sensitive: false }, allow_nil: true
@@ -92,4 +97,10 @@ class Accounting::JournalEntry < ApplicationRecord
       { id: id, reference: reference, status: status, entry_date: entry_date.iso8601, journal: journal.code, fiscal_year: fiscal_year.year, reversal_of_id: reversal_of_id }
     }, entity: entity)
   end
+
+  private
+
+  def remember_who_validates = self.posted_by_id = Current.user&.id
+
+  def seal_content = Ledger::Seal.call(self, source: "live")
 end

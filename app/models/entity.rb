@@ -45,7 +45,7 @@ class Entity < ApplicationRecord
 
   # The features of docs/dev/features/spec.md that are built, each shipped behind a per-entity flag. A function adds its
   # key here when it ships.
-  FEATURES = %w[f01 f02 f03 f08 f09 f10 f11 f12 f13 agent b01a b01b b03a b03b].freeze
+  FEATURES = %w[f01 f02 f03 f08 f09 f10 f11 f12 f13 agent b01a b01b b03a b03b b03c].freeze
   FEATURE_LABELS = {
     "f01" => [ "Roles, period locks and users", "Turns on the Periods and Users and roles screens and the four-eyes option. The safeguards (a locked period refuses entries, the last owner stays) stay active either way." ],
     "f02" => [ "Bank statements (CODA)", "Turns on the import of CODA bank statements and the automatic reconciliation of their lines." ],
@@ -59,6 +59,7 @@ class Entity < ApplicationRecord
     "b01a" => [ "Invoice approval", "Turns on the approval circuit of purchase invoices (the \"bon à payer\"): policies by amount, supplier or project, approvers, delegations, escalation. Without a matching policy an invoice needs no approval, and payment stays possible." ],
     "b01b" => [ "Supplier payments", "Turns on the bank details of suppliers (an account is verified by a second person, after an observation period, before it can be paid) and, later in this feature, the payment batches built from approved invoices. No bank login is ever kept: LedgerFlow prepares a file that you load and authorize in your own bank." ],
     "b03a" => [ "Historical view", "Lets the reports be read as the books were known at a past instant (the balance, the ledgers, the statements, the aged balance, the open lines, the VAT grids): the same figures a reader had then, read only, with the instant on every export. It never changes anything." ],
+    "b03c" => [ "Integrity certificate", "Anchors the fingerprints of the validated entries every night (a chain of Merkle roots tied to the audit trail), and issues signed certificates that anyone can verify without access to the application. A certificate proves that the books were not altered since they were anchored; it does not prove that they are right." ],
     "b03b" => [ "What changed", "A report of what changed in the books between two moments: the entries added, the reversals, the letterings, the changes of setup, the locks, the documents, the payments and the IBANs, the impact on the figures, and the alerts a reviewer should look at first. Reads the history of the books (Historical view); it never changes anything." ],
     "f09" => [ "Customer dunning", "Turns on the preparation of reminders from the open customer lines: levels, texts per language, preview, sending after validation, disputes and payment promises." ]
   }.freeze

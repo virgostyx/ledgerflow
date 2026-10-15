@@ -10,7 +10,8 @@ class Accounting::ClosingBundle
   end
 
   # `watermark`: the name stamped on every PDF of the bundle (the external auditor's, F01).
-  def self.call(fiscal_year:, watermark: nil) = new(fiscal_year, watermark).call
+  # `integrity` (B03c): { certificate: } to put the certificate of the year in the file, or { reason: } to say it could not be issued; nil when the feature is off.
+  def self.call(fiscal_year:, watermark: nil, integrity: nil) = new(fiscal_year, watermark, integrity).call
 
   # Recomputes each file's hash against the manifest inside the ZIP.
   def self.verify(zip_data)
@@ -22,20 +23,29 @@ class Accounting::ClosingBundle
     Verification.new(checked: listed.size, mismatches: mismatches - missing, missing: missing)
   end
 
-  def initialize(fiscal_year, watermark = nil)
+  def initialize(fiscal_year, watermark = nil, integrity = nil)
     @fiscal_year = fiscal_year
     @watermark = watermark
+    @integrity = integrity
     @end = fiscal_year.end_date
   end
 
   def call
-    files = pdfs + frozen_reconciliations + [ [ "filing_data.json", JSON.pretty_generate(Accounting::FilingData.call(fiscal_year: @fiscal_year)) ] ]
+    files = pdfs + frozen_reconciliations + [ [ "filing_data.json", JSON.pretty_generate(Accounting::FilingData.call(fiscal_year: @fiscal_year)) ] ] + integrity_files
     manifest = { fiscal_year: @fiscal_year.year, generated_at: Time.current.utc.iso8601,
                  files: files.sort_by(&:first).map { |path, content| { path: path, sha256: Digest::SHA256.hexdigest(content), bytes: content.bytesize } } }
+    manifest[:integrity_certificate] = @integrity[:certificate] ? { issued: true, id: @integrity[:certificate].uuid } : { issued: false, reason: @integrity[:reason] } if @integrity
     Result.new(zip: Accounting::Zipper.build(files + [ [ "manifest.json", JSON.pretty_generate(manifest) ] ]), manifest: manifest)
   end
 
   private
+
+  # The certificate of integrity of the year (B03c), signed, and to be read.
+  def integrity_files
+    certificate = @integrity&.dig(:certificate) or return []
+
+    [ [ "integrity_certificate.json", JSON.pretty_generate(certificate.to_document) ], [ "integrity_certificate.pdf", Integrity::CertificatePdf.call(certificate) ] ]
+  end
 
   def pdfs
     [ [ "R01_trial_balance.pdf", trial_balance ], [ "R02_general_ledger.pdf", general_ledger ],

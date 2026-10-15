@@ -1,0 +1,118 @@
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900"><%= t("integrity.title") %></h1>
+  <p class="mb-6 max-w-3xl text-sm text-gray-600"><%= t("integrity.intro") %></p>
+
+  <dl class="mb-6 grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
+    <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+      <dt class="text-gray-500"><%= t("integrity.last_anchor") %></dt>
+      <dd class="font-medium text-gray-900"><%= @anchor ? "##{@anchor.number} - #{l(@anchor.anchored_at.in_time_zone, format: :short)}" : t("integrity.none_yet") %></dd>
+    </div>
+    <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+      <dt class="text-gray-500"><%= t("integrity.last_check") %></dt>
+      <dd class="font-medium <%= @runs.first && !@runs.first.clean? ? 'text-red-700' : 'text-gray-900' %>">
+        <%= @runs.first ? "#{l(@runs.first.finished_at.in_time_zone, format: :short)} (#{t("integrity.mode.#{@runs.first.mode}")}, #{t('integrity.findings', count: @runs.first.findings_count)})" : t("integrity.none_yet") %>
+      </dd>
+    </div>
+    <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+      <dt class="text-gray-500"><%= t("integrity.last_timestamp") %></dt>
+      <% stamped = Ledger::Anchor.where.not(timestamp_token: nil).chronological.last %>
+      <dd class="font-medium text-gray-900"><%= stamped ? "##{stamped.number} - #{l(stamped.timestamped_at.in_time_zone, format: :short)}" : (Ledger::Timestamping.configured?(@entity) ? t("integrity.timestamp_pending") : t("integrity.timestamp_off")) %></dd>
+    </div>
+    <div class="rounded-md border border-gray-200 bg-white px-3 py-2">
+      <dt class="text-gray-500"><%= t("integrity.keys") %></dt>
+      <dd class="font-medium text-gray-900"><%= @keys.count { |k| k["status"] == "active" } %> <%= t("integrity.active") %>, <%= @keys.count { |k| k["status"] != "active" } %> <%= t("integrity.retired_or_revoked") %></dd>
+    </div>
+  </dl>
+
+  <p class="mb-6 flex flex-wrap gap-4 text-sm">
+    <%= link_to t("integrity.show_invariants"), accounting_integrity_path(invariants: 1), class: "underline" %>
+    <% if @can_issue %>
+      <%= button_to t("integrity.check_now"), accounting_integrity_check_path, method: :post, class: "underline cursor-pointer" %>
+    <% end %>
+    <%= link_to t("integrity.published_keys"), published_signing_keys_path, class: "underline" %>
+  </p>
+
+  <% if @invariants %>
+    <table class="mb-8 min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("integrity.invariant") %></th><th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("integrity.status") %></th></tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @invariants.each do |id, result| %>
+          <tr><td class="px-4 py-2 font-mono"><%= id %></td>
+            <td class="px-4 py-2 <%= 'text-red-700 font-medium' if result['status'] == 'fails' %>"><%= t("integrity.statuses.#{result['status']}") %><%= " - #{result['detail']}" if result["detail"] %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <% if @can_issue %>
+    <section class="mb-8 rounded-md border border-gray-200 bg-white p-4">
+      <h2 class="mb-3 text-lg font-semibold text-gray-900"><%= t("integrity.issue_title") %></h2>
+      <%= form_with url: accounting_integrity_certificates_path, class: "grid grid-cols-1 gap-3 text-sm md:grid-cols-4" do |f| %>
+        <div>
+          <%= f.label :covered, t("integrity.covered"), class: "block font-medium text-gray-700" %>
+          <%= f.select :covered, [ [ t("integrity.now"), "now" ] ] + @anchors.map { |a| [ "#{t('integrity.anchor')} ##{a.number} - #{l(a.anchored_at.in_time_zone, format: :short)}", a.number ] }, {}, class: "mt-1 form-input w-full" %>
+        </div>
+        <div>
+          <%= f.label :fiscal_year_id, t("integrity.scope"), class: "block font-medium text-gray-700" %>
+          <%= f.select :fiscal_year_id, [ [ t("integrity.whole_books"), "" ] ] + @fiscal_years.map { |y| [ y.year.to_s, y.id ] }, {}, class: "mt-1 form-input w-full" %>
+        </div>
+        <div>
+          <%= f.label :disclosure, t("integrity.disclosure"), class: "block font-medium text-gray-700" %>
+          <%= f.select :disclosure, IntegrityCertificate::DISCLOSURES.map { |level| [ t("integrity.levels.#{level}"), level ] }, { selected: @entity.integrity_default_disclosure }, class: "mt-1 form-input w-full" %>
+        </div>
+        <div>
+          <%= f.label :recipient, t("integrity.recipient"), class: "block font-medium text-gray-700" %>
+          <%= f.text_field :recipient, class: "mt-1 form-input w-full", maxlength: 120 %>
+        </div>
+        <div class="md:col-span-4"><%= f.submit t("integrity.issue"), class: "btn-primary" %> <span class="text-xs text-gray-500"><%= t("integrity.issue_hint") %></span></div>
+      <% end %>
+    </section>
+  <% end %>
+
+  <h2 class="mb-2 text-lg font-semibold text-gray-900"><%= t("integrity.certificates") %></h2>
+  <% if @certificates.empty? %>
+    <p class="mb-8 text-sm text-gray-500"><%= t("integrity.no_certificates") %></p>
+  <% else %>
+    <table class="mb-8 min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50"><tr>
+        <% %w[issued covered level recipient status].each do |col| %><th class="px-4 py-2 text-left font-medium text-gray-600"><%= t("integrity.columns.#{col}") %></th><% end %>
+        <th class="px-4 py-2"></th>
+      </tr></thead>
+      <tbody class="divide-y divide-gray-100 bg-white">
+        <% @certificates.each do |c| %>
+          <tr>
+            <td class="px-4 py-2"><%= l(c.created_at.in_time_zone, format: :short) %></td>
+            <td class="px-4 py-2"><%= l(c.covered_at.in_time_zone, format: :short) %> (<%= t("integrity.anchor") %> #<%= c.anchor_number %>)</td>
+            <td class="px-4 py-2"><%= t("integrity.levels.#{c.disclosure_level}") %></td>
+            <td class="px-4 py-2"><%= c.recipient_label %></td>
+            <td class="px-4 py-2 <%= 'text-red-700' if c.revoked? %>"><%= c.revoked? ? t("integrity.revoked_state") : t("integrity.issued_state") %></td>
+            <td class="px-4 py-2"><%= link_to t("integrity.open"), accounting_integrity_certificate_path(c), class: "underline" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <% if @can_configure %>
+    <section class="rounded-md border border-gray-200 bg-white p-4">
+      <h2 class="mb-3 text-lg font-semibold text-gray-900"><%= t("integrity.settings_title") %></h2>
+      <%= form_with model: @entity, url: accounting_integrity_settings_path, method: :patch, scope: :entity, class: "space-y-3 text-sm" do |f| %>
+        <div>
+          <%= f.label :timestamp_authority_url, t("integrity.authority_url"), class: "block font-medium text-gray-700" %>
+          <%= f.url_field :timestamp_authority_url, class: "mt-1 form-input w-full max-w-xl", placeholder: "https://" %>
+          <span class="block text-xs text-gray-500"><%= t("integrity.authority_hint") %></span>
+        </div>
+        <div>
+          <%= f.label :timestamp_authority_ca, t("integrity.authority_ca"), class: "block font-medium text-gray-700" %>
+          <%= f.text_area :timestamp_authority_ca, rows: 4, class: "mt-1 form-input w-full max-w-xl font-mono text-xs" %>
+        </div>
+        <div>
+          <%= f.label :integrity_default_disclosure, t("integrity.default_level"), class: "block font-medium text-gray-700" %>
+          <%= f.select :integrity_default_disclosure, IntegrityCertificate::DISCLOSURES.map { |level| [ t("integrity.levels.#{level}"), level ] }, {}, class: "mt-1 form-input" %>
+        </div>
+        <label class="flex items-start gap-2"><%= f.check_box :integrity_public_company_name, class: "mt-1 rounded border-gray-300" %> <span><%= t("integrity.public_name") %><span class="block text-xs text-gray-500"><%= t("integrity.public_name_hint") %></span></span></label>
+        <%= f.submit t("integrity.save"), class: "btn-secondary" %>
+      <% end %>
+    </section>
+  <% end %>
+</div>

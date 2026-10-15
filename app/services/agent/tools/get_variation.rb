@@ -2,7 +2,7 @@
 class Agent::Tools::GetVariation < Agent::Tools::Base
   tool_name "get_variation"
   description "Compares the validated movements (debit minus credit) of the accounts starting with a code between two periods and lists the biggest contributors to the change, by account, partner or calendar month: " \
-              "both amounts, the change, its share of the total and the largest single line. Use it for 'why did this item change?': main contributor, one-off movement (a line over 30 percent of the change), new partner, calendar effect. " \
+              "both amounts, the change, its share of the total and the largest single line. Use it for 'why did this item change?': main contributor, one-off line (over 30 percent of the change), new partner, calendar effect. " \
               "Do not use it for one balance (get_trial_balance) or for the entries behind a contributor (get_ledger)."
   permission "reports.view"
   tool_version 1

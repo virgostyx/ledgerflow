@@ -9,7 +9,7 @@ RSpec.describe "Audit trail integrity chain (R18)", type: :model do
 
   after { Current.reset }
 
-  it "chains each entry to the previous one: hash = SHA-256(previous hash + content)" do
+  it "chains each entry to the previous one: its hash covers the previous hash and its content (version 2: through its digest)" do
     creation = Accounting::AuditLog.where(auditable_id: account.id).last
     first = log("a")
     second = log("b", payload: { amount: "10.00" })

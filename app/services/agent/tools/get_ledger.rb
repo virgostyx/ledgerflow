@@ -4,7 +4,7 @@ class Agent::Tools::GetLedger < Agent::Tools::Base
 
   tool_name "get_ledger"
   description "Returns the ledger of one account for a period: the opening balance, each line (date, entry reference, label, debit, credit, running balance, partner, lettering) and the totals. " \
-              "It can be narrowed to one partner, one journal, or to lettered or unlettered lines. Validated entries only. " \
+              "Can be narrowed to a partner, a journal, or lettered or unlettered lines. Validated entries only. " \
               "Use it to see what is behind the balance of an account or to find the biggest movements. " \
               "Do not use it to compare many accounts (use get_trial_balance) or for what a customer owes in total (use get_aged_balance)."
   permission "reports.view"
