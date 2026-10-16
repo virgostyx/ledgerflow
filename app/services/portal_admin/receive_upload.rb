@@ -72,7 +72,15 @@ class PortalAdmin::ReceiveUpload
       end
       Accounting::AuditLog.record!(auditable: @first, action: "portal_upload_#{status}", payload: audit_payload.merge(document_id: document.id))
     end
+    link_to_requested_line(document)
     PortalAdmin::NotifyUpload.call(@first) if status == "to_complete"
+  end
+
+  # A document sent for a line the firm asked about is linked to that bank line (a link, nothing is booked). A line withdrawn meanwhile keeps the document in the inbox.
+  def link_to_requested_line(document)
+    line = Portal::DocumentRequestLine.open_ones.find_by(id: @first.request_line_id) if @first.request_line_id
+    transaction = Accounting::BankTransaction.find_by(id: line.bank_transaction_id) if line
+    Accounting::LinkDocument.call(document: document, target: transaction, user: nil) if transaction
   end
 
   def refuse(reason)

@@ -130,7 +130,7 @@
   };
 
   const enqueue = async (parts, kind = "file") => {
-    const item = { company: $("company").value, kind, parts, batch: crypto.randomUUID(), hint_kind: $("hint_kind").value, hint_note: $("hint_note").value.trim().slice(0, 300),
+    const item = { company: $("company").value, request_line: $("request_line")?.value, kind, parts, batch: crypto.randomUUID(), hint_kind: $("hint_kind").value, hint_note: $("hint_note").value.trim().slice(0, 300),
       state: "waiting", created_at: Date.now() };
     try { await outbox.save(item); } catch (e) {
       if (e?.name === "QuotaExceededError") { $("pending").textContent = "Your device is full. Send the pending documents first, then try again."; return; }

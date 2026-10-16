@@ -6,11 +6,16 @@ class Portal::UploadsController < Portal::BaseController
 
   def new
     @companies = Portal::Upload.companies_open_to(current_portal_user).order(:name)
+    @line = open_line(params[:line]) if params[:line].present?
+    @companies = @companies.where(id: @line.entity_id) if @line
   end
 
   def create
     company = Portal::Upload.companies_open_to(current_portal_user).find_by(id: params[:company])
     return not_in_scope(params[:company]) unless company
+
+    line = open_line(params[:request_line]) if params[:request_line].present?
+    return not_in_scope(params[:request_line]) if params[:request_line].present? && (line.nil? || line.entity_id != company.id)
 
     size = params[:byte_size].to_i
     if (message = Portal::Upload.quota_message(current_portal_user, company.id, size))
@@ -20,7 +25,7 @@ class Portal::UploadsController < Portal::BaseController
 
     upload = Portal::Upload.new(entity_id: company.id, portal_user: current_portal_user, filename: File.basename(params[:filename].to_s.tr("\\", "/")).first(255), content_type: params[:content_type].to_s.first(100),
                                 byte_size: size, sha256: params[:sha256].to_s, chunk_size: Portal::Upload::CHUNK_SIZE, chunk_count: [ (size.to_f / Portal::Upload::CHUNK_SIZE).ceil, 1 ].max,
-                                expires_at: Portal::Upload::VALIDITY.from_now, hint_kind: params[:hint_kind].presence || "purchase", hint_note: params[:hint_note].to_s.strip.presence,
+                                expires_at: Portal::Upload::VALIDITY.from_now, hint_kind: params[:hint_kind].presence || "purchase", hint_note: params[:hint_note].to_s.strip.presence, request_line_id: line&.id,
                                 batch_token: params[:batch_token].presence&.to_s&.first(64), page_number: params[:page_number].presence&.to_i, page_count: params[:page_count].presence&.to_i)
     return render(json: { errors: upload.errors.full_messages }, status: :unprocessable_content) unless upload.save
 
@@ -43,6 +48,11 @@ class Portal::UploadsController < Portal::BaseController
   end
 
   private
+
+  # A line the person may still send a document for: asked of them, open, in a company where they may send.
+  def open_line(token)
+    Portal::DocumentRequestLine.in_reach_of(current_portal_user).open_ones.where(entity_id: Portal::Upload.companies_open_to(current_portal_user).select(:id)).find_by(token: token)
+  end
 
   def mine
     upload = Portal::Upload.of(current_portal_user).find_by(token: params[:token])

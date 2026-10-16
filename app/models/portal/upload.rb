@@ -39,6 +39,8 @@ class Portal::Upload < ApplicationRecord
   end
 
   # The uploads of this person, in the companies where they may still send.
+  belongs_to :request_line, class_name: "Portal::DocumentRequestLine", optional: true
+
   def self.of(person) = where(portal_user_id: person.id, entity_id: companies_open_to(person).select(:id))
 
   def to_param = token

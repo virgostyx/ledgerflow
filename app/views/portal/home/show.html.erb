@@ -5,7 +5,14 @@
 <% else %>
   <ul class="mt-4 space-y-1"><% @companies.each do |company| %><li><%= company.name %></li><% end %></ul>
 <% end %>
-<%= link_to "Send documents", new_upload_path, class: "mt-4 inline-block underline" if Portal::Upload.companies_open_to(current_portal_user).exists? %>
+<% if Portal::Upload.companies_open_to(current_portal_user).exists? %>
+  <div class="mt-4 grid gap-3 sm:grid-cols-2">
+    <%= link_to "Take a photo", new_upload_path, class: "rounded bg-gray-900 px-6 py-5 text-center text-lg text-white" %>
+    <%= link_to "Choose a file", new_upload_path, class: "rounded bg-gray-900 px-6 py-5 text-center text-lg text-white" %>
+    <%= link_to "Requested documents", document_requests_path, class: "rounded border border-gray-900 px-6 py-5 text-center text-lg" %>
+    <%= link_to "My sends", uploads_path, class: "rounded border border-gray-900 px-6 py-5 text-center text-lg" %>
+  </div>
+<% end %>
 <%= link_to "Publications", publications_path, class: "mt-4 inline-block underline" %>
 <%= link_to "Devices", devices_path, class: "mt-4 ml-4 inline-block underline" %>
 <%= link_to "Ask for someone's access", new_access_request_path, class: "mt-4 ml-4 inline-block underline" if current_portal_user.open_grants.where("portal_grants.capabilities @> ?", [ "access.request" ].to_json).exists? %>

@@ -5077,7 +5077,8 @@ CREATE TABLE public.entities (
     timestamp_authority_url character varying,
     timestamp_authority_ca text,
     integrity_default_disclosure character varying DEFAULT 'standard'::character varying NOT NULL,
-    integrity_public_company_name boolean DEFAULT false NOT NULL
+    integrity_public_company_name boolean DEFAULT false NOT NULL,
+    portal_show_bank_lines boolean DEFAULT true NOT NULL
 );
 
 
@@ -5846,7 +5847,8 @@ CREATE VIEW public.portal_companies AS
     name,
     active,
     COALESCE(((features ->> 'b02a'::text))::boolean, false) AS portal_enabled,
-    (COALESCE(((features ->> 'b02a'::text))::boolean, false) AND COALESCE(((features ->> 'b02b'::text))::boolean, false) AND COALESCE(((features ->> 'f03'::text))::boolean, false)) AS upload_enabled
+    (COALESCE(((features ->> 'b02a'::text))::boolean, false) AND COALESCE(((features ->> 'b02b'::text))::boolean, false) AND COALESCE(((features ->> 'f03'::text))::boolean, false)) AS upload_enabled,
+    portal_show_bank_lines AS show_bank_lines
    FROM public.entities;
 
 
@@ -5886,6 +5888,87 @@ CREATE SEQUENCE public.portal_devices_id_seq
 --
 
 ALTER SEQUENCE public.portal_devices_id_seq OWNED BY public.portal_devices.id;
+
+
+--
+-- Name: portal_document_request_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_document_request_lines (
+    id bigint NOT NULL,
+    request_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    token character varying NOT NULL,
+    bank_transaction_id bigint NOT NULL,
+    line_date date NOT NULL,
+    label character varying,
+    amount numeric(15,2) NOT NULL,
+    currency character varying DEFAULT 'EUR'::character varying NOT NULL,
+    state character varying DEFAULT 'open'::character varying NOT NULL,
+    answered_by_id bigint,
+    answered_at timestamp(6) without time zone,
+    answer_reason character varying,
+    answer_note character varying,
+    task_id bigint,
+    withdrawn_reason character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_document_request_lines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_document_request_lines_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_document_request_lines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_document_request_lines_id_seq OWNED BY public.portal_document_request_lines.id;
+
+
+--
+-- Name: portal_document_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_document_requests (
+    id bigint NOT NULL,
+    token character varying NOT NULL,
+    entity_id bigint NOT NULL,
+    message text,
+    due_on date,
+    requested_by_id bigint NOT NULL,
+    last_reminder_on date,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_document_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_document_requests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_document_requests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_document_requests_id_seq OWNED BY public.portal_document_requests.id;
 
 
 --
@@ -6225,7 +6308,8 @@ CREATE TABLE public.portal_uploads (
     document_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    progress character varying DEFAULT 'received'::character varying NOT NULL
+    progress character varying DEFAULT 'received'::character varying NOT NULL,
+    request_line_id bigint
 );
 
 
@@ -7563,6 +7647,20 @@ ALTER TABLE ONLY public.portal_devices ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: portal_document_request_lines id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_request_lines ALTER COLUMN id SET DEFAULT nextval('public.portal_document_request_lines_id_seq'::regclass);
+
+
+--
+-- Name: portal_document_requests id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_requests ALTER COLUMN id SET DEFAULT nextval('public.portal_document_requests_id_seq'::regclass);
+
+
+--
 -- Name: portal_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8767,6 +8865,22 @@ ALTER TABLE ONLY public.portal_brandings
 
 ALTER TABLE ONLY public.portal_devices
     ADD CONSTRAINT portal_devices_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_document_request_lines portal_document_request_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_request_lines
+    ADD CONSTRAINT portal_document_request_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_document_requests portal_document_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_requests
+    ADD CONSTRAINT portal_document_requests_pkey PRIMARY KEY (id);
 
 
 --
@@ -12407,6 +12521,62 @@ CREATE UNIQUE INDEX index_portal_devices_on_token_digest ON public.portal_device
 
 
 --
+-- Name: index_portal_document_request_lines_on_answered_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_document_request_lines_on_answered_by_id ON public.portal_document_request_lines USING btree (answered_by_id);
+
+
+--
+-- Name: index_portal_document_request_lines_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_document_request_lines_on_entity_id ON public.portal_document_request_lines USING btree (entity_id);
+
+
+--
+-- Name: index_portal_document_request_lines_on_entity_id_and_state; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_document_request_lines_on_entity_id_and_state ON public.portal_document_request_lines USING btree (entity_id, state);
+
+
+--
+-- Name: index_portal_document_request_lines_on_request_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_document_request_lines_on_request_id ON public.portal_document_request_lines USING btree (request_id);
+
+
+--
+-- Name: index_portal_document_request_lines_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_document_request_lines_on_token ON public.portal_document_request_lines USING btree (token);
+
+
+--
+-- Name: index_portal_document_requests_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_document_requests_on_entity_id ON public.portal_document_requests USING btree (entity_id);
+
+
+--
+-- Name: index_portal_document_requests_on_requested_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_document_requests_on_requested_by_id ON public.portal_document_requests USING btree (requested_by_id);
+
+
+--
+-- Name: index_portal_document_requests_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_document_requests_on_token ON public.portal_document_requests USING btree (token);
+
+
+--
 -- Name: index_portal_events_not_mirrored; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13058,6 +13228,14 @@ ALTER TABLE ONLY public.knowledge_gaps
 
 
 --
+-- Name: portal_document_request_lines fk_rails_0ad9257497; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_request_lines
+    ADD CONSTRAINT fk_rails_0ad9257497 FOREIGN KEY (answered_by_id) REFERENCES public.portal_users(id);
+
+
+--
 -- Name: accounting_payment_batches fk_rails_0bc5bca68a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13466,6 +13644,14 @@ ALTER TABLE ONLY public.accounting_documents
 
 
 --
+-- Name: portal_document_request_lines fk_rails_3460a1bdc6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_request_lines
+    ADD CONSTRAINT fk_rails_3460a1bdc6 FOREIGN KEY (request_id) REFERENCES public.portal_document_requests(id);
+
+
+--
 -- Name: accounting_exchange_rates fk_rails_349168c3df; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13826,6 +14012,14 @@ ALTER TABLE ONLY public.agent_conversation_reviews
 
 
 --
+-- Name: portal_document_requests fk_rails_51123ddf35; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_requests
+    ADD CONSTRAINT fk_rails_51123ddf35 FOREIGN KEY (requested_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: data_exports fk_rails_5408e45594; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14055,6 +14249,14 @@ ALTER TABLE ONLY public.consolidation_entries
 
 ALTER TABLE ONLY public.payment_item_invoices
     ADD CONSTRAINT fk_rails_6b8e8c4cda FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_document_request_lines fk_rails_6c1298c222; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_request_lines
+    ADD CONSTRAINT fk_rails_6c1298c222 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -15442,6 +15644,14 @@ ALTER TABLE ONLY public.accounting_fiscal_years
 
 
 --
+-- Name: portal_document_requests fk_rails_dd97c444e9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_requests
+    ADD CONSTRAINT fk_rails_dd97c444e9 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: closing_runs fk_rails_de8bbe5dd3; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15872,6 +16082,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016190000'),
 ('20261016180000'),
 ('20261016170000'),
 ('20261016160000'),

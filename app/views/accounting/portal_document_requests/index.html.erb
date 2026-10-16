@@ -1,0 +1,40 @@
+<%= render Ui::PageHeaderComponent.new(title: "Supporting documents asked of the client") %>
+
+<section class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm">
+  <%= form_with url: settings_accounting_portal_document_requests_path, method: :patch, class: "flex items-center gap-3" do %>
+    <%= hidden_field_tag :show_bank_lines, "0", id: nil %>
+    <label><%= check_box_tag :show_bank_lines, "1", current_tenant.portal_show_bank_lines? %> The clients see the date, the label and the amount of the bank lines asked for (never the IBAN)</label>
+    <%= submit_tag "Save", class: "text-primary-700 underline cursor-pointer" %>
+  <% end %>
+</section>
+
+<section class="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+  <h2 class="mb-2 text-sm font-semibold text-gray-700">Ask for the documents of bank lines</h2>
+  <% if @candidates.empty? %>
+    <p class="text-sm text-gray-600">No pending bank line without a document.</p>
+  <% else %>
+    <%= form_with url: accounting_portal_document_requests_path, class: "space-y-3 text-sm" do %>
+      <table class="w-full">
+        <% @candidates.each do |line| %>
+          <tr><td class="w-8"><%= check_box_tag "line_ids[]", line.id, false, id: "line_#{line.id}" %></td>
+              <td><label for="line_<%= line.id %>"><%= line.transaction_date %> · <%= PortalAdmin::BankLineLabel.call(line) %> · <%= number_with_precision(line.amount, precision: 2) %> <%= line.currency %></label></td></tr>
+        <% end %>
+      </table>
+      <div><%= label_tag :message, "Message", class: "block font-medium" %><%= text_area_tag :message, nil, rows: 2, maxlength: 1000, class: "w-full rounded border border-gray-300 px-2 py-1" %></div>
+      <div><%= label_tag :due_on, "Answer by", class: "block font-medium" %><%= date_field_tag :due_on, nil, class: "rounded border border-gray-300 px-2 py-1" %></div>
+      <%= submit_tag "Ask the client for the documents", class: "rounded-md bg-primary-600 px-4 py-2 text-white cursor-pointer" %>
+    <% end %>
+  <% end %>
+</section>
+
+<section class="rounded-lg border border-gray-200 bg-white p-4 text-sm">
+  <h2 class="mb-2 font-semibold text-gray-700">Asked so far</h2>
+  <% if @lines.empty? %><p class="text-gray-600">Nothing asked yet.</p><% end %>
+  <ul class="space-y-1">
+    <% @lines.each do |line| %>
+      <li><%= line.line_date %> · <%= line.label %> · <%= number_with_precision(line.amount, precision: 2) %> — <strong><%= line.state %></strong>
+        <%= "(#{line.answer_reason}#{": #{line.answer_note}" if line.answer_note.present?})" if line.state == "explained" %>
+        <%= "(#{line.withdrawn_reason})" if line.state == "withdrawn" %></li>
+    <% end %>
+  </ul>
+</section>

@@ -6,7 +6,11 @@ class PortalAdminJob < ApplicationJob
     case task
     when "dormant" then PortalAdmin::SuspendDormant.call
     when "digest" then PortalAdmin::DailyDigest.call
-    when "uploads" then PortalAdmin::ReceiveUploads.call && PortalAdmin::SyncUploadProgress.call
+    when "uploads"
+      PortalAdmin::ReceiveUploads.call
+      PortalAdmin::SyncUploadProgress.call
+      PortalAdmin::SyncDocumentRequests.call
+    when "reminders" then PortalAdmin::RemindDocumentRequests.call
     else PortalAdmin::MirrorEvents.call
     end
   end

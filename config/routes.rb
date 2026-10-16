@@ -444,6 +444,9 @@ Rails.application.routes.draw do
       end
       patch "portal_branding", to: "portal_access#branding", as: :portal_branding
       resources :portal_activity, only: :index, controller: "portal_activity"
+      resources :portal_document_requests, only: [ :index, :create ] do # B02b
+        patch :settings, on: :collection
+      end
       resources :portal_publications, only: [ :index, :create ], param: :token do
         member { post :withdraw }
       end

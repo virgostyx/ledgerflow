@@ -28,5 +28,7 @@ scope module: :portal do
       post :complete
     end
   end
+  resources :document_requests, only: :index
+  post "document_request_lines/:token/answer", to: "document_request_lines#answer", as: :answer_document_request_line
   get "downloads/:signed", to: "downloads#show", as: :portal_download
 end

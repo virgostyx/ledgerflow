@@ -116,6 +116,8 @@ RSpec.describe PortalAdminJob do
     schedule = YAML.load_file(Rails.root.join('config/recurring.yml')).fetch('production')
     expect(schedule.fetch('portal_mirror_events')).to include('class' => 'PortalAdminJob', 'args' => [ 'mirror' ])
     expect(schedule.fetch('portal_suspend_dormant')).to include('class' => 'PortalAdminJob', 'args' => [ 'dormant' ])
+    expect(schedule.fetch('portal_receive_uploads')).to include('class' => 'PortalAdminJob', 'args' => [ 'uploads' ], 'schedule' => 'every minute') # B02b
+    expect(schedule.fetch('portal_remind_document_requests')).to include('class' => 'PortalAdminJob', 'args' => [ 'reminders' ])
   end
 
   it 'runs the task it is given' do
@@ -123,5 +125,12 @@ RSpec.describe PortalAdminJob do
     described_class.perform_now('dormant')
     expect(PortalAdmin::MirrorEvents).to receive(:call)
     described_class.perform_now
+
+    expect(PortalAdmin::ReceiveUploads).to receive(:call)
+    expect(PortalAdmin::SyncUploadProgress).to receive(:call)
+    expect(PortalAdmin::SyncDocumentRequests).to receive(:call)
+    described_class.perform_now('uploads')
+    expect(PortalAdmin::RemindDocumentRequests).to receive(:call)
+    described_class.perform_now('reminders')
   end
 end

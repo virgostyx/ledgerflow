@@ -94,6 +94,33 @@ RSpec.describe PortalAdmin::ReceiveUpload do
     end
   end
 
+  describe 'a document sent for a bank line the firm asked about' do
+    let(:staff) { create(:user) }
+    let(:line) { ActsAsTenant.with_tenant(entity) { create(:bank_transaction) } }
+    let(:requested) do
+      Portal::DocumentRequest.create!(entity_id: entity.id, requested_by: staff).lines.create!(entity_id: entity.id, bank_transaction_id: line.id, line_date: Date.current, amount: 1)
+    end
+
+    it 'is linked to that line, and leaves the inbox' do
+      upload = received(sample_pdf('for the line'), request_line_id: requested.id)
+
+      run(upload)
+
+      document = document_of(upload)
+      expect(document).to be_linked
+      expect(ActsAsTenant.with_tenant(entity) { document.links.sole.target }).to eq(line)
+    end
+
+    it 'stays in the inbox, unlinked, when the line was withdrawn meanwhile' do
+      requested.update!(state: 'withdrawn')
+      upload = received(sample_pdf('too late'), request_line_id: requested.id)
+
+      run(upload)
+
+      expect(document_of(upload)).to be_inbox
+    end
+  end
+
   describe 'a PDF is cleaned (criterion 5)' do
     let(:evil) do
       <<~PDF.b

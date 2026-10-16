@@ -117,6 +117,11 @@ production:
     args: [ "uploads" ]
     queue: default
     schedule: every minute
+  portal_remind_document_requests:
+    class: PortalAdminJob
+    args: [ "reminders" ]
+    queue: default
+    schedule: every day at 8am
   portal_suspend_dormant:
     class: PortalAdminJob
     args: [ "dormant" ]

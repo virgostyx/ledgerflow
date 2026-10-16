@@ -1,0 +1,34 @@
+<h1 class="text-xl font-semibold">Requested documents</h1>
+<%= render "portal/shared/flash" %>
+<% if @requests.empty? %>
+  <p class="mt-4 text-sm">Nothing is asked of you at the moment.</p>
+<% end %>
+<% @requests.each do |request, lines| %>
+  <section class="mt-4">
+    <% if request.message.present? %><p class="text-sm"><%= request.message %></p><% end %>
+    <% if request.due_on %><p class="text-xs text-gray-600">Please answer by <%= request.due_on.iso8601 %></p><% end %>
+    <ul class="mt-2 space-y-3">
+      <% lines.each do |line| %>
+        <li class="rounded border border-gray-200 p-3 text-sm">
+          <div><strong><%= line.line_date.iso8601 %></strong> · <%= line.label %> · <%= number_with_precision(line.amount, precision: 2) %> <%= line.currency %></div>
+          <% case line.state %>
+          <% when "open" %>
+            <% if @may_upload.include?(line.entity_id) %><%= link_to "Send the document", new_upload_path(line: line.token), class: "underline" %><% end %>
+            <% if @may_answer.include?(line.entity_id) %>
+              <%= form_with url: answer_document_request_line_path(line.token), class: "mt-2 flex flex-wrap items-end gap-2" do %>
+                <label class="text-xs">No document:
+                  <%= select_tag :reason, options_for_select(Portal::DocumentRequestLine::REASONS.map { |key, label| [ label, key ] }), class: "rounded border border-gray-300 px-1 py-1" %></label>
+                <label class="text-xs">Note <%= text_field_tag :note, nil, maxlength: 300, class: "rounded border border-gray-300 px-1 py-1" %></label>
+                <%= submit_tag "Answer", class: "portal-button rounded px-3 py-1" %>
+              <% end %>
+            <% end %>
+          <% when "provided" %><p>Received, thank you.</p>
+          <% when "explained" %><p>Your answer was sent: <%= line.reason_label %>.</p>
+          <% when "withdrawn" %><p><%= line.withdrawn_reason %></p>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>
+<%= link_to "Back", portal_root_path, class: "mt-4 inline-block underline" %>

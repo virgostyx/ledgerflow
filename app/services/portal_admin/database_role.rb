@@ -12,7 +12,8 @@ class PortalAdmin::DatabaseRole
     "portal_events"          => %w[INSERT],
     "portal_access_requests" => %w[INSERT],
     "portal_uploads"         => %w[INSERT UPDATE], # a session is opened, then marked received; the portal never deletes one
-    "portal_upload_chunks"   => %w[INSERT] # the firm's side removes them once the file is taken in
+    "portal_upload_chunks"   => %w[INSERT], # the firm's side removes them once the file is taken in
+    "portal_document_request_lines" => %w[UPDATE] # the client's answer; the requests themselves are written by the firm
   }.freeze
   BOOKKEEPING = %w[schema_migrations ar_internal_metadata].freeze
 

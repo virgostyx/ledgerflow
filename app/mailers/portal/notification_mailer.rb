@@ -12,4 +12,11 @@ class Portal::NotificationMailer < ApplicationMailer
     @url = Rails.application.routes.url_helpers.uploads_url(**Portal.url_options)
     mail to: user.email, subject: "Something you sent to #{company_name} needs your attention"
   end
+
+  def documents_requested(user, company_name, count)
+    @company_name = company_name
+    @count = count
+    @url = Rails.application.routes.url_helpers.document_requests_url(**Portal.url_options)
+    mail to: user.email, subject: "#{company_name} asks you for #{count} #{'document'.pluralize(count)}"
+  end
 end
