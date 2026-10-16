@@ -4,5 +4,5 @@
 <%= form_with url: portal_invitation_path(params[:token]), class: "mt-4 space-y-3" do |f| %>
   <div><%= f.label :password, "Password", class: "block text-sm" %><%= f.password_field :password, autocomplete: "new-password", minlength: 12, required: true, class: "w-full rounded border p-2" %></div>
   <div><%= f.label :password_confirmation, "Repeat the password", class: "block text-sm" %><%= f.password_field :password_confirmation, autocomplete: "new-password", required: true, class: "w-full rounded border p-2" %></div>
-  <%= f.submit "Continue", class: "rounded bg-gray-900 px-4 py-2 text-white" %>
+  <%= f.submit "Continue", class: "portal-button rounded px-4 py-2" %>
 <% end %>

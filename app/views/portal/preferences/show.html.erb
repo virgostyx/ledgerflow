@@ -6,6 +6,6 @@
     <label class="block"><%= f.radio_button :notification_frequency, value, checked: current_portal_user.notification_frequency == value %> <%= label %></label>
   <% end %>
   <p class="text-gray-600">Security alerts are always sent.</p>
-  <%= f.submit "Save", class: "rounded bg-gray-900 px-4 py-2 text-white" %>
+  <%= f.submit "Save", class: "portal-button rounded px-4 py-2" %>
 <% end %>
 <%= link_to "Back", portal_root_path, class: "mt-4 inline-block text-sm underline" %>

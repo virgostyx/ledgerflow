@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Portal direct access to identifiers', type: :request do
   # Routes anyone may reach (they hold no data): controller#action
   def public_routes = %w[portal/sessions#new portal/sessions#create portal/invitations#show portal/invitations#accept portal/second_factors#new portal/second_factors#create
-                         portal/second_factors#challenge portal/second_factors#verify portal/sessions#destroy]
+                         portal/second_factors#challenge portal/second_factors#verify portal/sessions#destroy portal/branding#stylesheet]
 
   # Routes with an identifier: how to build a path to an object this person must not see, given the person and a stranger's data.
   def probes

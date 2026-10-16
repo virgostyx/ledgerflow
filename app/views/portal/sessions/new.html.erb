@@ -3,6 +3,6 @@
 <%= form_with url: portal_session_path, class: "mt-4 space-y-3" do |f| %>
   <div><%= f.label :email, "Email", class: "block text-sm" %><%= f.email_field :email, autocomplete: "username", required: true, class: "w-full rounded border p-2" %></div>
   <div><%= f.label :password, "Password", class: "block text-sm" %><%= f.password_field :password, autocomplete: "current-password", required: true, class: "w-full rounded border p-2" %></div>
-  <%= f.submit "Continue", class: "rounded bg-gray-900 px-4 py-2 text-white" %>
+  <%= f.submit "Continue", class: "portal-button rounded px-4 py-2" %>
 <% end %>
 <p class="mt-4 text-sm text-gray-600">Lost your second factor? Ask your accountant: access is reset by them, never by e-mail alone.</p>

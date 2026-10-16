@@ -20,7 +20,7 @@ class Portal::BaseController < ActionController::Base
 
   before_action :set_security_headers
   before_action :require_sign_in!
-  helper_method :current_portal_user, :current_portal_session
+  helper_method :current_portal_user, :current_portal_session, :portal_brand
 
   COOKIE = :lf_portal
   DEVICE_COOKIE = :lf_portal_device
@@ -34,6 +34,14 @@ class Portal::BaseController < ActionController::Base
   end
 
   def current_portal_user = current_portal_session&.portal_user
+
+  # The look of the firm when the person belongs to one company only (and it has one); the neutral look otherwise.
+  def portal_brand
+    return @portal_brand if defined?(@portal_brand)
+
+    ids = current_portal_user&.open_grants&.distinct&.pluck(:entity_id)
+    @portal_brand = ids&.one? ? Portal::Branding.find_by(entity_id: ids.first) : nil
+  end
 
   # Nothing opens without a live session, a second factor configured and a second factor given in this session.
   def require_sign_in!

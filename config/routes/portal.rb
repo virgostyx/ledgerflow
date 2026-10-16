@@ -14,6 +14,8 @@ scope module: :portal do
   get  "second_factor/challenge", to: "second_factors#challenge", as: :portal_second_factor_challenge
   post "second_factor/challenge", to: "second_factors#verify"
 
+  get "branding.css", to: "branding#stylesheet", as: :branding_stylesheet, defaults: { format: "css" }
+  get "branding/logo", to: "branding#logo", as: :branding_logo
   resource :preferences, only: %i[show update]
   resources :devices, only: %i[index destroy], param: :token
   resources :publications, only: %i[index show], param: :token

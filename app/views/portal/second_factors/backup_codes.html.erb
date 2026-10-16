@@ -1,4 +1,4 @@
 <h1 class="text-xl font-semibold">Your backup codes</h1>
 <p class="mt-2 text-sm text-gray-600">Keep them somewhere safe. Each works once, in place of the app's code. They are not shown again.</p>
 <ul class="mt-4 font-mono text-sm"><% @backup_codes.each do |code| %><li><%= code %></li><% end %></ul>
-<%= link_to "Continue", portal_root_path, class: "mt-4 inline-block rounded bg-gray-900 px-4 py-2 text-white" %>
+<%= link_to "Continue", portal_root_path, class: "mt-4 inline-block portal-button rounded px-4 py-2" %>

@@ -41,4 +41,15 @@
     <div><%= f.label :role, "Role", class: "block" %><%= f.select :role, Portal::ROLES, {}, class: "rounded border p-2" %></div>
     <%= f.submit "Invite", class: "rounded bg-gray-900 px-4 py-2 text-white" %>
   <% end %>
+
+  <h2 class="mb-2 mt-8 font-semibold">Look of the portal</h2>
+  <p class="mb-2 text-xs text-gray-500">Colours are refused when text cannot be read on them (WCAG AA). The logo is a PNG or JPEG of 200 KB at most.</p>
+  <%= form_with url: accounting_portal_branding_path, method: :patch, multipart: true, class: "flex flex-wrap items-end gap-3 text-sm" do |f| %>
+    <div><%= f.label :display_name, "Name shown", class: "block" %><%= f.text_field :display_name, value: @brand&.display_name || ActsAsTenant.current_tenant.name, required: true, class: "rounded border p-2" %></div>
+    <div><%= f.label :sender_name, "Signs the e-mails", class: "block" %><%= f.text_field :sender_name, value: @brand&.sender_name, class: "rounded border p-2" %></div>
+    <div><%= f.label :primary_color, "Buttons", class: "block" %><%= f.color_field :primary_color, value: @brand&.primary_color || "#1f2937" %></div>
+    <div><%= f.label :background_color, "Background", class: "block" %><%= f.color_field :background_color, value: @brand&.background_color || "#f9fafb" %></div>
+    <div><%= f.label :logo, "Logo", class: "block" %><%= f.file_field :logo, accept: "image/png,image/jpeg" %></div>
+    <%= f.submit "Save", class: "rounded border px-4 py-2" %>
+  <% end %>
 </div>

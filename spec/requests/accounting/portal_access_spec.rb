@@ -75,3 +75,36 @@ RSpec.describe "Portal access (firm side)", type: :request do
     expect(response).to redirect_to(accounting_root_path)
   end
 end
+
+RSpec.describe "Portal branding (firm side)", type: :request do
+  include_context "with entity"
+
+  let(:accountant) { create(:user).tap { |u| create(:user_entity, :accountant, user: u, entity: entity) } }
+  let(:logo)       { Rack::Test::UploadedFile.new(StringIO.new("\x89PNG\r\n\x1A\n".b + "x" * 30), "image/png", original_filename: "logo.png") }
+
+  before { sign_in accountant }
+
+  it "saves the look of the portal and the name that signs its e-mails" do
+    patch accounting_portal_branding_path, params: { display_name: "Fiduciaire Martin", primary_color: "#0b5394", background_color: "#ffffff", sender_name: "Martin & Co", logo: logo }
+
+    brand = Portal::Branding.find_by(entity_id: entity.id)
+    expect(brand).to have_attributes(display_name: "Fiduciaire Martin", primary_color: "#0b5394", sender_name: "Martin & Co", logo_content_type: "image/png")
+    expect(brand.logo).to be_present
+    expect(Accounting::AuditLog.where(action: "portal_branding_changed")).to exist
+  end
+
+  it "refuses colours below the contrast of WCAG AA and says why" do
+    patch accounting_portal_branding_path, params: { display_name: "Martin", primary_color: "#ffeb3b", background_color: "#ffffff" }
+    follow_redirect!
+    expect(response.body).to match(/contrast/i)
+    expect(Portal::Branding.find_by(entity_id: entity.id)).to be_nil
+  end
+
+  it "signs the invitation e-mails with the name of the firm" do
+    Portal::Branding.create!(entity_id: entity.id, display_name: "Fiduciaire Martin", sender_name: "Fiduciaire Martin")
+    PortalAdmin::Invite.call(entity: entity, email: "ann@client.example", full_name: "Ann", role: "director", by: accountant)
+    mail = ActionMailer::Base.deliveries.last
+    expect(mail[:from].display_names).to include("Fiduciaire Martin")
+    expect(mail.subject).to include("Fiduciaire Martin")
+  end
+end

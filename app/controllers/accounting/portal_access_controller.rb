@@ -7,6 +7,7 @@ class Accounting::PortalAccessController < ApplicationController
 
   def index
     @grants = Portal::Grant.where(entity_id: current_entity_id).includes(:portal_user).order(:created_at)
+    @brand = Portal::Branding.find_by(entity_id: current_entity_id)
     @review = PortalAdmin::AccessReview.call(entity: ActsAsTenant.current_tenant).index_by { |row| row.grant.id }
     @pending = Portal::Invitation.where(entity_id: current_entity_id, used_at: nil).where("expires_at > ?", Time.current).includes(:portal_user)
   end
@@ -38,6 +39,21 @@ class Accounting::PortalAccessController < ApplicationController
   def reinstate
     PortalAdmin::Reinstate.call(person: @grant.portal_user, entity: ActsAsTenant.current_tenant, by: current_user)
     redirect_to accounting_portal_access_index_path, notice: "Reinstated."
+  end
+
+  def branding
+    brand = Portal::Branding.find_or_initialize_by(entity_id: current_entity_id)
+    brand.assign_attributes(params.permit(:display_name, :primary_color, :background_color, :sender_name).to_h.compact_blank.merge(updated_by: current_user))
+    if (upload = params[:logo]).respond_to?(:tempfile)
+      brand.logo = upload.read
+      brand.logo_content_type = upload.content_type
+    end
+    if brand.save
+      Accounting::AuditLog.record!(auditable: brand, action: "portal_branding_changed", user: current_user, payload: brand.saved_changes.except("logo", "updated_at", "created_at").merge("logo_changed" => brand.saved_change_to_logo?))
+      redirect_to accounting_portal_access_index_path, notice: "Look of the portal saved."
+    else
+      redirect_to accounting_portal_access_index_path, alert: brand.errors.full_messages.to_sentence
+    end
   end
 
   private
