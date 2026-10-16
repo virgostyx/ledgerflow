@@ -17,6 +17,8 @@ module Portal
 
   def self.table_name_prefix = "portal_"
 
+  def self.restricted_database? = Rails.configuration.x.portal_database_restricted
+
   # Where the portal is, for the links in e-mails.
   def self.url_options
     { host: Rails.configuration.x.portal_host, protocol: (Rails.env.production? ? "https" : "http"), port: (Rails.env.development? ? 3000 : nil) }.compact

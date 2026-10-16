@@ -2,6 +2,10 @@
   <h1 class="mb-1 text-2xl font-bold text-gray-900">Client portal</h1>
   <p class="mb-6 max-w-3xl text-sm text-gray-600">People from outside who may sign in to the portal of this company. They see only what you publish to them; a right exists only if it is listed here. Everyone signs in with a second factor; if they lose it, you reset their access and they are invited again.</p>
 
+  <p class="mb-4 text-xs <%= Portal.restricted_database? ? 'text-gray-500' : 'text-amber-700' %>">
+    Database connection of the portal: <%= Portal.restricted_database? ? "a role limited to the portal's tables" : "the application's own (not restricted: ask your administrator to set PORTAL_DATABASE_URL)" %>.
+  </p>
+
   <table class="mb-8 w-full text-sm">
     <thead><tr class="border-b text-left text-gray-500"><th class="py-2">Person</th><th>Role</th><th>Rights</th><th>Last access</th><th>Identity</th><th></th></tr></thead>
     <tbody>

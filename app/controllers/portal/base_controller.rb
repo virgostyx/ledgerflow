@@ -18,6 +18,7 @@ class Portal::BaseController < ActionController::Base
     policy.frame_ancestors :none
   end
 
+  around_action :on_the_portal_database
   before_action :set_security_headers
   before_action :require_sign_in!
   helper_method :current_portal_user, :current_portal_session, :portal_brand
@@ -26,6 +27,11 @@ class Portal::BaseController < ActionController::Base
   DEVICE_COOKIE = :lf_portal_device
 
   private
+
+  # With a role of its own, everything a portal page reads or writes goes through it: a query on anything but the portal's tables is refused by the database.
+  def on_the_portal_database(&)
+    Portal.restricted_database? ? ApplicationRecord.connected_to(role: :portal, &) : yield
+  end
 
   def current_portal_session
     return @current_portal_session if defined?(@current_portal_session)

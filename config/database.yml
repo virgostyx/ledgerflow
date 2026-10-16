@@ -76,3 +76,11 @@ production:
     database: ledgerflow_production_cable
     schema_format: ruby
     migrations_paths: db/cable_migrate
+  # B02a: the client portal's own connection, with a role limited to its tables (bin/rails portal:database_role prints the SQL that creates it). Without
+  # PORTAL_DATABASE_URL the portal uses the connection of the application, and the portal page of the firm says so.
+  <% if ENV["PORTAL_DATABASE_URL"].present? %>
+  portal:
+    <<: *primary_production
+    url: <%= ENV["PORTAL_DATABASE_URL"] %>
+    database_tasks: false
+  <% end %>

@@ -1,5 +1,7 @@
 class ApplicationRecord < ActiveRecord::Base
   primary_abstract_class
+  # B02a: the role used by the pages of the client portal, when the deployment gave it a connection of its own
+  connects_to database: { writing: :primary, portal: :portal } if Rails.configuration.x.portal_database_restricted
 
   # Building blocks for the `filter_by` scopes of the list pages. Blank input is ignored.
   def self.search(term, *columns)

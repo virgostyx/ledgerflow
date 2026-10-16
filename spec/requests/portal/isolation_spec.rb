@@ -72,3 +72,21 @@ RSpec.describe 'Portal isolation', type: :request do
     end
   end
 end
+
+RSpec.describe 'Portal database role', type: :request do
+  before { host! Rails.configuration.x.portal_host }
+
+  it 'goes through the connection of the portal when the deployment gave it one' do
+    allow(Portal).to receive(:restricted_database?).and_return(true)
+    expect(ApplicationRecord).to receive(:connected_to).with(role: :portal).and_call_original
+
+    get '/sign_in'
+    expect(response).to have_http_status(:ok)
+  end
+
+  it 'uses the connection of the application otherwise' do
+    expect(ApplicationRecord).not_to receive(:connected_to)
+    get '/sign_in'
+    expect(response).to have_http_status(:ok)
+  end
+end
