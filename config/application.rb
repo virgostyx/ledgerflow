@@ -18,6 +18,8 @@ module Ledgerflow
     # F01: whoever can validate, unlock or administer must sign in with a second factor (TOTP or a passkey).
     # The test suite switches it off (its request specs sign in with a helper); the specs of the flow switch it on.
     config.x.second_factor_required = true
+    # B02a: the host of the client portal, apart from the application (own cookies, own routes)
+    config.x.portal_host = ENV["PORTAL_HOST"].presence || (Rails.env.production? ? nil : (Rails.env.test? ? "portal.example.test" : "portal.localhost"))
     # F03: how far an uploaded archive is unpacked: files, total size once unpacked, compression ratio of one file.
     config.x.document_archive_limits = { files: 50, bytes: 100.megabytes, ratio: 100 }
     # F03: the domain of the addresses that receive documents by e-mail (documents+<secret>@<domain>); mail to it must reach

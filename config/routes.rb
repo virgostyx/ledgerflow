@@ -1,4 +1,11 @@
 Rails.application.routes.draw do
+  # Health check: asked on whatever host the proxy uses
+  get "up" => "rails/health#show", as: :rails_health_check
+
+  # B02a: the client portal has a host of its own and shares nothing with the application: on its host only its routes exist, on any other host they do not.
+  constraints(Portal::HostConstraint.new(portal: true)) { draw(:portal) }
+
+  constraints(Portal::HostConstraint.new(portal: false)) do
   # Landing page publique
   get "/favicon.ico", to: redirect("/icon.png")
   # B01a: the application can be installed on a phone; the manifest is public, a browser reads it before anyone signs in
@@ -575,7 +582,5 @@ Rails.application.routes.draw do
   get  "/reply/:token", to: "external_replies#show", as: :external_reply
   post "/reply/:token", to: "external_replies#create"
   post "/peppol/webhooks/:token", to: "peppol/webhooks#receive", as: :peppol_webhook
-
-  # Health check
-  get "up" => "rails/health#show", as: :rails_health_check
+  end
 end
