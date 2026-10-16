@@ -14,6 +14,7 @@ RSpec.describe 'Portal direct access to identifiers', type: :request do
       'portal/invitations#accept' => ->(_ctx) { '/invitations/not-a-token' },
       # a publication of a company where this person has no right, and a file link signed for someone else
       'portal/publications#show'  => ->(ctx) { "/publications/#{ctx[:foreign_publication].token}" },
+      'portal/devices#destroy'    => ->(ctx) { "/devices/#{ctx[:foreign_device].token}" },
       'portal/downloads#show'     => ->(ctx) { "/downloads/#{Portal::DownloadLink.for(ctx[:stranger], ctx[:foreign_publication].files.first)}" }
     }
   end
@@ -52,7 +53,8 @@ RSpec.describe 'Portal direct access to identifiers', type: :request do
 
     foreign_publication = PortalAdmin::Publish.call(entity: create(:entity), kind: 'other', title: 'Not yours', by: create(:user),
                                                     files: [ { filename: 'a.pdf', content_type: 'application/pdf', data: '%PDF-1.4' } ])[:publication]
-    context = { user: user, foreign_publication: foreign_publication, stranger: create(:portal_user) }
+    foreign_device = Portal::Device.create!(portal_user: create(:portal_user), token: 'foreigndevice', token_digest: 'zz', first_seen_at: Time.current, last_seen_at: Time.current)
+    context = { foreign_device: foreign_device, user: user, foreign_publication: foreign_publication, stranger: create(:portal_user) }
 
     probes.each do |key, build|
       route = portal_routes.find { |r| "#{r.defaults[:controller]}##{r.defaults[:action]}" == key }

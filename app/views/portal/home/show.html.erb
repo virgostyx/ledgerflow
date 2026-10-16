@@ -6,4 +6,6 @@
   <ul class="mt-4 space-y-1"><% @companies.each do |company| %><li><%= company.name %></li><% end %></ul>
 <% end %>
 <%= link_to "Publications", publications_path, class: "mt-4 inline-block underline" %>
+<%= link_to "Devices", devices_path, class: "mt-4 ml-4 inline-block underline" %>
+<%= link_to "Preferences", preferences_path, class: "mt-4 ml-4 inline-block underline" %>
 <%= button_to "Sign out", portal_session_path, method: :delete, class: "mt-6 text-sm underline" %>

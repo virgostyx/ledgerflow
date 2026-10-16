@@ -1,10 +1,11 @@
 # One sign-in of a person on one device. Only the digest of its token is kept; a revoked or suspended person loses it at the next request.
 class Portal::Session < ApplicationRecord
   belongs_to :portal_user
+  belongs_to :device, class_name: "Portal::Device", optional: true
 
-  def self.start!(user, ip:, user_agent:)
+  def self.start!(user, ip:, user_agent:, device: nil)
     token = SecureRandom.urlsafe_base64(32)
-    [ create!(portal_user: user, token_digest: digest(token), ip_address: ip, user_agent: user_agent.to_s[0, 255], last_seen_at: Time.current), token ]
+    [ create!(portal_user: user, token_digest: digest(token), ip_address: ip, user_agent: user_agent.to_s[0, 255], last_seen_at: Time.current, device: device), token ]
   end
 
   def self.digest(token) = Digest::SHA256.hexdigest(token.to_s)

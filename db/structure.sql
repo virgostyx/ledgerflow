@@ -5772,6 +5772,44 @@ CREATE VIEW public.portal_companies AS
 
 
 --
+-- Name: portal_devices; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_devices (
+    id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    token character varying NOT NULL,
+    token_digest character varying NOT NULL,
+    user_agent character varying,
+    ip_address character varying,
+    first_seen_at timestamp(6) without time zone NOT NULL,
+    last_seen_at timestamp(6) without time zone NOT NULL,
+    revoked_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_devices_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_devices_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_devices_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_devices_id_seq OWNED BY public.portal_devices.id;
+
+
+--
 -- Name: portal_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6022,7 +6060,8 @@ CREATE TABLE public.portal_sessions (
     second_factor_at timestamp(6) without time zone,
     revoked_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    device_id bigint
 );
 
 
@@ -6067,7 +6106,9 @@ CREATE TABLE public.portal_users (
     identity_verified_by_id bigint,
     identity_verified_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    notification_frequency character varying DEFAULT 'immediate'::character varying NOT NULL,
+    last_digest_at timestamp(6) without time zone
 );
 
 
@@ -7336,6 +7377,13 @@ ALTER TABLE ONLY public.portal_backup_codes ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: portal_devices id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_devices ALTER COLUMN id SET DEFAULT nextval('public.portal_devices_id_seq'::regclass);
+
+
+--
 -- Name: portal_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8502,6 +8550,14 @@ ALTER TABLE ONLY public.payment_items
 
 ALTER TABLE ONLY public.portal_backup_codes
     ADD CONSTRAINT portal_backup_codes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_devices portal_devices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_devices
+    ADD CONSTRAINT portal_devices_pkey PRIMARY KEY (id);
 
 
 --
@@ -12063,6 +12119,27 @@ CREATE INDEX index_portal_backup_codes_on_portal_user_id ON public.portal_backup
 
 
 --
+-- Name: index_portal_devices_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_devices_on_portal_user_id ON public.portal_devices USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_devices_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_devices_on_token ON public.portal_devices USING btree (token);
+
+
+--
+-- Name: index_portal_devices_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_devices_on_token_digest ON public.portal_devices USING btree (token_digest);
+
+
+--
 -- Name: index_portal_events_not_mirrored; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12228,6 +12305,13 @@ CREATE INDEX index_portal_publications_on_withdrawn_by_id ON public.portal_publi
 --
 
 CREATE UNIQUE INDEX index_portal_recipients_unique ON public.portal_publication_recipients USING btree (publication_id, portal_user_id);
+
+
+--
+-- Name: index_portal_sessions_on_device_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_sessions_on_device_id ON public.portal_sessions USING btree (device_id);
 
 
 --
@@ -13826,6 +13910,14 @@ ALTER TABLE ONLY public.consolidation_mappings
 
 
 --
+-- Name: portal_devices fk_rails_7ce040de00; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_devices
+    ADD CONSTRAINT fk_rails_7ce040de00 FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
+
+
+--
 -- Name: agent_text_drafts fk_rails_7d43220df9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14770,6 +14862,14 @@ ALTER TABLE ONLY public.accounting_recurring_runs
 
 
 --
+-- Name: portal_sessions fk_rails_d168109f66; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_sessions
+    ADD CONSTRAINT fk_rails_d168109f66 FOREIGN KEY (device_id) REFERENCES public.portal_devices(id);
+
+
+--
 -- Name: accounting_documents fk_rails_d1eb99157d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15392,6 +15492,8 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016130000'),
+('20261016120000'),
 ('20261016110000'),
 ('20261016100200'),
 ('20261016100100'),

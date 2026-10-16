@@ -117,3 +117,8 @@ production:
     args: [ "dormant" ]
     queue: default
     schedule: every day at 2am
+  portal_daily_digest:
+    class: PortalAdminJob
+    args: [ "digest" ]
+    queue: default
+    schedule: every day at 7am

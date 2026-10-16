@@ -39,6 +39,7 @@ class PortalAdmin::Publish
                                                 recipients: recipients.map(&:id), files: publication.files.map { |f| { name: f.filename, sha256: f.sha256, bytes: f.byte_size } } })
       end
     end
+    PortalAdmin::NotifyPublication.call(publication) # after the commit: nothing is told of a publication that was not kept
     result[:publication] = publication
     result
   rescue Refused, ActiveRecord::RecordInvalid => e

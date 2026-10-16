@@ -3,6 +3,10 @@ class PortalAdminJob < ApplicationJob
   queue_as :default
 
   def perform(task = "mirror")
-    task == "dormant" ? PortalAdmin::SuspendDormant.call : PortalAdmin::MirrorEvents.call
+    case task
+    when "dormant" then PortalAdmin::SuspendDormant.call
+    when "digest" then PortalAdmin::DailyDigest.call
+    else PortalAdmin::MirrorEvents.call
+    end
   end
 end

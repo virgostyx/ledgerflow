@@ -1,0 +1,11 @@
+Hello <%= @name %>,
+
+Your account on the client portal was just used from a device we had not seen before.
+
+When:    <%= @time.strftime("%Y-%m-%d %H:%M UTC") %>
+Address: <%= @ip %>
+Browser: <%= @agent %>
+
+If it was you, nothing to do. If it was not, sign in and cut this device off here, then tell your accountant:
+
+<%= @url %>

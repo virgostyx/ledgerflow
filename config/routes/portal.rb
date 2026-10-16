@@ -14,6 +14,8 @@ scope module: :portal do
   get  "second_factor/challenge", to: "second_factors#challenge", as: :portal_second_factor_challenge
   post "second_factor/challenge", to: "second_factors#verify"
 
+  resource :preferences, only: %i[show update]
+  resources :devices, only: %i[index destroy], param: :token
   resources :publications, only: %i[index show], param: :token
   get "downloads/:signed", to: "downloads#show", as: :portal_download
 end

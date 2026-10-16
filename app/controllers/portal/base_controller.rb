@@ -23,6 +23,7 @@ class Portal::BaseController < ActionController::Base
   helper_method :current_portal_user, :current_portal_session
 
   COOKIE = :lf_portal
+  DEVICE_COOKIE = :lf_portal_device
 
   private
 
@@ -43,7 +44,13 @@ class Portal::BaseController < ActionController::Base
   end
 
   def start_session!(user)
-    session, token = Portal::Session.start!(user, ip: request.remote_ip, user_agent: request.user_agent)
+    device, device_cookie, new_device = Portal::Device.recognize(user, cookies.encrypted[DEVICE_COOKIE], ip: request.remote_ip, user_agent: request.user_agent)
+    cookies.encrypted[DEVICE_COOKIE] = { value: device_cookie, httponly: true, secure: request.ssl?, same_site: :lax, expires: 1.year.from_now } if device_cookie
+    if new_device
+      Portal::Event.record!("new_device", user: user, request: request)
+      send_security_alert { Portal::SecurityMailer.new_device(user, device).deliver_now } # a security alert: not a preference
+    end
+    session, token = Portal::Session.start!(user, ip: request.remote_ip, user_agent: request.user_agent, device: device)
     cookies.encrypted[COOKIE] = { value: token, httponly: true, secure: request.ssl?, same_site: :lax }
     @current_portal_session = session
   end
@@ -52,6 +59,14 @@ class Portal::BaseController < ActionController::Base
     current_portal_session&.revoke!
     cookies.delete(COOKIE)
     @current_portal_session = nil
+  end
+
+  # A mail that cannot be sent must not stop someone from signing in: the failure is noted.
+  def send_security_alert
+    yield
+  rescue StandardError => e
+    Rails.logger.error("portal security alert not sent: #{e.class}")
+    Portal::Event.record!("security_alert_not_sent", user: current_portal_user, request: request)
   end
 
   # An identifier that is not in the scope of the person looks like one that does not exist; the attempt is noted.

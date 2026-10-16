@@ -1,0 +1,12 @@
+<h1 class="text-xl font-semibold">Devices</h1>
+<%= render "portal/shared/flash" %>
+<ul class="mt-4 space-y-2">
+  <% @devices.each do |device| %>
+    <li class="rounded border bg-white p-3 text-sm">
+      <strong><%= device == @current_device ? "This device" : "Another device" %></strong>
+      <p class="text-xs text-gray-500"><%= device.user_agent %> - <%= device.ip_address %> - last used <%= device.last_seen_at.utc.strftime("%Y-%m-%d %H:%M UTC") %></p>
+      <%= button_to "Sign this device out", device_path(device.token), method: :delete, class: "mt-1 text-xs underline" %>
+    </li>
+  <% end %>
+</ul>
+<%= link_to "Back", portal_root_path, class: "mt-4 inline-block text-sm underline" %>

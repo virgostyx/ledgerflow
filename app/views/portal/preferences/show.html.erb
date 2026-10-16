@@ -1,0 +1,11 @@
+<h1 class="text-xl font-semibold">Preferences</h1>
+<%= render "portal/shared/flash" %>
+<%= form_with url: preferences_path, method: :patch, class: "mt-4 space-y-2 text-sm" do |f| %>
+  <p>E-mails about new publications:</p>
+  <% { "immediate" => "As soon as they are published", "daily" => "Once a day", "off" => "Never" }.each do |value, label| %>
+    <label class="block"><%= f.radio_button :notification_frequency, value, checked: current_portal_user.notification_frequency == value %> <%= label %></label>
+  <% end %>
+  <p class="text-gray-600">Security alerts are always sent.</p>
+  <%= f.submit "Save", class: "rounded bg-gray-900 px-4 py-2 text-white" %>
+<% end %>
+<%= link_to "Back", portal_root_path, class: "mt-4 inline-block text-sm underline" %>

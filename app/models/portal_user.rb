@@ -11,6 +11,7 @@ class PortalUser < ApplicationRecord
 
   has_many :grants, class_name: "Portal::Grant", dependent: :destroy
   has_many :sessions, class_name: "Portal::Session", dependent: :destroy
+  has_many :devices, class_name: "Portal::Device", dependent: :destroy
   has_many :backup_codes, class_name: "Portal::BackupCode", dependent: :destroy
   belongs_to :created_by, class_name: "User", optional: true
   belongs_to :identity_verified_by, class_name: "User", optional: true
@@ -19,6 +20,7 @@ class PortalUser < ApplicationRecord
   validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :email, uniqueness: { case_sensitive: false }
   validates :full_name, presence: true
+  validates :notification_frequency, inclusion: { in: %w[immediate daily off] }
   validates :password, length: { minimum: 12 }, allow_nil: true
 
   def self.find_by_email(email) = find_by("lower(email) = ?", email.to_s.strip.downcase)
