@@ -5845,7 +5845,8 @@ CREATE VIEW public.portal_companies AS
  SELECT id,
     name,
     active,
-    COALESCE(((features ->> 'b02a'::text))::boolean, false) AS portal_enabled
+    COALESCE(((features ->> 'b02a'::text))::boolean, false) AS portal_enabled,
+    (COALESCE(((features ->> 'b02a'::text))::boolean, false) AND COALESCE(((features ->> 'b02b'::text))::boolean, false) AND COALESCE(((features ->> 'f03'::text))::boolean, false)) AS upload_enabled
    FROM public.entities;
 
 
@@ -6160,6 +6161,90 @@ CREATE SEQUENCE public.portal_sessions_id_seq
 --
 
 ALTER SEQUENCE public.portal_sessions_id_seq OWNED BY public.portal_sessions.id;
+
+
+--
+-- Name: portal_upload_chunks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_upload_chunks (
+    id bigint NOT NULL,
+    upload_id bigint NOT NULL,
+    "position" integer NOT NULL,
+    byte_size integer NOT NULL,
+    sha256 character varying NOT NULL,
+    content bytea NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_upload_chunks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_upload_chunks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_upload_chunks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_upload_chunks_id_seq OWNED BY public.portal_upload_chunks.id;
+
+
+--
+-- Name: portal_uploads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_uploads (
+    id bigint NOT NULL,
+    token character varying NOT NULL,
+    entity_id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    filename character varying NOT NULL,
+    content_type character varying,
+    byte_size bigint NOT NULL,
+    sha256 character varying NOT NULL,
+    chunk_size integer NOT NULL,
+    chunk_count integer NOT NULL,
+    status character varying DEFAULT 'receiving'::character varying NOT NULL,
+    expires_at timestamp(6) without time zone NOT NULL,
+    received_at timestamp(6) without time zone,
+    hint_kind character varying DEFAULT 'purchase'::character varying NOT NULL,
+    hint_note character varying,
+    batch_token character varying,
+    page_number integer,
+    page_count integer,
+    refusal_reason character varying,
+    document_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_uploads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_uploads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_uploads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_uploads_id_seq OWNED BY public.portal_uploads.id;
 
 
 --
@@ -7525,6 +7610,20 @@ ALTER TABLE ONLY public.portal_sessions ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- Name: portal_upload_chunks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_upload_chunks ALTER COLUMN id SET DEFAULT nextval('public.portal_upload_chunks_id_seq'::regclass);
+
+
+--
+-- Name: portal_uploads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_uploads ALTER COLUMN id SET DEFAULT nextval('public.portal_uploads_id_seq'::regclass);
+
+
+--
 -- Name: portal_users id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8722,6 +8821,22 @@ ALTER TABLE ONLY public.portal_publications
 
 ALTER TABLE ONLY public.portal_sessions
     ADD CONSTRAINT portal_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_upload_chunks portal_upload_chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_upload_chunks
+    ADD CONSTRAINT portal_upload_chunks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_uploads portal_uploads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_uploads
+    ADD CONSTRAINT portal_uploads_pkey PRIMARY KEY (id);
 
 
 --
@@ -12479,6 +12594,55 @@ CREATE UNIQUE INDEX index_portal_sessions_on_token_digest ON public.portal_sessi
 
 
 --
+-- Name: index_portal_upload_chunks_on_upload_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_upload_chunks_on_upload_id ON public.portal_upload_chunks USING btree (upload_id);
+
+
+--
+-- Name: index_portal_upload_chunks_on_upload_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_upload_chunks_on_upload_id_and_position ON public.portal_upload_chunks USING btree (upload_id, "position");
+
+
+--
+-- Name: index_portal_uploads_on_batch_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_uploads_on_batch_token ON public.portal_uploads USING btree (batch_token);
+
+
+--
+-- Name: index_portal_uploads_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_uploads_on_entity_id ON public.portal_uploads USING btree (entity_id);
+
+
+--
+-- Name: index_portal_uploads_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_uploads_on_portal_user_id ON public.portal_uploads USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_uploads_on_portal_user_id_and_sha256; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_uploads_on_portal_user_id_and_sha256 ON public.portal_uploads USING btree (portal_user_id, sha256);
+
+
+--
+-- Name: index_portal_uploads_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_uploads_on_token ON public.portal_uploads USING btree (token);
+
+
+--
 -- Name: index_portal_users_on_created_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13668,6 +13832,14 @@ ALTER TABLE ONLY public.data_exports
 
 
 --
+-- Name: portal_uploads fk_rails_5540330567; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_uploads
+    ADD CONSTRAINT fk_rails_5540330567 FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
+
+
+--
 -- Name: agent_text_drafts fk_rails_5647a9e134; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13857,6 +14029,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 ALTER TABLE ONLY public.api_idempotency_keys
     ADD CONSTRAINT fk_rails_68ace95426 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_upload_chunks fk_rails_6988ad8737; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_upload_chunks
+    ADD CONSTRAINT fk_rails_6988ad8737 FOREIGN KEY (upload_id) REFERENCES public.portal_uploads(id);
 
 
 --
@@ -14972,6 +15152,14 @@ ALTER TABLE ONLY public.agent_conversation_reviews
 
 
 --
+-- Name: portal_uploads fk_rails_c9a99cb4b8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_uploads
+    ADD CONSTRAINT fk_rails_c9a99cb4b8 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: webhook_deliveries fk_rails_ca77174d07; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15682,6 +15870,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016160000'),
 ('20261016150000'),
 ('20261016140000'),
 ('20261016130000'),

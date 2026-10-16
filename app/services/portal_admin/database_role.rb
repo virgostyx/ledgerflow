@@ -10,7 +10,9 @@ class PortalAdmin::DatabaseRole
     "portal_sessions"        => %w[INSERT UPDATE],
     "portal_devices"         => %w[INSERT UPDATE],
     "portal_events"          => %w[INSERT],
-    "portal_access_requests" => %w[INSERT]
+    "portal_access_requests" => %w[INSERT],
+    "portal_uploads"         => %w[INSERT UPDATE], # a session is opened, then marked received; the portal never deletes one
+    "portal_upload_chunks"   => %w[INSERT] # the firm's side removes them once the file is taken in
   }.freeze
   BOOKKEEPING = %w[schema_migrations ar_internal_metadata].freeze
 

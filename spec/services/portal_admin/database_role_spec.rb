@@ -21,9 +21,9 @@ RSpec.describe PortalAdmin::DatabaseRole do
     expect(sql).to include('NOSUPERUSER NOCREATEDB NOCREATEROLE')
   end
 
-  it 'writes only where the portal has something to write: its sessions, devices, events, requests, its own people' do
+  it 'writes only where the portal has something to write: its sessions, devices, events, requests, uploads, its own people' do
     writable = sql.scan(/GRANT (?:INSERT|UPDATE|DELETE)[A-Z, ]* ON (\w+) TO/).flatten
-    expect(writable).to match_array(%w[portal_users portal_backup_codes portal_grants portal_invitations portal_sessions portal_devices portal_events portal_access_requests])
+    expect(writable).to match_array(%w[portal_users portal_backup_codes portal_grants portal_invitations portal_sessions portal_devices portal_events portal_access_requests portal_uploads portal_upload_chunks])
   end
 
   it 'never lets the portal change what the firm published, nor delete a grant or an event' do
