@@ -14,7 +14,7 @@ RSpec.describe 'Code of the client portal' do
   ]
 
   # Services of the application the portal may call, by their full name: generic file tools that know nothing of the books.
-  def allowed_paths = %w[Accounting::WatermarkFile]
+  def allowed_paths = %w[Accounting::WatermarkFile LedgerVerify::Canonical]
 
   def portal_files
     %w[app/controllers/portal app/models/portal app/services/portal app/jobs/portal app/mailers/portal app/views/portal app/views/layouts/portal app/constraints/portal app/helpers/portal]

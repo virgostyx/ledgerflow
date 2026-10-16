@@ -130,6 +130,8 @@ RSpec.describe PortalAdminJob do
     expect(PortalAdmin::SyncUploadProgress).to receive(:call)
     expect(PortalAdmin::SyncDocumentRequests).to receive(:call)
     expect(PortalAdmin::SyncAnswers).to receive(:call)
+    expect(PortalAdmin::SealApprovals).to receive(:call)
+    expect(PortalAdmin::ApprovalAlerts).to receive(:call)
     described_class.perform_now('uploads')
     expect(PortalAdmin::RemindDocumentRequests).to receive(:call)
     described_class.perform_now('reminders')

@@ -463,6 +463,8 @@ Rails.application.routes.draw do
       end
       resources :portal_publications, only: [ :index, :create ], param: :token do
         member { post :withdraw }
+        get "proofs/:approval_id", action: :proof, on: :member, as: :proof
+        patch :settings, on: :collection
       end
 
       get "integrity", to: "integrity#index", as: :integrity # B03c: anchors, checks, keys and certificates of integrity

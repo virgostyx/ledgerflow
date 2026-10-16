@@ -3,5 +3,6 @@
 <%= render "portal/shared/flash" %>
 <%= form_with url: portal_second_factor_challenge_path, class: "mt-4 space-y-3" do |f| %>
   <div><%= f.label :code, "Code", class: "block text-sm" %><%= f.text_field :code, autocomplete: "one-time-code", required: true, class: "w-full rounded border p-2" %></div>
+  <%= hidden_field_tag :return_to, params[:return_to], id: nil %>
   <%= f.submit "Sign in", class: "portal-button rounded px-4 py-2" %>
 <% end %>

@@ -30,6 +30,11 @@ class PortalUser < ApplicationRecord
     grants.in_force.joins(:company).where(portal_companies: { active: true, portal_enabled: true })
   end
 
+  # Who may approve accounts for a company: a director, with the right to approve, whose identity the firm checked, and active.
+  def qualified_approver_in?(entity_id)
+    active? && identity_verified_at.present? && open_grants.where(entity_id: entity_id, role: "director").where("portal_grants.capabilities @> ?", [ "accounts.approve" ].to_json).exists?
+  end
+
   def second_factor_configured? = totp_enabled_at.present?
 
   def locked? = locked_at.present? && locked_at > LOCK_DURATION.ago

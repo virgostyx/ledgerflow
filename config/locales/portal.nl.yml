@@ -41,5 +41,23 @@ nl:
         back: Terug
       sent: Bericht verstuurd.
       too_many: Te veel berichten vandaag. Probeer het morgen opnieuw.
+    approvals:
+      title: Deze rekeningen goedkeuren
+      your_decision: Uw beslissing
+      decisions:
+        approved: Goedkeuren
+        approved_with_remarks: Goedkeuren met opmerkingen
+        refused: Weigeren
+      comment: Opmerkingen (verplicht om met opmerkingen goed te keuren of te weigeren)
+      confirm: Ik bevestig dat ik deze documenten heb geopend (vermeld met het begin van hun vingerafdruk).
+      submit: Mijn beslissing versturen
+      open_first: Open elk document voordat u beslist.
+      authenticate: Voer voor uw veiligheid opnieuw een code van uw authenticatie-app in.
+      confirm_needed: Vink het vakje aan om de documenten te bevestigen.
+      comment_needed: Schrijf uw opmerkingen of de reden.
+      choose: Kies een beslissing.
+      gone: Deze publicatie is ingetrokken of vervangen door een nieuwere versie. Open de nieuwe om te beslissen.
+      already: U hebt al beslist over deze versie.
+      thanks: Dank u. Uw beslissing is geregistreerd.
     preferences:
       language: Taal

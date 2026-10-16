@@ -346,6 +346,31 @@ $$;
 
 
 --
+-- Name: protect_portal_approval(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.protect_portal_approval() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'a client approval cannot be deleted' USING ERRCODE = 'raise_exception';
+  END IF;
+  IF (to_jsonb(NEW) - 'status' - 'seal_key_id' - 'seal_signature' - 'sealed_at' - 'updated_at') IS DISTINCT FROM (to_jsonb(OLD) - 'status' - 'seal_key_id' - 'seal_signature' - 'sealed_at' - 'updated_at') THEN
+    RAISE EXCEPTION 'client approval % cannot be changed', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF OLD.sealed_at IS NOT NULL AND (NEW.seal_key_id IS DISTINCT FROM OLD.seal_key_id OR NEW.seal_signature IS DISTINCT FROM OLD.seal_signature OR NEW.sealed_at IS DISTINCT FROM OLD.sealed_at) THEN
+    RAISE EXCEPTION 'client approval % is already sealed', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF OLD.status = 'superseded' AND NEW.status <> 'superseded' THEN
+    RAISE EXCEPTION 'client approval % is superseded for good', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: protect_portal_publication(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5153,7 +5178,8 @@ CREATE TABLE public.entities (
     integrity_default_disclosure character varying DEFAULT 'standard'::character varying NOT NULL,
     integrity_public_company_name boolean DEFAULT false NOT NULL,
     portal_show_bank_lines boolean DEFAULT true NOT NULL,
-    documents_allowed_senders character varying[] DEFAULT '{}'::character varying[] NOT NULL
+    documents_allowed_senders character varying[] DEFAULT '{}'::character varying[] NOT NULL,
+    client_approval_required boolean DEFAULT false NOT NULL
 );
 
 
@@ -5880,6 +5906,48 @@ ALTER SEQUENCE public.portal_answers_id_seq OWNED BY public.portal_answers.id;
 
 
 --
+-- Name: portal_approvals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_approvals (
+    id bigint NOT NULL,
+    publication_id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    decision character varying NOT NULL,
+    comment text,
+    manifest_hash character varying NOT NULL,
+    evidence jsonb NOT NULL,
+    evidence_hash character varying NOT NULL,
+    status character varying DEFAULT 'active'::character varying NOT NULL,
+    seal_key_id character varying,
+    seal_signature text,
+    sealed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_approvals_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_approvals_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_approvals_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_approvals_id_seq OWNED BY public.portal_approvals.id;
+
+
+--
 -- Name: portal_backup_codes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6086,6 +6154,39 @@ ALTER SEQUENCE public.portal_document_requests_id_seq OWNED BY public.portal_doc
 
 
 --
+-- Name: portal_document_views; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_document_views (
+    id bigint NOT NULL,
+    publication_file_id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    viewed_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_document_views_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_document_views_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_document_views_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_document_views_id_seq OWNED BY public.portal_document_views.id;
+
+
+--
 -- Name: portal_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6241,6 +6342,38 @@ ALTER SEQUENCE public.portal_messages_id_seq OWNED BY public.portal_messages.id;
 
 
 --
+-- Name: portal_publication_approvers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_publication_approvers (
+    id bigint NOT NULL,
+    publication_id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_publication_approvers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_publication_approvers_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_publication_approvers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_publication_approvers_id_seq OWNED BY public.portal_publication_approvers.id;
+
+
+--
 -- Name: portal_publication_files; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6337,7 +6470,8 @@ CREATE TABLE public.portal_publications (
     withdrawn_by_id bigint,
     withdrawal_reason text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    approvals_required character varying DEFAULT 'one'::character varying NOT NULL
 );
 
 
@@ -6419,7 +6553,8 @@ CREATE TABLE public.portal_sessions (
     revoked_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    device_id bigint
+    device_id bigint,
+    second_factor_method character varying
 );
 
 
@@ -7877,6 +8012,13 @@ ALTER TABLE ONLY public.portal_answers ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: portal_approvals id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_approvals ALTER COLUMN id SET DEFAULT nextval('public.portal_approvals_id_seq'::regclass);
+
+
+--
 -- Name: portal_backup_codes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7912,6 +8054,13 @@ ALTER TABLE ONLY public.portal_document_requests ALTER COLUMN id SET DEFAULT nex
 
 
 --
+-- Name: portal_document_views id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_views ALTER COLUMN id SET DEFAULT nextval('public.portal_document_views_id_seq'::regclass);
+
+
+--
 -- Name: portal_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7937,6 +8086,13 @@ ALTER TABLE ONLY public.portal_invitations ALTER COLUMN id SET DEFAULT nextval('
 --
 
 ALTER TABLE ONLY public.portal_messages ALTER COLUMN id SET DEFAULT nextval('public.portal_messages_id_seq'::regclass);
+
+
+--
+-- Name: portal_publication_approvers id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_approvers ALTER COLUMN id SET DEFAULT nextval('public.portal_publication_approvers_id_seq'::regclass);
 
 
 --
@@ -9140,6 +9296,14 @@ ALTER TABLE ONLY public.portal_answers
 
 
 --
+-- Name: portal_approvals portal_approvals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_approvals
+    ADD CONSTRAINT portal_approvals_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: portal_backup_codes portal_backup_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9180,6 +9344,14 @@ ALTER TABLE ONLY public.portal_document_requests
 
 
 --
+-- Name: portal_document_views portal_document_views_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_views
+    ADD CONSTRAINT portal_document_views_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: portal_events portal_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9209,6 +9381,14 @@ ALTER TABLE ONLY public.portal_invitations
 
 ALTER TABLE ONLY public.portal_messages
     ADD CONSTRAINT portal_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_publication_approvers portal_publication_approvers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_approvers
+    ADD CONSTRAINT portal_publication_approvers_pkey PRIMARY KEY (id);
 
 
 --
@@ -12855,6 +13035,41 @@ CREATE UNIQUE INDEX index_portal_answers_one_per_question ON public.portal_answe
 
 
 --
+-- Name: index_portal_approvals_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_approvals_on_entity_id ON public.portal_approvals USING btree (entity_id);
+
+
+--
+-- Name: index_portal_approvals_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_approvals_on_portal_user_id ON public.portal_approvals USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_approvals_on_publication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_approvals_on_publication_id ON public.portal_approvals USING btree (publication_id);
+
+
+--
+-- Name: index_portal_approvals_one_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_approvals_one_active ON public.portal_approvals USING btree (publication_id, portal_user_id) WHERE ((status)::text = 'active'::text);
+
+
+--
+-- Name: index_portal_approvers_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_approvers_unique ON public.portal_publication_approvers USING btree (publication_id, portal_user_id);
+
+
+--
 -- Name: index_portal_backup_codes_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12950,6 +13165,20 @@ CREATE INDEX index_portal_document_requests_on_requested_by_id ON public.portal_
 --
 
 CREATE UNIQUE INDEX index_portal_document_requests_on_token ON public.portal_document_requests USING btree (token);
+
+
+--
+-- Name: index_portal_document_views_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_document_views_on_portal_user_id ON public.portal_document_views USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_document_views_on_publication_file_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_document_views_on_publication_file_id ON public.portal_document_views USING btree (publication_file_id);
 
 
 --
@@ -13069,6 +13298,20 @@ CREATE INDEX index_portal_messages_on_thread_id ON public.portal_messages USING 
 --
 
 CREATE INDEX index_portal_messages_on_thread_id_and_id ON public.portal_messages USING btree (thread_id, id);
+
+
+--
+-- Name: index_portal_publication_approvers_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publication_approvers_on_portal_user_id ON public.portal_publication_approvers USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_publication_approvers_on_publication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publication_approvers_on_publication_id ON public.portal_publication_approvers USING btree (publication_id);
 
 
 --
@@ -13279,6 +13522,13 @@ CREATE INDEX index_portal_users_on_identity_verified_by_id ON public.portal_user
 --
 
 CREATE UNIQUE INDEX index_portal_users_on_lower_email ON public.portal_users USING btree (lower((email)::text));
+
+
+--
+-- Name: index_portal_views_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_views_unique ON public.portal_document_views USING btree (publication_file_id, portal_user_id);
 
 
 --
@@ -13527,10 +13777,24 @@ CREATE TRIGGER protect_ledger_anchor BEFORE DELETE OR UPDATE ON public.ledger_an
 
 
 --
+-- Name: portal_approvals protect_portal_approval; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER protect_portal_approval BEFORE DELETE OR UPDATE ON public.portal_approvals FOR EACH ROW EXECUTE FUNCTION public.protect_portal_approval();
+
+
+--
 -- Name: portal_publications protect_portal_publication; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER protect_portal_publication BEFORE DELETE OR UPDATE ON public.portal_publications FOR EACH ROW EXECUTE FUNCTION public.protect_portal_publication();
+
+
+--
+-- Name: portal_publication_approvers protect_portal_publication_approvers; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER protect_portal_publication_approvers BEFORE DELETE OR UPDATE ON public.portal_publication_approvers FOR EACH ROW EXECUTE FUNCTION public.protect_portal_publication_part();
 
 
 --
@@ -13638,6 +13902,14 @@ ALTER TABLE ONLY public.consolidation_rule_validations
 
 ALTER TABLE ONLY public.accounting_entry_template_lines
     ADD CONSTRAINT fk_rails_03540d0728 FOREIGN KEY (account_id) REFERENCES public.accounting_accounts(id);
+
+
+--
+-- Name: portal_approvals fk_rails_040ba2b6fc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_approvals
+    ADD CONSTRAINT fk_rails_040ba2b6fc FOREIGN KEY (publication_id) REFERENCES public.portal_publications(id);
 
 
 --
@@ -14041,6 +14313,14 @@ ALTER TABLE ONLY public.approval_decisions
 
 
 --
+-- Name: portal_publication_approvers fk_rails_2ea63b132b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_approvers
+    ADD CONSTRAINT fk_rails_2ea63b132b FOREIGN KEY (publication_id) REFERENCES public.portal_publications(id);
+
+
+--
 -- Name: accounting_analytical_annotations fk_rails_2f1aa54d01; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14110,6 +14390,14 @@ ALTER TABLE ONLY public.accounting_import_batches
 
 ALTER TABLE ONLY public.accounting_documents
     ADD CONSTRAINT fk_rails_32af54cabb FOREIGN KEY (parent_id) REFERENCES public.accounting_documents(id) ON DELETE SET NULL;
+
+
+--
+-- Name: portal_document_views fk_rails_33548876a1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_views
+    ADD CONSTRAINT fk_rails_33548876a1 FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
 
 
 --
@@ -14614,6 +14902,14 @@ ALTER TABLE ONLY public.agent_digests
 
 ALTER TABLE ONLY public.accounting_bank_transactions
     ADD CONSTRAINT fk_rails_5c6e43e656 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_document_views fk_rails_5caf0eaea1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_document_views
+    ADD CONSTRAINT fk_rails_5caf0eaea1 FOREIGN KEY (publication_file_id) REFERENCES public.portal_publication_files(id);
 
 
 --
@@ -15577,6 +15873,14 @@ ALTER TABLE ONLY public.partner_bank_accounts
 
 
 --
+-- Name: portal_approvals fk_rails_b0493cdf0f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_approvals
+    ADD CONSTRAINT fk_rails_b0493cdf0f FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
+
+
+--
 -- Name: portal_access_requests fk_rails_b0f87bafe6; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15678,6 +15982,14 @@ ALTER TABLE ONLY public.accounting_lettering_write_offs
 
 ALTER TABLE ONLY public.knowledge_chunks
     ADD CONSTRAINT fk_rails_b810dc08ea FOREIGN KEY (document_id) REFERENCES public.knowledge_documents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: portal_publication_approvers fk_rails_b89051bd49; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_approvers
+    ADD CONSTRAINT fk_rails_b89051bd49 FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
 
 
 --
@@ -15990,6 +16302,14 @@ ALTER TABLE ONLY public.portal_sessions
 
 ALTER TABLE ONLY public.accounting_documents
     ADD CONSTRAINT fk_rails_d1eb99157d FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_approvals fk_rails_d281bd4091; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_approvals
+    ADD CONSTRAINT fk_rails_d281bd4091 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -16631,6 +16951,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016230000'),
 ('20261016220000'),
 ('20261016210000'),
 ('20261016200000'),

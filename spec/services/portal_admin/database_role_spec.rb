@@ -23,12 +23,13 @@ RSpec.describe PortalAdmin::DatabaseRole do
 
   it 'writes only where the portal has something to write: its sessions, devices, events, requests, uploads, its own people' do
     writable = sql.scan(/GRANT (?:INSERT|UPDATE|DELETE)[A-Z, ]* ON (\w+) TO/).flatten
-    expect(writable).to match_array(%w[portal_users portal_backup_codes portal_grants portal_invitations portal_sessions portal_devices portal_events portal_access_requests portal_uploads portal_upload_chunks portal_questions portal_answers portal_threads portal_messages portal_document_request_lines])
+    expect(writable).to match_array(%w[portal_users portal_backup_codes portal_grants portal_invitations portal_sessions portal_devices portal_events portal_access_requests portal_uploads portal_upload_chunks portal_questions portal_answers portal_approvals portal_document_views portal_threads portal_messages portal_document_request_lines])
   end
 
   it 'never lets the portal change what the firm published, nor delete a grant or an event' do
     expect(sql).not_to match(/(?:INSERT|UPDATE|DELETE)[A-Z, ]* ON portal_(publications|publication_files|publication_recipients|brandings)\b/)
-    expect(sql).not_to match(/DELETE[A-Z, ]* ON portal_(grants|events|sessions)\b/)
+    expect(sql).not_to match(/DELETE[A-Z, ]* ON portal_(grants|events|sessions|approvals)\b/)
+    expect(sql).not_to match(/UPDATE[A-Z, ]* ON portal_approvals\b/) # the portal records a decision, it never changes one
   end
 
   it 'refuses a role name that is not a plain identifier' do

@@ -11,6 +11,8 @@ class PortalAdminJob < ApplicationJob
       PortalAdmin::SyncUploadProgress.call
       PortalAdmin::SyncDocumentRequests.call
       PortalAdmin::SyncAnswers.call
+      PortalAdmin::SealApprovals.call
+      PortalAdmin::ApprovalAlerts.call
     when "reminders"
       PortalAdmin::RemindDocumentRequests.call
       PortalAdmin::RemindQuestions.call

@@ -10,6 +10,9 @@ class Portal::Publication < ApplicationRecord
   has_many :files, -> { order(:position) }, class_name: "Portal::PublicationFile", foreign_key: :publication_id, inverse_of: :publication
   has_many :recipient_rows, class_name: "Portal::PublicationRecipient", foreign_key: :publication_id, inverse_of: :publication
   has_many :recipients, through: :recipient_rows, source: :portal_user
+  has_many :approver_rows, class_name: "Portal::PublicationApprover", foreign_key: :publication_id, inverse_of: :publication
+  has_many :approvers, through: :approver_rows, source: :portal_user
+  has_many :approvals, class_name: "Portal::Approval", foreign_key: :publication_id, inverse_of: :publication
 
   enum :status, { published: "published", withdrawn: "withdrawn" }, default: "published"
 
@@ -28,6 +31,8 @@ class Portal::Publication < ApplicationRecord
       OR EXISTS (SELECT 1 FROM portal_publication_recipients r WHERE r.publication_id = portal_publications.id AND r.portal_user_id = ?)
     SQL
   }
+
+  def approver?(person) = requires_approval? && approver_rows.exists?(portal_user_id: person.id)
 
   def to_param = token
 end

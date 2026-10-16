@@ -37,11 +37,12 @@ class Portal::SecondFactorsController < Portal::BaseController
       return redirect_to(portal_sign_in_path)
     end
 
-    if user.verify_totp!(params[:code]) || user.use_backup_code!(params[:code])
+    method = if user.verify_totp!(params[:code]) then "totp" elsif user.use_backup_code!(params[:code]) then "backup_code" end
+    if method
       user.register_success!
-      current_portal_session.passed_second_factor!
+      current_portal_session.passed_second_factor!(method)
       record_event("second_factor_passed")
-      redirect_to portal_root_path
+      redirect_to local_path(params[:return_to]) || portal_root_path
     else
       user.register_failure!
       record_event("second_factor_failed")
@@ -51,6 +52,11 @@ class Portal::SecondFactorsController < Portal::BaseController
   end
 
   private
+
+  # Where to go after the code, when a page sent the person here: a path of the portal, never an address elsewhere.
+  def local_path(path)
+    path.to_s if path.to_s.match?(%r{\A/[A-Za-z0-9_\-/]*\z}) && !path.to_s.start_with?("//")
+  end
 
   # These pages are for someone who gave a password (or accepted an invitation): not for a visitor.
   def require_password_step!

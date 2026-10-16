@@ -10,4 +10,27 @@
     </li>
   <% end %>
 </ul>
+<%= render "portal/shared/flash" %>
+<% if @publication.requires_approval? && @approver %>
+  <section class="mt-6 rounded border border-gray-300 p-3 text-sm">
+    <% if @own %>
+      <p><strong><%= t("portal.approvals.your_decision") %></strong>: <%= t("portal.approvals.decisions.#{@own.decision}") %></p>
+    <% else %>
+      <h2 class="font-semibold"><%= t("portal.approvals.title") %></h2>
+      <p class="mt-1"><%= @legal_text %></p>
+      <% unless @opened %><p class="mt-2 text-amber-800" role="alert"><%= t("portal.approvals.open_first") %></p><% end %>
+      <%= form_with url: approval_publication_path(@publication), class: "mt-3 space-y-2" do %>
+        <fieldset>
+          <% %w[approved approved_with_remarks refused].each do |decision| %>
+            <label class="block"><%= radio_button_tag :decision, decision, false, disabled: !@opened %> <%= t("portal.approvals.decisions.#{decision}") %></label>
+          <% end %>
+        </fieldset>
+        <div><%= label_tag :comment, t("portal.approvals.comment"), class: "block" %><%= text_area_tag :comment, nil, rows: 3, maxlength: 2000, class: "w-full rounded border border-gray-300 px-2 py-1" %></div>
+        <label class="block"><%= check_box_tag :confirm, "1", false, disabled: !@opened %> <%= t("portal.approvals.confirm") %></label>
+        <ul class="ml-5 list-disc font-mono text-xs"><% @links.each_key do |file| %><li><%= file.filename %> — <%= file.sha256.first(12) %></li><% end %></ul>
+        <%= submit_tag t("portal.approvals.submit"), disabled: !@opened, class: "portal-button rounded px-4 py-2" %>
+      <% end %>
+    <% end %>
+  </section>
+<% end %>
 <%= link_to "Back", publications_path, class: "mt-4 inline-block text-sm underline" %>

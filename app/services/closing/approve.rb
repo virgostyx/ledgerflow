@@ -9,6 +9,10 @@ class Closing::Approve
     return ctx.tap { |c| c.fail!("A comment is needed to approve a closing.") } if comment.to_s.strip.blank?
     return ctx.tap { |c| c.fail!("With four eyes, the person who prepared the closing cannot approve it.") } if run.entity.four_eyes? && preparers(run).include?(user.id)
 
+    if Closing::ClientApproval.required?(run.entity) && !Closing::ClientApproval.satisfied?(run.fiscal_year)
+      return ctx.tap { |c| c.fail!("The client's approval of the accounts of this year is missing: publish them for approval, and wait for the validation.") }
+    end
+
     Closing::Evaluate.call(run: run)
     unsettled = run.steps.reload.select { |s| s.blocking && s.code != "approval" && !s.settled? }
     return ctx.tap { |c| c.fail!("These blocking steps are not settled: #{unsettled.map { |s| "#{s.position}. #{s.title}" }.join(', ')}.") } if unsettled.any?

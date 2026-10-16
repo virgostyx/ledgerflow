@@ -4,7 +4,7 @@
   <p class="mb-6 text-sm"><%= link_to "People with access", accounting_portal_access_index_path, class: "underline" %></p>
 
   <table class="mb-8 w-full text-sm">
-    <thead><tr class="border-b text-left text-gray-500"><th class="py-2">Title</th><th>Version</th><th>Files (SHA-256)</th><th>Published</th><th>State</th><th></th></tr></thead>
+    <thead><tr class="border-b text-left text-gray-500"><th class="py-2">Title</th><th>Version</th><th>Files (SHA-256)</th><th>Published</th><th>State</th><th>Approval</th><th></th></tr></thead>
     <tbody>
       <% @publications.each do |publication| %>
         <tr class="border-b align-top">
@@ -13,6 +13,17 @@
           <td class="font-mono text-xs"><% publication.files.each do |file| %><div><%= file.filename %> <%= file.sha256.first(12) %></div><% end %></td>
           <td><%= l(publication.published_at.in_time_zone, format: :short) %></td>
           <td><%= publication.withdrawn? ? "withdrawn" : (publication.replaced_by_id ? "replaced" : "published") %></td>
+          <td class="text-xs">
+            <% if publication.requires_approval? %>
+              <strong><%= @statuses[publication].fetch(:state).to_s.tr("_", " ") %></strong> (<%= publication.approvals_required == "all" ? "all approvers" : "one approver" %>)
+              <%= tag.div(@statuses[publication][:problem], class: "text-red-700") if @statuses[publication][:problem] %>
+              <% publication.approvals.sort_by(&:id).each do |approval| %>
+                <div><%= approval.portal_user.full_name %>: <%= approval.decision.tr("_", " ") %> (<%= approval.status %><%= ", sealed" if approval.sealed? %>)
+                  <%= link_to "Proof (PDF)", proof_accounting_portal_publication_path(publication.token, approval_id: approval.id), class: "underline" %>
+                  <% result = PortalAdmin::VerifyApproval.call(approval) %> <%= result.valid? ? "verifies" : "does not verify: #{result.problems.join('; ')}" %></div>
+              <% end %>
+            <% else %>-<% end %>
+          </td>
           <td>
             <% if publication.published? && publication.replaced_by_id.nil? %>
               <%= form_with url: withdraw_accounting_portal_publication_path(publication.token), class: "flex gap-2" do |f| %>
@@ -25,6 +36,12 @@
       <% end %>
     </tbody>
   </table>
+
+  <%= form_with url: settings_accounting_portal_publications_path, method: :patch, class: "mb-6 text-sm" do %>
+    <%= hidden_field_tag :client_approval_required, "0", id: nil %>
+    <label><%= check_box_tag :client_approval_required, "1", ActsAsTenant.current_tenant.client_approval_required? %> The closing of a year needs the client's approval of the accounts</label>
+    <%= submit_tag "Save", class: "ml-2 underline cursor-pointer" %>
+  <% end %>
 
   <h2 class="mb-2 font-semibold">Publish</h2>
   <%= form_with url: accounting_portal_publications_path, multipart: true, class: "space-y-3 text-sm" do |f| %>
@@ -41,6 +58,10 @@
     </fieldset>
     <label><%= check_box_tag :watermark, "1", true %> Put the name of the reader across downloaded PDFs and images</label>
     <label class="ml-4"><%= check_box_tag :requires_approval, "1", false %> Needs the client's validation</label>
+    <fieldset><legend class="text-gray-500">Who may approve (directors whose identity you verified)</legend>
+      <% @people.select { |person| person.qualified_approver_in?(ActsAsTenant.current_tenant.id) }.each do |person| %><label class="mr-4"><%= check_box_tag "approver_ids[]", person.id, false, id: "approver_#{person.id}" %> <%= person.full_name %></label><% end %>
+      <label class="ml-4"><%= select_tag :approvals_required, options_for_select([ [ "one of them is enough", "one" ], [ "all of them", "all" ] ]), class: "rounded border p-1" %></label>
+    </fieldset>
     <div><%= f.submit "Publish", class: "rounded bg-gray-900 px-4 py-2 text-white" %></div>
   <% end %>
 </div>

@@ -41,5 +41,23 @@ en:
         back: Back
       sent: Message sent.
       too_many: Too many messages today. Please try again tomorrow.
+    approvals:
+      title: Approve these accounts
+      your_decision: Your decision
+      decisions:
+        approved: Approve
+        approved_with_remarks: Approve with remarks
+        refused: Refuse
+      comment: Remarks (required to approve with remarks or to refuse)
+      confirm: I confirm that I opened these documents (listed with the start of their fingerprint).
+      submit: Send my decision
+      open_first: Open every document before deciding.
+      authenticate: For your security, enter a code from your authenticator app again.
+      confirm_needed: Tick the box to confirm the documents.
+      comment_needed: Write your remarks or the reason.
+      choose: Choose a decision.
+      gone: This publication was withdrawn or replaced by a newer version. Open the newer one to decide.
+      already: You already decided on this version.
+      thanks: Thank you. Your decision was recorded.
     preferences:
       language: Language

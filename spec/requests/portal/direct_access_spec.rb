@@ -13,6 +13,7 @@ RSpec.describe 'Portal direct access to identifiers', type: :request do
       'portal/invitations#show'   => ->(_ctx) { '/invitations/not-a-token' },
       'portal/invitations#accept' => ->(_ctx) { '/invitations/not-a-token' },
       # a publication of a company where this person has no right, and a file link signed for someone else
+      'portal/publications#approve' => ->(ctx) { "/publications/#{ctx[:foreign_publication].token}/approval" },
       'portal/publications#show'  => ->(ctx) { "/publications/#{ctx[:foreign_publication].token}" },
       'portal/document_request_lines#answer' => ->(ctx) { "/document_request_lines/#{ctx[:foreign_line].token}/answer" },
       'portal/questions#show'     => ->(ctx) { "/questions/#{ctx[:foreign_question].token}" },

@@ -10,4 +10,6 @@ class Accounting::PortalAccessPolicy < ApplicationPolicy
   def grant? = can?("portal.manage")
   def decline? = can?("portal.manage")
   def withdraw? = can?("portal.manage")
+  def proof? = can?("portal.manage")
+  def settings? = can?("portal.manage")
 end

@@ -29,7 +29,7 @@ class Portal::Session < ApplicationRecord
 
   def revoke! = update!(revoked_at: Time.current)
 
-  def passed_second_factor! = update!(second_factor_at: Time.current)
+  def passed_second_factor!(method = "totp") = update!(second_factor_at: Time.current, second_factor_method: method)
 
   def second_factor_recent? = second_factor_at.present? && second_factor_at > Portal::RECENT_SECOND_FACTOR.ago
 end

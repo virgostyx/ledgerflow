@@ -21,7 +21,9 @@ scope module: :portal do
   resources :access_requests, only: %i[new create]
   resource :preferences, only: %i[show update]
   resources :devices, only: %i[index destroy], param: :token
-  resources :publications, only: %i[index show], param: :token
+  resources :publications, only: %i[index show], param: :token do
+    post :approval, action: :approve, on: :member
+  end
   resources :uploads, only: %i[index new create show], param: :token do
     member do
       put "chunks/:position", to: "upload_chunks#update", as: :chunk

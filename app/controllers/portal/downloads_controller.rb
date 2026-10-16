@@ -12,6 +12,7 @@ class Portal::DownloadsController < Portal::BaseController
     end
 
     data = publication.watermark && Accounting::WatermarkFile.markable?(file.content_type) ? Accounting::WatermarkFile.call(file.content, file.content_type, current_portal_user.full_name) : file.content
+    Portal::DocumentView.record!(file, current_portal_user)
     record_event("publication_downloaded", entity_id: publication.entity_id, target_token: file.token)
     send_data data, filename: file.filename, type: file.content_type, disposition: "attachment"
   rescue Accounting::WatermarkFile::Unavailable

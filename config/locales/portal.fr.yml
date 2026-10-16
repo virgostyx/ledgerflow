@@ -41,5 +41,23 @@ fr:
         back: Retour
       sent: Message envoyé.
       too_many: Trop de messages aujourd'hui. Réessayez demain.
+    approvals:
+      title: Approuver ces comptes
+      your_decision: Votre décision
+      decisions:
+        approved: Approuver
+        approved_with_remarks: Approuver avec remarques
+        refused: Refuser
+      comment: Remarques (obligatoires pour approuver avec remarques ou pour refuser)
+      confirm: Je confirme avoir ouvert ces documents (listés avec le début de leur empreinte).
+      submit: Envoyer ma décision
+      open_first: Ouvrez chaque document avant de décider.
+      authenticate: Pour votre sécurité, saisissez de nouveau un code de votre application d'authentification.
+      confirm_needed: Cochez la case pour confirmer les documents.
+      comment_needed: Écrivez vos remarques ou le motif.
+      choose: Choisissez une décision.
+      gone: Cette publication a été retirée ou remplacée par une version plus récente. Ouvrez la nouvelle pour décider.
+      already: Vous avez déjà décidé sur cette version.
+      thanks: Merci. Votre décision est enregistrée.
     preferences:
       language: Langue
