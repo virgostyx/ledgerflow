@@ -7,6 +7,8 @@
     <%= csrf_meta_tags %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <link rel="stylesheet" href="<%= branding_stylesheet_path %>">
+    <link rel="manifest" href="<%= portal_manifest_path %>">
+    <meta name="theme-color" content="#111827">
     <%= yield :head %>
   </head>
   <body class="text-gray-900">

@@ -2,13 +2,18 @@ require 'rails_helper'
 
 # B02a: guessing is slowed down per address and per account, on top of the lock after five failures.
 RSpec.describe 'Portal rate limits', type: :request do
+  # Rack::Attack counts in fixed windows (20 seconds, a minute...): a test whose requests straddle the edge of a window would see its counter start again. The clock stands still.
   before do
+    freeze_time
     Rack::Attack.enabled = true
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     host! Rails.configuration.x.portal_host
   end
 
-  after { Rack::Attack.enabled = false }
+  after do
+    Rack::Attack.enabled = false
+    travel_back
+  end
 
   def sign_in_try(email: 'a@client.example', ip: '1.2.3.4')
     post '/session', params: { email: email, password: 'wrong wrong wrong' }, headers: { 'REMOTE_ADDR' => ip }

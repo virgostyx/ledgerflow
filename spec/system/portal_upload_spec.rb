@@ -30,6 +30,16 @@ RSpec.describe 'Sending a document from the portal', type: :system, js: true do
     expect(page).to have_content('Signed in as') # the sign-in is over before anything else is asked of the browser
   end
 
+  # The browser of the suite is one for all the examples: what a test left in it (documents waiting, copies of pages, the worker) must not reach the next one.
+  after do
+    page.execute_script(<<~JS) rescue nil
+      indexedDB.deleteDatabase('lf-portal');
+      caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
+      navigator.serviceWorker.getRegistrations().then((all) => all.forEach((r) => r.unregister()));
+    JS
+    sleep 0.3
+  end
+
   def file_to_send(name = 'invoice.pdf', bytes = data)
     File.join(@dir, name).tap { |path| File.binwrite(path, bytes) }
   end
@@ -104,6 +114,64 @@ RSpec.describe 'Sending a document from the portal', type: :system, js: true do
     expect(Portal::Upload.count).to eq(0)
   end
 
+  describe 'installed on a phone, without a network (criterion 3)' do
+    def network(offline)
+      page.driver.browser.network_conditions = { offline: offline, latency: 0, download_throughput: -1, upload_throughput: -1 }
+    end
+
+    it 'opens offline from the copy kept, keeps a document, and sends it by itself when the network is back' do
+      visit '/uploads/new'
+      wait_for('the worker and the copy of the page') do
+        page.evaluate_script("(async () => { const keys = await caches.keys(); if (!keys.length) return false; return (await (await caches.open(keys[0])).keys()).length >= 3 })()") rescue false
+      end
+
+      network(true)
+      begin
+        visit '/uploads/new'
+        expect(page).to have_content('Send documents')
+        attach_file 'pick', file_to_send('train.pdf', 'x' * 1000), make_visible: true
+        expect(page).to have_content('1 waiting to be sent')
+        expect(Portal::Upload.count).to eq(0)
+      ensure
+        network(false)
+      end
+
+      wait_for('the receipt after the network came back') { Portal::Upload.received.exists? }
+      expect(Portal::Upload.sole.filename).to eq('train.pdf')
+    end
+
+    it 'serves the manifest and the worker from the root, with the scope of the whole portal' do
+      visit '/manifest.webmanifest'
+      expect(page.text).to include('"start_url":"/"', '"display":"standalone"')
+      visit '/service-worker.js'
+      expect(page.text).to include('PortalOutbox', 'addEventListener("sync"')
+    end
+  end
+
+  describe 'waiting sends expire after 30 days' do
+    def waiting_since(days, name)
+      page.driver.browser.execute_async_script(<<~JS, name, days)
+        const [name, days, done] = arguments;
+        PortalOutbox.save({ company: 0, kind: 'file', parts: [ { name, blob: new Blob(['x']) } ], batch: 'b', hint_kind: 'other', hint_note: '', state: 'waiting', created_at: Date.now() - days * 86400000 }).then(() => done(true));
+      JS
+    end
+
+    it 'deletes what waited more than 30 days and warns about what is close' do
+      visit '/uploads/new'
+      page.execute_script("window.fetch = async () => { throw new TypeError('offline') }") # nothing leaves while this is tested
+      waiting_since(31, 'too-old.pdf')
+      waiting_since(26, 'nearly.pdf')
+
+      visit '/uploads/new'
+      page.execute_script("window.fetch = async () => { throw new TypeError('offline') }")
+      page.execute_script('portalUpload.render()')
+
+      expect(page).to have_content('nearly.pdf')
+      expect(page).not_to have_content('too-old.pdf')
+      expect(page).to have_content('1 will be deleted in less than 5 days')
+    end
+  end
+
   describe 'photos' do
     def photo(name, *convert_args, size: '1600x1200')
       path = File.join(@dir, name)
@@ -139,8 +207,25 @@ RSpec.describe 'Sending a document from the portal', type: :system, js: true do
       expect(page).not_to have_css('[role=alert]')
     end
 
+    # the connection the browser reports (what the emulated network of an earlier example may have left is not the question here)
+    def connection(effective_type: '4g', save_data: false)
+      page.execute_script("Object.defineProperty(navigator, 'connection', { configurable: true, value: { effectiveType: '#{effective_type}', saveData: #{save_data} } })")
+    end
+
+    it 'sends a smaller picture when the connection is slow or the person saves data' do
+      visit '/uploads/new'
+      connection(save_data: true)
+      attach_file 'camera', photo('big.jpg', 'xc:red', size: '3000x1500'), make_visible: true
+      click_button 'Send 1 page'
+
+      wait_for('the page') { Portal::Upload.received.exists? }
+
+      expect(Open3.capture2('identify', '-format', '%wx%h', '-', stdin_data: Portal::Upload.sole.bytes, binmode: true).first).to eq('1280x640')
+    end
+
     it 'reduces a large photo to 2000 pixels and sends the pages in the order chosen, as one batch' do
       visit '/uploads/new'
+      connection
       attach_file 'camera', photo('first.jpg', 'xc:red', size: '3000x1500'), make_visible: true
       attach_file 'camera', photo('second.jpg', 'xc:blue', size: '800x600'), make_visible: true
       expect(page).to have_button('Send 2 pages')

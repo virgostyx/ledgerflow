@@ -63,6 +63,17 @@ RSpec.describe 'Follow-up of the uploads' do
       expect(mail.body.to_s).not_to include('Which supplier?')
     end
 
+    it 'says nothing to someone who chose not to be told' do
+      person.update!(notification_frequency: 'off')
+      upload = accepted_upload
+      ActsAsTenant.with_tenant(entity) { Accounting::Task.create!(title: 'Q', kind: :client_question, target: document_of(upload), author: staff, entity: entity) }
+
+      described_class.call
+
+      expect(upload.reload.progress).to eq('to_complete')
+      expect(ActionMailer::Base.deliveries).to be_empty
+    end
+
     it 'does not write to the books' do
       upload = accepted_upload
       expect { described_class.call }.not_to change { ActsAsTenant.with_tenant(entity) { Accounting::JournalEntry.count } }

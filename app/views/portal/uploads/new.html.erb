@@ -1,4 +1,4 @@
-<% content_for :head do %><%= javascript_include_tag "portal_upload", defer: true %><% end %>
+<% content_for :head do %><%= javascript_include_tag "portal_outbox", "portal_upload", defer: true %><% end %>
 <h1 class="text-xl font-semibold">Send documents</h1>
 <% if @companies.empty? %>
   <p class="mt-4 text-sm">You cannot send documents at the moment.</p>

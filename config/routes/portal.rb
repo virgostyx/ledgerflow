@@ -14,6 +14,8 @@ scope module: :portal do
   get  "second_factor/challenge", to: "second_factors#challenge", as: :portal_second_factor_challenge
   post "second_factor/challenge", to: "second_factors#verify"
 
+  get "manifest.webmanifest", to: "service_worker#manifest", as: :portal_manifest
+  get "service-worker.js", to: "service_worker#worker", as: :portal_service_worker
   get "branding.css", to: "branding#stylesheet", as: :branding_stylesheet, defaults: { format: "css" }
   get "branding/logo", to: "branding#logo", as: :branding_logo
   resources :access_requests, only: %i[new create]

@@ -40,6 +40,26 @@ RSpec.describe 'Portal uploads in chunks', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    it 'serves the manifest and the service worker to anyone (they hold nothing), the worker with the scope of the whole portal' do
+      get '/manifest.webmanifest'
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('application/manifest+json')
+      expect(JSON.parse(response.body)).to include('start_url' => '/', 'display' => 'standalone')
+
+      get '/service-worker.js'
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/javascript')
+      expect(response.headers['Service-Worker-Allowed']).to eq('/')
+      expect(response.body).to include('PortalOutbox')
+    end
+
+    it 'loads nothing from anywhere but the portal: the CSP lets the worker and the manifest be its own' do
+      get '/sign_in'
+      csp = response.headers['Content-Security-Policy']
+      expect(csp).to include("worker-src 'self'", "manifest-src 'self'")
+      expect(csp).not_to match(%r{https?://|\*})
+    end
+
     it 'says there is nothing to send for someone who has no right to' do
       grant(capabilities: %w[publications.view])
       sign_in!

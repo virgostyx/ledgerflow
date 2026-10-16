@@ -24,6 +24,8 @@ class Portal::SessionsController < Portal::BaseController
 
   def destroy
     record_event("sign_out") if current_portal_user
+    # What the browser keeps for the portal (copies of pages, and, if the person asked, the documents waiting to be sent) goes with the session.
+    response.set_header("Clear-Site-Data", current_portal_user&.wipe_outbox_on_sign_out? ? '"cache", "storage"' : '"cache"')
     end_session!
     redirect_to portal_sign_in_path
   end

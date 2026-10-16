@@ -6272,7 +6272,8 @@ CREATE TABLE public.portal_users (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     notification_frequency character varying DEFAULT 'immediate'::character varying NOT NULL,
-    last_digest_at timestamp(6) without time zone
+    last_digest_at timestamp(6) without time zone,
+    wipe_outbox_on_sign_out boolean DEFAULT false NOT NULL
 );
 
 
@@ -15871,6 +15872,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016180000'),
 ('20261016170000'),
 ('20261016160000'),
 ('20261016150000'),

@@ -11,6 +11,8 @@ class Portal::BaseController < ActionController::Base
     policy.script_src      :self
     policy.style_src       :self
     policy.img_src         :self
+    policy.manifest_src    :self
+    policy.worker_src      :self
     policy.font_src        :self
     policy.connect_src     :self
     policy.form_action     :self
