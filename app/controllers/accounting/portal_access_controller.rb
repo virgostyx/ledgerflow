@@ -7,6 +7,7 @@ class Accounting::PortalAccessController < ApplicationController
 
   def index
     @grants = Portal::Grant.where(entity_id: current_entity_id).includes(:portal_user).order(:created_at)
+    @requests = Portal::AccessRequest.pending.where(entity_id: current_entity_id).includes(:requested_by).order(:created_at)
     @brand = Portal::Branding.find_by(entity_id: current_entity_id)
     @review = PortalAdmin::AccessReview.call(entity: ActsAsTenant.current_tenant).index_by { |row| row.grant.id }
     @pending = Portal::Invitation.where(entity_id: current_entity_id, used_at: nil).where("expires_at > ?", Time.current).includes(:portal_user)

@@ -27,6 +27,19 @@
     </tbody>
   </table>
 
+  <% if @requests.any? %>
+    <h2 class="mb-2 font-semibold">Access requested by clients</h2>
+    <ul class="mb-8 space-y-2 text-sm">
+      <% @requests.each do |ask| %>
+        <li class="flex flex-wrap items-center gap-3 rounded border bg-white p-2">
+          <span><strong><%= ask.full_name %></strong> (<%= ask.email %>) as <%= ask.role %>, asked by <%= ask.requested_by.full_name %><%= " - #{ask.note}" if ask.note.present? %></span>
+          <%= button_to "Grant and invite", grant_accounting_portal_access_request_path(ask.token), class: "underline cursor-pointer" %>
+          <%= button_to "Decline", decline_accounting_portal_access_request_path(ask.token), class: "text-red-700 underline cursor-pointer" %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
   <% if @pending.any? %>
     <h2 class="mb-2 font-semibold">Invitations waiting</h2>
     <ul class="mb-8 text-sm text-gray-700"><% @pending.each do |invitation| %><li><%= invitation.email %> - <%= invitation.role %> - expires <%= l(invitation.expires_at.in_time_zone, format: :short) %></li><% end %></ul>

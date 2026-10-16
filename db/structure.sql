@@ -5727,6 +5727,46 @@ ALTER SEQUENCE public.payment_items_id_seq OWNED BY public.payment_items.id;
 
 
 --
+-- Name: portal_access_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_access_requests (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    requested_by_id bigint NOT NULL,
+    token character varying NOT NULL,
+    email character varying NOT NULL,
+    full_name character varying NOT NULL,
+    role character varying NOT NULL,
+    note text,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    decided_by_id bigint,
+    decided_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_access_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_access_requests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_access_requests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_access_requests_id_seq OWNED BY public.portal_access_requests.id;
+
+
+--
 -- Name: portal_backup_codes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7408,6 +7448,13 @@ ALTER TABLE ONLY public.payment_items ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
+-- Name: portal_access_requests id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_access_requests ALTER COLUMN id SET DEFAULT nextval('public.portal_access_requests_id_seq'::regclass);
+
+
+--
 -- Name: portal_backup_codes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8587,6 +8634,14 @@ ALTER TABLE ONLY public.payment_item_invoices
 
 ALTER TABLE ONLY public.payment_items
     ADD CONSTRAINT payment_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_access_requests portal_access_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_access_requests
+    ADD CONSTRAINT portal_access_requests_pkey PRIMARY KEY (id);
 
 
 --
@@ -12165,6 +12220,34 @@ CREATE INDEX index_payment_items_on_partner_id ON public.payment_items USING btr
 
 
 --
+-- Name: index_portal_access_requests_on_decided_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_access_requests_on_decided_by_id ON public.portal_access_requests USING btree (decided_by_id);
+
+
+--
+-- Name: index_portal_access_requests_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_access_requests_on_entity_id ON public.portal_access_requests USING btree (entity_id);
+
+
+--
+-- Name: index_portal_access_requests_on_requested_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_access_requests_on_requested_by_id ON public.portal_access_requests USING btree (requested_by_id);
+
+
+--
+-- Name: index_portal_access_requests_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_access_requests_on_token ON public.portal_access_requests USING btree (token);
+
+
+--
 -- Name: index_portal_backup_codes_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13326,6 +13409,14 @@ ALTER TABLE ONLY public.portal_publications
 
 ALTER TABLE ONLY public.accounting_lettering_suggestions
     ADD CONSTRAINT fk_rails_3b7eb4f554 FOREIGN KEY (decided_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: portal_access_requests fk_rails_3cb5b26e37; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_access_requests
+    ADD CONSTRAINT fk_rails_3cb5b26e37 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -14569,11 +14660,27 @@ ALTER TABLE ONLY public.partner_bank_accounts
 
 
 --
+-- Name: portal_access_requests fk_rails_b0f87bafe6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_access_requests
+    ADD CONSTRAINT fk_rails_b0f87bafe6 FOREIGN KEY (requested_by_id) REFERENCES public.portal_users(id);
+
+
+--
 -- Name: accounting_bank_transactions fk_rails_b1db769153; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_bank_transactions
     ADD CONSTRAINT fk_rails_b1db769153 FOREIGN KEY (bank_account_id) REFERENCES public.accounting_bank_accounts(id);
+
+
+--
+-- Name: portal_access_requests fk_rails_b265dd6c7e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_access_requests
+    ADD CONSTRAINT fk_rails_b265dd6c7e FOREIGN KEY (decided_by_id) REFERENCES public.users(id);
 
 
 --
@@ -15575,6 +15682,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016150000'),
 ('20261016140000'),
 ('20261016130000'),
 ('20261016120000'),

@@ -7,5 +7,6 @@
 <% end %>
 <%= link_to "Publications", publications_path, class: "mt-4 inline-block underline" %>
 <%= link_to "Devices", devices_path, class: "mt-4 ml-4 inline-block underline" %>
+<%= link_to "Ask for someone's access", new_access_request_path, class: "mt-4 ml-4 inline-block underline" if current_portal_user.open_grants.where("portal_grants.capabilities @> ?", [ "access.request" ].to_json).exists? %>
 <%= link_to "Preferences", preferences_path, class: "mt-4 ml-4 inline-block underline" %>
 <%= button_to "Sign out", portal_session_path, method: :delete, class: "mt-6 text-sm underline" %>

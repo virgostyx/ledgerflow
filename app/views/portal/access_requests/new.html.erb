@@ -1,0 +1,12 @@
+<h1 class="text-xl font-semibold">Ask for someone's access</h1>
+<p class="mt-2 text-sm text-gray-600">You cannot invite anyone yourself. Your accountant receives the request and decides.</p>
+<%= render "portal/shared/flash" %>
+<%= form_with url: access_requests_path, class: "mt-4 space-y-3 text-sm" do |f| %>
+  <div><%= f.label :company, "Company", class: "block" %><%= f.select :company, @companies.map { |c| [ c.name, c.id ] }, {}, class: "w-full rounded border p-2" %></div>
+  <div><%= f.label :full_name, "Their name", class: "block" %><%= f.text_field :full_name, required: true, class: "w-full rounded border p-2" %></div>
+  <div><%= f.label :email, "Their email (a personal address, not a shared one)", class: "block" %><%= f.email_field :email, required: true, class: "w-full rounded border p-2" %></div>
+  <div><%= f.label :role, "What they should be able to do", class: "block" %><%= f.select :role, Portal::ROLES, {}, class: "rounded border p-2" %></div>
+  <div><%= f.label :note, "Why", class: "block" %><%= f.text_area :note, rows: 2, class: "w-full rounded border p-2" %></div>
+  <%= f.submit "Send the request", class: "portal-button rounded px-4 py-2" %>
+<% end %>
+<%= link_to "Back", portal_root_path, class: "mt-4 inline-block text-sm underline" %>

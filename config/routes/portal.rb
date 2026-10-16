@@ -16,6 +16,7 @@ scope module: :portal do
 
   get "branding.css", to: "branding#stylesheet", as: :branding_stylesheet, defaults: { format: "css" }
   get "branding/logo", to: "branding#logo", as: :branding_logo
+  resources :access_requests, only: %i[new create]
   resource :preferences, only: %i[show update]
   resources :devices, only: %i[index destroy], param: :token
   resources :publications, only: %i[index show], param: :token

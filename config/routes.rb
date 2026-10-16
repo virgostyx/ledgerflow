@@ -435,6 +435,12 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :portal_access_requests, only: [], param: :token, path: "portal_access/requests" do
+        member do
+          post :grant
+          post :decline
+        end
+      end
       patch "portal_branding", to: "portal_access#branding", as: :portal_branding
       resources :portal_activity, only: :index, controller: "portal_activity"
       resources :portal_publications, only: [ :index, :create ], param: :token do

@@ -7,5 +7,7 @@ class Accounting::PortalAccessPolicy < ApplicationPolicy
   def verify_identity? = can?("portal.manage")
   def reinstate? = can?("portal.manage")
   def branding? = can?("portal.manage")
+  def grant? = can?("portal.manage")
+  def decline? = can?("portal.manage")
   def withdraw? = can?("portal.manage")
 end
