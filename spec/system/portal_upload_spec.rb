@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 # B02b, in a real browser: a file is sent in chunks, a network that fails and repeats costs nothing, and the send counts as done only when the server has given its receipt.
-RSpec.describe 'Sending a document from the portal', type: :system, js: true do
+RSpec.describe 'Sending a document from the portal', type: :system, js: true, portal_browser: true do
   let(:entity) { create(:entity) }
   let(:person) { create(:portal_user) }
   let(:data)   { Random.new(3).bytes(2_500_000) }
@@ -28,16 +28,6 @@ RSpec.describe 'Sending a document from the portal', type: :system, js: true do
     fill_in 'Code', with: Totp.code(person.totp_secret)
     click_button 'Sign in'
     expect(page).to have_content('Signed in as') # the sign-in is over before anything else is asked of the browser
-  end
-
-  # The browser of the suite is one for all the examples: what a test left in it (documents waiting, copies of pages, the worker) must not reach the next one.
-  after do
-    page.execute_script(<<~JS) rescue nil
-      indexedDB.deleteDatabase('lf-portal');
-      caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
-      navigator.serviceWorker.getRegistrations().then((all) => all.forEach((r) => r.unregister()));
-    JS
-    sleep 0.3
   end
 
   def file_to_send(name = 'invoice.pdf', bytes = data)

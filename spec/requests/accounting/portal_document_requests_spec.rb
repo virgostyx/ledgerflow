@@ -48,6 +48,11 @@ RSpec.describe "Portal document requests (firm side)", type: :request do
     expect(response.body).to include("ACME Supplies", "explained", "personal")
   end
 
+  it "shows the indicators, with a dash where there is nothing to measure" do
+    get accounting_portal_document_requests_path
+    expect(response.body).to include("Days from a bank movement to its document", "Documents given in time", "—")
+  end
+
   it "lets the firm choose whether the clients see bank lines" do
     patch settings_accounting_portal_document_requests_path, params: { show_bank_lines: "0" }
 

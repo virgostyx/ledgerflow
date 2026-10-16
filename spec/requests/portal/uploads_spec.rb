@@ -201,6 +201,28 @@ RSpec.describe 'Portal uploads in chunks', type: :request do
     end
   end
 
+  describe 'the audit trail (criterion 11)' do
+    it 'keeps each send in R18 with who sent it, and the refusals too' do
+      grant
+      sign_in!
+      start
+      token = response.parsed_body['token']
+      3.times { |i| put_chunk(token, i) }
+      post "/uploads/#{token}/complete"
+      Rails.configuration.x.portal_uploads = Rails.configuration.x.portal_uploads.merge(files_per_day: 1)
+      start
+      expect(response).to have_http_status(:too_many_requests)
+      Rails.configuration.x.portal_uploads = Rails.configuration.x.portal_uploads.merge(files_per_day: 200)
+
+      PortalAdmin::MirrorEvents.call
+
+      trail = ActsAsTenant.with_tenant(entity) { Accounting::AuditLog.where(actor_type: 'portal_user').order(:id).to_a }
+      expect(trail.map(&:action)).to include('portal_upload_started', 'portal_upload_received', 'portal_upload_refused')
+      received = trail.find { |row| row.action == 'portal_upload_received' }
+      expect(received.payload).to include('email' => person.email, 'portal_user_id' => person.id, 'sha256' => sha, 'filename' => 'invoice.pdf')
+    end
+  end
+
   describe 'a bad network (criteria 1 and 2)' do
     it 'ends with the same file when chunks are lost, repeated and out of order, over several resumptions' do
       grant

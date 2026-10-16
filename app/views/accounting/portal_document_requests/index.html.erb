@@ -1,5 +1,12 @@
 <%= render Ui::PageHeaderComponent.new(title: "Supporting documents asked of the client") %>
 
+<dl class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+  <% [ [ "Days from a bank movement to its document", @indicators[:delay_days], "" ], [ "Sends to complete", @indicators[:to_complete_rate], " %" ],
+       [ "Documents given in time", @indicators[:in_time_rate], " %" ], [ "Documents by the portal rather than e-mail", @indicators[:portal_share], " %" ] ].each do |label, value, unit| %>
+    <div class="rounded-lg border border-gray-200 bg-white p-4"><dt class="text-xs text-gray-500"><%= label %></dt><dd class="mt-1 text-xl font-semibold text-gray-900"><%= value ? "#{value}#{unit}" : "—" %></dd></div>
+  <% end %>
+</dl>
+
 <section class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm">
   <%= form_with url: settings_accounting_portal_document_requests_path, method: :patch, class: "flex items-center gap-3" do %>
     <%= hidden_field_tag :show_bank_lines, "0", id: nil %>

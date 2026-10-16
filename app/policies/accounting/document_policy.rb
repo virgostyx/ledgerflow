@@ -12,6 +12,7 @@ class Accounting::DocumentPolicy < ApplicationPolicy
   def unlink?   = can?("documents.link")
   def update?   = can?("documents.link")
   def archive?  = can?("documents.archive")
+  def move? = can?("documents.upload") # B02b: to the right company, by someone who works in both (checked by the service)
   def reject_portal? = can?("portal.manage") && update? # B02b: refuse what a client sent, with a reason the client is told
   def destroy?  = can?("documents.delete_expired")
   def legal_hold? = can?("documents.delete_expired") # retention controls are the owner's

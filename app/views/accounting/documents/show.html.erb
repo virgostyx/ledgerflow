@@ -19,6 +19,13 @@
         <%= submit_tag "Refuse and tell the client", class: "px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50 cursor-pointer" %>
       <% end %>
     <% end %>
+    <% if @document.inbox? && policy(@document).move? && (others = current_user.current_entities.where.not(id: @document.entity_id).order(:name)).any? %>
+      <%= form_with url: move_accounting_document_path(@document), method: :post, class: "inline-flex gap-1" do %>
+        <%= select_tag :to, options_from_collection_for_select(others, :id, :name), class: "rounded border border-gray-300 text-sm" %>
+        <%= submit_tag "Move to this company", class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer",
+              data: { turbo_confirm: "Move this document to the other company? It leaves this one." } %>
+      <% end %>
+    <% end %>
     <% if policy(@document).destroy? && @document.deletable? %>
       <%= button_to "Delete", accounting_document_path(@document), method: :delete, class: "px-4 py-2 border border-red-300 text-sm text-red-700 rounded-md hover:bg-red-50",
             form: { data: { turbo_confirm: "Delete this document for good? Its retention term is over." } } %>

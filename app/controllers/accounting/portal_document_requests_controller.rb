@@ -8,6 +8,7 @@ class Accounting::PortalDocumentRequestsController < ApplicationController
     taken = Accounting::DocumentLink.where(target_type: "Accounting::BankTransaction").select(:target_id)
     asked = Portal::DocumentRequestLine.open_ones.where(entity_id: entity.id).select(:bank_transaction_id)
     @candidates = Accounting::BankTransaction.pending.where.not(id: taken).where.not(id: asked).order(transaction_date: :desc).limit(200)
+    @indicators = PortalAdmin::UploadIndicators.call(entity: entity)
     @lines = Portal::DocumentRequestLine.where(entity_id: entity.id).includes(:request).order(id: :desc).limit(200)
   end
 

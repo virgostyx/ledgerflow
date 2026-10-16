@@ -2,7 +2,7 @@
 # the right), never by a public address. A viewing is not audited; a download, an archiving and a deletion are.
 class Accounting::DocumentsController < ApplicationController
   before_action { require_feature!(:f03) }
-  before_action :set_document, only: %i[show update destroy file download archive reject_portal confirm_field rerun create_invoice split legal_hold]
+  before_action :set_document, only: %i[show update destroy file download archive reject_portal move confirm_field rerun create_invoice split legal_hold]
 
   # What a browser may show in the page: nothing that can carry markup or script.
   INLINE_TYPES = %w[application/pdf image/png image/jpeg].freeze
@@ -127,6 +127,20 @@ class Accounting::DocumentsController < ApplicationController
     @document.update!(status: :archived)
     Accounting::AuditLog.record!(auditable: @document, action: "document_archive", payload: { name: @document.name })
     redirect_to accounting_documents_path, notice: t("documents.archived")
+  end
+
+  # B02b: a document that came to the wrong company goes to the right one.
+  def move
+    authorize @document
+    target = current_user.current_entities.find_by(id: params[:to])
+    return redirect_to(accounting_document_path(@document), alert: "Choose one of your companies.") unless target
+
+    result = PortalAdmin::MoveDocument.call(document: @document, to: target, by: current_user)
+    if result.success?
+      redirect_to accounting_documents_path, notice: "The document is now in #{target.name}."
+    else
+      redirect_to accounting_document_path(@document), alert: result.message
+    end
   end
 
   # B02b: a document a client sent is refused with one of the reasons they may be told.

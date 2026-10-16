@@ -48,6 +48,32 @@ RSpec.describe "Accounting::Documents", type: :request do
     end
   end
 
+  describe "moving a document to the right company (B02b)" do
+    let(:other_company) { create(:entity) }
+    let(:document)      { Accounting::UploadDocument.call(io: StringIO.new(sample_pdf("wrong place")), filename: "w.pdf", user: nil, origin: :portal)[:document] }
+
+    before { create(:user_entity, :accountant, user: accountant, entity: other_company) }
+
+    it "moves it when the person works in both companies" do
+      post move_accounting_document_path(document), params: { to: other_company.id }
+
+      expect(response).to redirect_to(accounting_documents_path)
+      expect(document.reload.entity_id).to eq(other_company.id)
+    end
+
+    it "refuses a company the person does not work in" do
+      stranger = create(:entity)
+      post move_accounting_document_path(document), params: { to: stranger.id }
+
+      expect(document.reload.entity_id).to eq(entity.id)
+    end
+
+    it "offers the move on the page of an untouched document" do
+      get accounting_document_path(document)
+      expect(response.body).to include("Move to this company")
+    end
+  end
+
   describe "the feature flag" do
     it "closes the screens while f03 is off and uploads nothing" do
       entity.update!(features: { "f03" => false })
