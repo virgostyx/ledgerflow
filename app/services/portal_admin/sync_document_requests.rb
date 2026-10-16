@@ -24,6 +24,7 @@ class PortalAdmin::SyncDocumentRequests
       line.update!(state: "provided")
     else
       line.update!(state: "withdrawn", withdrawn_reason: "This line was justified by your accountant.")
+      Accounting::AuditLog.record!(auditable: line.request, action: "portal_document_request_withdrawn", payload: { line: line.token, bank_transaction_id: transaction.id })
     end
   end
 

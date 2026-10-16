@@ -96,6 +96,7 @@ RSpec.describe 'Document requests' do
 
       expect(copy.reload).to have_attributes(state: 'withdrawn')
       expect(copy.withdrawn_reason).to match(/justified/)
+      expect(Accounting::AuditLog.where(action: 'portal_document_request_withdrawn').count).to eq(1)
     end
 
     it 'marks as provided a line whose document came from the client' do
