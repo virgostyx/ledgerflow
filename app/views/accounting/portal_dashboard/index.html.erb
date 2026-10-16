@@ -1,0 +1,49 @@
+<%= render Ui::PageHeaderComponent.new(title: "Client dashboard") %>
+<section class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm">
+  <div class="flex flex-wrap items-center gap-4">
+    <%= button_to "Make a snapshot now", generate_accounting_portal_dashboard_index_path, class: "underline cursor-pointer" %>
+    <%= form_with url: settings_accounting_portal_dashboard_index_path, method: :patch, class: "flex items-center gap-2" do %>
+      <%= hidden_field_tag :snapshot_approval_required, "0", id: nil %>
+      <label><%= check_box_tag :snapshot_approval_required, "1", ActsAsTenant.current_tenant.snapshot_approval_required? %> Approve each snapshot before the client sees it</label>
+      <%= submit_tag "Save", class: "underline cursor-pointer" %>
+    <% end %>
+  </div>
+  <p class="mt-2 text-xs text-gray-600">A snapshot is made every night and with each publication, from the books, with a fixed list of figures. The client never triggers a calculation and no name of a customer or supplier is in it.</p>
+</section>
+
+<section class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm">
+  <h2 class="mb-2 font-semibold text-gray-700">Alert on the forecast cash</h2>
+  <ul class="mb-2"><% @rules.each do |rule| %>
+    <li>Tell the directors when the forecast cash goes under <%= number_with_precision(rule.threshold, precision: 2) %> — <%= rule.active? ? "on" : "off" %>
+      <% if rule.active? %><%= button_to "Turn off", alert_rule_accounting_portal_dashboard_index_path(rule: rule.id), method: :delete, class: "inline underline cursor-pointer" %><% end %></li>
+  <% end %></ul>
+  <%= form_with url: alert_rules_accounting_portal_dashboard_index_path, class: "flex items-end gap-2" do %>
+    <div><%= label_tag :threshold, "Threshold", class: "block" %><%= text_field_tag :threshold, nil, inputmode: "decimal", class: "rounded border border-gray-300 px-2 py-1" %></div>
+    <%= submit_tag "Add the alert", class: "underline cursor-pointer" %>
+  <% end %>
+</section>
+
+<section class="rounded-lg border border-gray-200 bg-white p-4 text-sm">
+  <h2 class="mb-2 font-semibold text-gray-700">Snapshots</h2>
+  <% if @snapshots.empty? %><p class="text-gray-600">None yet.</p><% end %>
+  <ul class="space-y-3">
+    <% @snapshots.each do |snapshot| %>
+      <li class="rounded border border-gray-200 p-3">
+        <div><strong><%= l(snapshot.generated_at.in_time_zone, format: :short) %></strong> — <%= snapshot.status.tr("_", " ") %><%= " — provisional" if snapshot.provisional %> — <code class="text-xs"><%= snapshot.sha256.first(12) %></code></div>
+        <% if snapshot.status == "pending_review" %><%= button_to "Let the client see it", publish_accounting_portal_dashboard_path(snapshot), class: "underline cursor-pointer" %><% end %>
+        <%= form_with url: word_accounting_portal_dashboard_path(snapshot), method: :patch, class: "mt-2 space-y-1" do %>
+          <%= label_tag "word_#{snapshot.id}", "A word from the accountant", class: "block" %>
+          <%= text_area_tag :text, snapshot.accountant_word, id: "word_#{snapshot.id}", rows: 2, class: "w-full rounded border border-gray-300 px-2 py-1" %>
+          <label class="text-xs"><%= radio_button_tag :source, "human", snapshot.word_source != "agent_draft", id: "human_#{snapshot.id}" %> written by me</label>
+          <label class="text-xs"><%= radio_button_tag :source, "agent_draft", snapshot.word_source == "agent_draft", id: "agent_#{snapshot.id}" %> draft by the assistant</label>
+          <%= submit_tag "Save the word", class: "underline cursor-pointer" %>
+        <% end %>
+        <% if snapshot.accountant_word.present? %>
+          <% if snapshot.word_approved_at %><p class="text-xs text-gray-600">Approved<%= " (draft by the assistant, read and approved by a person)" if snapshot.word_source == "agent_draft" %>: shown to the client.</p>
+          <% else %><p class="text-xs text-amber-800"><%= "This is a draft by the assistant. " if snapshot.word_source == "agent_draft" %>Not shown to the client until you approve it.</p>
+            <%= button_to "Read and approve", approve_word_accounting_portal_dashboard_path(snapshot), class: "underline cursor-pointer" %><% end %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+</section>

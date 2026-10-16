@@ -19,6 +19,7 @@ class Accounting::PortalPublicationsController < ApplicationController
       expires_at: params[:expires_at].presence, approvers: people.where(id: Array(params[:approver_ids])).to_a, approvals_required: params[:approvals_required].presence || "one"
     )
     if result.success?
+      PortalAdmin::GenerateSnapshot.call(entity: entity) if entity.feature?(:b02c) # the figures of the dashboard are made again with each publication
       redirect_to accounting_portal_publications_path, notice: "Published."
     else
       redirect_to accounting_portal_publications_path, alert: result.message

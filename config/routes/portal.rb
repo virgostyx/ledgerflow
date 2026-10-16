@@ -33,6 +33,7 @@ scope module: :portal do
   resources :questions, only: %i[index show], param: :token do
     post :answer, on: :member
   end
+  get "dashboard", to: "dashboards#show", as: :portal_dashboard
   resources :messages, only: %i[index create]
   get "mail", to: "mail#show", as: :portal_mail
   resources :document_requests, only: :index

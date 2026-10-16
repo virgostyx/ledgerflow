@@ -4,6 +4,9 @@ class PortalAdminJob < ApplicationJob
 
   def perform(task = "mirror")
     case task
+    when "snapshots"
+      Entity.find_each { |entity| PortalAdmin::GenerateSnapshot.call(entity: entity) if entity.feature?(:b02a) && entity.feature?(:b02c) }
+      PortalAdmin::DashboardAlerts.call
     when "dormant" then PortalAdmin::SuspendDormant.call
     when "digest" then PortalAdmin::DailyDigest.call
     when "uploads"

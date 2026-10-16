@@ -32,4 +32,10 @@ class Portal::NotificationMailer < ApplicationMailer
     @url = Rails.application.routes.url_helpers.messages_url(**Portal.url_options)
     mail to: user.email, subject: "#{company_name} wrote to you"
   end
+
+  def dashboard_alert(user, company_name)
+    @company_name = company_name
+    @url = Rails.application.routes.url_helpers.portal_dashboard_url(**Portal.url_options)
+    mail to: user.email, subject: "#{company_name}: something to look at on your dashboard"
+  end
 end

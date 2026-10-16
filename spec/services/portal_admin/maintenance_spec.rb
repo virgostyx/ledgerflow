@@ -117,6 +117,7 @@ RSpec.describe PortalAdminJob do
     expect(schedule.fetch('portal_mirror_events')).to include('class' => 'PortalAdminJob', 'args' => [ 'mirror' ])
     expect(schedule.fetch('portal_suspend_dormant')).to include('class' => 'PortalAdminJob', 'args' => [ 'dormant' ])
     expect(schedule.fetch('portal_receive_uploads')).to include('class' => 'PortalAdminJob', 'args' => [ 'uploads' ], 'schedule' => 'every minute') # B02b
+    expect(schedule.fetch('portal_snapshots')).to include('class' => 'PortalAdminJob', 'args' => [ 'snapshots' ])
     expect(schedule.fetch('portal_remind_document_requests')).to include('class' => 'PortalAdminJob', 'args' => [ 'reminders' ])
   end
 

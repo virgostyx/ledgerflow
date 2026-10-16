@@ -59,5 +59,45 @@ fr:
       gone: Cette publication a été retirée ou remplacée par une version plus récente. Ouvrez la nouvelle pour décider.
       already: Vous avez déjà décidé sur cette version.
       thanks: Merci. Votre décision est enregistrée.
+    dashboard:
+      title: Votre tableau de bord
+      none: Votre tableau de bord n'est pas encore prêt.
+      updated: "Chiffres du %{date}"
+      provisional: données provisoires tant que l'exercice n'est pas clôturé
+      word: Le mot de votre comptable
+      pdf: Télécharger en PDF
+      month: Mois
+      value: Montant
+      back: Retour
+      series:
+        sales: Ventes des 12 derniers mois
+        cash: Trésorerie à la fin de chaque mois
+      alt_table: Chiffres de la courbe
+      invoices: "%{count} factures"
+      indicators:
+        cash:
+          title: Trésorerie disponible
+          help: L'argent disponible sur vos comptes bancaires et de caisse aujourd'hui.
+        sales_month:
+          title: Ventes du mois
+          help: Ce que vous avez facturé ce mois-ci jusqu'à présent.
+        sales_previous_month:
+          title: Ventes du mois dernier
+          help: Ce que vous avez facturé le mois précédent.
+        sales_last_year:
+          title: Ventes du même mois l'an dernier
+          help: Ce que vous aviez facturé le même mois il y a un an.
+        result_ytd:
+          title: Résultat depuis le début de l'année
+          help: Ce que vous avez gagné moins ce que vous avez dépensé depuis le début de l'exercice.
+        receivables_overdue:
+          title: Créances clients échues
+          help: Montants des factures de vos clients payées en retard.
+        receivables_overdue_count:
+          title: Clients en retard de paiement
+          help: Combien de clients ont des factures dont l'échéance est dépassée.
+        payables_30_days:
+          title: À payer dans les 30 jours
+          help: Ce que vous devez à vos fournisseurs et devez payer dans les 30 prochains jours.
     preferences:
       language: Langue

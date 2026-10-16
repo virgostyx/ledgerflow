@@ -5179,7 +5179,8 @@ CREATE TABLE public.entities (
     integrity_public_company_name boolean DEFAULT false NOT NULL,
     portal_show_bank_lines boolean DEFAULT true NOT NULL,
     documents_allowed_senders character varying[] DEFAULT '{}'::character varying[] NOT NULL,
-    client_approval_required boolean DEFAULT false NOT NULL
+    client_approval_required boolean DEFAULT false NOT NULL,
+    snapshot_approval_required boolean DEFAULT false NOT NULL
 );
 
 
@@ -5866,6 +5867,41 @@ CREATE SEQUENCE public.portal_access_requests_id_seq
 --
 
 ALTER SEQUENCE public.portal_access_requests_id_seq OWNED BY public.portal_access_requests.id;
+
+
+--
+-- Name: portal_alert_rules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_alert_rules (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    kind character varying NOT NULL,
+    threshold numeric(15,2) NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    last_alerted_on date,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_alert_rules_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_alert_rules_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_alert_rules_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_alert_rules_id_seq OWNED BY public.portal_alert_rules.id;
 
 
 --
@@ -6575,6 +6611,52 @@ CREATE SEQUENCE public.portal_sessions_id_seq
 --
 
 ALTER SEQUENCE public.portal_sessions_id_seq OWNED BY public.portal_sessions.id;
+
+
+--
+-- Name: portal_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_snapshots (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    period_start date NOT NULL,
+    period_end date NOT NULL,
+    indicators jsonb DEFAULT '{}'::jsonb NOT NULL,
+    series jsonb DEFAULT '{}'::jsonb NOT NULL,
+    provisional boolean DEFAULT true NOT NULL,
+    generated_at timestamp(6) without time zone NOT NULL,
+    known_at timestamp(6) without time zone NOT NULL,
+    sha256 character varying NOT NULL,
+    status character varying DEFAULT 'published'::character varying NOT NULL,
+    published_at timestamp(6) without time zone,
+    published_by_id bigint,
+    accountant_word text,
+    word_source character varying,
+    word_approved_at timestamp(6) without time zone,
+    word_approved_by_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_snapshots_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_snapshots_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_snapshots_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_snapshots_id_seq OWNED BY public.portal_snapshots.id;
 
 
 --
@@ -8005,6 +8087,13 @@ ALTER TABLE ONLY public.portal_access_requests ALTER COLUMN id SET DEFAULT nextv
 
 
 --
+-- Name: portal_alert_rules id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_alert_rules ALTER COLUMN id SET DEFAULT nextval('public.portal_alert_rules_id_seq'::regclass);
+
+
+--
 -- Name: portal_answers id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8128,6 +8217,13 @@ ALTER TABLE ONLY public.portal_questions ALTER COLUMN id SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.portal_sessions ALTER COLUMN id SET DEFAULT nextval('public.portal_sessions_id_seq'::regclass);
+
+
+--
+-- Name: portal_snapshots id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_snapshots ALTER COLUMN id SET DEFAULT nextval('public.portal_snapshots_id_seq'::regclass);
 
 
 --
@@ -9288,6 +9384,14 @@ ALTER TABLE ONLY public.portal_access_requests
 
 
 --
+-- Name: portal_alert_rules portal_alert_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_alert_rules
+    ADD CONSTRAINT portal_alert_rules_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: portal_answers portal_answers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9429,6 +9533,14 @@ ALTER TABLE ONLY public.portal_questions
 
 ALTER TABLE ONLY public.portal_sessions
     ADD CONSTRAINT portal_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_snapshots portal_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_snapshots
+    ADD CONSTRAINT portal_snapshots_pkey PRIMARY KEY (id);
 
 
 --
@@ -9784,6 +9896,13 @@ CREATE INDEX idx_on_entity_id_fingerprint_49aa41669e ON public.accounting_consis
 --
 
 CREATE UNIQUE INDEX idx_on_entity_id_fingerprint_e37fdec9cd ON public.accounting_lettering_suggestions USING btree (entity_id, fingerprint);
+
+
+--
+-- Name: idx_on_entity_id_status_generated_at_9b688addc2; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_entity_id_status_generated_at_9b688addc2 ON public.portal_snapshots USING btree (entity_id, status, generated_at);
 
 
 --
@@ -13007,6 +13126,13 @@ CREATE UNIQUE INDEX index_portal_access_requests_on_token ON public.portal_acces
 
 
 --
+-- Name: index_portal_alert_rules_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_alert_rules_on_entity_id ON public.portal_alert_rules USING btree (entity_id);
+
+
+--
 -- Name: index_portal_answers_on_entity_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13438,6 +13564,13 @@ CREATE INDEX index_portal_sessions_on_portal_user_id ON public.portal_sessions U
 --
 
 CREATE UNIQUE INDEX index_portal_sessions_on_token_digest ON public.portal_sessions USING btree (token_digest);
+
+
+--
+-- Name: index_portal_snapshots_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_snapshots_on_entity_id ON public.portal_snapshots USING btree (entity_id);
 
 
 --
@@ -14054,6 +14187,14 @@ ALTER TABLE ONLY public.dunning_items
 
 ALTER TABLE ONLY public.portal_publications
     ADD CONSTRAINT fk_rails_121fcafcef FOREIGN KEY (replaced_by_id) REFERENCES public.portal_publications(id);
+
+
+--
+-- Name: portal_alert_rules fk_rails_13d0f8ad4c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_alert_rules
+    ADD CONSTRAINT fk_rails_13d0f8ad4c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -16625,6 +16766,14 @@ ALTER TABLE ONLY public.payment_item_invoices
 
 
 --
+-- Name: portal_snapshots fk_rails_eb3e219b28; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_snapshots
+    ADD CONSTRAINT fk_rails_eb3e219b28 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: portal_brandings fk_rails_eb86d3303a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16951,6 +17100,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016240000'),
 ('20261016230000'),
 ('20261016220000'),
 ('20261016210000'),

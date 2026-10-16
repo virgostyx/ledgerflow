@@ -1,0 +1,41 @@
+<h1 class="text-xl font-semibold"><%= t("portal.dashboard.title") %></h1>
+<% if @snapshots.values.compact.empty? %><p class="mt-4 text-sm"><%= t("portal.dashboard.none") %></p><% end %>
+<% @snapshots.each do |company, snapshot| %>
+  <% next unless snapshot %>
+  <section class="mt-6" aria-labelledby="company-<%= company.id %>">
+    <h2 id="company-<%= company.id %>" class="text-lg font-medium"><%= company.name %></h2>
+    <p class="text-xs text-gray-600"><%= t("portal.dashboard.updated", date: snapshot.period_end.iso8601) %><% if snapshot.provisional %> — <%= t("portal.dashboard.provisional") %><% end %></p>
+    <% if (word = Portal::Snapshot.shown_word(snapshot)) %>
+      <aside class="mt-3 rounded border border-gray-200 p-3 text-sm"><h3 class="font-medium"><%= t("portal.dashboard.word") %></h3><p class="whitespace-pre-line"><%= word %></p></aside>
+    <% end %>
+    <dl class="mt-3 grid grid-cols-2 gap-3">
+      <% Portal::Snapshot::INDICATORS.each do |key| %>
+        <% next unless snapshot.indicators.key?(key) %>
+        <div class="rounded border border-gray-200 p-3" title="<%= t("portal.dashboard.indicators.#{key}.help") %>">
+          <dt class="text-xs text-gray-600"><%= t("portal.dashboard.indicators.#{key}.title") %></dt>
+          <dd class="text-lg font-semibold"><%= key.end_with?("_count") ? snapshot.indicators[key] : money(snapshot.indicators[key]) %></dd>
+          <p class="text-xs text-gray-600"><%= t("portal.dashboard.indicators.#{key}.help") %></p>
+        </div>
+      <% end %>
+    </dl>
+    <% Portal::Snapshot::SERIES.each do |key| %>
+      <% points = snapshot.series[key] %>
+      <% next if points.blank? %>
+      <figure class="mt-4">
+        <figcaption class="text-sm font-medium"><%= t("portal.dashboard.series.#{key}") %></figcaption>
+        <% polyline = Portal::Sparkline.points(points.map { |p| p["value"] }) %>
+        <% if polyline %>
+          <svg viewBox="0 0 <%= Portal::Sparkline::WIDTH %> <%= Portal::Sparkline::HEIGHT %>" role="img" aria-label="<%= t("portal.dashboard.series.#{key}") %>" class="h-16 w-full max-w-md" preserveAspectRatio="none">
+            <polyline points="<%= polyline %>" fill="none" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+        <% end %>
+        <details class="text-xs"><summary><%= t("portal.dashboard.alt_table") %></summary>
+          <table class="mt-1 w-full max-w-md"><thead><tr><th class="text-left"><%= t("portal.dashboard.month") %></th><th class="text-right"><%= t("portal.dashboard.value") %></th></tr></thead>
+            <tbody><% points.each do |point| %><tr><td><%= point["month"] %></td><td class="text-right"><%= money(point["value"]) %></td></tr><% end %></tbody></table>
+        </details>
+      </figure>
+    <% end %>
+    <p class="mt-3 text-sm"><%= link_to t("portal.dashboard.pdf"), portal_dashboard_path(format: :pdf, company: company.id), class: "underline" %></p>
+  </section>
+<% end %>
+<%= link_to t("portal.dashboard.back"), portal_root_path, class: "mt-6 inline-block underline" %>

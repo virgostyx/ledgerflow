@@ -59,5 +59,45 @@ nl:
       gone: Deze publicatie is ingetrokken of vervangen door een nieuwere versie. Open de nieuwe om te beslissen.
       already: U hebt al beslist over deze versie.
       thanks: Dank u. Uw beslissing is geregistreerd.
+    dashboard:
+      title: Uw dashboard
+      none: Uw dashboard is nog niet klaar.
+      updated: "Cijfers van %{date}"
+      provisional: voorlopige gegevens zolang het boekjaar niet is afgesloten
+      word: Een woordje van uw boekhouder
+      pdf: Downloaden als PDF
+      month: Maand
+      value: Bedrag
+      back: Terug
+      series:
+        sales: Verkopen van de laatste 12 maanden
+        cash: Liquiditeit aan het einde van elke maand
+      alt_table: Cijfers van de curve
+      invoices: "%{count} facturen"
+      indicators:
+        cash:
+          title: Beschikbare liquiditeit
+          help: Het geld dat vandaag beschikbaar is op uw bank- en kasrekeningen.
+        sales_month:
+          title: Verkopen van deze maand
+          help: Wat u deze maand tot nu toe hebt gefactureerd.
+        sales_previous_month:
+          title: Verkopen van vorige maand
+          help: Wat u de voorgaande maand hebt gefactureerd.
+        sales_last_year:
+          title: Verkopen van dezelfde maand vorig jaar
+          help: Wat u dezelfde maand een jaar geleden hebt gefactureerd.
+        result_ytd:
+          title: Resultaat sinds het begin van het jaar
+          help: Wat u hebt verdiend min wat u hebt uitgegeven sinds het begin van het boekjaar.
+        receivables_overdue:
+          title: Achterstallige vorderingen
+          help: Bedragen van facturen van uw klanten die te laat worden betaald.
+        receivables_overdue_count:
+          title: Klanten die te laat betalen
+          help: Hoeveel klanten facturen hebben waarvan de vervaldatum is overschreden.
+        payables_30_days:
+          title: Te betalen binnen 30 dagen
+          help: Wat u aan uw leveranciers verschuldigd bent en binnen de volgende 30 dagen moet betalen.
     preferences:
       language: Taal

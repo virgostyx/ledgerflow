@@ -122,6 +122,11 @@ production:
     args: [ "reminders" ]
     queue: default
     schedule: every day at 8am
+  portal_snapshots:
+    class: PortalAdminJob
+    args: [ "snapshots" ]
+    queue: default
+    schedule: every day at 3am
   portal_suspend_dormant:
     class: PortalAdminJob
     args: [ "dormant" ]

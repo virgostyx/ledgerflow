@@ -59,5 +59,45 @@ en:
       gone: This publication was withdrawn or replaced by a newer version. Open the newer one to decide.
       already: You already decided on this version.
       thanks: Thank you. Your decision was recorded.
+    dashboard:
+      title: Your dashboard
+      none: Your dashboard is not ready yet.
+      updated: "Figures of %{date}"
+      provisional: provisional data until the year is closed
+      word: A word from your accountant
+      pdf: Download as PDF
+      month: Month
+      value: Amount
+      back: Back
+      series:
+        sales: Sales over the last 12 months
+        cash: Cash at the end of each month
+      alt_table: Figures of the curve
+      invoices: "%{count} invoices"
+      indicators:
+        cash:
+          title: Available cash
+          help: The money available on your bank and cash accounts today.
+        sales_month:
+          title: Sales this month
+          help: What you invoiced this month so far.
+        sales_previous_month:
+          title: Sales last month
+          help: What you invoiced during the previous month.
+        sales_last_year:
+          title: Sales, same month last year
+          help: What you invoiced in the same month a year ago.
+        result_ytd:
+          title: Result since the start of the year
+          help: What you earned minus what you spent since the start of the financial year.
+        receivables_overdue:
+          title: Overdue receivables
+          help: Amounts of invoices from your customers that are paid late.
+        receivables_overdue_count:
+          title: Customers paying late
+          help: How many customers have invoices past their due date.
+        payables_30_days:
+          title: To pay within 30 days
+          help: What you owe your suppliers and have to pay within the next 30 days.
     preferences:
       language: Language
