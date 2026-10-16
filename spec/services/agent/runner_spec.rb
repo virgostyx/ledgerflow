@@ -523,7 +523,8 @@ RSpec.describe Agent::Runner do
 
       expect(answer.tool_calls).to contain_exactly(have_attributes(tool: "echo", arguments: { "text" => "hi" }.to_json, status: "ok", error: nil, duration_ms: be >= 0))
       raw = ActiveRecord::Base.connection.select_value("SELECT arguments FROM agent_tool_calls LIMIT 1")
-      expect(raw).not_to include("hi")
+      expect(raw).not_to include('"text"') # the arguments are not readable as they were written (a bare "hi" could appear by chance in base64: about 2 % of runs)
+      expect(raw).not_to include('"hi"')
     end
 
     it "keeps a refused or failed call as an error, with the code the model was given" do
