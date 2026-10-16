@@ -117,6 +117,7 @@ RSpec.describe PortalAdminJob do
     expect(schedule.fetch('portal_mirror_events')).to include('class' => 'PortalAdminJob', 'args' => [ 'mirror' ])
     expect(schedule.fetch('portal_suspend_dormant')).to include('class' => 'PortalAdminJob', 'args' => [ 'dormant' ])
     expect(schedule.fetch('portal_receive_uploads')).to include('class' => 'PortalAdminJob', 'args' => [ 'uploads' ], 'schedule' => 'every minute') # B02b
+    expect(schedule.fetch('portal_weekly_summary')).to include('class' => 'PortalAdminJob', 'args' => [ 'weekly' ])
     expect(schedule.fetch('portal_snapshots')).to include('class' => 'PortalAdminJob', 'args' => [ 'snapshots' ])
     expect(schedule.fetch('portal_remind_document_requests')).to include('class' => 'PortalAdminJob', 'args' => [ 'reminders' ])
   end
@@ -133,7 +134,10 @@ RSpec.describe PortalAdminJob do
     expect(PortalAdmin::SyncAnswers).to receive(:call)
     expect(PortalAdmin::SealApprovals).to receive(:call)
     expect(PortalAdmin::ApprovalAlerts).to receive(:call)
+    expect(PortalAdmin::CheckPublicationCertificates).to receive(:call)
     described_class.perform_now('uploads')
+    expect(PortalAdmin::WeeklySummary).to receive(:call)
+    described_class.perform_now('weekly')
     expect(PortalAdmin::RemindDocumentRequests).to receive(:call)
     described_class.perform_now('reminders')
   end

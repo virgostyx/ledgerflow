@@ -2,7 +2,9 @@
 # the limited context (date, cleaned label, amount; a document's name) and the choices. The treatments suggested per choice stay on the firm's side. The people who may answer are told that
 # there is a question, not which.
 class PortalAdmin::AskQuestion
-  def self.call(entity:, by:, title:, answer_type:, target: nil, choices: [], due_on: nil, person: nil)
+  def self.call(entity:, **args) = ActsAsTenant.with_tenant(entity) { perform(entity: entity, **args) }
+
+  def self.perform(entity:, by:, title:, answer_type:, target: nil, choices: [], due_on: nil, person: nil)
     context = LightService::Context.make(question: nil, task: nil)
     return fail_with(context, "The client questions are not turned on for this company.") unless entity.feature?(:b02a) && entity.feature?(:b02c) && entity.feature?(:f08)
     return fail_with(context, "Write the question.") if title.to_s.strip.blank?
@@ -20,7 +22,7 @@ class PortalAdmin::AskQuestion
     question = ApplicationRecord.transaction do
       Portal::Question.create!(entity_id: entity.id, task_id: task[:task].id, portal_user: person, title: title.to_s.strip.first(200), context: context_of(target), answer_type: answer_type.to_s,
                                choices: choices.map { |c| { "key" => c[:key].to_s, "label" => c[:label].to_s.first(200) } }, due_on: due_on.presence, asked_at: Time.current, asked_by_id: by.id).tap do |created|
-        choices.each { |c| Accounting::QuestionSuggestion.create!(entity: entity, portal_question_id: created.id, choice_key: c[:key].to_s, treatment: c[:suggested_treatment].to_s.first(300)) if c[:suggested_treatment].present? }
+        choices.each { |c| Accounting::QuestionSuggestion.create!(entity_id: entity.id, portal_question_id: created.id, choice_key: c[:key].to_s, treatment: c[:suggested_treatment].to_s.first(300)) if c[:suggested_treatment].present? }
         Accounting::AuditLog.record!(auditable: task[:task], action: "portal_question_asked", user: by, payload: { question: created.token, answer_type: answer_type.to_s })
       end
     end
@@ -56,5 +58,5 @@ class PortalAdmin::AskQuestion
   end
 
   def self.fail_with(context, message) = context.tap { |c| c.fail!(message) }
-  private_class_method :context_of, :notify, :fail_with
+  private_class_method :perform, :context_of, :notify, :fail_with
 end

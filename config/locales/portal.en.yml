@@ -99,5 +99,10 @@ en:
         payables_30_days:
           title: To pay within 30 days
           help: What you owe your suppliers and have to pay within the next 30 days.
+    certificate:
+      valid: "The integrity certificate attached to this publication was checked on %{date}: it is valid."
+      revoked: "The integrity certificate attached to this publication was revoked (checked on %{date}). Do not rely on it."
+      not_valid: "The integrity certificate attached to this publication is no longer valid (checked on %{date}). Ask your accountant."
+      unknown: "The integrity certificate attached to this publication could not be recognised (checked on %{date})."
     preferences:
       language: Language

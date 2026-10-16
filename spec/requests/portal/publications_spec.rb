@@ -200,4 +200,28 @@ RSpec.describe 'Portal publications', type: :request do
       expect(response.body.b).to include('Viewed by Client Person')
     end
   end
+
+  describe 'the certificate attached to a publication (B02c)' do
+    it 'says what the firm last found, with the date, in the language of the person' do
+      grant
+      publication = publish
+      Portal::CertificateCheck.create!(publication_id: publication.id, state: 'revoked', checked_at: Time.zone.local(2026, 5, 15, 8))
+      sign_in!
+
+      get "/publications/#{publication.token}"
+      expect(response.body).to include('was revoked', '2026-05-15 08:00 UTC')
+
+      person.update!(locale: 'fr')
+      get "/publications/#{publication.token}"
+      expect(response.body).to include('a été révoqué')
+    end
+
+    it 'says nothing when there is no certificate' do
+      grant
+      publication = publish
+      sign_in!
+      get "/publications/#{publication.token}"
+      expect(response.body).not_to include('integrity certificate')
+    end
+  end
 end

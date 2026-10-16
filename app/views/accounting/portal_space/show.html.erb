@@ -1,0 +1,23 @@
+<%= render Ui::PageHeaderComponent.new(title: "Client portal") %>
+<dl class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+  <div class="rounded-lg border border-gray-200 bg-white p-4"><dt class="text-xs text-gray-500">Average days to answer a question</dt><dd class="mt-1 text-xl font-semibold"><%= @indicators[:average_days_to_answer] || "—" %></dd></div>
+  <div class="rounded-lg border border-gray-200 bg-white p-4"><dt class="text-xs text-gray-500">Answered within 7 days</dt><dd class="mt-1 text-xl font-semibold"><%= @indicators[:answered_within_7_days_rate] ? "#{@indicators[:answered_within_7_days_rate]} %" : "—" %></dd></div>
+  <% @indicators[:waiting_by_age].each do |age, count| %>
+    <div class="rounded-lg border border-gray-200 bg-white p-4"><dt class="text-xs text-gray-500">Questions waiting, <%= age %></dt><dd class="mt-1 text-xl font-semibold"><%= count %></dd></div>
+  <% end %>
+</dl>
+<p class="mb-4 flex flex-wrap gap-4 text-sm"><%= link_to "People with access", accounting_portal_access_index_path, class: "underline" %><%= link_to "Publications", accounting_portal_publications_path, class: "underline" %>
+  <%= link_to "Questions", accounting_portal_questions_path, class: "underline" if feature?(:b02c) %><%= link_to "Messages", accounting_portal_messages_path, class: "underline" if feature?(:b02c) %><%= link_to "Activity", accounting_portal_activity_index_path, class: "underline" %></p>
+<section class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm"><h2 class="mb-2 font-semibold">Received lately</h2>
+  <% if @documents.empty? %><p class="text-gray-600">Nothing yet.</p><% end %>
+  <ul><% @documents.each do |document| %><li><%= link_to document.name, accounting_document_path(document), class: "underline" %> — <%= l(document.created_at, format: :short) %></li><% end %></ul></section>
+<section class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm"><h2 class="mb-2 font-semibold">Questions waiting</h2>
+  <% if @questions.empty? %><p class="text-gray-600">None.</p><% end %>
+  <ul><% @questions.each do |question| %><li><%= question.title %> — asked <%= time_ago_in_words(question.asked_at) %> ago<%= " (to #{question.portal_user.full_name})" if question.portal_user %></li><% end %></ul></section>
+<section class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm"><h2 class="mb-2 font-semibold">Publications and approvals</h2>
+  <ul><% @publications.each do |publication| %><li><%= publication.title %> v<%= publication.version %> — <%= publication.requires_approval? ? @statuses[publication][:state].to_s.tr("_", " ") : "no approval asked" %></li><% end %></ul></section>
+<section class="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm"><h2 class="mb-2 font-semibold">Clients who did not come for 30 days</h2>
+  <% if @indicators[:inactive_people].empty? %><p class="text-gray-600">Everyone came.</p><% end %>
+  <ul><% @indicators[:inactive_people].each do |person| %><li><%= person.full_name %></li><% end %></ul></section>
+<section class="rounded-lg border border-gray-200 bg-white p-4 text-sm"><h2 class="mb-2 font-semibold">Activity</h2>
+  <ul><% @events.each do |event| %><li><%= event.occurred_at.utc.strftime("%Y-%m-%d %H:%M") %> — <%= event.portal_user&.full_name %> — <%= event.action.humanize %></li><% end %></ul></section>

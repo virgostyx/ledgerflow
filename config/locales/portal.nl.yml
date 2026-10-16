@@ -99,5 +99,10 @@ nl:
         payables_30_days:
           title: Te betalen binnen 30 dagen
           help: Wat u aan uw leveranciers verschuldigd bent en binnen de volgende 30 dagen moet betalen.
+    certificate:
+      valid: "Het integriteitscertificaat bij deze publicatie is gecontroleerd op %{date}: het is geldig."
+      revoked: "Het integriteitscertificaat bij deze publicatie is ingetrokken (gecontroleerd op %{date}). Vertrouw er niet op."
+      not_valid: "Het integriteitscertificaat bij deze publicatie is niet meer geldig (gecontroleerd op %{date}). Vraag het aan uw boekhouder."
+      unknown: "Het integriteitscertificaat bij deze publicatie kon niet worden herkend (gecontroleerd op %{date})."
     preferences:
       language: Taal

@@ -7,6 +7,7 @@ class PortalAdminJob < ApplicationJob
     when "snapshots"
       Entity.find_each { |entity| PortalAdmin::GenerateSnapshot.call(entity: entity) if entity.feature?(:b02a) && entity.feature?(:b02c) }
       PortalAdmin::DashboardAlerts.call
+    when "weekly" then PortalAdmin::WeeklySummary.call
     when "dormant" then PortalAdmin::SuspendDormant.call
     when "digest" then PortalAdmin::DailyDigest.call
     when "uploads"
@@ -16,6 +17,7 @@ class PortalAdminJob < ApplicationJob
       PortalAdmin::SyncAnswers.call
       PortalAdmin::SealApprovals.call
       PortalAdmin::ApprovalAlerts.call
+      PortalAdmin::CheckPublicationCertificates.call
     when "reminders"
       PortalAdmin::RemindDocumentRequests.call
       PortalAdmin::RemindQuestions.call

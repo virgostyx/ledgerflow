@@ -12,6 +12,7 @@ class Portal::Publication < ApplicationRecord
   has_many :recipients, through: :recipient_rows, source: :portal_user
   has_many :approver_rows, class_name: "Portal::PublicationApprover", foreign_key: :publication_id, inverse_of: :publication
   has_many :approvers, through: :approver_rows, source: :portal_user
+  has_one :certificate_check, class_name: "Portal::CertificateCheck", foreign_key: :publication_id, inverse_of: :publication
   has_many :approvals, class_name: "Portal::Approval", foreign_key: :publication_id, inverse_of: :publication
 
   enum :status, { published: "published", withdrawn: "withdrawn" }, default: "published"

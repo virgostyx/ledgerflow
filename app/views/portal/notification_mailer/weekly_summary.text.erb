@@ -1,0 +1,11 @@
+Here is what is waiting for you on the client portal:
+<% if @counts[:questions].positive? %>
+- <%= @counts[:questions] %> <%= 'question'.pluralize(@counts[:questions]) %>
+<% end %><% if @counts[:documents].positive? %>
+- <%= @counts[:documents] %> <%= 'document'.pluralize(@counts[:documents]) %> asked
+<% end %><% if @counts[:approvals].positive? %>
+- <%= @counts[:approvals] %> <%= 'publication'.pluralize(@counts[:approvals]) %> to approve
+<% end %>
+<%= @url %>
+
+You can choose how often you receive these messages in your preferences on the portal. Security alerts are always sent.

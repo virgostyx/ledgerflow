@@ -445,6 +445,7 @@ Rails.application.routes.draw do
       end
       patch "portal_branding", to: "portal_access#branding", as: :portal_branding
       resources :portal_activity, only: :index, controller: "portal_activity"
+      resource :portal_space, only: :show, controller: "portal_space" # B02c: the portal at a glance
       resources :portal_dashboard, only: :index, controller: "portal_dashboard" do # B02c
         post :generate, on: :collection
         post :alert_rules, on: :collection

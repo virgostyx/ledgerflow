@@ -99,5 +99,10 @@ fr:
         payables_30_days:
           title: À payer dans les 30 jours
           help: Ce que vous devez à vos fournisseurs et devez payer dans les 30 prochains jours.
+    certificate:
+      valid: "Le certificat d'intégrité joint à cette publication a été vérifié le %{date} : il est valide."
+      revoked: "Le certificat d'intégrité joint à cette publication a été révoqué (vérifié le %{date}). Ne vous y fiez pas."
+      not_valid: "Le certificat d'intégrité joint à cette publication n'est plus valide (vérifié le %{date}). Interrogez votre comptable."
+      unknown: "Le certificat d'intégrité joint à cette publication n'a pas pu être reconnu (vérifié le %{date})."
     preferences:
       language: Langue

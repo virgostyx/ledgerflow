@@ -6055,6 +6055,39 @@ ALTER SEQUENCE public.portal_brandings_id_seq OWNED BY public.portal_brandings.i
 
 
 --
+-- Name: portal_certificate_checks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_certificate_checks (
+    id bigint NOT NULL,
+    publication_id bigint NOT NULL,
+    state character varying NOT NULL,
+    checked_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_certificate_checks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_certificate_checks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_certificate_checks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_certificate_checks_id_seq OWNED BY public.portal_certificate_checks.id;
+
+
+--
 -- Name: portal_companies; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -8122,6 +8155,13 @@ ALTER TABLE ONLY public.portal_brandings ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: portal_certificate_checks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_certificate_checks ALTER COLUMN id SET DEFAULT nextval('public.portal_certificate_checks_id_seq'::regclass);
+
+
+--
 -- Name: portal_devices id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9421,6 +9461,14 @@ ALTER TABLE ONLY public.portal_backup_codes
 
 ALTER TABLE ONLY public.portal_brandings
     ADD CONSTRAINT portal_brandings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_certificate_checks portal_certificate_checks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_certificate_checks
+    ADD CONSTRAINT portal_certificate_checks_pkey PRIMARY KEY (id);
 
 
 --
@@ -13217,6 +13265,13 @@ CREATE INDEX index_portal_brandings_on_updated_by_id ON public.portal_brandings 
 
 
 --
+-- Name: index_portal_certificate_checks_on_publication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_certificate_checks_on_publication_id ON public.portal_certificate_checks USING btree (publication_id);
+
+
+--
 -- Name: index_portal_devices_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13979,6 +14034,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 ALTER TABLE ONLY public.accounting_comments
     ADD CONSTRAINT fk_rails_00415e2273 FOREIGN KEY (resolved_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: portal_certificate_checks fk_rails_0071610ac6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_certificate_checks
+    ADD CONSTRAINT fk_rails_0071610ac6 FOREIGN KEY (publication_id) REFERENCES public.portal_publications(id);
 
 
 --
@@ -17100,6 +17163,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016250000'),
 ('20261016240000'),
 ('20261016230000'),
 ('20261016220000'),

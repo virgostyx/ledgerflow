@@ -1,6 +1,9 @@
 <h1 class="text-xl font-semibold"><%= @publication.title %></h1>
 <p class="text-xs text-gray-500"><%= @publication.company.name %> - published <%= @publication.published_at.to_date %> - version <%= @publication.version %><% if @publication.period_start %> - period <%= @publication.period_start %> to <%= @publication.period_end %><% end %></p>
 <% if @publication.message.present? %><p class="mt-3 whitespace-pre-line text-sm"><%= @publication.message %></p><% end %>
+<% if (check = @publication.certificate_check) %>
+  <p class="mt-3 text-sm" role="status"><%= t("portal.certificate.#{check.state}", date: check.checked_at.utc.strftime("%Y-%m-%d %H:%M UTC")) %></p>
+<% end %>
 <ul class="mt-4 space-y-2">
   <% @links.each do |file, signed| %>
     <li class="rounded border bg-white p-3 text-sm">
