@@ -7,6 +7,7 @@
     <%= csrf_meta_tags %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <link rel="stylesheet" href="<%= branding_stylesheet_path %>">
+    <%= yield :head %>
   </head>
   <body class="text-gray-900">
     <% if portal_brand %><header class="mx-auto max-w-2xl p-6 pb-0"><% if portal_brand.logo? %><img src="<%= branding_logo_path %>" alt="" class="h-10 inline-block mr-2"><% end %><strong><%= portal_brand.display_name %></strong></header><% end %>

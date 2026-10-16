@@ -51,10 +51,13 @@ class Portal::BaseController < ActionController::Base
 
   # Nothing opens without a live session, a second factor configured and a second factor given in this session.
   def require_sign_in!
-    return redirect_to(portal_sign_in_path) unless current_portal_session
-    return redirect_to(new_portal_second_factor_path) unless current_portal_user.second_factor_configured?
+    return if current_portal_session && current_portal_user.second_factor_configured? && current_portal_session.second_factor_at
+    return head(:unauthorized) if request.headers["Accept"].to_s.include?("application/json") # a script is told, not redirected
 
-    redirect_to(portal_second_factor_challenge_path) unless current_portal_session.second_factor_at
+    redirect_to(if !current_portal_session then portal_sign_in_path
+    elsif !current_portal_user.second_factor_configured? then new_portal_second_factor_path
+    else portal_second_factor_challenge_path
+    end)
   end
 
   def start_session!(user)

@@ -1,0 +1,32 @@
+<% content_for :head do %><%= javascript_include_tag "portal_upload", defer: true %><% end %>
+<h1 class="text-xl font-semibold">Send documents</h1>
+<% if @companies.empty? %>
+  <p class="mt-4 text-sm">You cannot send documents at the moment.</p>
+<% else %>
+  <% if @companies.one? %>
+    <p class="mt-2 text-sm">For <strong><%= @companies.first.name %></strong></p>
+    <input type="hidden" id="company" value="<%= @companies.first.id %>">
+  <% else %>
+    <label for="company" class="mt-2 block text-sm font-medium">Company</label>
+    <select id="company" class="rounded border border-gray-300 px-2 py-1"><% @companies.each do |company| %><option value="<%= company.id %>"><%= company.name %></option><% end %></select>
+  <% end %>
+
+  <label for="hint_kind" class="mt-4 block text-sm font-medium">What is it?</label>
+  <select id="hint_kind" class="rounded border border-gray-300 px-2 py-1">
+    <option value="purchase">Purchase</option><option value="sale">Sale</option><option value="expense_report">Expense report</option>
+    <option value="statement">Statement</option><option value="other">Other</option>
+  </select>
+  <label for="hint_note" class="mt-3 block text-sm font-medium">Note (optional)</label>
+  <textarea id="hint_note" maxlength="300" rows="2" class="w-full rounded border border-gray-300 px-2 py-1"></textarea>
+
+  <label class="mt-4 inline-block cursor-pointer rounded bg-gray-900 px-6 py-4 text-lg text-white">
+    Choose a file
+    <input type="file" id="pick" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.tif,.tiff,.xlsx,.csv,application/pdf,image/*" class="sr-only">
+  </label>
+
+  <p id="pending" role="status" aria-live="polite" class="mt-4 text-sm font-medium"></p>
+  <p id="signin" hidden class="mt-2 text-sm"><%= link_to "Sign in again", portal_sign_in_path, class: "underline" %> to send what is waiting.</p>
+  <ul id="outbox" class="mt-2 space-y-2"></ul>
+<% end %>
+<%= link_to "My sends", uploads_path, class: "mt-4 inline-block underline" %>
+<%= link_to "Back", portal_root_path, class: "mt-4 ml-4 inline-block underline" %>

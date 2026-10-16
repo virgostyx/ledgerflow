@@ -27,6 +27,27 @@ RSpec.describe 'Portal uploads in chunks', type: :request do
 
   before { host! Rails.configuration.x.portal_host }
 
+  describe 'the page and the script' do
+    it 'shows the company the documents are sent to' do
+      grant
+      sign_in!
+      get '/uploads/new'
+      expect(response.body).to include(entity.name, 'Choose a file')
+    end
+
+    it 'tells a script that its session is over with a 401, instead of a page to sign in' do
+      get '/uploads/some-token', headers: { 'Accept' => 'application/json' }
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'says there is nothing to send for someone who has no right to' do
+      grant(capabilities: %w[publications.view])
+      sign_in!
+      get '/uploads/new'
+      expect(response.body).to include('cannot send documents')
+    end
+  end
+
   describe 'opening a session' do
     before { grant }
 

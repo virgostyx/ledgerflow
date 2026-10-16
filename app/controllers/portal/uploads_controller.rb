@@ -4,6 +4,10 @@ class Portal::UploadsController < Portal::BaseController
     @uploads = Portal::Upload.of(current_portal_user).order(created_at: :desc).limit(100)
   end
 
+  def new
+    @companies = Portal::Upload.companies_open_to(current_portal_user).order(:name)
+  end
+
   def create
     company = Portal::Upload.companies_open_to(current_portal_user).find_by(id: params[:company])
     return not_in_scope(params[:company]) unless company
