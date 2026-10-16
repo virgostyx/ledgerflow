@@ -103,4 +103,81 @@ RSpec.describe 'Sending a document from the portal', type: :system, js: true do
     expect(page).to have_content('1 waiting to be sent')
     expect(Portal::Upload.count).to eq(0)
   end
+
+  describe 'photos' do
+    def photo(name, *convert_args, size: '1600x1200')
+      path = File.join(@dir, name)
+      system('convert', '-size', size, *convert_args, path) or raise 'convert failed'
+      path
+    end
+
+    # something with edges: a grid of black and white squares
+    def sharp = photo('sharp.jpg', 'pattern:checkerboard', '-scale', '400%')
+    def blurred = photo('blurred.jpg', 'pattern:checkerboard', '-scale', '400%', '-blur', '0x30')
+    def dark = photo('dark.jpg', 'xc:black')
+
+    it 'warns about a blurry photo without blocking, and lets the person keep it' do
+      visit '/uploads/new'
+      attach_file 'camera', blurred, make_visible: true
+
+      expect(page).to have_content('The photo is blurry')
+      click_button 'Keep it'
+      expect(page).not_to have_content('The photo is blurry')
+      expect(page).to have_button('Send 1 page')
+    end
+
+    it 'warns about a dark photo' do
+      visit '/uploads/new'
+      attach_file 'camera', dark, make_visible: true
+      expect(page).to have_content('The photo is too dark')
+    end
+
+    it 'says nothing of a sharp photo' do
+      visit '/uploads/new'
+      attach_file 'camera', sharp, make_visible: true
+      expect(page).to have_button('Send 1 page')
+      expect(page).not_to have_css('[role=alert]')
+    end
+
+    it 'reduces a large photo to 2000 pixels and sends the pages in the order chosen, as one batch' do
+      visit '/uploads/new'
+      attach_file 'camera', photo('first.jpg', 'xc:red', size: '3000x1500'), make_visible: true
+      attach_file 'camera', photo('second.jpg', 'xc:blue', size: '800x600'), make_visible: true
+      expect(page).to have_button('Send 2 pages')
+      click_button 'Move down' # the first page goes after the second
+      click_button 'Send 2 pages'
+
+      wait_for('both pages') { Portal::Upload.received.count == 2 }
+
+      pages = Portal::Upload.order(:page_number)
+      expect(pages.map(&:page_number)).to eq([ 1, 2 ])
+      expect(pages.map(&:page_count).uniq).to eq([ 2 ])
+      expect(pages.map(&:batch_token).uniq.size).to eq(1)
+      expect(pages.first.bytes.byteslice(0, 3)).to eq("\xFF\xD8\xFF".b)
+      dims = pages.map { |u| Open3.capture2('identify', '-format', '%wx%h', '-', stdin_data: u.bytes, binmode: true).first }
+      expect(dims).to eq([ '800x600', '2000x1000' ]) # second photo first, as moved; the large one reduced
+
+      PortalAdmin::ReceiveUploads.call # the firm's side takes the pages out of quarantine: one PDF of two pages
+      document = ActsAsTenant.with_tenant(entity) { Accounting::Document.sole }
+      expect(PDF::Reader.new(StringIO.new(document.file.download)).page_count).to eq(2)
+    end
+
+    it 'turns a page a quarter' do
+      visit '/uploads/new'
+      attach_file 'camera', photo('wide.jpg', 'xc:green', size: '800x600'), make_visible: true
+      click_button 'Rotate'
+      click_button 'Send 1 page'
+
+      wait_for('the page') { Portal::Upload.received.exists? }
+
+      expect(Open3.capture2('identify', '-format', '%wx%h', '-', stdin_data: Portal::Upload.sole.bytes, binmode: true).first).to eq('600x800')
+    end
+
+    it 'removes a page' do
+      visit '/uploads/new'
+      attach_file 'camera', sharp, make_visible: true
+      click_button 'Remove'
+      expect(page).not_to have_button('Send 1 page')
+    end
+  end
 end
