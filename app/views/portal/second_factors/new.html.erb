@@ -1,0 +1,9 @@
+<h1 class="text-xl font-semibold">Set up your second factor</h1>
+<p class="mt-2 text-sm text-gray-600">Scan this code with an authenticator app, or type the key, then give the 6-digit code the app shows.</p>
+<%= render "portal/shared/flash" %>
+<div class="mt-4 w-48"><%= raw RQRCode::QRCode.new(@uri).as_svg(module_size: 4, standalone: true, use_path: true, viewbox: true, svg_attributes: { class: "w-full" }) %></div>
+<p class="mt-2 break-all font-mono text-sm"><%= @secret %></p>
+<%= form_with url: portal_second_factor_path, class: "mt-4 space-y-3" do |f| %>
+  <div><%= f.label :code, "Code", class: "block text-sm" %><%= f.text_field :code, inputmode: "numeric", autocomplete: "one-time-code", required: true, class: "w-full rounded border p-2" %></div>
+  <%= f.submit "Confirm", class: "rounded bg-gray-900 px-4 py-2 text-white" %>
+<% end %>

@@ -5158,7 +5158,7 @@ CREATE TABLE public.integrity_check_runs (
     finished_at timestamp(6) without time zone NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT chk_integrity_runs_mode CHECK (((mode)::text = ANY ((ARRAY['nightly'::character varying, 'full'::character varying])::text[])))
+    CONSTRAINT chk_integrity_runs_mode CHECK (((mode)::text = ANY (ARRAY[('nightly'::character varying)::text, ('full'::character varying)::text])))
 );
 
 
@@ -5685,6 +5685,250 @@ CREATE SEQUENCE public.payment_items_id_seq
 --
 
 ALTER SEQUENCE public.payment_items_id_seq OWNED BY public.payment_items.id;
+
+
+--
+-- Name: portal_backup_codes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_backup_codes (
+    id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    code_digest character varying NOT NULL,
+    used_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_backup_codes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_backup_codes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_backup_codes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_backup_codes_id_seq OWNED BY public.portal_backup_codes.id;
+
+
+--
+-- Name: portal_companies; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.portal_companies AS
+ SELECT id,
+    name,
+    active,
+    COALESCE(((features ->> 'b02a'::text))::boolean, false) AS portal_enabled
+   FROM public.entities;
+
+
+--
+-- Name: portal_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_events (
+    id bigint NOT NULL,
+    portal_user_id bigint,
+    entity_id bigint,
+    action character varying NOT NULL,
+    target_token character varying,
+    email_tried character varying,
+    ip_address character varying,
+    user_agent character varying,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    mirrored_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_events_id_seq OWNED BY public.portal_events.id;
+
+
+--
+-- Name: portal_grants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_grants (
+    id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    role character varying NOT NULL,
+    capabilities jsonb DEFAULT '[]'::jsonb NOT NULL,
+    expires_at timestamp(6) without time zone,
+    revoked_at timestamp(6) without time zone,
+    revoked_by_id bigint,
+    created_by_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_grants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_grants_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_grants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_grants_id_seq OWNED BY public.portal_grants.id;
+
+
+--
+-- Name: portal_invitations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_invitations (
+    id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    token_digest character varying NOT NULL,
+    email character varying NOT NULL,
+    role character varying NOT NULL,
+    capabilities jsonb DEFAULT '[]'::jsonb NOT NULL,
+    expires_at timestamp(6) without time zone NOT NULL,
+    used_at timestamp(6) without time zone,
+    created_by_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_invitations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_invitations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_invitations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_invitations_id_seq OWNED BY public.portal_invitations.id;
+
+
+--
+-- Name: portal_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_sessions (
+    id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    token_digest character varying NOT NULL,
+    ip_address character varying,
+    user_agent character varying,
+    last_seen_at timestamp(6) without time zone NOT NULL,
+    second_factor_at timestamp(6) without time zone,
+    revoked_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_sessions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_sessions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_sessions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_sessions_id_seq OWNED BY public.portal_sessions.id;
+
+
+--
+-- Name: portal_users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_users (
+    id bigint NOT NULL,
+    email character varying NOT NULL,
+    full_name character varying NOT NULL,
+    locale character varying DEFAULT 'en'::character varying NOT NULL,
+    status character varying DEFAULT 'invited'::character varying NOT NULL,
+    password_digest character varying,
+    totp_secret text,
+    totp_enabled_at timestamp(6) without time zone,
+    totp_last_step bigint,
+    failed_attempts integer DEFAULT 0 NOT NULL,
+    locked_at timestamp(6) without time zone,
+    last_sign_in_at timestamp(6) without time zone,
+    last_seen_at timestamp(6) without time zone,
+    created_by_id bigint,
+    identity_verified_by_id bigint,
+    identity_verified_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_users_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_users_id_seq OWNED BY public.portal_users.id;
 
 
 --
@@ -6926,6 +7170,48 @@ ALTER TABLE ONLY public.payment_items ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
+-- Name: portal_backup_codes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_backup_codes ALTER COLUMN id SET DEFAULT nextval('public.portal_backup_codes_id_seq'::regclass);
+
+
+--
+-- Name: portal_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_events ALTER COLUMN id SET DEFAULT nextval('public.portal_events_id_seq'::regclass);
+
+
+--
+-- Name: portal_grants id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_grants ALTER COLUMN id SET DEFAULT nextval('public.portal_grants_id_seq'::regclass);
+
+
+--
+-- Name: portal_invitations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_invitations ALTER COLUMN id SET DEFAULT nextval('public.portal_invitations_id_seq'::regclass);
+
+
+--
+-- Name: portal_sessions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_sessions ALTER COLUMN id SET DEFAULT nextval('public.portal_sessions_id_seq'::regclass);
+
+
+--
+-- Name: portal_users id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_users ALTER COLUMN id SET DEFAULT nextval('public.portal_users_id_seq'::regclass);
+
+
+--
 -- Name: recovery_codes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8028,6 +8314,54 @@ ALTER TABLE ONLY public.payment_item_invoices
 
 ALTER TABLE ONLY public.payment_items
     ADD CONSTRAINT payment_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_backup_codes portal_backup_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_backup_codes
+    ADD CONSTRAINT portal_backup_codes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_events portal_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_events
+    ADD CONSTRAINT portal_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_grants portal_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_grants
+    ADD CONSTRAINT portal_grants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_invitations portal_invitations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_invitations
+    ADD CONSTRAINT portal_invitations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_sessions portal_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_sessions
+    ADD CONSTRAINT portal_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_users portal_users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_users
+    ADD CONSTRAINT portal_users_pkey PRIMARY KEY (id);
 
 
 --
@@ -11518,6 +11852,139 @@ CREATE INDEX index_payment_items_on_partner_id ON public.payment_items USING btr
 
 
 --
+-- Name: index_portal_backup_codes_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_backup_codes_on_portal_user_id ON public.portal_backup_codes USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_events_not_mirrored; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_events_not_mirrored ON public.portal_events USING btree (mirrored_at) WHERE (mirrored_at IS NULL);
+
+
+--
+-- Name: index_portal_events_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_events_on_entity_id ON public.portal_events USING btree (entity_id);
+
+
+--
+-- Name: index_portal_events_on_occurred_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_events_on_occurred_at ON public.portal_events USING btree (occurred_at);
+
+
+--
+-- Name: index_portal_events_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_events_on_portal_user_id ON public.portal_events USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_grants_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_grants_on_created_by_id ON public.portal_grants USING btree (created_by_id);
+
+
+--
+-- Name: index_portal_grants_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_grants_on_entity_id ON public.portal_grants USING btree (entity_id);
+
+
+--
+-- Name: index_portal_grants_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_grants_on_portal_user_id ON public.portal_grants USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_grants_on_revoked_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_grants_on_revoked_by_id ON public.portal_grants USING btree (revoked_by_id);
+
+
+--
+-- Name: index_portal_grants_one_active_per_company; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_grants_one_active_per_company ON public.portal_grants USING btree (portal_user_id, entity_id) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: index_portal_invitations_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_invitations_on_created_by_id ON public.portal_invitations USING btree (created_by_id);
+
+
+--
+-- Name: index_portal_invitations_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_invitations_on_entity_id ON public.portal_invitations USING btree (entity_id);
+
+
+--
+-- Name: index_portal_invitations_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_invitations_on_portal_user_id ON public.portal_invitations USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_invitations_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_invitations_on_token_digest ON public.portal_invitations USING btree (token_digest);
+
+
+--
+-- Name: index_portal_sessions_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_sessions_on_portal_user_id ON public.portal_sessions USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_sessions_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_sessions_on_token_digest ON public.portal_sessions USING btree (token_digest);
+
+
+--
+-- Name: index_portal_users_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_users_on_created_by_id ON public.portal_users USING btree (created_by_id);
+
+
+--
+-- Name: index_portal_users_on_identity_verified_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_users_on_identity_verified_by_id ON public.portal_users USING btree (identity_verified_by_id);
+
+
+--
+-- Name: index_portal_users_on_lower_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_users_on_lower_email ON public.portal_users USING btree (lower((email)::text));
+
+
+--
 -- Name: index_recovery_codes_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12433,6 +12900,14 @@ ALTER TABLE ONLY public.accounting_tasks
 
 
 --
+-- Name: portal_grants fk_rails_42db808e17; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_grants
+    ADD CONSTRAINT fk_rails_42db808e17 FOREIGN KEY (revoked_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_42f8a23db1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12454,6 +12929,14 @@ ALTER TABLE ONLY public.accounting_change_subscriptions
 
 ALTER TABLE ONLY public.agent_memory_notes
     ADD CONSTRAINT fk_rails_4353b6a454 FOREIGN KEY (author_id) REFERENCES public.users(id);
+
+
+--
+-- Name: portal_events fk_rails_440ebe9d60; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_events
+    ADD CONSTRAINT fk_rails_440ebe9d60 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -12574,6 +13057,14 @@ ALTER TABLE ONLY public.accounting_payment_reminders
 
 ALTER TABLE ONLY public.accounting_peppol_messages
     ADD CONSTRAINT fk_rails_4ddfe0a4ec FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id) ON DELETE SET NULL;
+
+
+--
+-- Name: portal_grants fk_rails_4e9d08d049; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_grants
+    ADD CONSTRAINT fk_rails_4e9d08d049 FOREIGN KEY (created_by_id) REFERENCES public.users(id);
 
 
 --
@@ -12809,6 +13300,14 @@ ALTER TABLE ONLY public.payment_item_invoices
 
 
 --
+-- Name: portal_grants fk_rails_6c5ed15657; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_grants
+    ADD CONSTRAINT fk_rails_6c5ed15657 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_6f6e1949f4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13038,6 +13537,14 @@ ALTER TABLE ONLY public.entities
 
 ALTER TABLE ONLY public.closing_runs
     ADD CONSTRAINT fk_rails_86192e2248 FOREIGN KEY (closed_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: portal_sessions fk_rails_86c2688d4d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_sessions
+    ADD CONSTRAINT fk_rails_86c2688d4d FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
 
 
 --
@@ -13489,6 +13996,14 @@ ALTER TABLE ONLY public.accounting_invoice_emails
 
 
 --
+-- Name: portal_invitations fk_rails_ad9272c1fd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_invitations
+    ADD CONSTRAINT fk_rails_ad9272c1fd FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_analytical_annotations fk_rails_addec3672a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13505,11 +14020,27 @@ ALTER TABLE ONLY public.approval_requests
 
 
 --
+-- Name: portal_grants fk_rails_ae7caa00b8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_grants
+    ADD CONSTRAINT fk_rails_ae7caa00b8 FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
+
+
+--
 -- Name: accounting_vat_declarations fk_rails_af4787f084; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounting_vat_declarations
     ADD CONSTRAINT fk_rails_af4787f084 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_invitations fk_rails_af910fa640; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_invitations
+    ADD CONSTRAINT fk_rails_af910fa640 FOREIGN KEY (created_by_id) REFERENCES public.users(id);
 
 
 --
@@ -13550,6 +14081,14 @@ ALTER TABLE ONLY public.accounting_lettering_events
 
 ALTER TABLE ONLY public.accounting_comments
     ADD CONSTRAINT fk_rails_b41b793817 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_events fk_rails_b462892f31; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_events
+    ADD CONSTRAINT fk_rails_b462892f31 FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
 
 
 --
@@ -13614,6 +14153,14 @@ ALTER TABLE ONLY public.closing_runs
 
 ALTER TABLE ONLY public.consolidation_groups
     ADD CONSTRAINT fk_rails_ba9fb62262 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_users fk_rails_bb0d247f52; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_users
+    ADD CONSTRAINT fk_rails_bb0d247f52 FOREIGN KEY (created_by_id) REFERENCES public.users(id);
 
 
 --
@@ -13897,6 +14444,14 @@ ALTER TABLE ONLY public.accounting_invoice_line_annotations
 
 
 --
+-- Name: portal_users fk_rails_d3dd7fc500; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_users
+    ADD CONSTRAINT fk_rails_d3dd7fc500 FOREIGN KEY (identity_verified_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: api_idempotency_keys fk_rails_d411dbc5a9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14073,6 +14628,14 @@ ALTER TABLE ONLY public.agent_digest_preferences
 
 
 --
+-- Name: portal_invitations fk_rails_df263a0a1b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_invitations
+    ADD CONSTRAINT fk_rails_df263a0a1b FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
+
+
+--
 -- Name: accounting_peppol_events fk_rails_df7afcf17c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14086,6 +14649,14 @@ ALTER TABLE ONLY public.accounting_peppol_events
 
 ALTER TABLE ONLY public.accounting_invoice_lines
     ADD CONSTRAINT fk_rails_df9325f489 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_backup_codes fk_rails_e162e88eda; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_backup_codes
+    ADD CONSTRAINT fk_rails_e162e88eda FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
 
 
 --
@@ -14455,6 +15026,9 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016100200'),
+('20261016100100'),
+('20261016100000'),
 ('20261014210000'),
 ('20261014200000'),
 ('20261014190000'),

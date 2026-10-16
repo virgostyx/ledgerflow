@@ -1,7 +1,6 @@
 class Rack::Attack
-  # Throttle counters live in a memory store per process.
-  # In production swap to a shared store (e.g. Solid Cache) if needed.
-  cache.store = ActiveSupport::Cache::MemoryStore.new
+  # Throttle counters live in a memory store per process; in production the store is shared (Solid Cache), as the portal's limits must hold across processes.
+  cache.store = Rails.env.production? ? Rails.cache : ActiveSupport::Cache::MemoryStore.new
 
   # Login throttle: 5 requests per 20 seconds per IP
   throttle("logins/ip", limit: 5, period: 20.seconds) do |req|
@@ -27,6 +26,20 @@ class Rack::Attack
   throttle("verify/ip", limit: 30, period: 1.minute) do |req|
     req.ip if req.path.start_with?("/verify/")
   end
+
+  # The client portal (B02a) is open to the world: five tries per 20 seconds per address, ten per hour per account whatever the addresses, and the same for codes and
+  # invitation tokens. The lock after five failures (PortalUser) comes on top.
+  portal = ->(req) { req.host == Rails.configuration.x.portal_host }
+
+  throttle("portal_sign_in/ip", limit: 5, period: 20.seconds) { |req| req.ip if portal.(req) && req.post? && req.path == "/session" }
+
+  throttle("portal_sign_in/account", limit: 10, period: 1.hour) do |req|
+    Digest::SHA256.hexdigest(req.params["email"].to_s.strip.downcase) if portal.(req) && req.post? && req.path == "/session" && req.params["email"].present?
+  end
+
+  throttle("portal_codes/ip", limit: 5, period: 20.seconds) { |req| req.ip if portal.(req) && req.post? && req.path.start_with?("/second_factor") }
+
+  throttle("portal_invitations/ip", limit: 20, period: 1.minute) { |req| req.ip if portal.(req) && req.path.start_with?("/invitations/") }
 
   # API throttle: 300 requests per minute per IP
   throttle("api/ip", limit: 300, period: 1.minute) do |req|

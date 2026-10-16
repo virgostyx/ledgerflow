@@ -23,16 +23,19 @@ RSpec.describe 'Code of the client portal' do
     path = path.to_s
     source = File.read(path)
     source = ERB.new(source, trim_mode: '-').src if path.end_with?('.erb')
-    tokens = Ripper.lex(source).select { |(_, type, _)| type == :on_const || (type == :on_op) }
+    tokens = Ripper.lex(source).reject { |(_, type, _)| type == :on_sp }
     roots = []
+    defined = []
     tokens.each_with_index do |(_, type, text), i|
       next unless type == :on_const
 
       previous = tokens[i - 1]
       continues = previous && previous[1] == :on_op && previous[2] == '::' && i > 1 && tokens[i - 2][1] == :on_const
-      roots << text unless continues
+      defines = tokens[i + 1] && tokens[i + 1][1] == :on_op && tokens[i + 1][2] == '='
+      defined << text if defines
+      roots << text unless continues || defines
     end
-    roots.uniq
+    (roots - defined).uniq # a constant the file defines itself is its own
   end
 
   it 'finds the files of the portal' do
