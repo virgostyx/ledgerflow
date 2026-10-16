@@ -12,7 +12,7 @@ class Portal::Upload < ApplicationRecord
   has_many :chunks, -> { order(:position) }, class_name: "Portal::UploadChunk", foreign_key: :upload_id, inverse_of: :upload
 
   has_secure_token :token
-  enum :status, { receiving: "receiving", received: "received" }, default: "receiving"
+  enum :status, { receiving: "receiving", received: "received", accepted: "accepted", refused: "refused", to_complete: "to_complete" }, default: "receiving"
 
   validates :filename, presence: true
   validates :byte_size, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_BYTES }
@@ -68,6 +68,9 @@ class Portal::Upload < ApplicationRecord
     update!(status: "received", received_at: Time.current)
     self
   end
+
+  # Once the file is taken in or refused, nothing of it stays in quarantine. Only the firm's side does this: the portal's database role cannot delete.
+  def purge_chunks! = Portal::UploadChunk.where(upload_id: id).delete_all
 
   def bytes = chunks.reload.map(&:content).join.b
 

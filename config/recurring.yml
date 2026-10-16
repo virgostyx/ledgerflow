@@ -112,6 +112,11 @@ production:
     args: [ "mirror" ]
     queue: default
     schedule: every minute
+  portal_receive_uploads:
+    class: PortalAdminJob
+    args: [ "uploads" ]
+    queue: default
+    schedule: every minute
   portal_suspend_dormant:
     class: PortalAdminJob
     args: [ "dormant" ]
