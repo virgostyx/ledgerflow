@@ -1,0 +1,32 @@
+fr:
+  portal:
+    locales:
+      en: English
+      fr: Français
+      nl: Nederlands
+    questions:
+      index:
+        title: Questions
+        none: Rien ne vous est demandé pour le moment.
+        due: Merci de répondre avant le %{date}
+        answer: Répondre
+        back: Retour
+      show:
+        about: Concerne
+        send: Envoyer ma réponse
+        note: Remarque (facultatif)
+        yes: "Oui"
+        "no": "Non"
+        amount: Montant
+        date: Date
+        send_file: Envoyer le document
+        file_hint: Envoyez d'abord le document, puis votre réponse.
+        needs_file: Envoyez d'abord au moins un document.
+        back: Retour aux questions
+      answered: Merci. Votre comptable a bien reçu votre réponse.
+      already: Il a déjà été répondu à cette question.
+      invalid: Votre réponse n'est pas valable. Vérifiez-la et réessayez.
+      expired: Cette question est clôturée.
+      closed_label: Répondu
+    preferences:
+      language: Langue

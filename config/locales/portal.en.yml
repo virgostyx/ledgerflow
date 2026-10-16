@@ -1,0 +1,32 @@
+en:
+  portal:
+    locales:
+      en: English
+      fr: Français
+      nl: Nederlands
+    questions:
+      index:
+        title: Questions
+        none: Nothing is asked of you at the moment.
+        due: Please answer by %{date}
+        answer: Answer
+        back: Back
+      show:
+        about: About
+        send: Send my answer
+        note: Note (optional)
+        yes: "Yes"
+        "no": "No"
+        amount: Amount
+        date: Date
+        send_file: Send the document
+        file_hint: Send the document first, then your answer.
+        needs_file: Send at least one document first.
+        back: Back to the questions
+      answered: Thank you. Your accountant has your answer.
+      already: This question was already answered.
+      invalid: Your answer is not valid. Please check it and try again.
+      expired: This question is closed.
+      closed_label: Answered
+    preferences:
+      language: Language

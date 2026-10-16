@@ -1,0 +1,19 @@
+<%= render Ui::PageHeaderComponent.new(title: "Ask the client a question") %>
+<section class="rounded-lg border border-gray-200 bg-white p-4 text-sm">
+  <%= form_with url: new_accounting_portal_question_path, method: :get, class: "mb-4 flex flex-wrap items-end gap-2" do %>
+    <%= hidden_field_tag :target_type, params[:target_type], id: nil %><%= hidden_field_tag :target_id, params[:target_id], id: nil %>
+    <div><%= label_tag :template, "Template", class: "block" %><%= select_tag :template, options_for_select(PortalAdmin::QuestionTemplates.keys, params[:template]), include_blank: true, class: "rounded border border-gray-300 px-2 py-1" %></div>
+    <div><%= label_tag :language, "Language", class: "block" %><%= select_tag :language, options_for_select(%w[en fr nl], params[:language] || "en"), class: "rounded border border-gray-300 px-2 py-1" %></div>
+    <%= submit_tag "Fill in", class: "underline cursor-pointer" %>
+  <% end %>
+  <%= form_with url: accounting_portal_questions_path, class: "space-y-3" do %>
+    <%= hidden_field_tag :target_type, params[:target_type], id: nil %><%= hidden_field_tag :target_id, params[:target_id], id: nil %>
+    <p><% if @target %>About: <%= @target.try(:name) || @target.try(:description) || @target.try(:reference) || @target.class.model_name.human %><% else %>About nothing in particular.<% end %></p>
+    <div><%= label_tag :title, "Question, in plain words", class: "block font-medium" %><%= text_field_tag :title, @prefill[:title], class: "w-full rounded border border-gray-300 px-2 py-1" %></div>
+    <div><%= label_tag :answer_type, "Type of answer", class: "block font-medium" %><%= select_tag :answer_type, options_for_select(Portal::Question::ANSWER_TYPES, @prefill[:answer_type]), class: "rounded border border-gray-300 px-2 py-1" %></div>
+    <div><%= label_tag :choices, "Choices (one per line: key|label|treatment suggested to you, never shown to the client)", class: "block font-medium" %>
+      <%= text_area_tag :choices, @prefill[:choices]&.map { |c| "#{c[:key]}|#{c[:label]}" }&.join("\n"), rows: 4, class: "w-full rounded border border-gray-300 px-2 py-1" %></div>
+    <div><%= label_tag :due_on, "Answer by", class: "block font-medium" %><%= date_field_tag :due_on, nil, class: "rounded border border-gray-300 px-2 py-1" %></div>
+    <%= submit_tag "Ask", class: "rounded-md bg-primary-600 px-4 py-2 text-white cursor-pointer" %>
+  <% end %>
+</section>

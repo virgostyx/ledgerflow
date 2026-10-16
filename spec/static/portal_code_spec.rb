@@ -10,7 +10,7 @@ RSpec.describe 'Code of the client portal' do
     Rack BCrypt Digest SecureRandom OpenSSL Base64 CGI ERB URI JSON I18n Time Date DateTime Duration Totp WebAuthn RQRCode
     Object Module Class Struct Set Comparable Integer Float String Symbol Array Hash Regexp Range NilClass TrueClass FalseClass Numeric
     StandardError ArgumentError RuntimeError KeyError TypeError NotImplementedError ActionController::Base
-    Mime Kernel Process Zlib StringIO File Pathname
+    Mime Kernel Process Zlib StringIO File Pathname BigDecimal
   ]
 
   # Services of the application the portal may call, by their full name: generic file tools that know nothing of the books.

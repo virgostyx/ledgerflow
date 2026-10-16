@@ -19,4 +19,11 @@ class Portal::NotificationMailer < ApplicationMailer
     @url = Rails.application.routes.url_helpers.document_requests_url(**Portal.url_options)
     mail to: user.email, subject: "#{company_name} asks you for #{count} #{'document'.pluralize(count)}"
   end
+
+  def questions_waiting(user, company_name, count)
+    @company_name = company_name
+    @count = count
+    @url = Rails.application.routes.url_helpers.questions_url(**Portal.url_options)
+    mail to: user.email, subject: "#{company_name} has #{count} #{'question'.pluralize(count)} for you"
+  end
 end

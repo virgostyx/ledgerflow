@@ -7,6 +7,9 @@
     <p class="mt-2 rounded border border-gray-200 p-2 text-sm">For the line of <strong><%= @line.line_date.iso8601 %></strong> · <%= @line.label %> · <%= number_with_precision(@line.amount, precision: 2) %> <%= @line.currency %>
       <input type="hidden" id="request_line" value="<%= @line.token %>"></p>
   <% end %>
+  <% if @question %>
+    <p class="mt-2 rounded border border-gray-200 p-2 text-sm"><%= @question.title %><input type="hidden" id="question" value="<%= @question.token %>"></p>
+  <% end %>
   <% if @companies.one? %>
     <p class="mt-2 text-sm">For <strong><%= @companies.first.name %></strong></p>
     <input type="hidden" id="company" value="<%= @companies.first.id %>">

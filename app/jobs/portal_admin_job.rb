@@ -10,7 +10,10 @@ class PortalAdminJob < ApplicationJob
       PortalAdmin::ReceiveUploads.call
       PortalAdmin::SyncUploadProgress.call
       PortalAdmin::SyncDocumentRequests.call
-    when "reminders" then PortalAdmin::RemindDocumentRequests.call
+      PortalAdmin::SyncAnswers.call
+    when "reminders"
+      PortalAdmin::RemindDocumentRequests.call
+      PortalAdmin::RemindQuestions.call
     else PortalAdmin::MirrorEvents.call
     end
   end

@@ -1,0 +1,23 @@
+<%= render Ui::PageHeaderComponent.new(title: "Questions to the client") %>
+<p class="mb-4 text-sm"><%= link_to "Ask a question", new_accounting_portal_question_path, class: "underline" %></p>
+<section class="rounded-lg border border-gray-200 bg-white p-4 text-sm">
+  <% if @questions.empty? %><p class="text-gray-600">No question asked yet.</p><% end %>
+  <ul class="space-y-3">
+    <% @questions.each do |question| %>
+      <li class="rounded border border-gray-200 p-3">
+        <div><strong><%= question.title %></strong> — <%= question.status %><%= " · due #{question.due_on}" if question.due_on %></div>
+        <% if question.context.present? %><div class="text-xs text-gray-600"><%= question.context.values_at("date", "label", "reference", "document").compact.join(" · ") %></div><% end %>
+        <% if (answer = question.answer) %>
+          <div class="mt-1">Answered by <%= answer.portal_user.full_name %>:
+            <%= Array(answer.value["choices"]).map { |key| question.choice_label(key) || key }.join(", ") %>
+            <%= (answer.value["yes_no"] ? "Yes" : "No") if answer.value.key?("yes_no") %>
+            <%= answer.value["amount"] %> <%= answer.value["date"] %> <%= answer.body %></div>
+          <% (@suggestions[question.id] || []).select { |s| Array(answer.value["choices"]).include?(s.choice_key) }.each do |suggestion| %>
+            <div class="text-xs text-gray-600">Suggestion (not applied): <%= suggestion.treatment %></div>
+          <% end %>
+        <% end %>
+        <% if question.open? %><%= button_to "Close", close_accounting_portal_question_path(question), class: "mt-1 underline cursor-pointer" %><% end %>
+      </li>
+    <% end %>
+  </ul>
+</section>

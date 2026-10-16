@@ -28,6 +28,9 @@ scope module: :portal do
       post :complete
     end
   end
+  resources :questions, only: %i[index show], param: :token do
+    post :answer, on: :member
+  end
   get "mail", to: "mail#show", as: :portal_mail
   resources :document_requests, only: :index
   post "document_request_lines/:token/answer", to: "document_request_lines#answer", as: :answer_document_request_line

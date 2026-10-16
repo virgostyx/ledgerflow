@@ -1,0 +1,13 @@
+<h1 class="text-xl font-semibold"><%= t(".title") %></h1>
+<%= render "portal/shared/flash" %>
+<% if @questions.empty? %><p class="mt-4 text-sm"><%= t(".none") %></p><% end %>
+<ul class="mt-4 space-y-3">
+  <% @questions.each do |question| %>
+    <li class="rounded border border-gray-200 p-3 text-sm">
+      <div class="font-medium"><%= question.title %></div>
+      <% if question.due_on %><div class="text-xs text-gray-600"><%= t(".due", date: question.due_on.iso8601) %></div><% end %>
+      <%= link_to t(".answer"), question_path(question), class: "mt-1 inline-block underline" %>
+    </li>
+  <% end %>
+</ul>
+<%= link_to t(".back"), portal_root_path, class: "mt-4 inline-block underline" %>

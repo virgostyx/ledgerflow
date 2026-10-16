@@ -13,6 +13,9 @@
       <%= button_to "Archive", archive_accounting_document_path(@document), method: :post, class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50",
             form: { data: { turbo_confirm: "Archive this document? It stays in the store, but leaves the inbox." } } %>
     <% end %>
+    <% if feature?(:b02c) && Accounting::PortalAccessPolicy.new(current_user, :portal).index? %>
+      <%= link_to "Ask the client", new_accounting_portal_question_path(target_type: "Accounting::Document", target_id: @document.id), class: "px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-md hover:bg-gray-50" %>
+    <% end %>
     <% if @document.portal? && @document.inbox? && policy(@document).reject_portal? %>
       <%= form_with url: reject_portal_accounting_document_path(@document), method: :post, class: "inline-flex gap-1" do %>
         <%= select_tag :reason, options_for_select([ [ "Illegible", "illegible" ], [ "Duplicate", "duplicate" ], [ "Not needed for the accounts", "out_of_scope" ] ]), class: "rounded border border-gray-300 text-sm" %>

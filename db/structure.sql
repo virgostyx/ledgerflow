@@ -2716,6 +2716,40 @@ ALTER SEQUENCE public.accounting_period_locks_id_seq OWNED BY public.accounting_
 
 
 --
+-- Name: accounting_question_suggestions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_question_suggestions (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    portal_question_id bigint NOT NULL,
+    choice_key character varying NOT NULL,
+    treatment character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_question_suggestions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_question_suggestions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_question_suggestions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_question_suggestions_id_seq OWNED BY public.accounting_question_suggestions.id;
+
+
+--
 -- Name: accounting_recurring_entries; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5809,6 +5843,43 @@ ALTER SEQUENCE public.portal_access_requests_id_seq OWNED BY public.portal_acces
 
 
 --
+-- Name: portal_answers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_answers (
+    id bigint NOT NULL,
+    question_id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    body text,
+    value jsonb DEFAULT '{}'::jsonb NOT NULL,
+    answered_at timestamp(6) without time zone NOT NULL,
+    synced_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_answers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_answers_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_answers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_answers_id_seq OWNED BY public.portal_answers.id;
+
+
+--
 -- Name: portal_backup_codes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5890,7 +5961,8 @@ CREATE VIEW public.portal_companies AS
     COALESCE(((features ->> 'b02a'::text))::boolean, false) AS portal_enabled,
     (COALESCE(((features ->> 'b02a'::text))::boolean, false) AND COALESCE(((features ->> 'b02b'::text))::boolean, false) AND COALESCE(((features ->> 'f03'::text))::boolean, false)) AS upload_enabled,
     portal_show_bank_lines AS show_bank_lines,
-    documents_mail_token
+    documents_mail_token,
+    (COALESCE(((features ->> 'b02a'::text))::boolean, false) AND COALESCE(((features ->> 'b02c'::text))::boolean, false) AND COALESCE(((features ->> 'f08'::text))::boolean, false)) AS questions_enabled
    FROM public.entities;
 
 
@@ -6251,6 +6323,50 @@ ALTER SEQUENCE public.portal_publications_id_seq OWNED BY public.portal_publicat
 
 
 --
+-- Name: portal_questions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_questions (
+    id bigint NOT NULL,
+    token character varying NOT NULL,
+    entity_id bigint NOT NULL,
+    task_id bigint NOT NULL,
+    portal_user_id bigint,
+    title character varying NOT NULL,
+    context jsonb DEFAULT '{}'::jsonb NOT NULL,
+    answer_type character varying NOT NULL,
+    choices jsonb DEFAULT '[]'::jsonb NOT NULL,
+    status character varying DEFAULT 'open'::character varying NOT NULL,
+    due_on date,
+    asked_at timestamp(6) without time zone NOT NULL,
+    reminders_sent integer DEFAULT 0 NOT NULL,
+    last_reminded_at timestamp(6) without time zone,
+    asked_by_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_questions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_questions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_questions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_questions_id_seq OWNED BY public.portal_questions.id;
+
+
+--
 -- Name: portal_sessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6351,7 +6467,8 @@ CREATE TABLE public.portal_uploads (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     progress character varying DEFAULT 'received'::character varying NOT NULL,
-    request_line_id bigint
+    request_line_id bigint,
+    question_id bigint
 );
 
 
@@ -7136,6 +7253,13 @@ ALTER TABLE ONLY public.accounting_period_locks ALTER COLUMN id SET DEFAULT next
 
 
 --
+-- Name: accounting_question_suggestions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_question_suggestions ALTER COLUMN id SET DEFAULT nextval('public.accounting_question_suggestions_id_seq'::regclass);
+
+
+--
 -- Name: accounting_recurring_entries id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7675,6 +7799,13 @@ ALTER TABLE ONLY public.portal_access_requests ALTER COLUMN id SET DEFAULT nextv
 
 
 --
+-- Name: portal_answers id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_answers ALTER COLUMN id SET DEFAULT nextval('public.portal_answers_id_seq'::regclass);
+
+
+--
 -- Name: portal_backup_codes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7749,6 +7880,13 @@ ALTER TABLE ONLY public.portal_publication_recipients ALTER COLUMN id SET DEFAUL
 --
 
 ALTER TABLE ONLY public.portal_publications ALTER COLUMN id SET DEFAULT nextval('public.portal_publications_id_seq'::regclass);
+
+
+--
+-- Name: portal_questions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_questions ALTER COLUMN id SET DEFAULT nextval('public.portal_questions_id_seq'::regclass);
 
 
 --
@@ -8274,6 +8412,14 @@ ALTER TABLE ONLY public.accounting_peppol_messages
 
 ALTER TABLE ONLY public.accounting_period_locks
     ADD CONSTRAINT accounting_period_locks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_question_suggestions accounting_question_suggestions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_question_suggestions
+    ADD CONSTRAINT accounting_question_suggestions_pkey PRIMARY KEY (id);
 
 
 --
@@ -8901,6 +9047,14 @@ ALTER TABLE ONLY public.portal_access_requests
 
 
 --
+-- Name: portal_answers portal_answers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_answers
+    ADD CONSTRAINT portal_answers_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: portal_backup_codes portal_backup_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8986,6 +9140,14 @@ ALTER TABLE ONLY public.portal_publication_recipients
 
 ALTER TABLE ONLY public.portal_publications
     ADD CONSTRAINT portal_publications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_questions portal_questions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_questions
+    ADD CONSTRAINT portal_questions_pkey PRIMARY KEY (id);
 
 
 --
@@ -10793,6 +10955,13 @@ CREATE INDEX index_accounting_period_locks_on_unlocked_by_id ON public.accountin
 
 
 --
+-- Name: index_accounting_question_suggestions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_question_suggestions_on_entity_id ON public.accounting_question_suggestions USING btree (entity_id);
+
+
+--
 -- Name: index_accounting_recurring_entries_on_created_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12557,6 +12726,34 @@ CREATE UNIQUE INDEX index_portal_access_requests_on_token ON public.portal_acces
 
 
 --
+-- Name: index_portal_answers_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_answers_on_entity_id ON public.portal_answers USING btree (entity_id);
+
+
+--
+-- Name: index_portal_answers_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_answers_on_portal_user_id ON public.portal_answers USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_answers_on_question_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_answers_on_question_id ON public.portal_answers USING btree (question_id);
+
+
+--
+-- Name: index_portal_answers_one_per_question; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_answers_one_per_question ON public.portal_answers USING btree (question_id);
+
+
+--
 -- Name: index_portal_backup_codes_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12816,6 +13013,34 @@ CREATE INDEX index_portal_publications_on_withdrawn_by_id ON public.portal_publi
 
 
 --
+-- Name: index_portal_questions_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_questions_on_entity_id ON public.portal_questions USING btree (entity_id);
+
+
+--
+-- Name: index_portal_questions_on_entity_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_questions_on_entity_id_and_status ON public.portal_questions USING btree (entity_id, status);
+
+
+--
+-- Name: index_portal_questions_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_questions_on_portal_user_id ON public.portal_questions USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_questions_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_questions_on_token ON public.portal_questions USING btree (token);
+
+
+--
 -- Name: index_portal_recipients_unique; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12911,6 +13136,13 @@ CREATE INDEX index_portal_users_on_identity_verified_by_id ON public.portal_user
 --
 
 CREATE UNIQUE INDEX index_portal_users_on_lower_email ON public.portal_users USING btree (lower((email)::text));
+
+
+--
+-- Name: index_question_suggestions_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_question_suggestions_unique ON public.accounting_question_suggestions USING btree (portal_question_id, choice_key);
 
 
 --
@@ -13287,6 +13519,14 @@ ALTER TABLE ONLY public.accounting_bank_statements
 
 ALTER TABLE ONLY public.partner_bank_accounts
     ADD CONSTRAINT fk_rails_0760cf18b5 FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: portal_answers fk_rails_079b0cde20; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_answers
+    ADD CONSTRAINT fk_rails_079b0cde20 FOREIGN KEY (question_id) REFERENCES public.portal_questions(id);
 
 
 --
@@ -14402,6 +14642,14 @@ ALTER TABLE ONLY public.accounting_vat_category_mappings
 
 
 --
+-- Name: accounting_question_suggestions fk_rails_7150e6c32a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_question_suggestions
+    ADD CONSTRAINT fk_rails_7150e6c32a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: organization_memberships fk_rails_715ab7f4fe; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14463,6 +14711,14 @@ ALTER TABLE ONLY public.consolidation_entry_lines
 
 ALTER TABLE ONLY public.accounting_payment_batches
     ADD CONSTRAINT fk_rails_73ac73592a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_answers fk_rails_74d993278f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_answers
+    ADD CONSTRAINT fk_rails_74d993278f FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
 
 
 --
@@ -14874,6 +15130,14 @@ ALTER TABLE ONLY public.accounting_journals
 
 
 --
+-- Name: portal_questions fk_rails_9b88936ef7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_questions
+    ADD CONSTRAINT fk_rails_9b88936ef7 FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
+
+
+--
 -- Name: payment_batches fk_rails_9d443474f5; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14935,6 +15199,14 @@ ALTER TABLE ONLY public.payment_items
 
 ALTER TABLE ONLY public.dunning_item_lines
     ADD CONSTRAINT fk_rails_a159bcc01d FOREIGN KEY (dunning_item_id) REFERENCES public.dunning_items(id);
+
+
+--
+-- Name: portal_answers fk_rails_a1b9a9cc2c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_answers
+    ADD CONSTRAINT fk_rails_a1b9a9cc2c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
 
 
 --
@@ -16018,6 +16290,14 @@ ALTER TABLE ONLY public.accounting_bank_transactions
 
 
 --
+-- Name: portal_questions fk_rails_f5bff599e5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_questions
+    ADD CONSTRAINT fk_rails_f5bff599e5 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: payment_batches fk_rails_f5c700944d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16176,6 +16456,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016210000'),
 ('20261016200000'),
 ('20261016190000'),
 ('20261016180000'),

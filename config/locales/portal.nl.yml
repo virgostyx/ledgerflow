@@ -1,0 +1,32 @@
+nl:
+  portal:
+    locales:
+      en: English
+      fr: Français
+      nl: Nederlands
+    questions:
+      index:
+        title: Vragen
+        none: Op dit moment wordt u niets gevraagd.
+        due: Gelieve te antwoorden voor %{date}
+        answer: Antwoorden
+        back: Terug
+      show:
+        about: Betreft
+        send: Mijn antwoord versturen
+        note: Opmerking (optioneel)
+        yes: "Ja"
+        "no": "Nee"
+        amount: Bedrag
+        date: Datum
+        send_file: Het document versturen
+        file_hint: Verstuur eerst het document en daarna uw antwoord.
+        needs_file: Verstuur eerst minstens één document.
+        back: Terug naar de vragen
+      answered: Dank u. Uw boekhouder heeft uw antwoord ontvangen.
+      already: Deze vraag is al beantwoord.
+      invalid: Uw antwoord is niet geldig. Controleer het en probeer opnieuw.
+      expired: Deze vraag is gesloten.
+      closed_label: Beantwoord
+    preferences:
+      language: Taal

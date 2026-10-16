@@ -21,6 +21,7 @@ class Portal::BaseController < ActionController::Base
   end
 
   around_action :on_the_portal_database
+  around_action :in_the_language_of_the_person
   before_action :set_security_headers
   before_action :require_sign_in!
   helper_method :current_portal_user, :current_portal_session, :portal_brand
@@ -33,6 +34,12 @@ class Portal::BaseController < ActionController::Base
   # With a role of its own, everything a portal page reads or writes goes through it: a query on anything but the portal's tables is refused by the database.
   def on_the_portal_database(&)
     Portal.restricted_database? ? ApplicationRecord.connected_to(role: :portal, &) : yield
+  end
+
+  # The language the person chose (fr, nl or en); English for a visitor.
+  def in_the_language_of_the_person(&)
+    locale = current_portal_user&.locale
+    I18n.with_locale(%w[en fr nl].include?(locale) ? locale : I18n.default_locale, &)
   end
 
   def current_portal_session

@@ -1,0 +1,27 @@
+<h1 class="text-xl font-semibold"><%= @question.title %></h1>
+<%= render "portal/shared/flash" %>
+<% if @question.context.present? %>
+  <p class="mt-2 rounded border border-gray-200 p-2 text-sm"><%= t(".about") %>:
+    <%= @question.context.values_at("date", "label", "reference", "document").compact.join(" · ") %>
+    <%= "· #{number_with_precision(@question.context['amount'], precision: 2)} #{@question.context['currency']}" if @question.context["amount"] %></p>
+<% end %>
+<%= form_with url: answer_question_path(@question), class: "mt-4 space-y-3 text-sm" do |f| %>
+  <% case @question.answer_type %>
+  <% when "single" %>
+    <fieldset><% @question.choices.each do |choice| %><label class="block"><%= radio_button_tag :choice, choice["key"] %> <%= choice["label"] %></label><% end %></fieldset>
+  <% when "multiple" %>
+    <fieldset><% @question.choices.each do |choice| %><label class="block"><%= check_box_tag "choices[]", choice["key"], false, id: "choice_#{choice['key']}" %> <%= choice["label"] %></label><% end %></fieldset>
+  <% when "yes_no" %>
+    <fieldset><label class="block"><%= radio_button_tag :yes_no, "yes" %> <%= t(".yes") %></label><label class="block"><%= radio_button_tag :yes_no, "no" %> <%= t(".no") %></label></fieldset>
+  <% when "amount" %>
+    <div><%= label_tag :amount, t(".amount"), class: "block" %><%= text_field_tag :amount, nil, inputmode: "decimal", class: "rounded border border-gray-300 px-2 py-1" %></div>
+  <% when "date" %>
+    <div><%= label_tag :date, t(".date"), class: "block" %><%= date_field_tag :date, nil, class: "rounded border border-gray-300 px-2 py-1" %></div>
+  <% when "file" %>
+    <p><%= link_to t(".send_file"), new_upload_path(question: @question.token), class: "underline" %> — <%= t(".file_hint") %></p>
+    <% @files.each do |upload| %><p><%= upload.filename %> · <%= upload.client_status_label %></p><% end %>
+  <% end %>
+  <div><%= label_tag :body, t(".note"), class: "block" %><%= text_area_tag :body, nil, rows: 3, maxlength: Portal::Answer::MAX_BODY, class: "w-full rounded border border-gray-300 px-2 py-1" %></div>
+  <%= f.submit t(".send"), class: "portal-button rounded px-4 py-2" %>
+<% end %>
+<%= link_to t(".back"), questions_path, class: "mt-4 inline-block underline" %>

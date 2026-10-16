@@ -62,5 +62,6 @@ module Ledgerflow
     config.active_record.schema_format = :sql
 
     config.i18n.default_locale = :en
+    config.i18n.fallbacks = [ :en ] # B02c: the portal speaks fr, nl and en; what is not translated is read in English
   end
 end

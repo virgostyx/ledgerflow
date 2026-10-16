@@ -59,7 +59,8 @@ class PortalAdmin::ReceiveUpload
   end
 
   def details
-    { portal_hint: { kind: @first.hint_kind, note: @first.hint_note, sent_sha256: @uploads.one? ? @first.sha256 : @uploads.map(&:sha256) },
+    task = Portal::Question.find_by(id: @first.question_id)&.task_id
+    { **({ task_id: task, question_id: @first.question_id } if task).to_h, portal_hint: { kind: @first.hint_kind, note: @first.hint_note, sent_sha256: @uploads.one? ? @first.sha256 : @uploads.map(&:sha256) },
       source: { portal_user: @first.portal_user.full_name, portal_user_id: @first.portal_user_id, upload: @first.token } }
   end
 

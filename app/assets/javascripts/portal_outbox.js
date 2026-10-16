@@ -52,7 +52,7 @@
     for (let tries = 0; tries < 2; tries++) {
       if (!part.token) {
         const { status, data } = await api("/uploads", { method: "POST", json: { company: item.company, filename: part.name, byte_size: part.blob.size, sha256: part.sha,
-          content_type: part.blob.type, hint_kind: item.hint_kind, hint_note: item.hint_note, ...(item.request_line ? { request_line: item.request_line } : {}),
+          content_type: part.blob.type, hint_kind: item.hint_kind, hint_note: item.hint_note, ...(item.request_line ? { request_line: item.request_line } : {}), ...(item.question ? { question: item.question } : {}),
           ...(item.parts.length > 1 || item.kind === "photos" ? { batch_token: item.batch, page_number: index + 1, page_count: item.parts.length } : {}) } });
         if (status !== 201) throw new Stop(data.message || (data.errors || []).join(" ") || "This file cannot be sent.");
         part.token = data.token;

@@ -23,7 +23,7 @@ RSpec.describe PortalAdmin::DatabaseRole do
 
   it 'writes only where the portal has something to write: its sessions, devices, events, requests, uploads, its own people' do
     writable = sql.scan(/GRANT (?:INSERT|UPDATE|DELETE)[A-Z, ]* ON (\w+) TO/).flatten
-    expect(writable).to match_array(%w[portal_users portal_backup_codes portal_grants portal_invitations portal_sessions portal_devices portal_events portal_access_requests portal_uploads portal_upload_chunks portal_document_request_lines])
+    expect(writable).to match_array(%w[portal_users portal_backup_codes portal_grants portal_invitations portal_sessions portal_devices portal_events portal_access_requests portal_uploads portal_upload_chunks portal_questions portal_answers portal_document_request_lines])
   end
 
   it 'never lets the portal change what the firm published, nor delete a grant or an event' do

@@ -15,6 +15,8 @@ RSpec.describe 'Portal direct access to identifiers', type: :request do
       # a publication of a company where this person has no right, and a file link signed for someone else
       'portal/publications#show'  => ->(ctx) { "/publications/#{ctx[:foreign_publication].token}" },
       'portal/document_request_lines#answer' => ->(ctx) { "/document_request_lines/#{ctx[:foreign_line].token}/answer" },
+      'portal/questions#show'     => ->(ctx) { "/questions/#{ctx[:foreign_question].token}" },
+      'portal/questions#answer'   => ->(ctx) { "/questions/#{ctx[:foreign_question].token}/answer" },
       'portal/uploads#show'       => ->(ctx) { "/uploads/#{ctx[:foreign_upload].token}" },
       'portal/uploads#complete'   => ->(ctx) { "/uploads/#{ctx[:foreign_upload].token}/complete" },
       'portal/upload_chunks#update' => ->(ctx) { "/uploads/#{ctx[:foreign_upload].token}/chunks/0" },
@@ -61,7 +63,8 @@ RSpec.describe 'Portal direct access to identifiers', type: :request do
     foreign_upload = Portal::Upload.create!(entity_id: create(:entity).id, portal_user: create(:portal_user), filename: 'x.pdf', byte_size: 1, sha256: 'a' * 64, chunk_size: 1, chunk_count: 1, expires_at: 1.day.from_now)
     foreign_request = Portal::DocumentRequest.create!(entity_id: foreign_upload.entity_id, requested_by: create(:user))
     foreign_line = foreign_request.lines.create!(entity_id: foreign_upload.entity_id, bank_transaction_id: 1, line_date: Date.current, amount: 1)
-    context = { foreign_line: foreign_line, foreign_upload: foreign_upload, foreign_device: foreign_device, user: user, foreign_publication: foreign_publication, stranger: create(:portal_user) }
+    foreign_question = Portal::Question.create!(entity_id: foreign_upload.entity_id, task_id: 1, title: 'Not yours', answer_type: 'text', asked_at: Time.current, asked_by_id: create(:user).id)
+    context = { foreign_question: foreign_question, foreign_line: foreign_line, foreign_upload: foreign_upload, foreign_device: foreign_device, user: user, foreign_publication: foreign_publication, stranger: create(:portal_user) }
 
     probes.each do |key, build|
       route = portal_routes.find { |r| "#{r.defaults[:controller]}##{r.defaults[:action]}" == key }
