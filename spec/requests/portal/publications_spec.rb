@@ -104,6 +104,7 @@ RSpec.describe 'Portal publications', type: :request do
       end
       get '/publications/guess'
       expect(response).to have_http_status(:not_found)
+      expect(Portal::Event.where(action: 'out_of_scope_attempt', target_token: 'guess')).to exist
     end
 
     it 'says clearly that a withdrawn publication is no longer there' do

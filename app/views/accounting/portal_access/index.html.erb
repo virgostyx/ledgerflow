@@ -11,10 +11,12 @@
           <td class="py-2"><%= person.full_name %><br><span class="text-gray-500"><%= person.email %></span> <span class="text-xs text-gray-400"><%= person.status %><%= " (revoked)" if grant.revoked_at %></span></td>
           <td><%= grant.role %></td>
           <td class="text-xs text-gray-600"><%= grant.capabilities.join(", ").presence || "none" %></td>
-          <td><%= person.last_seen_at ? l(person.last_seen_at.in_time_zone, format: :short) : "never" %></td>
+          <td><%= person.last_seen_at ? l(person.last_seen_at.in_time_zone, format: :short) : "never" %>
+            <% if @review[grant.id]&.inactive %><br><span class="text-xs font-medium text-amber-700">not used for 90 days</span><% end %></td>
           <td><%= person.identity_verified_at ? "verified #{l(person.identity_verified_at.in_time_zone, format: :short)}" : "not verified" %></td>
           <td class="flex gap-3">
             <% if grant.revoked_at.nil? %>
+              <% if person.suspended? %><%= button_to "Reinstate", reinstate_accounting_portal_access_path(grant), class: "underline cursor-pointer" %><% end %>
               <%= button_to "Verify identity", verify_identity_accounting_portal_access_path(grant), class: "underline cursor-pointer" %>
               <%= button_to "Reset access", reset_accounting_portal_access_path(grant), class: "underline cursor-pointer", form: { data: { turbo_confirm: "Wipe the password and the second factor of this person, and invite them again?" } } %>
               <%= button_to "Revoke", accounting_portal_access_path(grant), method: :delete, class: "text-red-700 underline cursor-pointer", form: { data: { turbo_confirm: "Revoke this access now?" } } %>
@@ -30,7 +32,7 @@
     <ul class="mb-8 text-sm text-gray-700"><% @pending.each do |invitation| %><li><%= invitation.email %> - <%= invitation.role %> - expires <%= l(invitation.expires_at.in_time_zone, format: :short) %></li><% end %></ul>
   <% end %>
 
-  <p class="mb-6 text-sm"><%= link_to "Publications", accounting_portal_publications_path, class: "underline" %></p>
+  <p class="mb-6 flex gap-4 text-sm"><%= link_to "Publications", accounting_portal_publications_path, class: "underline" %><%= link_to "Portal activity", accounting_portal_activity_index_path, class: "underline" %></p>
 
   <h2 class="mb-2 font-semibold">Invite someone</h2>
   <%= form_with url: accounting_portal_access_index_path, class: "flex flex-wrap items-end gap-3 text-sm" do |f| %>

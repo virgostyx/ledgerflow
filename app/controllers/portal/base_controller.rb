@@ -54,6 +54,12 @@ class Portal::BaseController < ActionController::Base
     @current_portal_session = nil
   end
 
+  # An identifier that is not in the scope of the person looks like one that does not exist; the attempt is noted.
+  def not_in_scope(token)
+    record_event("out_of_scope_attempt", target_token: token.to_s.first(64))
+    head :not_found
+  end
+
   def record_event(action, **attributes)
     Portal::Event.record!(action, request: request, user: current_portal_user, **attributes)
   end

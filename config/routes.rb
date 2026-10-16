@@ -431,9 +431,11 @@ Rails.application.routes.draw do
         member do
           post :reset
           post :verify_identity
+          post :reinstate
         end
       end
 
+      resources :portal_activity, only: :index, controller: "portal_activity"
       resources :portal_publications, only: [ :index, :create ], param: :token do
         member { post :withdraw }
       end

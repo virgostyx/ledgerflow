@@ -2,11 +2,12 @@
 class Accounting::PortalAccessController < ApplicationController
   before_action -> { require_feature!(:b02a) }
   before_action -> { authorize Accounting::PortalAccessPolicy, action_name.to_sym == :index ? :index? : "#{action_name}?".to_sym, policy_class: Accounting::PortalAccessPolicy }
-  before_action :find_grant, only: %i[destroy reset verify_identity]
+  before_action :find_grant, only: %i[destroy reset verify_identity reinstate]
   before_action -> { require_recent_second_factor! }, only: :reset
 
   def index
     @grants = Portal::Grant.where(entity_id: current_entity_id).includes(:portal_user).order(:created_at)
+    @review = PortalAdmin::AccessReview.call(entity: ActsAsTenant.current_tenant).index_by { |row| row.grant.id }
     @pending = Portal::Invitation.where(entity_id: current_entity_id, used_at: nil).where("expires_at > ?", Time.current).includes(:portal_user)
   end
 
@@ -32,6 +33,11 @@ class Accounting::PortalAccessController < ApplicationController
   def verify_identity
     PortalAdmin::VerifyIdentity.call(person: @grant.portal_user, entity: ActsAsTenant.current_tenant, by: current_user)
     redirect_to accounting_portal_access_index_path, notice: "Identity recorded as verified."
+  end
+
+  def reinstate
+    PortalAdmin::Reinstate.call(person: @grant.portal_user, entity: ActsAsTenant.current_tenant, by: current_user)
+    redirect_to accounting_portal_access_index_path, notice: "Reinstated."
   end
 
   private

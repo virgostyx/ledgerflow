@@ -107,3 +107,13 @@ production:
     class: Rates::ImportJob
     queue: default
     schedule: every day at 6pm
+  portal_mirror_events:
+    class: PortalAdminJob
+    args: [ "mirror" ]
+    queue: default
+    schedule: every minute
+  portal_suspend_dormant:
+    class: PortalAdminJob
+    args: [ "dormant" ]
+    queue: default
+    schedule: every day at 2am

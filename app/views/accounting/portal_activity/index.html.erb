@@ -1,0 +1,31 @@
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900">Portal activity</h1>
+  <p class="mb-4 text-sm"><%= link_to "People with access", accounting_portal_access_index_path, class: "underline" %></p>
+
+  <h2 class="mb-2 font-semibold">Unusual</h2>
+  <% if @unusual.empty? %>
+    <p class="mb-6 text-sm text-gray-600">Nothing unusual in the last day.</p>
+  <% else %>
+    <ul class="mb-6 text-sm text-amber-800"><% @unusual.each do |finding| %><li><%= finding.person.full_name %>: <%= finding.text %></li><% end %></ul>
+  <% end %>
+
+  <%= form_with url: accounting_portal_activity_index_path, method: :get, class: "mb-4 flex items-end gap-3 text-sm" do |f| %>
+    <div><%= f.label :person_id, "Person", class: "block" %><%= f.select :person_id, [ [ "Everyone", "" ] ] + @people.map { |p| [ p.full_name, p.id ] }, { selected: params[:person_id] }, class: "rounded border p-2" %></div>
+    <%= f.submit "Filter", class: "rounded border px-3 py-2" %>
+  <% end %>
+
+  <table class="w-full text-sm">
+    <thead><tr class="border-b text-left text-gray-500"><th class="py-2">When</th><th>Person</th><th>Action</th><th>Object</th><th>Address</th></tr></thead>
+    <tbody>
+      <% @events.each do |event| %>
+        <tr class="border-b">
+          <td class="py-1"><%= l(event.occurred_at.in_time_zone, format: :short) %></td>
+          <td><%= event.portal_user&.full_name || event.email_tried %></td>
+          <td><%= event.action %></td>
+          <td class="font-mono text-xs"><%= event.target_token %></td>
+          <td class="text-xs text-gray-500"><%= event.ip_address %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

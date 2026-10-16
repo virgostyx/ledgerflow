@@ -4,7 +4,7 @@ class Portal::DownloadsController < Portal::BaseController
     file_token = Portal::DownloadLink.resolve(params[:signed], current_portal_user)
     file = file_token && Portal::PublicationFile.find_by(token: file_token)
     publication = file && Portal::Publication.in_reach_of(current_portal_user).visible.find_by(id: file.publication_id)
-    return head(:not_found) unless publication
+    return not_in_scope(file_token || params[:signed].to_s.first(12)) unless publication
 
     unless file.intact?
       record_event("download_integrity_failed", entity_id: publication.entity_id, target_token: file.token)
