@@ -28,5 +28,18 @@ nl:
       invalid: Uw antwoord is niet geldig. Controleer het en probeer opnieuw.
       expired: Deze vraag is gesloten.
       closed_label: Beantwoord
+    messages:
+      index:
+        title: Berichten
+        none: Nog geen gesprek.
+        firm: Uw boekhouder
+        sent_document: "heeft een document verstuurd: %{name}"
+        write: Een bericht schrijven
+        notice: Een bericht is geen boekhoudkundige instructie en geen formele overeenkomst.
+        send: Versturen
+        attach: Een document versturen
+        back: Terug
+      sent: Bericht verstuurd.
+      too_many: Te veel berichten vandaag. Probeer het morgen opnieuw.
     preferences:
       language: Taal

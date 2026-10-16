@@ -53,6 +53,16 @@ RSpec.describe 'Portal rate limits', type: :request do
     expect(response).to have_http_status(:too_many_requests)
   end
 
+  it 'limits the messages and the answers written from one address (B02c)' do
+    10.times { post '/messages', headers: { 'REMOTE_ADDR' => '7.7.7.7' } }
+    post '/messages', headers: { 'REMOTE_ADDR' => '7.7.7.7' }
+    expect(response).to have_http_status(:too_many_requests)
+
+    20.times { post '/questions/abc/answer', headers: { 'REMOTE_ADDR' => '8.8.8.8' } }
+    post '/questions/abc/answer', headers: { 'REMOTE_ADDR' => '8.8.8.8' }
+    expect(response).to have_http_status(:too_many_requests)
+  end
+
   it 'does not touch the application: its own sign-in has its own budget' do
     host! 'www.example.com'
     5.times { post user_session_path, params: { user: { email: 'a@b.example', password: 'x' } }, headers: { 'REMOTE_ADDR' => '4.4.4.4' } }

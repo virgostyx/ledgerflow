@@ -49,7 +49,7 @@
     <ul class="mb-8 text-sm text-gray-700"><% @pending.each do |invitation| %><li><%= invitation.email %> - <%= invitation.role %> - expires <%= l(invitation.expires_at.in_time_zone, format: :short) %></li><% end %></ul>
   <% end %>
 
-  <p class="mb-6 flex gap-4 text-sm"><%= link_to "Publications", accounting_portal_publications_path, class: "underline" %><%= link_to "Portal activity", accounting_portal_activity_index_path, class: "underline" %><%= link_to "Documents asked of the client", accounting_portal_document_requests_path, class: "underline" if feature?(:b02b) %><%= link_to "Questions to the client", accounting_portal_questions_path, class: "underline" if feature?(:b02c) %><%= link_to "Mail held back", accounting_mail_quarantines_path, class: "underline" if feature?(:b02b) %></p>
+  <p class="mb-6 flex gap-4 text-sm"><%= link_to "Publications", accounting_portal_publications_path, class: "underline" %><%= link_to "Portal activity", accounting_portal_activity_index_path, class: "underline" %><%= link_to "Documents asked of the client", accounting_portal_document_requests_path, class: "underline" if feature?(:b02b) %><%= link_to "Messages", accounting_portal_messages_path, class: "underline" if feature?(:b02c) %><%= link_to "Questions to the client", accounting_portal_questions_path, class: "underline" if feature?(:b02c) %><%= link_to "Mail held back", accounting_mail_quarantines_path, class: "underline" if feature?(:b02b) %></p>
 
   <h2 class="mb-2 font-semibold">Invite someone</h2>
   <%= form_with url: accounting_portal_access_index_path, class: "flex flex-wrap items-end gap-3 text-sm" do |f| %>

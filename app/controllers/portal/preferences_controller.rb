@@ -3,6 +3,7 @@ class Portal::PreferencesController < Portal::BaseController
 
   def update
     changes = { wipe_outbox_on_sign_out: params[:wipe_outbox_on_sign_out] == "1" }
+    changes[:locale] = params[:locale].to_s if %w[en fr nl].include?(params[:locale].to_s)
     changes[:notification_frequency] = params[:notification_frequency].to_s if params.key?(:notification_frequency)
     if current_portal_user.update(changes)
       redirect_to preferences_path, notice: "Saved."

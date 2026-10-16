@@ -1,0 +1,32 @@
+<h1 class="text-xl font-semibold"><%= t(".title") %></h1>
+<%= render "portal/shared/flash" %>
+<% if @threads.empty? %><p class="mt-4 text-sm"><%= t(".none") %></p><% end %>
+<% @threads.each do |thread| %>
+  <section class="mt-4">
+    <h2 class="font-medium"><%= @company_names[thread.entity_id] %></h2>
+    <% entries = (thread.messages.to_a + @files.select { |f| f.thread_id == thread.id }).sort_by(&:created_at) %>
+    <ul class="mt-2 space-y-2">
+      <% entries.each do |entry| %>
+        <li class="rounded border border-gray-200 p-2 text-sm">
+          <% if entry.is_a?(Portal::Message) %>
+            <strong><%= entry.author_kind == "firm" ? t(".firm") : entry.portal_user&.full_name %></strong>
+            <span class="text-xs text-gray-600"><%= entry.created_at.utc.strftime("%Y-%m-%d %H:%M UTC") %></span>
+            <p class="whitespace-pre-line"><%= entry.body %></p>
+          <% else %>
+            <strong><%= entry.portal_user&.full_name %></strong> <span class="text-xs text-gray-600"><%= entry.created_at.utc.strftime("%Y-%m-%d %H:%M UTC") %></span>
+            <p><%= t(".sent_document", name: entry.filename) %></p>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+    <%= form_with url: messages_path, class: "mt-3 space-y-2 text-sm" do %>
+      <%= hidden_field_tag :company, thread.entity_id, id: nil %>
+      <%= label_tag "body_#{thread.entity_id}", t(".write"), class: "block" %>
+      <%= text_area_tag :body, nil, id: "body_#{thread.entity_id}", rows: 3, maxlength: Portal::Message::MAX_BODY, class: "w-full rounded border border-gray-300 px-2 py-1" %>
+      <p class="text-xs text-gray-600"><%= t(".notice") %></p>
+      <%= submit_tag t(".send"), class: "portal-button rounded px-4 py-2" %>
+      <%= link_to t(".attach"), new_upload_path(thread: "yes", company: thread.entity_id), class: "ml-3 underline" %>
+    <% end %>
+  </section>
+<% end %>
+<%= link_to t(".back"), portal_root_path, class: "mt-4 inline-block underline" %>

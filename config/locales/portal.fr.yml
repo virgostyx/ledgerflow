@@ -28,5 +28,18 @@ fr:
       invalid: Votre réponse n'est pas valable. Vérifiez-la et réessayez.
       expired: Cette question est clôturée.
       closed_label: Répondu
+    messages:
+      index:
+        title: Messages
+        none: Aucune conversation pour le moment.
+        firm: Votre comptable
+        sent_document: "a envoyé un document : %{name}"
+        write: Écrire un message
+        notice: Un message n'est ni une instruction comptable ni un accord formel.
+        send: Envoyer
+        attach: Envoyer un document
+        back: Retour
+      sent: Message envoyé.
+      too_many: Trop de messages aujourd'hui. Réessayez demain.
     preferences:
       language: Langue

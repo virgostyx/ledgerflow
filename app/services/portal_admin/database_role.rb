@@ -15,6 +15,8 @@ class PortalAdmin::DatabaseRole
     "portal_upload_chunks"   => %w[INSERT], # the firm's side removes them once the file is taken in
     "portal_questions"       => %w[UPDATE], # marked answered; the questions themselves are written by the firm
     "portal_answers"         => %w[INSERT],
+    "portal_threads"         => %w[INSERT], # made when a company's first message is written
+    "portal_messages"        => %w[INSERT],
     "portal_document_request_lines" => %w[UPDATE] # the client's answer; the requests themselves are written by the firm
   }.freeze
   BOOKKEEPING = %w[schema_migrations ar_internal_metadata].freeze

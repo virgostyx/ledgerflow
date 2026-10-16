@@ -5,6 +5,8 @@
   <% { "immediate" => "As soon as they are published", "daily" => "Once a day", "off" => "Never" }.each do |value, label| %>
     <label class="block"><%= f.radio_button :notification_frequency, value, checked: current_portal_user.notification_frequency == value %> <%= label %></label>
   <% end %>
+  <label class="block"><%= t("portal.preferences.language") %>
+    <%= select_tag :locale, options_for_select(%w[en fr nl].map { |l| [ t("portal.locales.#{l}"), l ] }, current_portal_user.locale), class: "rounded border border-gray-300 px-2 py-1" %></label>
   <p class="text-gray-600">Security alerts are always sent.</p>
   <label class="mt-3 block"><%= hidden_field_tag :wipe_outbox_on_sign_out, "0", id: nil %><%= check_box_tag :wipe_outbox_on_sign_out, "1", current_portal_user.wipe_outbox_on_sign_out %> Erase the documents waiting to be sent when I sign out (advised on a shared device)</label>
   <%= f.submit "Save", class: "portal-button rounded px-4 py-2" %>

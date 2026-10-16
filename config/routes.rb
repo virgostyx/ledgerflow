@@ -445,6 +445,9 @@ Rails.application.routes.draw do
       end
       patch "portal_branding", to: "portal_access#branding", as: :portal_branding
       resources :portal_activity, only: :index, controller: "portal_activity"
+      resources :portal_messages, only: %i[index create] do # B02c
+        post :convert, on: :member
+      end
       resources :portal_questions, only: %i[index new create] do # B02c
         post :close, on: :member
       end

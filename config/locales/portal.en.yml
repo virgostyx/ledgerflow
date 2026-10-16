@@ -28,5 +28,18 @@ en:
       invalid: Your answer is not valid. Please check it and try again.
       expired: This question is closed.
       closed_label: Answered
+    messages:
+      index:
+        title: Messages
+        none: No conversation yet.
+        firm: Your accountant
+        sent_document: "sent a document: %{name}"
+        write: Write a message
+        notice: A message is not an accounting instruction nor a formal agreement.
+        send: Send
+        attach: Send a document
+        back: Back
+      sent: Message sent.
+      too_many: Too many messages today. Please try again tomorrow.
     preferences:
       language: Language

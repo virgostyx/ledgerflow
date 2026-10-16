@@ -23,6 +23,15 @@ RSpec.describe 'Portal preferences', type: :request do
     expect(user.reload.notification_frequency).to eq('immediate')
   end
 
+  it 'lets the person choose the language of the portal, among the ones it speaks' do
+    patch '/preferences', params: { locale: 'nl', notification_frequency: 'immediate' }
+    expect(user.reload.locale).to eq('nl')
+    patch '/preferences', params: { locale: 'klingon', notification_frequency: 'immediate' }
+    expect(user.reload.locale).to eq('nl')
+    get '/preferences'
+    expect(response.body).to include('Taal')
+  end
+
   describe 'what the browser keeps when the person signs out (B02b)' do
     it 'clears its copies of pages, and keeps the documents waiting to be sent unless asked' do
       delete '/session'

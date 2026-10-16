@@ -22,6 +22,9 @@ class Portal::UploadsController < Portal::BaseController
     asked = Portal::Question.in_reach_of(current_portal_user).open.find_by(token: params[:question]) if params[:question].present?
     return not_in_scope(params[:question]) if params[:question].present? && (asked.nil? || asked.entity_id != company.id)
 
+    thread = Portal::MessageThread.of(company.id) if params[:thread].present? && current_portal_user.open_grants.where(entity_id: company.id).where("portal_grants.capabilities @> ?", [ "messages.use" ].to_json).exists? && company.questions_enabled
+    return not_in_scope("thread") if params[:thread].present? && thread.nil?
+
     size = params[:byte_size].to_i
     if (message = Portal::Upload.quota_message(current_portal_user, company.id, size))
       record_event("upload_refused", entity_id: company.id, reason: "quota")
@@ -30,7 +33,7 @@ class Portal::UploadsController < Portal::BaseController
 
     upload = Portal::Upload.new(entity_id: company.id, portal_user: current_portal_user, filename: File.basename(params[:filename].to_s.tr("\\", "/")).first(255), content_type: params[:content_type].to_s.first(100),
                                 byte_size: size, sha256: params[:sha256].to_s, chunk_size: Portal::Upload::CHUNK_SIZE, chunk_count: [ (size.to_f / Portal::Upload::CHUNK_SIZE).ceil, 1 ].max,
-                                expires_at: Portal::Upload::VALIDITY.from_now, hint_kind: params[:hint_kind].presence || "purchase", hint_note: params[:hint_note].to_s.strip.presence, request_line_id: line&.id, question_id: asked&.id,
+                                expires_at: Portal::Upload::VALIDITY.from_now, hint_kind: params[:hint_kind].presence || "purchase", hint_note: params[:hint_note].to_s.strip.presence, request_line_id: line&.id, question_id: asked&.id, thread_id: thread&.id,
                                 batch_token: params[:batch_token].presence&.to_s&.first(64), page_number: params[:page_number].presence&.to_i, page_count: params[:page_count].presence&.to_i)
     return render(json: { errors: upload.errors.full_messages }, status: :unprocessable_content) unless upload.save
 

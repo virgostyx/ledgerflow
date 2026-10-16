@@ -45,6 +45,10 @@ class Rack::Attack
   throttle("portal_uploads/start/ip", limit: 30, period: 1.minute) { |req| req.ip if portal.(req) && req.post? && req.path == "/uploads" }
   throttle("portal_uploads/chunks/ip", limit: 120, period: 1.minute) { |req| req.ip if portal.(req) && req.put? && req.path.match?(%r{\A/uploads/[^/]+/chunks/\d+\z}) }
 
+  # Messages and answers (B02c): written by people, not by scripts.
+  throttle("portal_messages/ip", limit: 10, period: 1.minute) { |req| req.ip if portal.(req) && req.post? && req.path == "/messages" }
+  throttle("portal_answers/ip", limit: 20, period: 1.minute) { |req| req.ip if portal.(req) && req.post? && req.path.match?(%r{\A/questions/[^/]+/answer\z}) }
+
   # API throttle: 300 requests per minute per IP
   throttle("api/ip", limit: 300, period: 1.minute) do |req|
     req.ip if req.path.start_with?("/api/")

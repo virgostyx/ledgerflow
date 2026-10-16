@@ -26,4 +26,10 @@ class Portal::NotificationMailer < ApplicationMailer
     @url = Rails.application.routes.url_helpers.questions_url(**Portal.url_options)
     mail to: user.email, subject: "#{company_name} has #{count} #{'question'.pluralize(count)} for you"
   end
+
+  def new_message(user, company_name)
+    @company_name = company_name
+    @url = Rails.application.routes.url_helpers.messages_url(**Portal.url_options)
+    mail to: user.email, subject: "#{company_name} wrote to you"
+  end
 end

@@ -6203,6 +6203,44 @@ ALTER SEQUENCE public.portal_invitations_id_seq OWNED BY public.portal_invitatio
 
 
 --
+-- Name: portal_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_messages (
+    id bigint NOT NULL,
+    thread_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    author_kind character varying NOT NULL,
+    portal_user_id bigint,
+    user_id bigint,
+    body text NOT NULL,
+    task_id bigint,
+    read_by_firm_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_messages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_messages_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_messages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_messages_id_seq OWNED BY public.portal_messages.id;
+
+
+--
 -- Name: portal_publication_files; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6405,6 +6443,38 @@ ALTER SEQUENCE public.portal_sessions_id_seq OWNED BY public.portal_sessions.id;
 
 
 --
+-- Name: portal_threads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_threads (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    token character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_threads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_threads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_threads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_threads_id_seq OWNED BY public.portal_threads.id;
+
+
+--
 -- Name: portal_upload_chunks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6468,7 +6538,8 @@ CREATE TABLE public.portal_uploads (
     updated_at timestamp(6) without time zone NOT NULL,
     progress character varying DEFAULT 'received'::character varying NOT NULL,
     request_line_id bigint,
-    question_id bigint
+    question_id bigint,
+    thread_id bigint
 );
 
 
@@ -7862,6 +7933,13 @@ ALTER TABLE ONLY public.portal_invitations ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: portal_messages id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_messages ALTER COLUMN id SET DEFAULT nextval('public.portal_messages_id_seq'::regclass);
+
+
+--
 -- Name: portal_publication_files id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7894,6 +7972,13 @@ ALTER TABLE ONLY public.portal_questions ALTER COLUMN id SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.portal_sessions ALTER COLUMN id SET DEFAULT nextval('public.portal_sessions_id_seq'::regclass);
+
+
+--
+-- Name: portal_threads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_threads ALTER COLUMN id SET DEFAULT nextval('public.portal_threads_id_seq'::regclass);
 
 
 --
@@ -9119,6 +9204,14 @@ ALTER TABLE ONLY public.portal_invitations
 
 
 --
+-- Name: portal_messages portal_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_messages
+    ADD CONSTRAINT portal_messages_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: portal_publication_files portal_publication_files_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9156,6 +9249,14 @@ ALTER TABLE ONLY public.portal_questions
 
 ALTER TABLE ONLY public.portal_sessions
     ADD CONSTRAINT portal_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_threads portal_threads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_threads
+    ADD CONSTRAINT portal_threads_pkey PRIMARY KEY (id);
 
 
 --
@@ -12943,6 +13044,34 @@ CREATE UNIQUE INDEX index_portal_invitations_on_token_digest ON public.portal_in
 
 
 --
+-- Name: index_portal_messages_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_messages_on_entity_id ON public.portal_messages USING btree (entity_id);
+
+
+--
+-- Name: index_portal_messages_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_messages_on_portal_user_id ON public.portal_messages USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_messages_on_thread_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_messages_on_thread_id ON public.portal_messages USING btree (thread_id);
+
+
+--
+-- Name: index_portal_messages_on_thread_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_messages_on_thread_id_and_id ON public.portal_messages USING btree (thread_id, id);
+
+
+--
 -- Name: index_portal_publication_files_on_publication_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13066,6 +13195,20 @@ CREATE INDEX index_portal_sessions_on_portal_user_id ON public.portal_sessions U
 --
 
 CREATE UNIQUE INDEX index_portal_sessions_on_token_digest ON public.portal_sessions USING btree (token_digest);
+
+
+--
+-- Name: index_portal_threads_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_threads_on_entity_id ON public.portal_threads USING btree (entity_id);
+
+
+--
+-- Name: index_portal_threads_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_threads_on_token ON public.portal_threads USING btree (token);
 
 
 --
@@ -13511,6 +13654,14 @@ ALTER TABLE ONLY public.approval_requests
 
 ALTER TABLE ONLY public.accounting_bank_statements
     ADD CONSTRAINT fk_rails_04d068db3c FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_messages fk_rails_060a4154cb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_messages
+    ADD CONSTRAINT fk_rails_060a4154cb FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
 
 
 --
@@ -14314,6 +14465,14 @@ ALTER TABLE ONLY public.portal_grants
 
 
 --
+-- Name: portal_messages fk_rails_4f358e65b1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_messages
+    ADD CONSTRAINT fk_rails_4f358e65b1 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: payment_batches fk_rails_506ce031d5; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15002,6 +15161,14 @@ ALTER TABLE ONLY public.accounting_invoices
 
 
 --
+-- Name: portal_threads fk_rails_91fceaeef6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_threads
+    ADD CONSTRAINT fk_rails_91fceaeef6 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_peppol_messages fk_rails_92bfeb7c8f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15551,6 +15718,14 @@ ALTER TABLE ONLY public.agent_pseudonyms
 
 ALTER TABLE ONLY public.accounting_bank_accounts
     ADD CONSTRAINT fk_rails_bd15e59b6a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_messages fk_rails_bda5fa6590; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_messages
+    ADD CONSTRAINT fk_rails_bda5fa6590 FOREIGN KEY (thread_id) REFERENCES public.portal_threads(id);
 
 
 --
@@ -16456,6 +16631,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016220000'),
 ('20261016210000'),
 ('20261016200000'),
 ('20261016190000'),

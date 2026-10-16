@@ -3,10 +3,10 @@ module Portal
   ROLES = %w[director collaborator reader].freeze
 
   # What a grant can hold. A right exists only if the grant lists it: nothing is allowed by default. The role only suggests a starting set.
-  CAPABILITIES = %w[publications.view dashboard.view documents.upload questions.answer bank_lines.view accounts.approve access.request].freeze
+  CAPABILITIES = %w[publications.view dashboard.view documents.upload questions.answer bank_lines.view accounts.approve access.request messages.use].freeze
   ROLE_CAPABILITIES = {
     "director"     => CAPABILITIES,
-    "collaborator" => %w[publications.view dashboard.view documents.upload questions.answer bank_lines.view],
+    "collaborator" => %w[publications.view dashboard.view documents.upload questions.answer bank_lines.view messages.use],
     "reader"       => []
   }.freeze
 
