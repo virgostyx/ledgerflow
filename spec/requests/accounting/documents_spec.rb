@@ -20,6 +20,34 @@ RSpec.describe "Accounting::Documents", type: :request do
 
   def audit(action) = Accounting::AuditLog.where(action: action, entity_id: entity.id)
 
+  describe "refusing what a client sent (B02b)" do
+    let(:person) { create(:portal_user) }
+    let(:document) { Accounting::UploadDocument.call(io: StringIO.new(sample_pdf("From a client")), filename: "c.pdf", user: nil, origin: :portal)[:document] }
+    let!(:upload) do
+      Portal::Upload.create!(entity_id: entity.id, portal_user: person, filename: "c.pdf", byte_size: 10, sha256: "a" * 64, chunk_size: 1, chunk_count: 1, status: "accepted",
+                             document_id: document.id, expires_at: 1.day.from_now)
+    end
+
+    it "lets an accountant who manages the portal refuse it with a reason" do
+      post reject_portal_accounting_document_path(document), params: { reason: "illegible" }
+
+      expect(response).to redirect_to(accounting_documents_path)
+      expect(upload.reload).to have_attributes(status: "refused", refusal_reason: "illegible")
+    end
+
+    it "keeps the button for those who may use it" do
+      sign_in assistant
+      post reject_portal_accounting_document_path(document), params: { reason: "illegible" }
+
+      expect(upload.reload.status).to eq("accepted")
+    end
+
+    it "shows the button on a document from the portal" do
+      get accounting_document_path(document)
+      expect(response.body).to include("Refuse and tell the client")
+    end
+  end
+
   describe "the feature flag" do
     it "closes the screens while f03 is off and uploads nothing" do
       entity.update!(features: { "f03" => false })

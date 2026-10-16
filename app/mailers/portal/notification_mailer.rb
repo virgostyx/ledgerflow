@@ -6,4 +6,10 @@ class Portal::NotificationMailer < ApplicationMailer
     @url = Rails.application.routes.url_helpers.publications_url(**Portal.url_options)
     mail to: user.email, subject: "#{count} new #{'publication'.pluralize(count)} from #{company_name}"
   end
+
+  def upload_needs_attention(user, company_name)
+    @company_name = company_name
+    @url = Rails.application.routes.url_helpers.uploads_url(**Portal.url_options)
+    mail to: user.email, subject: "Something you sent to #{company_name} needs your attention"
+  end
 end

@@ -202,6 +202,7 @@ Rails.application.routes.draw do
           get  :file
           get  :download
           post :archive
+          post :reject_portal
           post :confirm_field
           post :rerun
           post :create_invoice

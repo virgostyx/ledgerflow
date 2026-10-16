@@ -1,0 +1,18 @@
+<h1 class="text-xl font-semibold">My sends</h1>
+<% if @uploads.empty? %>
+  <p class="mt-4 text-sm">You have not sent anything yet.</p>
+<% else %>
+  <ul class="mt-4 space-y-3">
+    <% @uploads.each do |upload| %>
+      <li class="rounded border border-gray-200 p-3 text-sm">
+        <div class="font-medium"><%= upload.filename %></div>
+        <div><strong><%= upload.client_status_label %></strong><%= " — #{upload.refusal_message}" if upload.refused? %></div>
+        <div class="text-xs text-gray-600">
+          <% if upload.received_at %>Received <%= upload.received_at.utc.strftime("%Y-%m-%d %H:%M UTC") %> · Receipt <code><%= upload.token.first(8) %></code> · <code><%= upload.sha256.first(12) %></code>
+          <% else %>Not complete yet<% end %>
+        </div>
+      </li>
+    <% end %>
+  </ul>
+<% end %>
+<%= link_to "Back", portal_root_path, class: "mt-4 inline-block underline" %>

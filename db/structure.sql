@@ -6224,7 +6224,8 @@ CREATE TABLE public.portal_uploads (
     refusal_reason character varying,
     document_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    progress character varying DEFAULT 'received'::character varying NOT NULL
 );
 
 
@@ -15870,6 +15871,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016170000'),
 ('20261016160000'),
 ('20261016150000'),
 ('20261016140000'),

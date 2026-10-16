@@ -38,6 +38,16 @@ RSpec.describe 'Portal rate limits', type: :request do
     expect(response).to have_http_status(:too_many_requests)
   end
 
+  it 'limits the sessions opened and the chunks sent from one address (B02b)' do
+    30.times { post '/uploads', headers: { 'REMOTE_ADDR' => '5.5.5.5' } }
+    post '/uploads', headers: { 'REMOTE_ADDR' => '5.5.5.5' }
+    expect(response).to have_http_status(:too_many_requests)
+
+    120.times { put '/uploads/abc/chunks/0', headers: { 'REMOTE_ADDR' => '6.6.6.6' } }
+    put '/uploads/abc/chunks/0', headers: { 'REMOTE_ADDR' => '6.6.6.6' }
+    expect(response).to have_http_status(:too_many_requests)
+  end
+
   it 'does not touch the application: its own sign-in has its own budget' do
     host! 'www.example.com'
     5.times { post user_session_path, params: { user: { email: 'a@b.example', password: 'x' } }, headers: { 'REMOTE_ADDR' => '4.4.4.4' } }

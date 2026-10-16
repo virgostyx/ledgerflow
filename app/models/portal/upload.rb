@@ -19,6 +19,17 @@ class Portal::Upload < ApplicationRecord
   validates :sha256, format: { with: /\A\h{64}\z/ }
   validates :hint_kind, inclusion: { in: HINT_KINDS }
   validates :hint_note, length: { maximum: NOTE_LIMIT }
+  validates :page_count, numericality: { only_integer: true, in: 1..Rails.configuration.x.portal_uploads[:files_per_action] }, if: :batch_token
+  validates :page_number, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: :page_count }, if: -> { batch_token && page_count }
+
+  # What the client is told about a send. Nothing of the books: where it stands, in words of their own.
+  CLIENT_STATUSES = { "received" => "Received", "in_progress" => "In progress", "booked" => "Booked", "to_complete" => "To complete", "refused" => "Refused" }.freeze
+  REFUSALS = {
+    "duplicate" => "This file was already sent.", "corrupted" => "The file cannot be read. Please send it again.", "unsupported_type" => "This kind of file is not accepted.",
+    "too_many_pages" => "The document has more than 100 pages.", "image_too_large" => "The image is too large.", "infected" => "The file was not accepted for security reasons.",
+    "too_large" => "The file is too large.", "empty" => "The file is empty.", "illegible" => "The document is illegible. Please send a clearer copy.",
+    "out_of_scope" => "This document is not needed for the accounts."
+  }.freeze
 
   before_validation { self.sha256 = sha256.to_s.downcase }
 
@@ -31,6 +42,27 @@ class Portal::Upload < ApplicationRecord
   def self.of(person) = where(portal_user_id: person.id, entity_id: companies_open_to(person).select(:id))
 
   def to_param = token
+
+  # => the quota the person has reached, as a sentence, or nil
+  def self.quota_message(person, entity_id, size)
+    limits = Rails.configuration.x.portal_uploads
+    if where(portal_user_id: person.id).where(created_at: 24.hours.ago..).count >= limits[:files_per_day]
+      "You reached the daily limit of #{limits[:files_per_day]} files. Please try again tomorrow."
+    elsif where(entity_id: entity_id).where(created_at: Time.current.beginning_of_month..).sum(:byte_size) + size > limits[:bytes_per_month]
+      "The monthly volume of your company is reached. Please contact your accountant."
+    end
+  end
+
+  def client_status
+    return "refused" if refused?
+    return "to_complete" if to_complete?
+
+    accepted? ? progress : "received"
+  end
+
+  def client_status_label = CLIENT_STATUSES.fetch(client_status)
+
+  def refusal_message = REFUSALS.fetch(refusal_reason.to_s, "The file was not accepted.")
 
   def expired? = expires_at <= Time.current
 

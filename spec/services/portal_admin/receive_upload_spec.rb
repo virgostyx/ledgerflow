@@ -151,6 +151,15 @@ RSpec.describe PortalAdmin::ReceiveUpload do
       expect(document_of(upload).extracted_data['unreadable']).to eq('password_protected')
     end
 
+    it 'tells the client when something is to be completed, or refused, and says nothing of what it is' do
+      ActionMailer::Base.deliveries.clear
+      run(received(sample_encrypted_pdf, filename: 'locked.pdf'))
+      run(received("\x7FELF".b + 'x' * 100, filename: 'secret-name.pdf'))
+
+      expect(ActionMailer::Base.deliveries.size).to eq(2)
+      expect(ActionMailer::Base.deliveries.map { |m| m.body.to_s }.join).not_to include('secret-name', 'locked')
+    end
+
     it 'refuses a PDF that is not one' do
       upload = received("%PDF-1.4\nnot really", filename: 'broken.pdf')
 

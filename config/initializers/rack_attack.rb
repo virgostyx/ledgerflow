@@ -41,6 +41,10 @@ class Rack::Attack
 
   throttle("portal_invitations/ip", limit: 20, period: 1.minute) { |req| req.ip if portal.(req) && req.path.start_with?("/invitations/") }
 
+  # Sending files (B02b): sessions opened and chunks sent are limited per address (a 25 MB file is 25 chunks); the daily number of files and the monthly volume come on top, per person and per company.
+  throttle("portal_uploads/start/ip", limit: 30, period: 1.minute) { |req| req.ip if portal.(req) && req.post? && req.path == "/uploads" }
+  throttle("portal_uploads/chunks/ip", limit: 120, period: 1.minute) { |req| req.ip if portal.(req) && req.put? && req.path.match?(%r{\A/uploads/[^/]+/chunks/\d+\z}) }
+
   # API throttle: 300 requests per minute per IP
   throttle("api/ip", limit: 300, period: 1.minute) do |req|
     req.ip if req.path.start_with?("/api/")

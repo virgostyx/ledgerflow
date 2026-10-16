@@ -20,7 +20,7 @@ scope module: :portal do
   resource :preferences, only: %i[show update]
   resources :devices, only: %i[index destroy], param: :token
   resources :publications, only: %i[index show], param: :token
-  resources :uploads, only: %i[create show], param: :token do
+  resources :uploads, only: %i[index create show], param: :token do
     member do
       put "chunks/:position", to: "upload_chunks#update", as: :chunk
       post :complete

@@ -23,6 +23,8 @@ module Ledgerflow
     # B02a: the host of the client portal, apart from the application (own cookies, own routes)
     config.x.portal_host = ENV["PORTAL_HOST"].presence || (Rails.env.production? ? nil : (Rails.env.test? ? "portal.example.test" : "portal.localhost"))
     # F03: how far an uploaded archive is unpacked: files, total size once unpacked, compression ratio of one file.
+    # B02b: what a person of the portal may send (a file a day counted over the last 24 hours; the volume of a company over the calendar month); changed here or from the environment.
+    config.x.portal_uploads = { files_per_day: Integer(ENV.fetch("PORTAL_UPLOAD_FILES_PER_DAY", 200)), bytes_per_month: Integer(ENV.fetch("PORTAL_UPLOAD_BYTES_PER_MONTH", 2.gigabytes)), files_per_action: 20 }
     config.x.document_archive_limits = { files: 50, bytes: 100.megabytes, ratio: 100 }
     # F03: the domain of the addresses that receive documents by e-mail (documents+<secret>@<domain>); mail to it must reach
     # Action Mailbox (config.action_mailbox.ingress, see docs/dev/features/F03.md).

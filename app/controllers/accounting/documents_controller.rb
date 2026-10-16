@@ -2,7 +2,7 @@
 # the right), never by a public address. A viewing is not audited; a download, an archiving and a deletion are.
 class Accounting::DocumentsController < ApplicationController
   before_action { require_feature!(:f03) }
-  before_action :set_document, only: %i[show update destroy file download archive confirm_field rerun create_invoice split legal_hold]
+  before_action :set_document, only: %i[show update destroy file download archive reject_portal confirm_field rerun create_invoice split legal_hold]
 
   # What a browser may show in the page: nothing that can carry markup or script.
   INLINE_TYPES = %w[application/pdf image/png image/jpeg].freeze
@@ -127,6 +127,17 @@ class Accounting::DocumentsController < ApplicationController
     @document.update!(status: :archived)
     Accounting::AuditLog.record!(auditable: @document, action: "document_archive", payload: { name: @document.name })
     redirect_to accounting_documents_path, notice: t("documents.archived")
+  end
+
+  # B02b: a document a client sent is refused with one of the reasons they may be told.
+  def reject_portal
+    authorize @document
+    result = PortalAdmin::RejectUpload.call(document: @document, reason: params[:reason], by: current_user)
+    if result.success?
+      redirect_to accounting_documents_path, notice: "The document is refused and the client is told."
+    else
+      redirect_to accounting_document_path(@document), alert: result.message
+    end
   end
 
   # Only after the retention term, never under a legal hold, and only for those who hold documents.delete_expired.

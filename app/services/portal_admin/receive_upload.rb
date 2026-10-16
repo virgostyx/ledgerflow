@@ -72,6 +72,7 @@ class PortalAdmin::ReceiveUpload
       end
       Accounting::AuditLog.record!(auditable: @first, action: "portal_upload_#{status}", payload: audit_payload.merge(document_id: document.id))
     end
+    PortalAdmin::NotifyUpload.call(@first) if status == "to_complete"
   end
 
   def refuse(reason)
@@ -79,6 +80,7 @@ class PortalAdmin::ReceiveUpload
       @uploads.each { |upload| upload.update!(status: "refused", refusal_reason: reason) && upload.purge_chunks! }
       Accounting::AuditLog.record!(auditable: @first, action: "portal_upload_refused", payload: audit_payload.merge(reason: reason))
     end
+    PortalAdmin::NotifyUpload.call(@first)
   end
 
   def audit_payload = { upload: @first.token, filename: @first.filename, portal_user_id: @first.portal_user_id, sent_sha256: @uploads.map(&:sha256) }
