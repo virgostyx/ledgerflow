@@ -16,4 +16,9 @@ module Portal
   RECENT_SECOND_FACTOR = 5.minutes
 
   def self.table_name_prefix = "portal_"
+
+  # Where the portal is, for the links in e-mails.
+  def self.url_options
+    { host: Rails.configuration.x.portal_host, protocol: (Rails.env.production? ? "https" : "http"), port: (Rails.env.development? ? 3000 : nil) }.compact
+  end
 end

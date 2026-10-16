@@ -36,6 +36,7 @@ RSpec.describe Permissions do
     "integrity.view"         => [ [ Integrity::CertificatePolicy, :index? ], [ Integrity::CertificatePolicy, :show? ] ],
     "integrity.issue"        => [ [ Integrity::CertificatePolicy, :create? ], [ Integrity::CertificatePolicy, :revoke? ] ],
     "integrity.configure"    => [ [ Integrity::CertificatePolicy, :configure? ] ],
+    "portal.manage"         => [ [ Accounting::PortalAccessPolicy, :index? ] ],
     "changes.review"         => [ [ Accounting::ChangesPolicy, :review? ] ],
     "time_travel.view"       => [ [ Accounting::ReportPolicy, :time_travel? ] ],
     "closing.prepare"        => [ [ Accounting::ClosingRunPolicy, :create? ], [ Accounting::ClosingRunPolicy, :update? ] ],

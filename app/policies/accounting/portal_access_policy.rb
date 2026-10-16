@@ -1,0 +1,8 @@
+# B02a: who may open the client portal to people from outside, and close it again.
+class Accounting::PortalAccessPolicy < ApplicationPolicy
+  def index? = can?("portal.manage")
+  def create? = can?("portal.manage")
+  def destroy? = can?("portal.manage")
+  def reset? = can?("portal.manage")
+  def verify_identity? = can?("portal.manage")
+end

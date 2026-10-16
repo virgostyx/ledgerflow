@@ -1,0 +1,40 @@
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900">Client portal</h1>
+  <p class="mb-6 max-w-3xl text-sm text-gray-600">People from outside who may sign in to the portal of this company. They see only what you publish to them; a right exists only if it is listed here. Everyone signs in with a second factor; if they lose it, you reset their access and they are invited again.</p>
+
+  <table class="mb-8 w-full text-sm">
+    <thead><tr class="border-b text-left text-gray-500"><th class="py-2">Person</th><th>Role</th><th>Rights</th><th>Last access</th><th>Identity</th><th></th></tr></thead>
+    <tbody>
+      <% @grants.each do |grant| %>
+        <% person = grant.portal_user %>
+        <tr class="border-b align-top">
+          <td class="py-2"><%= person.full_name %><br><span class="text-gray-500"><%= person.email %></span> <span class="text-xs text-gray-400"><%= person.status %><%= " (revoked)" if grant.revoked_at %></span></td>
+          <td><%= grant.role %></td>
+          <td class="text-xs text-gray-600"><%= grant.capabilities.join(", ").presence || "none" %></td>
+          <td><%= person.last_seen_at ? l(person.last_seen_at.in_time_zone, format: :short) : "never" %></td>
+          <td><%= person.identity_verified_at ? "verified #{l(person.identity_verified_at.in_time_zone, format: :short)}" : "not verified" %></td>
+          <td class="flex gap-3">
+            <% if grant.revoked_at.nil? %>
+              <%= button_to "Verify identity", verify_identity_accounting_portal_access_path(grant), class: "underline cursor-pointer" %>
+              <%= button_to "Reset access", reset_accounting_portal_access_path(grant), class: "underline cursor-pointer", form: { data: { turbo_confirm: "Wipe the password and the second factor of this person, and invite them again?" } } %>
+              <%= button_to "Revoke", accounting_portal_access_path(grant), method: :delete, class: "text-red-700 underline cursor-pointer", form: { data: { turbo_confirm: "Revoke this access now?" } } %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <% if @pending.any? %>
+    <h2 class="mb-2 font-semibold">Invitations waiting</h2>
+    <ul class="mb-8 text-sm text-gray-700"><% @pending.each do |invitation| %><li><%= invitation.email %> - <%= invitation.role %> - expires <%= l(invitation.expires_at.in_time_zone, format: :short) %></li><% end %></ul>
+  <% end %>
+
+  <h2 class="mb-2 font-semibold">Invite someone</h2>
+  <%= form_with url: accounting_portal_access_index_path, class: "flex flex-wrap items-end gap-3 text-sm" do |f| %>
+    <div><%= f.label :full_name, "Name", class: "block" %><%= f.text_field :full_name, required: true, class: "rounded border p-2" %></div>
+    <div><%= f.label :email, "Email", class: "block" %><%= f.email_field :email, required: true, class: "rounded border p-2" %></div>
+    <div><%= f.label :role, "Role", class: "block" %><%= f.select :role, Portal::ROLES, {}, class: "rounded border p-2" %></div>
+    <%= f.submit "Invite", class: "rounded bg-gray-900 px-4 py-2 text-white" %>
+  <% end %>
+</div>

@@ -6,7 +6,7 @@ require 'erb'
 # the accounting models. A class that refers to anything outside this list fails the suite: adding to the list is a decision to take in review.
 RSpec.describe 'Code of the client portal' do
   def allowed_roots = %w[
-    Portal PortalUser Rails ApplicationRecord ActionController ActionView ActionMailer ActionDispatch ActiveSupport ActiveRecord ActiveModel ActiveStorage
+    Portal PortalUser Rails ApplicationRecord ApplicationMailer ActionController ActionView ActionMailer ActionDispatch ActiveSupport ActiveRecord ActiveModel ActiveStorage
     Rack BCrypt Digest SecureRandom OpenSSL Base64 CGI ERB URI JSON I18n Time Date DateTime Duration Totp WebAuthn RQRCode
     Object Module Class Struct Set Comparable Integer Float String Symbol Array Hash Regexp Range NilClass TrueClass FalseClass Numeric
     StandardError ArgumentError RuntimeError KeyError TypeError NotImplementedError ActionController::Base

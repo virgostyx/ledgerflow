@@ -13,6 +13,7 @@ class PortalUser < ApplicationRecord
   has_many :sessions, class_name: "Portal::Session", dependent: :destroy
   has_many :backup_codes, class_name: "Portal::BackupCode", dependent: :destroy
   belongs_to :created_by, class_name: "User", optional: true
+  belongs_to :identity_verified_by, class_name: "User", optional: true
 
   normalizes :email, with: ->(email) { email.strip }
   validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }

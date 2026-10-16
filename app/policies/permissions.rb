@@ -32,6 +32,7 @@ module Permissions
     "payments.export"        => %i[admin accountant],           # produce the payment file; a recent second factor is needed (B01b)
     "payments.confirm"       => %i[admin accountant],           # say the batch was loaded in the bank, and confirm the payments (B01b, B01c)
     "bank_accounts.verify"   => %i[admin accountant],           # verify the bank account of a supplier, after calling them; block one (B01b)
+    "portal.manage"          => %i[admin accountant], # invite, revoke, reset and verify the people of the client portal; publish to it (B02a)
     "integrity.view"         => %i[admin accountant manager auditor], # the page "Integrity": anchors, checks, keys, certificates (B03c)
     "integrity.issue"        => %i[admin accountant], # issue, revoke and re-verify a certificate (B03c)
     "integrity.configure"    => %i[admin], # the timestamp authority and the defaults of the certificates (B03c)

@@ -426,6 +426,14 @@ Rails.application.routes.draw do
 
       resources :cash_forecast_items, only: [ :create, :destroy ]
 
+      # B02a: the people from outside who have a right in the client portal of the company
+      resources :portal_access, only: [ :index, :create, :destroy ], controller: "portal_access" do
+        member do
+          post :reset
+          post :verify_identity
+        end
+      end
+
       get "integrity", to: "integrity#index", as: :integrity # B03c: anchors, checks, keys and certificates of integrity
       patch "integrity/settings", to: "integrity#settings", as: :integrity_settings
       post "integrity/check", to: "integrity#check", as: :integrity_check
