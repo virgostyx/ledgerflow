@@ -108,6 +108,15 @@ RSpec.describe 'Questions to the client' do
       expect(Accounting::Task.find(question.task_id).comments.sole.body).to include('Files sent (in the document inbox): invoice.pdf')
     end
 
+    it 'flags to the team an answer about something whose period is closed, and still changes nothing' do
+      create(:fiscal_year, year: 2026, start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 12, 31), status: :closed)
+      answer!
+
+      expect { described_class.call }.not_to change(Accounting::JournalEntry, :count)
+
+      expect(Accounting::Task.find(question.task_id).comments.sole.body).to include('The period of this thing is closed')
+    end
+
     it 'does not touch the books, even when the period is closed' do
       answer!
       expect { described_class.call }.not_to change(Accounting::JournalEntry, :count)

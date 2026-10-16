@@ -13,7 +13,7 @@ class PortalAdmin::SyncAnswers
     task = Accounting::Task.find_by(id: question.task_id) or return
     name = answer.portal_user.full_name.to_s.first(100)
     ApplicationRecord.transaction do
-      comment = Accounting::Comment.create!(commentable: task, external_name: name, body: render(answer, question))
+      comment = Accounting::Comment.create!(commentable: task, external_name: name, body: render(answer, question, task))
       answer.update!(synced_at: Time.current)
       Accounting::AuditLog.record!(auditable: task, action: "portal_question_answered", actor_type: "portal_user", payload: { question: question.token, portal_user_id: answer.portal_user_id, answer_type: question.answer_type })
       [ task.author, task.assignee ].compact.uniq.each { |person| Accounting::Notify.call(user: person, event: "external_reply", subject: comment, data: { by: name }) }
@@ -23,7 +23,7 @@ class PortalAdmin::SyncAnswers
   # The files sent with an answer are taken in first (quarantine, checks), so that the comment can say what was kept.
   def self.sending?(answer) = Portal::Upload.where(question_id: answer.question_id, status: %w[receiving received]).exists?
 
-  def self.render(answer, question)
+  def self.render(answer, question, task)
     value = answer.value
     lines = [ "Answer to: #{question.title}" ]
     lines << "Chosen: #{Array(value['choices']).map { |key| question.choice_label(key) || key }.join(', ')}" if value["choices"].present?
@@ -37,7 +37,14 @@ class PortalAdmin::SyncAnswers
     lines << "Files not accepted: #{files.refused.map { |f| "#{f.filename} (#{Portal::Upload::REFUSALS.fetch(f.refusal_reason.to_s, 'refused')})" }.join(', ')}" if files.refused.exists?
     suggestions = Accounting::QuestionSuggestion.where(portal_question_id: question.id, choice_key: Array(value["choices"])).pluck(:treatment)
     lines << "Suggestion (not applied): #{suggestions.join(' / ')}" if suggestions.any?
+    lines << "The period of this thing is closed: the answer is recorded, nothing was changed." if closed_period?(task.target)
     lines.join("\n")
   end
-  private_class_method :sync, :render, :sending?
+  # An answer that comes after the closing of the period is kept and flagged to the team: it has no accounting effect.
+  def self.closed_period?(target)
+    date = target.try(:transaction_date) || target.try(:entry_date)
+    date && Accounting::FiscalYear.where("start_date <= ? AND end_date >= ?", date, date).where(status: Accounting::FiscalYear.statuses[:closed]).exists?
+  end
+
+  private_class_method :sync, :render, :sending?, :closed_period?
 end
