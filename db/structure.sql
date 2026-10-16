@@ -2275,6 +2275,46 @@ ALTER SEQUENCE public.accounting_line_allocations_id_seq OWNED BY public.account
 
 
 --
+-- Name: accounting_mail_quarantines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_mail_quarantines (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    sender character varying,
+    subject character varying,
+    message_id character varying,
+    reason character varying NOT NULL,
+    raw bytea NOT NULL,
+    attachment_count integer DEFAULT 0 NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    reviewed_by_id bigint,
+    reviewed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_mail_quarantines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_mail_quarantines_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_mail_quarantines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_mail_quarantines_id_seq OWNED BY public.accounting_mail_quarantines.id;
+
+
+--
 -- Name: accounting_master_data_versions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5078,7 +5118,8 @@ CREATE TABLE public.entities (
     timestamp_authority_ca text,
     integrity_default_disclosure character varying DEFAULT 'standard'::character varying NOT NULL,
     integrity_public_company_name boolean DEFAULT false NOT NULL,
-    portal_show_bank_lines boolean DEFAULT true NOT NULL
+    portal_show_bank_lines boolean DEFAULT true NOT NULL,
+    documents_allowed_senders character varying[] DEFAULT '{}'::character varying[] NOT NULL
 );
 
 
@@ -5848,7 +5889,8 @@ CREATE VIEW public.portal_companies AS
     active,
     COALESCE(((features ->> 'b02a'::text))::boolean, false) AS portal_enabled,
     (COALESCE(((features ->> 'b02a'::text))::boolean, false) AND COALESCE(((features ->> 'b02b'::text))::boolean, false) AND COALESCE(((features ->> 'f03'::text))::boolean, false)) AS upload_enabled,
-    portal_show_bank_lines AS show_bank_lines
+    portal_show_bank_lines AS show_bank_lines,
+    documents_mail_token
    FROM public.entities;
 
 
@@ -7017,6 +7059,13 @@ ALTER TABLE ONLY public.accounting_line_allocations ALTER COLUMN id SET DEFAULT 
 
 
 --
+-- Name: accounting_mail_quarantines id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_mail_quarantines ALTER COLUMN id SET DEFAULT nextval('public.accounting_mail_quarantines_id_seq'::regclass);
+
+
+--
 -- Name: accounting_master_data_versions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8137,6 +8186,14 @@ ALTER TABLE ONLY public.accounting_letterings
 
 ALTER TABLE ONLY public.accounting_line_allocations
     ADD CONSTRAINT accounting_line_allocations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_mail_quarantines accounting_mail_quarantines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_mail_quarantines
+    ADD CONSTRAINT accounting_mail_quarantines_pkey PRIMARY KEY (id);
 
 
 --
@@ -10467,6 +10524,27 @@ CREATE INDEX index_accounting_line_allocations_on_debit_line_id ON public.accoun
 --
 
 CREATE INDEX index_accounting_line_allocations_on_entity_id ON public.accounting_line_allocations USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_mail_quarantines_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_mail_quarantines_on_entity_id ON public.accounting_mail_quarantines USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_mail_quarantines_on_entity_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_mail_quarantines_on_entity_id_and_status ON public.accounting_mail_quarantines USING btree (entity_id, status);
+
+
+--
+-- Name: index_accounting_mail_quarantines_on_reviewed_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_mail_quarantines_on_reviewed_by_id ON public.accounting_mail_quarantines USING btree (reviewed_by_id);
 
 
 --
@@ -14020,6 +14098,14 @@ ALTER TABLE ONLY public.portal_document_requests
 
 
 --
+-- Name: accounting_mail_quarantines fk_rails_521232fffb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_mail_quarantines
+    ADD CONSTRAINT fk_rails_521232fffb FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: data_exports fk_rails_5408e45594; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14929,6 +15015,14 @@ ALTER TABLE ONLY public.integrity_certificates
 
 ALTER TABLE ONLY public.accounting_entry_templates
     ADD CONSTRAINT fk_rails_a85a054ffc FOREIGN KEY (journal_id) REFERENCES public.accounting_journals(id);
+
+
+--
+-- Name: accounting_mail_quarantines fk_rails_a878385243; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_mail_quarantines
+    ADD CONSTRAINT fk_rails_a878385243 FOREIGN KEY (reviewed_by_id) REFERENCES public.users(id);
 
 
 --
@@ -16082,6 +16176,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016200000'),
 ('20261016190000'),
 ('20261016180000'),
 ('20261016170000'),

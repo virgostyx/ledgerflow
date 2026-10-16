@@ -444,6 +444,13 @@ Rails.application.routes.draw do
       end
       patch "portal_branding", to: "portal_access#branding", as: :portal_branding
       resources :portal_activity, only: :index, controller: "portal_activity"
+      resources :mail_quarantines, only: :index do # B02b: mail to the documents address that was held back
+        patch :settings, on: :collection
+        member do
+          post :release
+          post :discard
+        end
+      end
       resources :portal_document_requests, only: [ :index, :create ] do # B02b
         patch :settings, on: :collection
       end

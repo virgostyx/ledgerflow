@@ -1,0 +1,13 @@
+<h1 class="text-xl font-semibold">Send by e-mail</h1>
+<% if @companies.empty? %>
+  <p class="mt-4 text-sm">You cannot send documents at the moment.</p>
+<% end %>
+<% @companies.each do |company| %>
+  <section class="mt-4 rounded border border-gray-200 p-3 text-sm">
+    <h2 class="font-medium"><%= company.name %></h2>
+    <p class="mt-1 break-all"><code><%= company.documents_email %></code></p>
+    <div class="mt-2 w-40" role="img" aria-label="QR code of the address of <%= company.name %>"><%= raw RQRCode::QRCode.new("mailto:#{company.documents_email}").as_svg(use_path: true, viewbox: true, module_size: 4).sub(/\A<\?xml.*?\?>/m, "") %></div>
+  </section>
+<% end %>
+<p class="mt-4 text-sm text-gray-600">Only the people of your company who may send documents are taken in: write from the address you use on this portal. A reply tells you how many documents arrived.</p>
+<%= link_to "Back", portal_root_path, class: "mt-4 inline-block underline" %>

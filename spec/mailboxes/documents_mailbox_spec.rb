@@ -4,6 +4,9 @@ require "rails_helper"
 RSpec.describe DocumentsMailbox, type: :mailbox do
   include_context "with entity"
 
+  # The F03 behaviour: anyone who knows the secret address may send. With the client portal's document upload (b02b) the address is closed to strangers (documents_mailbox_portal_spec.rb).
+  before { entity.update!(features: { "b02b" => false }) }
+
   def address(for_entity = entity) = for_entity.documents_email
 
   def receive(to: address, from: "supplier@acme.example", subject: "Invoice March", &block)
@@ -99,7 +102,7 @@ RSpec.describe DocumentsMailbox, type: :mailbox do
 
   describe "the address" do
     it "belongs to one entity: another entity's mail never lands here" do
-      other = create(:entity)
+      other = create(:entity, features: { "f03" => true, "b02b" => false })
 
       ActsAsTenant.with_tenant(other) { receive(to: address(other)) { |mail| mail.add_file(filename: "theirs.pdf", content: sample_pdf("theirs")) } }
 

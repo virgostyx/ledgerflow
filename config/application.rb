@@ -35,6 +35,8 @@ module Ledgerflow
     config.x.webhooks_allow_private = ENV["WEBHOOKS_ALLOW_PRIVATE"] == "1" # ...and to a public address only (see Webhooks::UrlGuard)
     config.x.legacy_jwt_enabled = ENV["LEGACY_JWT_ENABLED"] == "1"
     config.x.documents_mail_domain = ENV.fetch("DOCUMENTS_MAIL_DOMAIN", "documents.ledgerflow.example")
+    # B02b: the name our own mail server puts at the head of the Authentication-Results it writes (its SPF and DKIM verdicts). Only a header that starts with it is believed; none configured: no mail is.
+    config.x.mail_authserv_id = ENV["MAIL_AUTHSERV_ID"].presence
     # F03: an antivirus for uploaded documents, off unless a command is given (it reads the file on its standard input).
     config.x.document_virus_scan = ENV["DOCUMENT_VIRUS_SCAN_COMMAND"].presence&.then do |command|
       { command: Shellwords.split(command), fail_open: ENV["DOCUMENT_VIRUS_SCAN_FAIL_OPEN"] == "true" }
