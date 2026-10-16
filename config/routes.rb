@@ -434,6 +434,10 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :portal_publications, only: [ :index, :create ], param: :token do
+        member { post :withdraw }
+      end
+
       get "integrity", to: "integrity#index", as: :integrity # B03c: anchors, checks, keys and certificates of integrity
       patch "integrity/settings", to: "integrity#settings", as: :integrity_settings
       post "integrity/check", to: "integrity#check", as: :integrity_check

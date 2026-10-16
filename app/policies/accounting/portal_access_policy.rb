@@ -5,4 +5,5 @@ class Accounting::PortalAccessPolicy < ApplicationPolicy
   def destroy? = can?("portal.manage")
   def reset? = can?("portal.manage")
   def verify_identity? = can?("portal.manage")
+  def withdraw? = can?("portal.manage")
 end

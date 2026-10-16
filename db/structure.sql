@@ -346,6 +346,45 @@ $$;
 
 
 --
+-- Name: protect_portal_publication(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.protect_portal_publication() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'a portal publication cannot be deleted' USING ERRCODE = 'raise_exception';
+  END IF;
+  IF (to_jsonb(NEW) - 'replaced_by_id' - 'status' - 'withdrawn_at' - 'withdrawn_by_id' - 'withdrawal_reason' - 'updated_at')
+     IS DISTINCT FROM (to_jsonb(OLD) - 'replaced_by_id' - 'status' - 'withdrawn_at' - 'withdrawn_by_id' - 'withdrawal_reason' - 'updated_at') THEN
+    RAISE EXCEPTION 'portal publication % cannot be changed', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF OLD.replaced_by_id IS NOT NULL AND NEW.replaced_by_id IS DISTINCT FROM OLD.replaced_by_id THEN
+    RAISE EXCEPTION 'portal publication % is already replaced', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  IF OLD.status = 'withdrawn' AND (NEW.status <> 'withdrawn' OR NEW.withdrawn_at IS DISTINCT FROM OLD.withdrawn_at OR NEW.withdrawal_reason IS DISTINCT FROM OLD.withdrawal_reason) THEN
+    RAISE EXCEPTION 'portal publication % is already withdrawn', OLD.id USING ERRCODE = 'raise_exception';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: protect_portal_publication_part(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.protect_portal_publication_part() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RAISE EXCEPTION '% of a portal publication cannot be changed or deleted', TG_TABLE_NAME USING ERRCODE = 'raise_exception';
+END;
+$$;
+
+
+--
 -- Name: record_allocation_version(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5850,6 +5889,126 @@ ALTER SEQUENCE public.portal_invitations_id_seq OWNED BY public.portal_invitatio
 
 
 --
+-- Name: portal_publication_files; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_publication_files (
+    id bigint NOT NULL,
+    publication_id bigint NOT NULL,
+    token character varying NOT NULL,
+    filename character varying NOT NULL,
+    content_type character varying NOT NULL,
+    byte_size bigint NOT NULL,
+    sha256 character varying NOT NULL,
+    content bytea NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_publication_files_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_publication_files_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_publication_files_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_publication_files_id_seq OWNED BY public.portal_publication_files.id;
+
+
+--
+-- Name: portal_publication_recipients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_publication_recipients (
+    id bigint NOT NULL,
+    publication_id bigint NOT NULL,
+    portal_user_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_publication_recipients_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_publication_recipients_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_publication_recipients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_publication_recipients_id_seq OWNED BY public.portal_publication_recipients.id;
+
+
+--
+-- Name: portal_publications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portal_publications (
+    id bigint NOT NULL,
+    token character varying NOT NULL,
+    entity_id bigint NOT NULL,
+    kind character varying NOT NULL,
+    title character varying NOT NULL,
+    period_start date,
+    period_end date,
+    message text,
+    published_by_id bigint NOT NULL,
+    published_at timestamp(6) without time zone NOT NULL,
+    version integer DEFAULT 1 NOT NULL,
+    replaces_id bigint,
+    replaced_by_id bigint,
+    requires_approval boolean DEFAULT false NOT NULL,
+    watermark boolean DEFAULT true NOT NULL,
+    expires_at timestamp(6) without time zone,
+    known_at timestamp(6) without time zone,
+    status character varying DEFAULT 'published'::character varying NOT NULL,
+    withdrawn_at timestamp(6) without time zone,
+    withdrawn_by_id bigint,
+    withdrawal_reason text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: portal_publications_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.portal_publications_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: portal_publications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.portal_publications_id_seq OWNED BY public.portal_publications.id;
+
+
+--
 -- Name: portal_sessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7198,6 +7357,27 @@ ALTER TABLE ONLY public.portal_invitations ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: portal_publication_files id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_files ALTER COLUMN id SET DEFAULT nextval('public.portal_publication_files_id_seq'::regclass);
+
+
+--
+-- Name: portal_publication_recipients id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_recipients ALTER COLUMN id SET DEFAULT nextval('public.portal_publication_recipients_id_seq'::regclass);
+
+
+--
+-- Name: portal_publications id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publications ALTER COLUMN id SET DEFAULT nextval('public.portal_publications_id_seq'::regclass);
+
+
+--
 -- Name: portal_sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8346,6 +8526,30 @@ ALTER TABLE ONLY public.portal_grants
 
 ALTER TABLE ONLY public.portal_invitations
     ADD CONSTRAINT portal_invitations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_publication_files portal_publication_files_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_files
+    ADD CONSTRAINT portal_publication_files_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_publication_recipients portal_publication_recipients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_recipients
+    ADD CONSTRAINT portal_publication_recipients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portal_publications portal_publications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publications
+    ADD CONSTRAINT portal_publications_pkey PRIMARY KEY (id);
 
 
 --
@@ -11950,6 +12154,83 @@ CREATE UNIQUE INDEX index_portal_invitations_on_token_digest ON public.portal_in
 
 
 --
+-- Name: index_portal_publication_files_on_publication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publication_files_on_publication_id ON public.portal_publication_files USING btree (publication_id);
+
+
+--
+-- Name: index_portal_publication_files_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_publication_files_on_token ON public.portal_publication_files USING btree (token);
+
+
+--
+-- Name: index_portal_publication_recipients_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publication_recipients_on_portal_user_id ON public.portal_publication_recipients USING btree (portal_user_id);
+
+
+--
+-- Name: index_portal_publication_recipients_on_publication_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publication_recipients_on_publication_id ON public.portal_publication_recipients USING btree (publication_id);
+
+
+--
+-- Name: index_portal_publications_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publications_on_entity_id ON public.portal_publications USING btree (entity_id);
+
+
+--
+-- Name: index_portal_publications_on_published_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publications_on_published_by_id ON public.portal_publications USING btree (published_by_id);
+
+
+--
+-- Name: index_portal_publications_on_replaced_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publications_on_replaced_by_id ON public.portal_publications USING btree (replaced_by_id);
+
+
+--
+-- Name: index_portal_publications_on_replaces_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publications_on_replaces_id ON public.portal_publications USING btree (replaces_id);
+
+
+--
+-- Name: index_portal_publications_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_publications_on_token ON public.portal_publications USING btree (token);
+
+
+--
+-- Name: index_portal_publications_on_withdrawn_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_publications_on_withdrawn_by_id ON public.portal_publications USING btree (withdrawn_by_id);
+
+
+--
+-- Name: index_portal_recipients_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_recipients_unique ON public.portal_publication_recipients USING btree (publication_id, portal_user_id);
+
+
+--
 -- Name: index_portal_sessions_on_portal_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12223,6 +12504,27 @@ CREATE TRIGGER protect_ledger_anchor BEFORE DELETE OR UPDATE ON public.ledger_an
 
 
 --
+-- Name: portal_publications protect_portal_publication; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER protect_portal_publication BEFORE DELETE OR UPDATE ON public.portal_publications FOR EACH ROW EXECUTE FUNCTION public.protect_portal_publication();
+
+
+--
+-- Name: portal_publication_files protect_portal_publication_files; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER protect_portal_publication_files BEFORE DELETE OR UPDATE ON public.portal_publication_files FOR EACH ROW EXECUTE FUNCTION public.protect_portal_publication_part();
+
+
+--
+-- Name: portal_publication_recipients protect_portal_publication_recipients; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER protect_portal_publication_recipients BEFORE DELETE OR UPDATE ON public.portal_publication_recipients FOR EACH ROW EXECUTE FUNCTION public.protect_portal_publication_part();
+
+
+--
 -- Name: accounting_line_allocations record_allocation_version; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -12428,6 +12730,14 @@ ALTER TABLE ONLY public.dunning_items
 
 
 --
+-- Name: portal_publications fk_rails_121fcafcef; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publications
+    ADD CONSTRAINT fk_rails_121fcafcef FOREIGN KEY (replaced_by_id) REFERENCES public.portal_publications(id);
+
+
+--
 -- Name: accounting_analytical_axes fk_rails_13dea0cb3e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12617,6 +12927,14 @@ ALTER TABLE ONLY public.accounting_change_subscriptions
 
 ALTER TABLE ONLY public.agent_proposals
     ADD CONSTRAINT fk_rails_22c62a2bda FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: portal_publication_recipients fk_rails_23cfe19fa3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_recipients
+    ADD CONSTRAINT fk_rails_23cfe19fa3 FOREIGN KEY (portal_user_id) REFERENCES public.portal_users(id);
 
 
 --
@@ -12844,6 +13162,14 @@ ALTER TABLE ONLY public.consolidation_entries
 
 
 --
+-- Name: portal_publications fk_rails_3b7bc9301a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publications
+    ADD CONSTRAINT fk_rails_3b7bc9301a FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: accounting_lettering_suggestions fk_rails_3b7eb4f554; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12897,6 +13223,14 @@ ALTER TABLE ONLY public.dunning_items
 
 ALTER TABLE ONLY public.accounting_tasks
     ADD CONSTRAINT fk_rails_4224f36c68 FOREIGN KEY (author_id) REFERENCES public.users(id);
+
+
+--
+-- Name: portal_publications fk_rails_428d3867c9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publications
+    ADD CONSTRAINT fk_rails_428d3867c9 FOREIGN KEY (replaces_id) REFERENCES public.portal_publications(id);
 
 
 --
@@ -13772,6 +14106,14 @@ ALTER TABLE ONLY public.agent_digests
 
 
 --
+-- Name: portal_publications fk_rails_98dd0aae22; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publications
+    ADD CONSTRAINT fk_rails_98dd0aae22 FOREIGN KEY (published_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: payment_items fk_rails_99054d900f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13849,6 +14191,14 @@ ALTER TABLE ONLY public.accounting_depreciation_entries
 
 ALTER TABLE ONLY public.approval_policies
     ADD CONSTRAINT fk_rails_9e59ffe4e6 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: portal_publication_recipients fk_rails_9ff89cce90; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_recipients
+    ADD CONSTRAINT fk_rails_9ff89cce90 FOREIGN KEY (publication_id) REFERENCES public.portal_publications(id);
 
 
 --
@@ -14356,6 +14706,14 @@ ALTER TABLE ONLY public.webhook_deliveries
 
 
 --
+-- Name: portal_publications fk_rails_ccc4805536; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publications
+    ADD CONSTRAINT fk_rails_ccc4805536 FOREIGN KEY (withdrawn_by_id) REFERENCES public.users(id);
+
+
+--
 -- Name: accounting_journal_entry_lines fk_rails_ccc90aef29; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14820,6 +15178,14 @@ ALTER TABLE ONLY public.accounting_intracom_listing_lines
 
 
 --
+-- Name: portal_publication_files fk_rails_f2418d7df0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_publication_files
+    ADD CONSTRAINT fk_rails_f2418d7df0 FOREIGN KEY (publication_id) REFERENCES public.portal_publications(id);
+
+
+--
 -- Name: accounting_payment_batches fk_rails_f29405861c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15026,6 +15392,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016110000'),
 ('20261016100200'),
 ('20261016100100'),
 ('20261016100000'),

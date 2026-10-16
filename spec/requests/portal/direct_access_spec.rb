@@ -11,7 +11,10 @@ RSpec.describe 'Portal direct access to identifiers', type: :request do
   def probes
     {
       'portal/invitations#show'   => ->(_ctx) { '/invitations/not-a-token' },
-      'portal/invitations#accept' => ->(_ctx) { '/invitations/not-a-token' }
+      'portal/invitations#accept' => ->(_ctx) { '/invitations/not-a-token' },
+      # a publication of a company where this person has no right, and a file link signed for someone else
+      'portal/publications#show'  => ->(ctx) { "/publications/#{ctx[:foreign_publication].token}" },
+      'portal/downloads#show'     => ->(ctx) { "/downloads/#{Portal::DownloadLink.for(ctx[:stranger], ctx[:foreign_publication].files.first)}" }
     }
   end
 
@@ -47,9 +50,13 @@ RSpec.describe 'Portal direct access to identifiers', type: :request do
     post '/session', params: { email: user.email, password: 'correct horse battery' }
     post '/second_factor/challenge', params: { code: Totp.code(user.totp_secret) }
 
+    foreign_publication = PortalAdmin::Publish.call(entity: create(:entity), kind: 'other', title: 'Not yours', by: create(:user),
+                                                    files: [ { filename: 'a.pdf', content_type: 'application/pdf', data: '%PDF-1.4' } ])[:publication]
+    context = { user: user, foreign_publication: foreign_publication, stranger: create(:portal_user) }
+
     probes.each do |key, build|
       route = portal_routes.find { |r| "#{r.defaults[:controller]}##{r.defaults[:action]}" == key }
-      send(route.verb.downcase, build.call({ user: user }))
+      send(route.verb.downcase, build.call(context))
       expect(response).to have_http_status(:not_found), "#{key} answered #{response.status} to an object outside the scope"
     end
   end

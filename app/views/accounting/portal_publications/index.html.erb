@@ -1,0 +1,46 @@
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <h1 class="mb-1 text-2xl font-bold text-gray-900">Published to the client portal</h1>
+  <p class="mb-4 max-w-3xl text-sm text-gray-600">A publication is frozen: its files and their SHA-256 cannot change. To correct one, publish a new version; to hide one, withdraw it (it stays here for the audit).</p>
+  <p class="mb-6 text-sm"><%= link_to "People with access", accounting_portal_access_index_path, class: "underline" %></p>
+
+  <table class="mb-8 w-full text-sm">
+    <thead><tr class="border-b text-left text-gray-500"><th class="py-2">Title</th><th>Version</th><th>Files (SHA-256)</th><th>Published</th><th>State</th><th></th></tr></thead>
+    <tbody>
+      <% @publications.each do |publication| %>
+        <tr class="border-b align-top">
+          <td class="py-2"><%= publication.title %><br><span class="text-xs text-gray-500"><%= publication.kind %></span></td>
+          <td><%= publication.version %></td>
+          <td class="font-mono text-xs"><% publication.files.each do |file| %><div><%= file.filename %> <%= file.sha256.first(12) %></div><% end %></td>
+          <td><%= l(publication.published_at.in_time_zone, format: :short) %></td>
+          <td><%= publication.withdrawn? ? "withdrawn" : (publication.replaced_by_id ? "replaced" : "published") %></td>
+          <td>
+            <% if publication.published? && publication.replaced_by_id.nil? %>
+              <%= form_with url: withdraw_accounting_portal_publication_path(publication.token), class: "flex gap-2" do |f| %>
+                <%= f.text_field :reason, placeholder: "Reason", class: "rounded border p-1 text-xs" %>
+                <%= f.submit "Withdraw", class: "text-red-700 underline cursor-pointer" %>
+              <% end %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <h2 class="mb-2 font-semibold">Publish</h2>
+  <%= form_with url: accounting_portal_publications_path, multipart: true, class: "space-y-3 text-sm" do |f| %>
+    <div class="flex flex-wrap gap-3">
+      <div><%= f.label :title, "Title", class: "block" %><%= f.text_field :title, required: true, class: "rounded border p-2" %></div>
+      <div><%= f.label :kind, "Kind", class: "block" %><%= f.select :kind, Portal::Publication::KINDS, {}, class: "rounded border p-2" %></div>
+      <div><%= f.label :replaces, "New version of", class: "block" %><%= f.select :replaces, [ [ "(none)", "" ] ] + @publications.select { |p| p.published? && p.replaced_by_id.nil? }.map { |p| [ "#{p.title} v#{p.version}", p.token ] }, {}, class: "rounded border p-2" %></div>
+      <div><%= f.label :expires_at, "Expires", class: "block" %><%= f.date_field :expires_at, class: "rounded border p-2" %></div>
+    </div>
+    <div><%= f.label :message, "Message", class: "block" %><%= f.text_area :message, rows: 3, class: "w-full max-w-xl rounded border p-2" %></div>
+    <div><%= f.label :files, "Files (PDF, image, CSV, spreadsheet; 25 MB each)", class: "block" %><%= f.file_field :files, multiple: true, required: true %></div>
+    <fieldset><legend class="text-gray-500">Only for (empty: everyone who may see publications)</legend>
+      <% @people.each do |person| %><label class="mr-4"><%= check_box_tag "recipient_ids[]", person.id, false, id: "recipient_#{person.id}" %> <%= person.full_name %></label><% end %>
+    </fieldset>
+    <label><%= check_box_tag :watermark, "1", true %> Put the name of the reader across downloaded PDFs and images</label>
+    <label class="ml-4"><%= check_box_tag :requires_approval, "1", false %> Needs the client's validation</label>
+    <div><%= f.submit "Publish", class: "rounded bg-gray-900 px-4 py-2 text-white" %></div>
+  <% end %>
+</div>

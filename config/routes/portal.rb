@@ -13,4 +13,7 @@ scope module: :portal do
   post "second_factor", to: "second_factors#create", as: :portal_second_factor
   get  "second_factor/challenge", to: "second_factors#challenge", as: :portal_second_factor_challenge
   post "second_factor/challenge", to: "second_factors#verify"
+
+  resources :publications, only: %i[index show], param: :token
+  get "downloads/:signed", to: "downloads#show", as: :portal_download
 end

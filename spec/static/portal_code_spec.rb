@@ -13,10 +13,24 @@ RSpec.describe 'Code of the client portal' do
     Mime Kernel Process Zlib StringIO File Pathname
   ]
 
+  # Services of the application the portal may call, by their full name: generic file tools that know nothing of the books.
+  def allowed_paths = %w[Accounting::WatermarkFile]
+
   def portal_files
     %w[app/controllers/portal app/models/portal app/services/portal app/jobs/portal app/mailers/portal app/views/portal app/views/layouts/portal app/constraints/portal app/helpers/portal]
       .flat_map { |dir| Dir[Rails.root.join(dir, '**', '*.{rb,erb}')] }
       .push(*Dir[Rails.root.join('app/models/portal_user.rb')], *Dir[Rails.root.join('app/models/portal.rb')]).uniq
+  end
+
+  # The scoped name that starts at token i: Accounting::WatermarkFile
+  def source_path_at(tokens, i)
+    name = tokens[i][2]
+    j = i
+    while tokens[j + 1] && tokens[j + 1][1] == :on_op && tokens[j + 1][2] == '::' && tokens[j + 2] && tokens[j + 2][1] == :on_const
+      name += "::#{tokens[j + 2][2]}"
+      j += 2
+    end
+    name
   end
 
   def constants_in(path)
@@ -31,6 +45,9 @@ RSpec.describe 'Code of the client portal' do
 
       previous = tokens[i - 1]
       continues = previous && previous[1] == :on_op && previous[2] == '::' && i > 1 && tokens[i - 2][1] == :on_const
+      if !continues && allowed_paths.any? { |path| (name = source_path_at(tokens, i)) == path || name.start_with?("#{path}::") }
+        next
+      end
       defines = tokens[i + 1] && tokens[i + 1][1] == :on_op && tokens[i + 1][2] == '='
       defined << text if defines
       roots << text unless continues || defines

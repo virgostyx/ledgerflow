@@ -1,0 +1,14 @@
+<h1 class="text-xl font-semibold">Publications</h1>
+<% if @publications.empty? %>
+  <p class="mt-4 text-sm">Nothing is shared with you at the moment.</p>
+<% else %>
+  <ul class="mt-4 space-y-3">
+    <% @publications.each do |publication| %>
+      <li class="rounded border bg-white p-3">
+        <%= link_to publication.title, publication_path(publication.token), class: "font-medium underline" %>
+        <p class="text-xs text-gray-500"><%= publication.company.name %> - <%= publication.published_at.to_date %><%= " - version #{publication.version}" if publication.version > 1 %></p>
+      </li>
+    <% end %>
+  </ul>
+<% end %>
+<%= link_to "Back", portal_root_path, class: "mt-4 inline-block text-sm underline" %>

@@ -23,6 +23,11 @@ class PortalUser < ApplicationRecord
 
   def self.find_by_email(email) = find_by("lower(email) = ?", email.to_s.strip.downcase)
 
+  # The rights in force today, in companies that are active and where the portal is on: every request reads them, so a revocation or an expiry acts at once.
+  def open_grants
+    grants.in_force.joins(:company).where(portal_companies: { active: true, portal_enabled: true })
+  end
+
   def second_factor_configured? = totp_enabled_at.present?
 
   def locked? = locked_at.present? && locked_at > LOCK_DURATION.ago

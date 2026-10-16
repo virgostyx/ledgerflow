@@ -30,6 +30,8 @@
     <ul class="mb-8 text-sm text-gray-700"><% @pending.each do |invitation| %><li><%= invitation.email %> - <%= invitation.role %> - expires <%= l(invitation.expires_at.in_time_zone, format: :short) %></li><% end %></ul>
   <% end %>
 
+  <p class="mb-6 text-sm"><%= link_to "Publications", accounting_portal_publications_path, class: "underline" %></p>
+
   <h2 class="mb-2 font-semibold">Invite someone</h2>
   <%= form_with url: accounting_portal_access_index_path, class: "flex flex-wrap items-end gap-3 text-sm" do |f| %>
     <div><%= f.label :full_name, "Name", class: "block" %><%= f.text_field :full_name, required: true, class: "rounded border p-2" %></div>
