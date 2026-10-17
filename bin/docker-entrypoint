@@ -3,6 +3,8 @@
 # If running the rails server then create or migrate existing database
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
   ./bin/rails db:prepare
+  # Reference data (VAT codes and grids, currencies): no seeds in production, and db:prepare does not replay the migrations that used to load it.
+  ./bin/rails reference:load
 fi
 
 exec "${@}"
