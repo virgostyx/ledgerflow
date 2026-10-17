@@ -18,6 +18,8 @@ module Ledgerflow
     # F01: whoever can validate, unlock or administer must sign in with a second factor (TOTP or a passkey).
     # The test suite switches it off (its request specs sign in with a helper); the specs of the flow switch it on.
     config.x.second_factor_required = true
+    # Anyone may create an account in development and test; in production the firm creates its users itself, unless OPEN_SIGNUP=1.
+    config.x.open_signup = ENV["OPEN_SIGNUP"] == "1" || !Rails.env.production?
     # B02a: the portal connects with a role limited to its tables when this is set (see config/database.yml)
     config.x.portal_database_restricted = ENV["PORTAL_DATABASE_URL"].present?
     # B02a: the host of the client portal, apart from the application (own cookies, own routes)

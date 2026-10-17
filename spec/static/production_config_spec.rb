@@ -61,4 +61,9 @@ RSpec.describe 'Production configuration' do
     expect(hosts).to eq([ 'app.example.test' ])
     expect(excluded).to eq([ true, false ])
   end
+
+  it 'is closed to sign-ups unless OPEN_SIGNUP=1' do
+    expect(JSON.parse(in_production('Rails.configuration.x.open_signup')[0])).to be(false)
+    expect(JSON.parse(in_production('Rails.configuration.x.open_signup', 'OPEN_SIGNUP' => '1')[0])).to be(true)
+  end
 end
