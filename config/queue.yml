@@ -1,0 +1,24 @@
+# Solid Queue. Explicit queues: the work of the agent in batch cannot starve the jobs of the firm and the portal (every minute).
+# Each worker is a process with its own database pool (RAILS_MAX_THREADS = 5): threads + 2 at most.
+default: &default
+  dispatchers:
+    - polling_interval: 1
+      batch_size: 500
+  workers:
+    - queues: "agent_interactive,default"
+      threads: 3
+      processes: 1
+      polling_interval: 0.1
+    - queues: "agent_batch"
+      threads: 1
+      processes: 1
+      polling_interval: 1
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default
