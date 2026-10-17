@@ -9,11 +9,19 @@ Ce document sert de point de départ à une **nouvelle session** : il dit où l'
 
 ---
 
+## Contexte précisé le 2026-10-17
+
+- **Serveur dédié à LedgerFlow** (plus de partage avec BudgetFlow) : les précautions « serveur partagé » des §0, §3.1 et §10bis tombent ou s'allègent ; `deploy.yml` doit être adapté (§2.8).
+- L'utilisateur possède **un domaine** et **une adresse e-mail** : à renseigner dans la nouvelle session (nom du domaine, hébergeur du DNS, adresse, et son usage : expéditeur `MAILER_FROM` ? boîte de réception ? fournisseur de courrier ?). Aucune valeur n'est écrite dans ce document.
+- À fournir aussi : adresse IP du serveur, système (distribution/version), utilisateur et port SSH, hébergeur (le port 25 est-il ouvert ?).
+
+---
+
 ## 0. Ce que le dépôt contient déjà (vérifié le 2026-10-17)
 
 | Élément | Fichier | État |
 |---|---|---|
-| Kamal 2.11, un seul serveur `budgetflow-production` (partagé avec BudgetFlow), SSH `deploy` port 2221 | `config/deploy.yml` | écrit en juillet, **jamais mis à jour** pour B01–B03 |
+| Kamal 2.11, un seul serveur `budgetflow-production` (partagé avec BudgetFlow à l'origine), SSH `deploy` port 2221 | `config/deploy.yml` | écrit en juillet, **jamais mis à jour** pour B01–B03 ; **à repointer vers le serveur dédié** (§2.8) |
 | Hôte public | `proxy.host: ledgerflow.budgetflowmanagement.com`, Let's Encrypt (A record nécessaire avant le 1er déploiement) | à confirmer |
 | Image Docker | `Dockerfile` (ruby slim, `libvips`, `postgresql-client`, jemalloc, Thruster) | **il manque des outils** (§2.1) ; `RUBY_VERSION` par défaut `3.3.0` alors que `.ruby-version` = `3.3.5` (Kamal ne passe pas l'argument : à fixer) |
 | PostgreSQL 16 en accessoire `ledgerflow-db`, port local `127.0.0.1:5433`, répertoire `data` | `config/deploy.yml` | OK ; pas de base distincte pour le rôle du portail |
@@ -109,6 +117,15 @@ Décision déjà prise : SPF **et** DKIM stricts, via **notre propre serveur**. 
 - **À refaire après chaque migration qui ajoute une table `portal_*`** (le script est généré depuis les tables existantes) — l'ajouter à la liste de contrôle de déploiement (§4) ; envisager une tâche qui compare les droits réels au script (`has_table_privilege`) pour le détecter.
 - Vérifier : (1) la page « portail » du cabinet ne dit plus « connexion de l'application » ; (2) lancer la suite portail (`spec/requests/portal`, `spec/static/portal_code_spec.rb`, `direct_access_spec.rb`) **avec `PORTAL_DATABASE_URL` pointant sur un rôle de test** sur une copie de la base (pas sur la production) ; (3) tentative manuelle de `SELECT` sur `accounting_journal_entries` avec ce rôle : doit être refusée.
 
+### 2.8 Adapter `config/deploy.yml` au serveur dédié (code, à faire en premier)
+- `servers.web` : nom/IP du nouveau serveur (remplace `budgetflow-production`) ; `accessories.db.host` idem.
+- `ssh.user` / `ssh.port` : ceux du nouveau serveur (l'actuel `deploy` / `2221` est celui de BudgetFlow).
+- `proxy.host` (puis `proxy.hosts` au palier 2) : le **domaine de l'utilisateur** ; supprimer les commentaires qui parlent de BudgetFlow.
+- `accessories.db.port` : `127.0.0.1:5432:5432` ou garder 5433 (aucune raison technique de garder 5433).
+- `registry` : confirmer le compte (aujourd'hui Docker Hub `virgostyx`, dépôt `ledgerflow`, privé de préférence).
+- Mot de passe PostgreSQL : en générer de nouveaux (`LEDGERFLOW_DATABASE_PASSWORD`, `POSTGRES_PASSWORD`) : le serveur est neuf, **ne rien réutiliser de BudgetFlow**.
+- Vérifier avec `bin/kamal config` (affiche la configuration résolue) avant tout `setup`.
+
 ### 2.7 Divers dépôt
 - `config.hosts` (production.rb) est en commentaire : définir la liste des hôtes autorisés (application + portail).
 - IP réelle derrière Cloudflare/kamal-proxy : Rack::Attack et les journaux du portail utilisent l'IP ; configurer les proxys de confiance (`config.action_dispatch.trusted_proxies` avec les plages Cloudflare) **si le proxy orange Cloudflare est utilisé** (§6), sinon toutes les requêtes auront la même IP.
@@ -121,10 +138,11 @@ Décision déjà prise : SPF **et** DKIM stricts, via **notre propre serveur**. 
 
 ## 3. Travail sur le serveur et chez les fournisseurs
 
-### 3.1 Serveur partagé avec BudgetFlow
-- Lister l'existant (`docker ps`, `df -h`, `free -h`, ports) **avant** toute action ; ne rien toucher de BudgetFlow.
-- Dimensionnement : Ghostscript, ImageMagick et Tesseract peuvent consommer plusieurs centaines de Mo de mémoire par document. Prévoir de la marge (RAM, swap) et laisser les limites de ressources déjà dans le code (`CONVERT_LIMITS`, délais d'`ExternalCommand`).
-- Pare-feu : seuls 80/443 (kamal-proxy) et le SSH sur 2221 ; le PostgreSQL de LedgerFlow reste en `127.0.0.1:5433` (déjà le cas).
+### 3.1 Serveur dédié (préparation)
+- Mise en place de base, **avant** `kamal setup` : mises à jour du système, utilisateur de déploiement (clé SSH seulement, mot de passe désactivé, `PermitRootLogin no`), appartenance au groupe `docker` (Kamal installe Docker lui-même s'il manque, mais il lui faut `sudo` ou root pour cela : à décider), synchronisation d'horloge (chrony/systemd-timesyncd : **indispensable**, les horodatages et ancrages en dépendent), fuseau UTC, `unattended-upgrades` pour la sécurité, swap modeste, `fail2ban`.
+- Le serveur est vierge : lister quand même l'existant (`docker ps`, `df -h`, `free -h`, ports ouverts) avant toute action.
+- Dimensionnement (maintenant pour LedgerFlow seul) : Ghostscript, ImageMagick et Tesseract peuvent consommer plusieurs centaines de Mo de mémoire par document. Prévoir de la marge (RAM, swap) et laisser les limites de ressources déjà dans le code (`CONVERT_LIMITS`, délais d'`ExternalCommand`).
+- Pare-feu (ufw ou celui de l'hébergeur) : seuls 80/443 (kamal-proxy), le SSH (port choisi) et, **si** le serveur de courrier est installé ici, 25/587 ; PostgreSQL reste en `127.0.0.1` (le port 5433 n'avait de raison d'être que pour éviter BudgetFlow : on peut revenir à 5432).
 - Disque : `ledgerflow_storage` (pièces) et `data` de PostgreSQL ; prévoir l'alerte d'espace.
 
 ### 3.2 DNS (Cloudflare — identifiants dans `docs/cloudflare credentials`, ne pas les afficher)
@@ -188,8 +206,8 @@ Préalables : §2.1, §2.2 (partie palier 1), §2.3, §2.5, §2.7 faits et pouss
 
 | # | Question | Recommandation par défaut |
 |---|---|---|
-| 1 | Fournisseur de courriel sortant | fournisseur transactionnel européen, DKIM propre au domaine, DMARC en `p=quarantine` après observation |
-| 2 | Où installer le serveur de courrier entrant (port 25, DKIM/SPF) | petite VM dédiée, pas le serveur de BudgetFlow |
+| 1 | Fournisseur de courriel sortant (l'adresse e-mail de l'utilisateur sert-elle d'expéditeur ? chez quel hébergeur de domaine/courrier ?) | fournisseur transactionnel européen, DKIM propre au domaine, DMARC en `p=quarantine` après observation |
+| 2 | Où installer le serveur de courrier entrant (port 25, DKIM/SPF) | possible sur le serveur dédié **si l'hébergeur ouvre le port 25** ; sinon petite VM séparée. Le garder isolé de l'application (conteneur ou machine à part) reste préférable |
 | 3 | Cloudflare en mode proxy (orange) ou DNS seul (gris) | DNS seul au début (moins de pièges Let's Encrypt/IP réelle) ; passer au proxy plus tard avec les plages de confiance |
 | 4 | Domaine du portail | domaine distinct de l'application cabinet |
 | 5 | Destination de la copie de sauvegarde hors serveur | stockage objet chiffré européen via rclone, rétention 30 jours + mensuelles |
@@ -263,7 +281,7 @@ Palier 2 (en plus) :
 
 Le déploiement se fait avec Kamal ; ces règles s'ajoutent aux §2 à §5.
 
-1. **Le proxy est partagé avec BudgetFlow (même serveur).** `kamal setup` démarre le proxy s'il n'existe pas ; `kamal proxy reboot|upgrade|remove|stop|restart` l'agit pour **toutes** les applications du serveur. Règles : (a) comparer la version de Kamal / de `kamal-proxy` de BudgetFlow et de LedgerFlow avant le premier `setup` ; (b) après le premier déploiement, n'utiliser que `kamal deploy`, `kamal rollback`, `kamal app ...`, `kamal accessory ...`, `kamal logs` ; (c) **aucune commande `kamal proxy ...` ni `kamal upgrade` sans accord explicite** ; (d) un hook `pre-proxy-reboot` (`.kamal/hooks/`) qui refuse (`exit 1`) protège contre l'accident.
+1. **(Allégé : le serveur est maintenant dédié.)** Le proxy était partagé avec BudgetFlow ; si BudgetFlow ou une autre application rejoint un jour ce serveur, les règles ci-dessous redeviennent obligatoires. **Ancien texte :** `kamal setup` démarre le proxy s'il n'existe pas ; `kamal proxy reboot|upgrade|remove|stop|restart` l'agit pour **toutes** les applications du serveur. Règles : (a) comparer la version de Kamal / de `kamal-proxy` de BudgetFlow et de LedgerFlow avant le premier `setup` ; (b) après le premier déploiement, n'utiliser que `kamal deploy`, `kamal rollback`, `kamal app ...`, `kamal accessory ...`, `kamal logs` ; (c) **aucune commande `kamal proxy ...` ni `kamal upgrade` sans accord explicite** ; (d) un hook `pre-proxy-reboot` (`.kamal/hooks/`) qui refuse (`exit 1`) protège contre l'accident.
 2. **Premier démarrage lent.** `deploy_timeout` vaut 30 s et `readiness_delay` 7 s par défaut. Le premier conteneur fait `db:prepare` (création des 4 bases + chargement de `structure.sql`). Mettre `deploy_timeout: 120` au premier déploiement, puis le réduire ; si le conteneur est tué avant la fin, relancer `kamal deploy` est sans danger (`db:prepare` est idempotent).
 3. **Migrations pendant un déploiement sans coupure.** Le nouveau conteneur migre au démarrage alors que l'ancien sert encore sur le nouveau schéma. Règle pour chaque migration : compatible avec le code précédent (ajouter avant d'utiliser, ne jamais renommer ni supprimer une colonne dans le même déploiement : deux étapes). `kamal rollback <version>` remet l'ancienne image mais **ne défait pas les migrations** ; si une migration doit être défaite, sauvegarde fraîche puis `bin/rails db:rollback` via `kamal app exec`. Les tâches récurrentes peuvent brièvement tourner dans deux conteneurs : Solid Queue les dédoublonne (une exécution par échéance).
 4. **IP réelle.** Avec `proxy.ssl: true`, kamal-proxy **n'accepte plus** les en-têtes `X-Forwarded-*` venant de l'extérieur sauf `proxy.forward_headers: true`. Sans proxy Cloudflare (DNS gris) : rien à faire, le proxy écrit la bonne IP. Avec le proxy orange de Cloudflare : l'IP vue serait celle de Cloudflare ; il faut soit `forward_headers: true` + plages Cloudflare de confiance (`trusted_proxies`), soit lire `CF-Connecting-IP`. Rack::Attack, les journaux du portail et les alertes de connexion en dépendent : à tester par une requête de contrôle avant le palier 2.
