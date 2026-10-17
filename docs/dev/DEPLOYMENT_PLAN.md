@@ -294,7 +294,7 @@ Le déploiement se fait avec Kamal ; ces règles s'ajoutent aux §2 à §5.
 
 ## 10ter. Décisions prises le 2026-10-17 (palier 1)
 
-- Hôte de l'application : `app.ledgerflowmanagment.com` (sans « e » : c'est l'orthographe du domaine enregistré). DNS Cloudflare **seul** (nuage gris). Serveur `2.24.163.249`, Ubuntu 26.04, SSH `deploy` port 2222. Registre : Docker Hub privé `virgostyx/ledgerflow`.
+- Hôte de l'application : `app.ledgerflowmanagment.com` (sans « e » : c'est l'orthographe du domaine enregistré). DNS Cloudflare **seul** (nuage gris). Serveur `2.24.163.249`, Ubuntu 26.04, SSH `deploy` port 22 (le serveur répond sur 22, 2222 était celui de l ancien serveur). Registre : Docker Hub privé `virgostyx/ledgerflow`.
 - Courriel sortant : SMTP Hostinger (`smtp.hostinger.com:465`, TLS implicite), expéditeur `no-reply@ledgerflowmanagment.com`. Enregistrements MX/SPF/DKIM de Hostinger à recopier dans Cloudflare.
 - Sauvegarde hors serveur : OVH Object Storage (S3), `rclone crypt`, `bin/backup-offsite` ; verrouillage d'objet recommandé. Supervision : contrôle externe de `/up` + `bin/watch`.
 - Horodatage RFC 3161 : **absent** au palier 1.
