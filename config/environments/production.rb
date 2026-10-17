@@ -64,21 +64,24 @@ Rails.application.configure do
   config.solid_queue.connects_to = { database: { writing: :queue } }
 
   # Raise delivery errors so a failed invoice e-mail is recorded as "failed" (with its error) instead of getting lost.
-  # TODO: SMTP is not configured yet: until the settings below are filled in, sending fails with a recorded error.
-  # The sender address comes from the MAILER_FROM environment variable (see Accounting::InvoiceMailer).
+  # Outgoing mail goes through the SMTP of the sender mailbox (implicit TLS). Every variable is required: a missing one
+  # stops the boot instead of failing at the first mail. The sender address is MAILER_FROM (see Accounting::InvoiceMailer).
   config.action_mailer.raise_delivery_errors = true
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    address: ENV.fetch("SMTP_ADDRESS"),
+    port: Integer(ENV.fetch("SMTP_PORT")),
+    domain: ENV.fetch("SMTP_DOMAIN"),
+    user_name: ENV.fetch("SMTP_USERNAME"),
+    password: ENV.fetch("SMTP_PASSWORD"),
+    authentication: :plain,
+    ssl: true,
+    enable_starttls_auto: false
+  }
+  ENV.fetch("MAILER_FROM")
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
-
-  # Specify outgoing SMTP server. Remember to add smtp/* credentials via bin/rails credentials:edit.
-  # config.action_mailer.smtp_settings = {
-  #   user_name: Rails.application.credentials.dig(:smtp, :user_name),
-  #   password: Rails.application.credentials.dig(:smtp, :password),
-  #   address: "smtp.example.com",
-  #   port: 587,
-  #   authentication: :plain
-  # }
+  config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST"), protocol: "https" }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
