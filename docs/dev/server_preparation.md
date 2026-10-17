@@ -1,6 +1,8 @@
 # Préparation du serveur dédié (palier 1)
 
-Serveur : `2.24.163.249`, Ubuntu 26.04, utilisateur `deploy`, SSH sur le port 2222. À faire **avant** `bin/kamal setup`.
+Serveur : `2.24.163.249`, Ubuntu 26.04.1, 1 vCPU, 3,8 Gio de RAM, utilisateur `deploy` (groupes `sudo` et `docker`), SSH sur le **port 22** (décision du 2026-10-17 : on ne le déplace pas). À faire **avant** `bin/kamal setup`.
+
+Inventaire du 2026-10-17 : Docker 29.9.1 est déjà installé, l'horloge est en UTC et synchronisée, il n'y a pas de swap, et `sudo` demande un mot de passe : les étapes avec `sudo` se font dans une **session SSH interactive** (`ssh deploy@2.24.163.249`), pas en commande passée en une ligne.
 
 > **Rien de ce fichier n'a été exécuté.** Les commandes sont à relire puis à lancer par vous (ou à me faire lancer, une par une, avec votre accord). Elles sont écrites pour Ubuntu ; les noms de paquets et de services de **26.04 n'ont pas été vérifiés** (version récente) : en cas d'écart, `apt search` / `systemctl status` tranche.
 > Ne fermez jamais la session SSH ouverte avant d'avoir testé une **seconde** connexion (§2, §3).
@@ -8,7 +10,7 @@ Serveur : `2.24.163.249`, Ubuntu 26.04, utilisateur `deploy`, SSH sur le port 22
 ## 1. Voir ce qui existe (lecture seule)
 
 ```
-ssh -p 2222 deploy@2.24.163.249
+ssh deploy@2.24.163.249
 lsb_release -a; uname -r; id
 df -h; free -h; nproc
 sudo ss -tlnp            # ports ouverts
@@ -21,8 +23,7 @@ sudo -l                  # droits sudo de deploy
 
 ```
 sudo apt update && sudo apt upgrade -y
-sudo timedatectl set-timezone UTC
-timedatectl show -p NTPSynchronized     # doit dire yes (les horodatages et ancrages en dépendent)
+timedatectl show -p NTPSynchronized     # yes : déjà vérifié le 2026-10-17, fuseau UTC (les horodatages et ancrages en dépendent)
 sudo apt install -y unattended-upgrades fail2ban ufw curl
 sudo dpkg-reconfigure -plow unattended-upgrades
 ```
@@ -33,14 +34,14 @@ Vérifier la configuration SSH **réelle** (sans la modifier) :
 sudo sshd -T | grep -E '^(port|permitrootlogin|passwordauthentication|pubkeyauthentication)'
 ```
 
-Attendu : `port 2222`, `permitrootlogin no`, `passwordauthentication no`, `pubkeyauthentication yes`. Si ce n'est pas le cas, corriger dans `/etc/ssh/sshd_config.d/` puis `sudo sshd -t && sudo systemctl reload ssh`, et **tester une seconde connexion** avant de fermer la première.
+Attendu : `port 22`, `permitrootlogin no`, `passwordauthentication no`, `pubkeyauthentication yes`. Si ce n'est pas le cas, corriger dans `/etc/ssh/sshd_config.d/` puis `sudo sshd -t && sudo systemctl reload ssh`, et **tester une seconde connexion** avant de fermer la première.
 
 ## 3. Pare-feu et fail2ban
 
 ```
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-sudo ufw allow 2222/tcp     # SSH : AVANT d'activer
+sudo ufw allow 22/tcp       # SSH : AVANT d'activer
 sudo ufw allow 80/tcp       # Let's Encrypt et redirection
 sudo ufw allow 443/tcp
 sudo ufw enable
@@ -53,7 +54,7 @@ PostgreSQL est publié sur `127.0.0.1:5432` seulement (voir `deploy.yml`). Docke
 sudo tee /etc/fail2ban/jail.d/ssh.local <<'EOF'
 [sshd]
 enabled = true
-port = 2222
+port = 22
 maxretry = 5
 bantime = 1h
 EOF
@@ -62,7 +63,7 @@ sudo systemctl restart fail2ban && sudo fail2ban-client status sshd
 
 ## 4. Mémoire
 
-Ghostscript, ImageMagick et Tesseract consomment de la mémoire par document. Si `free -h` montre moins de 2 Go de swap :
+Ghostscript, ImageMagick et Tesseract consomment de la mémoire par document. `free -h` du 2026-10-17 : 3,8 Gio de RAM et **0 de swap**, donc à faire :
 
 ```
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
@@ -71,13 +72,7 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 ## 5. Docker
 
-Kamal installe Docker s'il manque, mais il lui faut alors `root` ou `sudo` sans mot de passe. Plus simple et plus sûr : l'installer vous-même, et donner le groupe `docker` à `deploy`.
-
-```
-sudo apt install -y docker.io          # ou le dépôt officiel Docker si docker.io est absent de 26.04
-sudo usermod -aG docker deploy         # puis se reconnecter
-docker version && docker run --rm hello-world
-```
+**Déjà fait** (Docker 29.9.1, `deploy` dans le groupe `docker`). Contrôle seulement : `docker run --rm hello-world`. Kamal n'a besoin ni de `root` ni de `sudo` sans mot de passe.
 
 ## 6. Dossier des clés de signature
 
@@ -96,17 +91,17 @@ Le dépôt n'est **pas** sur le serveur (Kamal déploie une image). Les trois sc
 
 ```
 # depuis le poste
-scp -P 2222 bin/backup bin/backup-offsite bin/watch deploy@2.24.163.249:~/bin/
-ssh -p 2222 deploy@2.24.163.249 'chmod 700 ~/bin/backup ~/bin/backup-offsite ~/bin/watch'
+scp bin/backup bin/backup-offsite bin/watch deploy@2.24.163.249:~/bin/
+ssh deploy@2.24.163.249 'chmod 700 ~/bin/backup ~/bin/backup-offsite ~/bin/watch'
 ```
 
 (`mkdir -p ~/bin` d'abord si besoin.) Les tâches planifiées sont décrites dans `backup_restore.md`.
 
 ## 8. Contrôle avant `bin/kamal setup`
 
-- [ ] `ssh -p 2222 deploy@2.24.163.249` fonctionne par clé, deuxième connexion testée
+- [ ] `ssh deploy@2.24.163.249` fonctionne par clé, deuxième connexion testée
 - [ ] `timedatectl` : UTC, synchronisée
-- [ ] `sudo ufw status` : 2222, 80, 443
+- [ ] `sudo ufw status` : 22, 80, 443
 - [ ] `docker run --rm hello-world` sous `deploy`
 - [ ] `/var/lib/ledgerflow/signing_keys` : `drwx------ 1000 1000`
 - [ ] enregistrement A `app.ledgerflowmanagment.com` → `2.24.163.249` (DNS seul), résolu depuis votre poste

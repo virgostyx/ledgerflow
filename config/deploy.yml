@@ -91,7 +91,7 @@ builder:
 # SSH configuration of the dedicated server.
 ssh:
   user: deploy
-  port: 2222
+  port: 22
 
 # Use accessory services (secrets come from .kamal/secrets).
 accessories:

@@ -11,7 +11,7 @@ RSpec.describe 'Deployment configuration' do
   it 'targets the dedicated server, not the one of BudgetFlow' do
     expect(deploy.dig('servers', 'web')).to eq([ '2.24.163.249' ])
     expect(deploy.dig('accessories', 'db', 'host')).to eq('2.24.163.249')
-    expect(deploy['ssh']).to include('user' => 'deploy', 'port' => 2222)
+    expect(deploy['ssh']).to include('user' => 'deploy', 'port' => 22)
     expect(Rails.root.join('config/deploy.yml').read).not_to match(/budgetflow/i)
   end
 
