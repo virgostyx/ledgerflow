@@ -7,6 +7,18 @@ Inventaire du 2026-10-17 : Docker 29.9.1 est déjà installé, l'horloge est en 
 > **Rien de ce fichier n'a été exécuté.** Les commandes sont à relire puis à lancer par vous (ou à me faire lancer, une par une, avec votre accord). Elles sont écrites pour Ubuntu ; les noms de paquets et de services de **26.04 n'ont pas été vérifiés** (version récente) : en cas d'écart, `apt search` / `systemctl status` tranche.
 > Ne fermez jamais la session SSH ouverte avant d'avoir testé une **seconde** connexion (§2, §3).
 
+## État du serveur au 2026-10-17 (fait, vérifié sur place)
+
+- Ubuntu 26.04.1, 1 vCPU, 3,8 Gio de RAM, disque 48 Go ; UTC, horloge synchronisée ; Docker 29.9.1 ; `deploy` dans les groupes `sudo` et `docker`.
+- SSH sur le port 22 ; `PermitRootLogin no`, `AllowUsers deploy`, `MaxAuthTries 3` ; **mot de passe SSH fermé** par `/etc/ssh/sshd_config.d/00-hardening.conf` (le fichier `50-cloud-init.conf` forçait `yes` et passait avant le fichier principal) ; contrôle fait : la connexion sans clé est refusée.
+- `ufw` actif : 22, 80, 443 ouverts (IPv4 et IPv6), le reste refusé. `fail2ban` : jails `sshd` et `recidive`. `unattended-upgrades` activé.
+- Postfix (livré avec l'image de l'hébergeur) : `inet_interfaces = loopback-only`, plus rien sur le port 25 de l'extérieur. Pour un courrier entrant un jour (palier 2) : remettre `all` et ouvrir le port dans `ufw`.
+- `monarx-agent` écoute sur `127.0.0.1:65529` : agent de sécurité de l'hébergeur, laissé en place.
+- Swap de 2 Gio (`/swapfile`, dans `/etc/fstab`).
+- `/var/lib/ledgerflow/signing_keys` créé (700, uid/gid 1000).
+
+Les sections 2 à 6 ci-dessous restent la référence ; ce qui est déjà fait y est à ignorer.
+
 ## 1. Voir ce qui existe (lecture seule)
 
 ```
