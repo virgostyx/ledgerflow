@@ -103,7 +103,8 @@ User.where.not(role: User.roles[:budget_user]).find_each do |user|
   next unless entity_role
 
   unless UserEntity.exists?(user: user, entity: entity)
-    UserEntity.create!(user: user, entity: entity, role: entity_role, active: true)
+    # An external auditor's access must end (spec §4): one year for the demo account.
+    UserEntity.create!(user: user, entity: entity, role: entity_role, active: true, valid_until: (Date.current + 1.year if entity_role == :auditor))
     puts "[UserEntity] #{user.email} → #{entity_role} on '#{entity.name}'"
   end
 end
