@@ -7,7 +7,7 @@ module Integrity::SoftwareManifest
     { "revision" => revision, "manifest_hash" => manifest_hash }
   end
 
-  def self.revision = ENV["GIT_REVISION"].presence || `git rev-parse --short HEAD 2>/dev/null`.strip.presence || "unknown"
+  def self.revision = ENV["GIT_REVISION"].presence || ENV["KAMAL_VERSION"].presence || `git rev-parse --short HEAD 2>/dev/null`.strip.presence || "unknown"
 
   def self.manifest_hash
     files = FILES.flat_map { |path| File.directory?(Rails.root.join(path)) ? Dir[Rails.root.join(path, "**/*.rb").to_s] : [ Rails.root.join(path).to_s ] }.sort
