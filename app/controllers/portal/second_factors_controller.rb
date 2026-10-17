@@ -37,7 +37,7 @@ class Portal::SecondFactorsController < Portal::BaseController
       return redirect_to(portal_sign_in_path)
     end
 
-    method = if user.verify_totp!(params[:code]) then "totp" elsif user.use_backup_code!(params[:code]) then "backup_code" end
+    method = if user.verify_totp!(params[:code]) then "totp" elsif params[:totp_only] != "1" && user.use_backup_code!(params[:code]) then "backup_code" end
     if method
       user.register_success!
       current_portal_session.passed_second_factor!(method)

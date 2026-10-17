@@ -2,7 +2,7 @@
 # closing file, and the reopening.
 class Accounting::ClosingRunsController < ApplicationController
   before_action { require_feature!(:f10) }
-  before_action :set_run, only: %i[show validate_entries approve appropriate reopen bundle]
+  before_action :set_run, only: %i[show validate_entries approve appropriate reopen bundle publish_for_approval]
 
   def index
     authorize Accounting::ClosingRun
@@ -33,6 +33,15 @@ class Accounting::ClosingRunsController < ApplicationController
 
     @appropriation = Closing::Appropriation.proposal(@run)
     @appropriation_entry = Closing::Appropriation.entry_of(@run)
+  end
+
+  # B02c: the statements of the year go to the client portal for approval (a new version when they were already published for this year).
+  def publish_for_approval
+    authorize @run, :show?
+    authorize Accounting::PortalAccessPolicy, :index?, policy_class: Accounting::PortalAccessPolicy
+    people = PortalUser.where(id: Portal::Grant.in_force.where(entity_id: ActsAsTenant.current_tenant.id).select(:portal_user_id)).where(id: Array(params[:approver_ids]))
+    result = Closing::PublishForApproval.call(run: @run, user: current_user, approvers: people.to_a, approvals_required: params[:approvals_required].presence || "one", message: params[:message])
+    redirect_to accounting_closing_run_path(@run), **(result.success? ? { notice: "Published to the client portal for approval." } : { alert: result.message })
   end
 
   # The accounts the closing entries use and the thresholds of the analytical review: the owner's choice, as they decide what the books will say.

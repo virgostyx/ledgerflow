@@ -38,6 +38,9 @@ class Accounting::ClosingBundle
     Result.new(zip: Accounting::Zipper.build(files + [ [ "manifest.json", JSON.pretty_generate(manifest) ] ]), manifest: manifest)
   end
 
+  # The two statements a client is asked to approve (B02c): [[file name, PDF]], from the same queries as the bundle.
+  def client_pdfs = pdfs.select { |name, _| name.start_with?("R07_", "R08_") }
+
   private
 
   # The certificate of integrity of the year (B03c), signed, and to be read.

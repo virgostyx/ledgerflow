@@ -4,11 +4,13 @@
 class PortalAdmin::RemindQuestions
   AFTER_DAYS = [ 3, 7, 14 ].freeze
   WEEKLY_CAP = 2
-  QUIET_FROM = 20 # hour: from 20:00 to 08:00 nothing is sent
+  QUIET_FROM = 20 # hour: from 20:00 to 08:00 nothing is sent, in the time of the clients (decision of 2026-10-17); what is stored stays in UTC
   QUIET_UNTIL = 8
+  QUIET_ZONE = "Europe/Brussels".freeze
 
   def self.call(now: Time.current)
-    return if now.hour >= QUIET_FROM || now.hour < QUIET_UNTIL
+    hour = now.in_time_zone(QUIET_ZONE).hour
+    return if hour >= QUIET_FROM || hour < QUIET_UNTIL
 
     due = Portal::Question.open.where(reminders_sent: 0...AFTER_DAYS.size).select { |q| now >= q.asked_at + AFTER_DAYS.fetch(q.reminders_sent).days }
     reminded = Hash.new { |hash, key| hash[key] = [] }

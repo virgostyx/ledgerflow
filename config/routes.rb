@@ -368,6 +368,7 @@ Rails.application.routes.draw do
         member do
           post :validate_entries
           post :approve
+          post :publish_for_approval # B02c
           post :appropriate
           post :reopen
           get  :bundle

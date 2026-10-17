@@ -99,6 +99,27 @@ RSpec.describe 'Portal approval of the accounts', type: :request do
       expect(response).to redirect_to("/publications/#{publication.token}")
     end
 
+    it 'does not take a backup code for a decision: the code of the application is needed (decision of 2026-10-17)' do
+      publication = publish
+      codes = director.generate_backup_codes!
+      sign_in!
+      open_all(publication)
+      Portal::Session.update_all(second_factor_at: 10.minutes.ago)
+
+      decide(publication)
+      expect(response).to redirect_to(%r{totp_only=1})
+
+      post '/second_factor/challenge', params: { code: codes.first, return_to: "/publications/#{publication.token}", totp_only: '1' }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(Portal::Session.first.second_factor_at).to be < 5.minutes.ago
+
+      # a session that passed with a backup code long ago is not enough either, even if it is recent
+      Portal::Session.update_all(second_factor_at: Time.current, second_factor_method: 'backup_code')
+      decide(publication)
+      expect(response).to redirect_to(%r{totp_only=1})
+      expect(Portal::Approval.count).to eq(0)
+    end
+
     it 'refuses an address to come back to that is not on the portal' do
       sign_in!
       travel 31.seconds

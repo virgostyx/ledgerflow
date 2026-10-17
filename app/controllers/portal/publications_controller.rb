@@ -29,8 +29,9 @@ class Portal::PublicationsController < Portal::BaseController
     end
     return refuse_approval(problem, :unprocessable_content) if problem
 
-    unless current_portal_session.second_factor_recent? # a new authentication for each decision
-      return redirect_to(portal_second_factor_challenge_path(return_to: publication_path(publication)), alert: t("portal.approvals.authenticate"))
+    # A new authentication for each decision, with the code of the application: a backup code does not give a proof of approval.
+    unless current_portal_session.second_factor_recent? && current_portal_session.second_factor_method == "totp"
+      return redirect_to(portal_second_factor_challenge_path(return_to: publication_path(publication), totp_only: 1), alert: t("portal.approvals.authenticate"))
     end
 
     begin

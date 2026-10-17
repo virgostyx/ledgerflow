@@ -193,11 +193,11 @@ RSpec.describe PortalAdmin::RemindQuestions do
     expect([ one, two, three ].map { |q| q.reload.reminders_sent }).to eq([ 2, 2, 1 ])
   end
 
-  it 'keeps quiet at night and tries again in the morning' do
+  it 'keeps quiet at night in Brussels time, and tries again in the morning' do
     question = ask
-    remind_at(asked_at + 3.days + 11.hours) # 21:00
+    remind_at(asked_at + 3.days + 9.hours) # 19:00 UTC is 21:00 in Brussels (summer)
     expect(ActionMailer::Base.deliveries).to be_empty
-    remind_at(asked_at + 4.days - 2.hours) # 08:00 is quiet no more
+    remind_at(asked_at + 4.days - 4.hours) # 06:00 UTC is 08:00 in Brussels: quiet no more
     expect(ActionMailer::Base.deliveries.size).to eq(1)
     expect(question.reload.reminders_sent).to eq(1)
   end
