@@ -57,7 +57,7 @@ RSpec.describe Integrity::IssueCertificate do
       expect(body["public_key"]).to eq("key_id" => key.key_id, "algorithm" => "Ed25519", "public_key" => key.public_key, "fingerprint" => key.fingerprint)
       expect(LedgerVerify::Canonical.generate(JSON.parse(certificate.body))).to eq(certificate.body) # stored as it was signed
       expect(Ledger::SigningKeys.verify(certificate.key_id, certificate.body, certificate.signature)).to be(true)
-      expect(Ledger::SigningKeys.verify(certificate.key_id, certificate.body.sub("35", "36"), certificate.signature)).to be(false)
+      expect(Ledger::SigningKeys.verify(certificate.key_id, certificate.body.sub("10.00", "11.00"), certificate.signature)).to be(false)
     end
 
     it "carries, in clear, the table of what it proves and what it does not, and the address to verify it" do
