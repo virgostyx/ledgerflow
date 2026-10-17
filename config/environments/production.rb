@@ -93,12 +93,9 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # DNS rebinding protection: the application answers only to its own host (the portal adds its host with PORTAL_HOST, at stage 2).
+  config.hosts = [ ENV.fetch("APP_HOST") ]
+
+  # The health check of the proxy is addressed by IP: it skips the host check.
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end

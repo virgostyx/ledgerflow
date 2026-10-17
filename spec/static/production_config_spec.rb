@@ -51,4 +51,14 @@ RSpec.describe 'Production configuration' do
       expect(err).to include(name)
     end
   end
+
+  it 'answers only to its own host, except for the health check of the proxy' do
+    out, err, status = in_production('[Rails.configuration.hosts.map(&:to_s), ' \
+                                     '[\'/up\', \'/\'].map { |path| Rails.configuration.host_authorization[:exclude].call(Rack::Request.new(Rack::MockRequest.env_for(path))) }]')
+    raise "production did not load: #{err}" unless status.success?
+
+    hosts, excluded = JSON.parse(out)
+    expect(hosts).to eq([ 'app.example.test' ])
+    expect(excluded).to eq([ true, false ])
+  end
 end
