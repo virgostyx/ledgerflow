@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Hourly check on the server (cron, deploy user): disk, backups, recurring jobs. Prints "ok", or the problems, and mails the owner (at most once per 12 hours).
+# The mail does not depend on the application: curl talks to an SMTP server with the credentials of ~/.ledgerflow-watch.env (mode 600, made by hand on the server:
+# ALERT_SMTP_URL, ALERT_USER, ALERT_PASSWORD, ALERT_TO). Without this file the problems are only printed. See docs/dev/backup_restore.md.
+set -uo pipefail
+
+BACKUPS="${BACKUP_DIR:-$HOME/backups}"
+DISK_MAX="${WATCH_DISK_MAX:-85}"
+BACKUP_MAX_MIN=$(( ${WATCH_BACKUP_MAX_HOURS:-26} * 60 ))
+RECURRING_MAX_MIN="${WATCH_RECURRING_MAX_MINUTES:-10}"
+ENV_FILE="${WATCH_ENV_FILE:-$HOME/.ledgerflow-watch.env}"
+STAMP="$HOME/.watch_last_alert"
+problems=()
+
+used="$(df --output=pcent / | tail -1 | tr -dc '0-9')"
+[ "${used:-100}" -lt "$DISK_MAX" ] || problems+=("Disk: ${used}% used on / (limit ${DISK_MAX}%)")
+
+[ -n "$(find "$BACKUPS" -name 'db-*.dump' -mmin "-$BACKUP_MAX_MIN" 2>/dev/null | head -1)" ] || problems+=("Local backup: no database dump in the last ${WATCH_BACKUP_MAX_HOURS:-26} hours")
+
+[ -n "$(find "$HOME/.offsite_last_success" -mmin "-$BACKUP_MAX_MIN" 2>/dev/null)" ] || problems+=("Offsite copy: no success in the last ${WATCH_BACKUP_MAX_HOURS:-26} hours")
+
+# Solid Queue writes a row each time a recurring task is enqueued (the portal ones run every minute).
+recent="$(docker exec ledgerflow-db psql -U ledgerflow -d ledgerflow_production_queue -Atc "SELECT count(*) FROM solid_queue_recurring_executions WHERE created_at > now() - interval '${RECURRING_MAX_MIN} minutes'" 2>/dev/null)"
+[ "${recent:-0}" -gt 0 ] 2>/dev/null || problems+=("Recurring jobs: none enqueued in the last ${RECURRING_MAX_MIN} minutes, or the database does not answer")
+
+if [ ${#problems[@]} -eq 0 ]; then
+  echo ok
+  exit 0
+fi
+
+printf '%s\n' "${problems[@]}"
+
+if [ ! -r "$ENV_FILE" ]; then
+  echo "(no mail: $ENV_FILE is missing)"
+  exit 1
+fi
+
+if [ -z "$(find "$STAMP" -mmin -720 2>/dev/null)" ]; then
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  {
+    printf 'From: %s\nTo: %s\nSubject: LedgerFlow server: %d problem(s)\n\n' "$ALERT_USER" "$ALERT_TO" "${#problems[@]}"
+    printf '%s\n' "${problems[@]}"
+  } > "$STAMP.mail"
+  # The password goes to curl on its standard input, not on the command line (ps would show it).
+  if printf 'user = "%s:%s"\n' "$ALERT_USER" "$ALERT_PASSWORD" | curl -sS --ssl-reqd --config - --url "$ALERT_SMTP_URL" --mail-from "$ALERT_USER" --mail-rcpt "$ALERT_TO" -T "$STAMP.mail"; then
+    touch "$STAMP"
+  else
+    echo "(the alert mail could not be sent)"
+  fi
+  rm -f "$STAMP.mail"
+fi
+exit 1
