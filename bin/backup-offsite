@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Copy the local backups (bin/backup) to the encrypted OVH bucket. Run on the server, after bin/backup, as the deploy user; see docs/dev/backup_restore.md.
+# OFFSITE_REMOTE is an rclone "crypt" remote layered on the OVH S3 bucket: the files are encrypted before they leave the server. The keys of rclone live in
+# ~/.config/rclone/rclone.conf (mode 600) on the server, never in the repository.
+set -euo pipefail
+
+SRC="${BACKUP_DIR:-$HOME/backups}"
+REMOTE="${OFFSITE_REMOTE:-ledgerflow-offsite:}"
+KEEP_DAYS="${OFFSITE_KEEP_DAYS:-30}"
+TODAY="${OFFSITE_TODAY:-$(date +%F)}"
+FILES=(--include 'db-*.dump' --include 'storage-*.tgz')
+
+[ -d "$SRC" ] || { echo "BACKUP_DIR $SRC does not exist: nothing to copy" >&2; exit 1; }
+
+# --immutable: a file already in the bucket is never rewritten (a changed one is an error, not an overwrite).
+rclone copy "$SRC" "${REMOTE}daily" --immutable "${FILES[@]}"
+rclone check "$SRC" "${REMOTE}daily" --one-way "${FILES[@]}"
+
+# The first of the month, the same files are also kept in monthly/, which this script never prunes.
+if [ "${TODAY##*-}" = "01" ]; then
+  rclone copy "$SRC" "${REMOTE}monthly" --immutable "${FILES[@]}"
+fi
+
+# Object lock refuses to delete a file inside its retention: a warning, not a failure (the next run tries again).
+rclone delete "${REMOTE}daily" --min-age "${KEEP_DAYS}d" || echo "warning: could not prune ${REMOTE}daily (object lock?)" >&2
+
+touch "$HOME/.offsite_last_success"
+echo "Offsite copy done to ${REMOTE} ($TODAY)"
