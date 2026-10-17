@@ -292,6 +292,15 @@ Le déploiement se fait avec Kamal ; ces règles s'ajoutent aux §2 à §5.
 9. **Un seul hôte, un seul rôle `web`.** Les tâches récurrentes tournent dans Puma (`SOLID_QUEUE_IN_PUMA`). Si la charge des tâches du portail (à la minute) gêne les requêtes, créer un rôle `job` sur le même hôte (`servers.job` avec `cmd: bin/jobs`) et retirer `SOLID_QUEUE_IN_PUMA` du rôle web ; décision différée, pas nécessaire au palier 1.
 10. **Commandes utiles** : `kamal config` (affiche la configuration résolue : à lancer après chaque modification de `deploy.yml`), `kamal lock status|release` (verrou de déploiement bloqué), `kamal audit` (historique des opérations), `kamal app version`, `kamal app containers`, `kamal prune all` (nettoyage des anciennes images : accord préalable, le serveur est partagé).
 
+## 10ter. Décisions prises le 2026-10-17 (palier 1)
+
+- Hôte de l'application : `app.ledgerflowmanagment.com` (sans « e » : c'est l'orthographe du domaine enregistré). DNS Cloudflare **seul** (nuage gris). Serveur `2.24.163.249`, Ubuntu 26.04, SSH `deploy` port 2222. Registre : Docker Hub privé `virgostyx/ledgerflow`.
+- Courriel sortant : SMTP Hostinger (`smtp.hostinger.com:465`, TLS implicite), expéditeur `no-reply@ledgerflowmanagment.com`. Enregistrements MX/SPF/DKIM de Hostinger à recopier dans Cloudflare.
+- Sauvegarde hors serveur : OVH Object Storage (S3), `rclone crypt`, `bin/backup-offsite` ; verrouillage d'objet recommandé. Supervision : contrôle externe de `/up` + `bin/watch`.
+- Horodatage RFC 3161 : **absent** au palier 1.
+- Brakeman : 34 avertissements antérieurs, dont 4 de confiance haute examinés et jugés faux positifs (voir l'historique) ; reste rouge, traitement différé. `bin/brakeman` impose `--ensure-latest` (8.1.0 disponible, dépôt en 8.0.4).
+- Création de compte libre fermée en production (`OPEN_SIGNUP`), premier administrateur par `users:create_owner`, données de référence par `reference:load` : voir `production_start.md`.
+
 ## 11. Premier message suggéré pour la nouvelle session
 
 > Lis `docs/dev/DEPLOYMENT_PLAN.md`, `config/deploy.yml`, `Dockerfile`, `docs/dev/backup_restore.md`. Nous visons le **palier 1** (cabinet seul, portail fermé). Commence par le §2 : propose-moi, point par point (2.1 Dockerfile, 2.2 variables, 2.3 SMTP, 2.5 volume des clés, 2.7 divers), les changements, en TDD quand c'est du code. Ne touche pas au serveur ni à BudgetFlow sans mon accord, ne committe pas de secret, ne pousse pas sans que je le demande. Pose-moi les questions du §6 dont tu as besoin avant de coder.
