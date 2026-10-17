@@ -17,6 +17,8 @@ Inventaire du 2026-10-17 : Docker 29.9.1 est déjà installé, l'horloge est en 
 - Swap de 2 Gio (`/swapfile`, dans `/etc/fstab`).
 - `/var/lib/ledgerflow/signing_keys` créé (700, uid/gid 1000).
 
+- Réseau : l'enregistrement A `app.ledgerflowmanagment.com` → `2.24.163.249` répond (1.1.1.1 et 8.8.8.8). **Un port sans service expire au lieu de répondre « refusé »** sur cette plateforme (constaté sur 80 et 443) : ce n'est ni `ufw` (les compteurs montrent les paquets acceptés) ni un blocage ; avec un service à l'écoute, le port 80 répond (testé avec un serveur temporaire de 60 s). Le port 443 sera confirmé par le premier `https://` après `kamal setup`.
+
 Les sections 2 à 6 ci-dessous restent la référence ; ce qui est déjà fait y est à ignorer.
 
 ## 1. Voir ce qui existe (lecture seule)
