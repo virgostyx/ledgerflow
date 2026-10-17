@@ -8,17 +8,22 @@
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
 # Make sure RUBY_VERSION matches the Ruby version in .ruby-version
-ARG RUBY_VERSION=3.3.0
+ARG RUBY_VERSION=3.3.5
 FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
 
 # Rails app lives here
 WORKDIR /rails
 
-# Install base packages
+# Install base packages. The external programs the code calls: Ghostscript (PDF), ImageMagick with HEIC (photos of the portal, watermark),
+# Tesseract (OCR), Poppler (scanned PDF, split and merge). The policy of ImageMagick limits what it reads.
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libjemalloc2 libvips postgresql-client && \
+    apt-get install --no-install-recommends -y curl libjemalloc2 libvips postgresql-client \
+      ghostscript imagemagick libheif1 libmagickcore-6.q16-6-extra fonts-urw-base35 fonts-dejavu-core \
+      tesseract-ocr tesseract-ocr-fra tesseract-ocr-nld tesseract-ocr-eng poppler-utils && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+COPY config/imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 
 # Set production environment variables and enable jemalloc for reduced memory usage and latency.
 ENV RAILS_ENV="production" \
@@ -51,8 +56,10 @@ COPY . .
 # -j 1 disable parallel compilation to avoid a QEMU bug: https://github.com/rails/bootsnap/issues/495
 RUN bundle exec bootsnap precompile -j 1 app/ lib/
 
-# Precompiling assets for production without requiring secret RAILS_MASTER_KEY
-RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+# Precompiling assets for production without requiring secret RAILS_MASTER_KEY. Production refuses to boot without its mail variables:
+# placeholders here, on this line only, so that none of them stays in the image.
+RUN SECRET_KEY_BASE_DUMMY=1 APP_HOST=build.invalid MAILER_FROM=build@build.invalid SMTP_ADDRESS=build.invalid SMTP_PORT=465 \
+    SMTP_DOMAIN=build.invalid SMTP_USERNAME=build@build.invalid SMTP_PASSWORD=build ./bin/rails assets:precompile
 
 
 

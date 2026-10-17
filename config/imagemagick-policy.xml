@@ -1,0 +1,18 @@
+<policymap>
+  <!-- ImageMagick of the image: what it may read and write. PDF and PostScript go through Ghostscript only (flattened first),
+       never through ImageMagick; no coder reaches the network or a file named inside another file. The limits of memory,
+       area and time are set by the calls themselves (PortalAdmin::ReceiveUpload::CONVERT_LIMITS). -->
+  <policy domain="coder" rights="none" pattern="PS" />
+  <policy domain="coder" rights="none" pattern="PS2" />
+  <policy domain="coder" rights="none" pattern="PS3" />
+  <policy domain="coder" rights="none" pattern="EPS" />
+  <policy domain="coder" rights="none" pattern="PDF" />
+  <policy domain="coder" rights="none" pattern="XPS" />
+  <policy domain="coder" rights="none" pattern="MVG" />
+  <policy domain="coder" rights="none" pattern="MSL" />
+  <policy domain="coder" rights="none" pattern="URL" />
+  <policy domain="coder" rights="none" pattern="HTTP" />
+  <policy domain="coder" rights="none" pattern="HTTPS" />
+  <policy domain="coder" rights="none" pattern="FTP" />
+  <policy domain="path" rights="none" pattern="@*" />
+</policymap>
