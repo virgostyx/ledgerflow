@@ -1,67 +1,83 @@
 # Name of your application. Used to uniquely configure containers.
 service: ledgerflow
 
-# Name of the container image (use your-user/app-name on external registries).
+# Name of the container image (private repository on Docker Hub).
 image: virgostyx/ledgerflow
 
-# Deploy to these servers.
-# Same physical server as BudgetFlow (kamal-proxy routes by hostname, so
-# multiple apps can share one host — see proxy.host below).
+# Deploy to this server (dedicated to LedgerFlow).
 servers:
   web:
-    - budgetflow-production
+    - 2.24.163.249
 
-# Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
-# Requires an A record for ledgerflow.budgetflowmanagement.com pointing at this server's IP
+# Enable SSL auto certification via Let's Encrypt.
+# Requires an A record for app.ledgerflowmanagment.com pointing at this server's IP
 # BEFORE the first deploy (Let's Encrypt HTTP-01 challenge needs it to resolve).
+# Cloudflare stays in DNS-only mode (grey cloud): kamal-proxy then sees the real IP of the visitors.
 #
 # Using an SSL proxy like this requires turning on config.assume_ssl and config.force_ssl in production.rb
 # (already enabled in config/environments/production.rb).
 proxy:
   ssl: true
-  host: ledgerflow.budgetflowmanagement.com
+  host: app.ledgerflowmanagment.com
 
 # Where you keep your container images.
 registry:
-  # Same Docker Hub account as BudgetFlow. The "ledgerflow" repository must
-  # exist (or be creatable) under this account before the first push.
   username: virgostyx
   password:
     - KAMAL_REGISTRY_PASSWORD
 
+# The first start creates the four databases and loads structure.sql (db:prepare): give it time.
+# Once the first deploy is done this can come back to the default (30).
+deploy_timeout: 120
+
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
+# Stage 1 (the firm only, portal closed): nothing is set for the portal, Peppol, the agent or the legacy integration.
 env:
   secret:
     - RAILS_MASTER_KEY
     - LEDGERFLOW_DATABASE_PASSWORD
+    - SMTP_PASSWORD
   clear:
     RAILS_ENV: production
 
     # Database configuration (uses the accessory PostgreSQL below)
     DB_HOST: ledgerflow-db
 
-    # Run the Solid Queue Supervisor inside the web process — traffic is low
-    # (dev/testing use only for now), no need for a dedicated job server yet.
+    # Public host of the application: links in the e-mails and allowed host.
+    APP_HOST: app.ledgerflowmanagment.com
+
+    # Outgoing mail: SMTP of the mailbox that is the sender (the host refuses another From).
+    MAILER_FROM: no-reply@ledgerflowmanagment.com
+    SMTP_ADDRESS: smtp.hostinger.com
+    SMTP_PORT: 465
+    SMTP_DOMAIN: ledgerflowmanagment.com
+    SMTP_USERNAME: no-reply@ledgerflowmanagment.com
+
+    # Private keys of the certificates of integrity: a host directory, outside the storage volume.
+    LEDGER_SIGNING_KEY_DIR: /rails/signing_keys
+
+    # Run the Solid Queue Supervisor inside the web process: no dedicated job server yet.
     SOLID_QUEUE_IN_PUMA: true
 
-    # Kept deliberately low — single-user dev/testing traffic, not public yet.
     WEB_CONCURRENCY: 1
     RAILS_MAX_THREADS: 5
     PORT: 3000
 
     RAILS_LOG_LEVEL: info
 
-# Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
-# "bin/kamal logs -r job" will tail logs from the first server in the job section.
+# Aliases are triggered with "bin/kamal <alias>".
 aliases:
   console: app exec --interactive --reuse "bin/rails console"
   shell: app exec --interactive --reuse "bash"
   logs: app logs -f
   dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
 
-# Use a persistent storage volume for sqlite database files and local Active Storage files.
+# Local Active Storage files, and the signing keys.
+# /var/lib/ledgerflow/signing_keys must exist on the host before the first deploy:
+# chown 1000:1000, chmod 700 (Docker would create it as root otherwise).
 volumes:
   - "ledgerflow_storage:/rails/storage"
+  - "/var/lib/ledgerflow/signing_keys:/rails/signing_keys"
 
 # Bridge fingerprinted assets, like JS and CSS, between versions to avoid
 # hitting 404 on in-flight requests. Combines all files from new and old
@@ -72,20 +88,17 @@ asset_path: /rails/public/assets
 builder:
   arch: amd64
 
-# SSH configuration — same custom user/port as BudgetFlow on this shared server.
+# SSH configuration of the dedicated server.
 ssh:
   user: deploy
-  port: 2221
+  port: 2222
 
 # Use accessory services (secrets come from .kamal/secrets).
-# Separate PostgreSQL instance from BudgetFlow's — no shared database between
-# the two apps. Host port 5433 (not 5432) to avoid colliding with BudgetFlow's
-# own accessory on the same server.
 accessories:
   db:
     image: postgres:16-alpine
-    host: budgetflow-production
-    port: "127.0.0.1:5433:5432"  # Local-only, not exposed publicly
+    host: 2.24.163.249
+    port: "127.0.0.1:5432:5432"  # Local-only, not exposed publicly
     env:
       clear:
         POSTGRES_USER: ledgerflow
