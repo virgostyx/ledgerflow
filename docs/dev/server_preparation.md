@@ -17,6 +17,7 @@ Inventaire du 2026-10-17 : Docker 29.9.1 est déjà installé, l'horloge est en 
 - Swap de 2 Gio (`/swapfile`, dans `/etc/fstab`).
 - `/var/lib/ledgerflow/signing_keys` créé (700, uid/gid 1000).
 
+- **Règles de routage `ufw` (indispensables, posées le 2026-10-18)** : `sudo ufw route allow proto tcp from any to any port 80` et `... port 443`. Le serveur refuse par défaut tout **nouveau trafic vers les conteneurs** (chaîne `DOCKER-USER`, `ufw-docker-logging-deny`, réseau Docker en `172.16.0.0/12`) : sans ces deux règles, les ports 80 et 443 publiés par kamal-proxy expiraient depuis l'extérieur, et Let's Encrypt ne pouvait pas émettre le certificat. `ufw allow 80,443` ne suffit pas (il ne couvre que l'hôte). `to any` et non l'IP du conteneur, qui change à chaque recréation. Contrôle : `sudo ufw status numbered` (lignes `ALLOW FWD`) puis `curl -sI https://app.ledgerflowmanagment.com/up` → 200.
 - Réseau : l'enregistrement A `app.ledgerflowmanagment.com` → `2.24.163.249` répond (1.1.1.1 et 8.8.8.8). **Un port sans service expire au lieu de répondre « refusé »** sur cette plateforme (constaté sur 80 et 443) : ce n'est ni `ufw` (les compteurs montrent les paquets acceptés) ni un blocage ; avec un service à l'écoute, le port 80 répond (testé avec un serveur temporaire de 60 s). Le port 443 sera confirmé par le premier `https://` après `kamal setup`.
 
 Les sections 2 à 6 ci-dessous restent la référence ; ce qui est déjà fait y est à ignorer.
@@ -115,7 +116,7 @@ ssh deploy@2.24.163.249 'chmod 700 ~/bin/backup ~/bin/backup-offsite ~/bin/watch
 
 - [ ] `ssh deploy@2.24.163.249` fonctionne par clé, deuxième connexion testée
 - [ ] `timedatectl` : UTC, synchronisée
-- [ ] `sudo ufw status` : 22, 80, 443
+- [ ] `sudo ufw status` : 22, 80, 443, et les deux règles de routage `ufw route allow` sur 80 et 443 (§ État du serveur)
 - [ ] `docker run --rm hello-world` sous `deploy`
 - [ ] `/var/lib/ledgerflow/signing_keys` : `drwx------ 1000 1000`
 - [ ] enregistrement A `app.ledgerflowmanagment.com` → `2.24.163.249` (zone DNS chez Hostinger), résolu depuis votre poste
