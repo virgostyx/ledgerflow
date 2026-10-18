@@ -1,7 +1,7 @@
 <h2 class="text-xl font-semibold text-gray-900 mb-2">Forgot your password?</h2>
 <p class="text-sm text-gray-500 mb-6">Enter your email to receive reset instructions.</p>
 
-<%= form_with url: user_password_path, html: { class: 'space-y-6' } do |f| %>
+<%= form_with url: user_password_path, scope: :user, html: { class: 'space-y-6' } do |f| %>
   <div class="relative" data-controller="floating-label">
     <%= f.email_field :email,
           autofocus: true, autocomplete: 'email',
