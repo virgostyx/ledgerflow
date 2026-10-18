@@ -7,6 +7,12 @@ RSpec.describe User, type: :model do
     it { should validate_presence_of(:full_name) }
     it { should validate_presence_of(:email) }
     it { should validate_uniqueness_of(:email).case_insensitive }
+
+    it 'asks for a password of at least 12 characters (the same rule as users:create_owner and the sign-up screen)' do
+      expect(build(:user, password: 'Short-pw-1!', password_confirmation: 'Short-pw-1!')).not_to be_valid # 11
+      expect(build(:user, password: 'Long-enough1!', password_confirmation: 'Long-enough1!')).to be_valid # 13
+      expect(build(:user, password: 'Twelve-char1', password_confirmation: 'Twelve-char1')).to be_valid # 12
+    end
   end
 
   describe 'enums' do
