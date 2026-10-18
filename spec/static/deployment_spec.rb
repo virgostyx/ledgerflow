@@ -24,6 +24,10 @@ RSpec.describe 'Deployment configuration' do
     expect(deploy.dig('accessories', 'db', 'port')).to eq('127.0.0.1:5432:5432')
   end
 
+  it 'checks the database that exists, not one named after the user' do
+    expect(deploy.dig('accessories', 'db', 'options', 'health-cmd')).to include('-d ledgerflow_production')
+  end
+
   it 'gives the first start time to prepare the four databases' do
     expect(deploy['deploy_timeout']).to be >= 120
   end
