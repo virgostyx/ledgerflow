@@ -1,3 +1,11 @@
+# Production never gets the demo accounts and the demo company: db:prepare replays the seeds when it creates a database, and these
+# accounts have a password written in this file. The first administrator comes from `users:create_owner`, the reference data from `reference:load`.
+# ALLOW_DEMO_SEEDS=1 lifts this on a throw-away server only.
+if Rails.env.production? && ENV["ALLOW_DEMO_SEEDS"] != "1"
+  puts "Seeds skipped in production (demo accounts). See docs/dev/production_start.md."
+  return
+end
+
 # Step 1: Seed users (entity needs a created_by user)
 Seeders::UsersSeeder.call
 

@@ -4,6 +4,7 @@
 
 ## À ne jamais faire en production
 
+- Les comptes de démonstration (`*@ledgerflow.test`) et la société « LedgerFlow Demo ASBL » : `db:prepare` rejouait les seeds à la création de la base et les a créés au premier démarrage (constaté le 2026-10-18). `db/seeds.rb` s'arrête désormais en production ; sur un serveur déjà démarré avant ce correctif, les désactiver (voir plus bas) et vérifier avec `select email from users`.
 - `db:seed` et `db:seed:replant` : ils créent les comptes de démonstration (`admin@ledgerflow.test`, mot de passe `password123!`), et `replant` **efface** tout.
 - `OPEN_SIGNUP=1` : la création de compte libre est **fermée par défaut** en production (`/users/sign_up` renvoie à la connexion). Les collègues entrent par invitation (étape 5).
 - Poser `PORTAL_HOST`, les variables Peppol, agent, BudgetFlow ou webhooks avant d'avoir décidé de le faire.
