@@ -12,7 +12,7 @@ servers:
 # Enable SSL auto certification via Let's Encrypt.
 # Requires an A record for app.ledgerflowmanagment.com pointing at this server's IP
 # BEFORE the first deploy (Let's Encrypt HTTP-01 challenge needs it to resolve).
-# Cloudflare stays in DNS-only mode (grey cloud): kamal-proxy then sees the real IP of the visitors.
+# The DNS zone is at Hostinger (no CDN proxy in front): kamal-proxy sees the real IP of the visitors.
 #
 # Using an SSL proxy like this requires turning on config.assume_ssl and config.force_ssl in production.rb
 # (already enabled in config/environments/production.rb).

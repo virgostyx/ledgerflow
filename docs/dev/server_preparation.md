@@ -118,7 +118,7 @@ ssh deploy@2.24.163.249 'chmod 700 ~/bin/backup ~/bin/backup-offsite ~/bin/watch
 - [ ] `sudo ufw status` : 22, 80, 443
 - [ ] `docker run --rm hello-world` sous `deploy`
 - [ ] `/var/lib/ledgerflow/signing_keys` : `drwx------ 1000 1000`
-- [ ] enregistrement A `app.ledgerflowmanagment.com` → `2.24.163.249` (DNS seul), résolu depuis votre poste
+- [ ] enregistrement A `app.ledgerflowmanagment.com` → `2.24.163.249` (zone DNS chez Hostinger), résolu depuis votre poste
 - [ ] ports 80 et 443 joignables de l'extérieur (hébergeur)
 - [ ] variables exportées dans le shell du poste : `KAMAL_REGISTRY_PASSWORD`, `RAILS_MASTER_KEY`, `LEDGERFLOW_DATABASE_PASSWORD`, `POSTGRES_PASSWORD`, `SMTP_PASSWORD`
 - [ ] `bin/kamal config` sans erreur (affiche la configuration résolue)
