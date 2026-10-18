@@ -33,6 +33,16 @@ Planification (`crontab -e`, utilisateur `deploy`) :
 ```
 `bin/watch` surveille le disque, l'âge de la dernière sauvegarde locale et hors serveur, et les tâches récurrentes ; il envoie un courriel (au plus un toutes les 12 h) avec les identifiants de `~/.ledgerflow-watch.env` (mode 600, créé à la main : `ALERT_SMTP_URL=smtps://smtp.hostinger.com:465`, `ALERT_USER`, `ALERT_PASSWORD`, `ALERT_TO`). La requête sur les tâches récurrentes (`solid_queue_recurring_executions` dans `ledgerflow_production_queue`) est à **valider sur le serveur** au premier déploiement.
 
+## État au 2026-10-18 (fait, vérifié sur le serveur)
+
+- Bucket OVH `fragile-estrin` (région Paris, `eu-west-par`, endpoint `s3.eu-west-par.io.cloud.ovh.net`), **verrouillage d'objet désactivé** : qui possède les clés S3 peut effacer les copies. À réévaluer (un bucket avec verrouillage se choisit à la création) avant d'y mettre des archives de 7 ans.
+- rclone 2 remotes dans `/home/deploy/.config/rclone/rclone.conf` (600, utilisateur `deploy`) : `ovh` (S3) et `ledgerflow-offsite` (crypt, mot de passe et sel rangés dans le gestionnaire de mots de passe). Piège rencontré : un `rclone config` lancé en `root` écrit dans `/root/.config/rclone/` ; le cron et les scripts lisent le fichier de `deploy`. Se déplace par `install -m 600 -o deploy -g deploy` depuis `root`, sans retaper les clés, puis on efface la copie de `root`.
+- `rclone check` d'un remote crypt ne compare que les **tailles** (« No common hash found ») : un envoi tronqué se voit, un octet altéré non. Amélioration prévue : `rclone cryptcheck`.
+- Restauration essayée sur le serveur le 2026-10-18 dans `ledgerflow_restore_check` : mêmes comptes (lignes d'écriture, utilisateurs, sociétés) que la production ; base de test supprimée ensuite.
+- `~/bin/watch` : `ok`, et courriel d'alerte reçu avec `WATCH_DISK_MAX=1` ; la requête sur `solid_queue_recurring_executions` est validée.
+- `cron` de `deploy` : `30 2 * * *` (sauvegarde puis copie hors serveur, UTC) et `17 * * * *` (`watch`).
+- L'archive `storage-*.tgz` appartient à `root` (le conteneur `alpine` tourne en root) : sans conséquence, `deploy` la lit et la supprime dans son dossier.
+
 ## Restauration
 
 1. Arrêter l'application : `kamal app stop`.
