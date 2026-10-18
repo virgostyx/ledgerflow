@@ -22,7 +22,7 @@ RSpec.describe 'Production configuration' do
 
   let(:settings) do
     out, err, status = in_production('[Rails.configuration.action_mailer.delivery_method, Rails.configuration.action_mailer.smtp_settings, ' \
-                                     'Rails.configuration.action_mailer.default_url_options, ApplicationMailer.default[:from], Accounting::InvoiceMailer::FROM_ADDRESS]')
+                                     'Rails.configuration.action_mailer.default_url_options, ApplicationMailer.default[:from], Accounting::InvoiceMailer::FROM_ADDRESS, Devise.mailer_sender]')
     raise "production did not load: #{err}" unless status.success?
 
     JSON.parse(out)
@@ -42,6 +42,7 @@ RSpec.describe 'Production configuration' do
   it 'uses the sender address everywhere, never a placeholder' do
     expect(settings[3]).to eq('no-reply@example.test')
     expect(settings[4]).to eq('no-reply@example.test')
+    expect(settings[5]).to eq('no-reply@example.test') # Devise (invitations, passwords) has its own setting: the host rejects an example.com sender
   end
 
   it 'refuses to start without the mail variables, rather than failing at the first mail' do
