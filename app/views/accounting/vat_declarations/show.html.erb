@@ -13,6 +13,9 @@
       back_text: 'VAT Declarations'
     ) %>
 
+<%= render "accounting/shared/rule_validation_notice", rule_key: "vat_declaration",
+      text: "The VAT grid rules have not been validated by an accountant. Check every figure against your own records before filing anything with the tax administration." %>
+
 <div class="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl">
   <dl class="grid grid-cols-3 gap-4 mb-6">
     <div>

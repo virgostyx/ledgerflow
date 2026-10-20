@@ -2902,6 +2902,44 @@ ALTER SEQUENCE public.accounting_recurring_runs_id_seq OWNED BY public.accountin
 
 
 --
+-- Name: accounting_rule_validations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_rule_validations (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    rule_key character varying NOT NULL,
+    validated_by_name character varying NOT NULL,
+    validated_by_title character varying NOT NULL,
+    validated_on date NOT NULL,
+    reference character varying NOT NULL,
+    note text,
+    revoked_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: accounting_rule_validations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_rule_validations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_rule_validations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_rule_validations_id_seq OWNED BY public.accounting_rule_validations.id;
+
+
+--
 -- Name: accounting_supplier_defaults; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7601,6 +7639,13 @@ ALTER TABLE ONLY public.accounting_recurring_runs ALTER COLUMN id SET DEFAULT ne
 
 
 --
+-- Name: accounting_rule_validations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_rule_validations ALTER COLUMN id SET DEFAULT nextval('public.accounting_rule_validations_id_seq'::regclass);
+
+
+--
 -- Name: accounting_supplier_defaults id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8823,6 +8868,14 @@ ALTER TABLE ONLY public.accounting_recurring_runs
 
 
 --
+-- Name: accounting_rule_validations accounting_rule_validations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_rule_validations
+    ADD CONSTRAINT accounting_rule_validations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: accounting_supplier_defaults accounting_supplier_defaults_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10013,6 +10066,13 @@ CREATE UNIQUE INDEX idx_peppol_messages_identity ON public.accounting_peppol_mes
 --
 
 CREATE INDEX idx_period_locks_active ON public.accounting_period_locks USING btree (entity_id, starts_on, ends_on) WHERE (status = 0);
+
+
+--
+-- Name: idx_rule_validation_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_rule_validation_active ON public.accounting_rule_validations USING btree (entity_id, rule_key) WHERE (revoked_at IS NULL);
 
 
 --
@@ -11469,6 +11529,13 @@ CREATE INDEX index_accounting_recurring_runs_on_journal_entry_id ON public.accou
 --
 
 CREATE INDEX index_accounting_recurring_runs_on_recurring_entry_id ON public.accounting_recurring_runs USING btree (recurring_entry_id);
+
+
+--
+-- Name: index_accounting_rule_validations_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_rule_validations_on_entity_id ON public.accounting_rule_validations USING btree (entity_id);
 
 
 --
@@ -15156,6 +15223,14 @@ ALTER TABLE ONLY public.accounting_history_starts
 
 
 --
+-- Name: accounting_rule_validations fk_rails_61f35a8416; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_rule_validations
+    ADD CONSTRAINT fk_rails_61f35a8416 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: payment_batches fk_rails_63106b2dbb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17162,6 +17237,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261020100000'),
 ('20261016250000'),
 ('20261016240000'),
 ('20261016230000'),

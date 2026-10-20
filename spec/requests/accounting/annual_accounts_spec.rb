@@ -39,6 +39,13 @@ RSpec.describe "Accounting::Reports annual accounts", type: :request do
     expect(response.body).to include("abridged model", "not been validated")
   end
 
+  it "drops the notice once an accountant's validation is recorded" do
+    Accounting::RuleValidation.create!(rule_key: "annual_accounts", validated_by_name: "Jane Doe", validated_by_title: "Chartered accountant",
+                                       validated_on: Date.current, reference: "letter of today")
+    get accounting_reports_annual_accounts_path
+    expect(response.body).not_to include("not been validated")
+  end
+
   it "reports that the balance sheet balances" do
     get accounting_reports_annual_accounts_path
     expect(response.body).to include("balanced")

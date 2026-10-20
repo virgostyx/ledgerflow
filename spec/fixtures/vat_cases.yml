@@ -1,0 +1,43 @@
+# VAT declaration cases: one invoice, the grids the declaration must show.
+# Expected values come from docs/dev/VAT_grid_target.md (SPF notice, January 2014), NOT from what the code produces.
+# They are a draft until a chartered accountant has checked each case: when that is done, record it
+# (bin/rails "rules:validate[ENTITY_ID,vat_declaration,NAME,TITLE,REFERENCE]") and replace "draft" below by the validation reference.
+# To add: intracom (86/88 + 55), reverse charge (87 + 56), export (47), credit notes (48/49/63/64/84/85), prorata, franchise.
+status: draft
+cases:
+  - name: domestic sale at 21 %
+    type: customer
+    account: "700000"
+    unit_price: "1000.00"
+    vat_rate: "21.00"
+    grids: { "03": 1000, "54": 210 }
+  - name: domestic sale at 12 %
+    type: customer
+    account: "700000"
+    unit_price: "1000.00"
+    vat_rate: "12.00"
+    grids: { "02": 1000, "54": 120 }
+  - name: domestic sale at 6 %
+    type: customer
+    account: "700000"
+    unit_price: "1000.00"
+    vat_rate: "6.00"
+    grids: { "01": 1000, "54": 60 }
+  - name: domestic purchase of goods and services (accounts 600-605)
+    type: supplier
+    account: "604000"
+    unit_price: "1000.00"
+    vat_rate: "21.00"
+    grids: { "81": 1000, "59": 210 }
+  - name: domestic purchase of miscellaneous goods and services (account 61)
+    type: supplier
+    account: "610100"
+    unit_price: "1000.00"
+    vat_rate: "21.00"
+    grids: { "82": 1000, "59": 210 }
+  - name: domestic purchase of an asset (account 24)
+    type: supplier
+    account: "240200"
+    unit_price: "1000.00"
+    vat_rate: "21.00"
+    grids: { "83": 1000, "59": 210 }

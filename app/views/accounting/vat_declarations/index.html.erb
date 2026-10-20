@@ -14,6 +14,9 @@
   <% end %>
 <% end %>
 
+<%= render "accounting/shared/rule_validation_notice", rule_key: "vat_declaration",
+      text: "The VAT grid rules have not been validated by an accountant. Check every figure against your own records before filing anything with the tax administration." %>
+
 <%= render 'shared/filters', fields: [
   { name: :fiscal_year_id, label: 'Fiscal year', type: :select, options: Accounting::FiscalYear.order(year: :desc).map { |f| [f.year, f.id] } }
 ] %>

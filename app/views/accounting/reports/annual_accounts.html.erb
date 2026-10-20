@@ -19,10 +19,9 @@
   <% end %>
 <% end %>
 
-<p class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-  The mapping of accounts to headings has not been validated by an accountant. Check it before filing anything with the
-  National Bank of Belgium. Accounts of class 69 and 79 (appropriation of the result) are not shown.
-</p>
+<%= render "accounting/shared/rule_validation_notice", rule_key: "annual_accounts",
+      text: "The mapping of accounts to headings has not been validated by an accountant. Check it before filing anything with the National Bank of Belgium." %>
+<p class="mb-4 text-sm text-gray-600">Accounts of class 69 and 79 (appropriation of the result) are not shown.</p>
 
 <% if @report.balanced? %>
   <p class="mb-4 text-sm font-medium text-green-700">The balance sheet is balanced.</p>

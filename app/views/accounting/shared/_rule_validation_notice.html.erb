@@ -1,0 +1,4 @@
+<%# Shown until an accountant's validation of the rule is recorded (Accounting::RuleValidation, docs/dev/POINTS_A_VALIDER.md). %>
+<% unless Accounting::RuleValidation.validated?(rule_key) %>
+  <p class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"><%= text %></p>
+<% end %>

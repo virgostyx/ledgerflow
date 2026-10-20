@@ -11,6 +11,28 @@ RSpec.describe 'Accounting::VatDeclarations', type: :request do
 
   before { sign_in accountant }
 
+  describe 'notice of validation' do
+    let!(:declaration) { create(:vat_declaration, fiscal_year: fiscal_year) }
+    let(:validation) do
+      { rule_key: 'vat_declaration', validated_by_name: 'Jane Doe', validated_by_title: 'Chartered accountant',
+        validated_on: Date.current, reference: 'letter of today' }
+    end
+
+    it 'warns on the list and on a declaration that the VAT rules are not validated by an accountant' do
+      get accounting_vat_declarations_path
+      expect(response.body).to include('not been validated by an accountant')
+      get accounting_vat_declaration_path(declaration)
+      expect(response.body).to include('not been validated by an accountant')
+    end
+
+    it 'says nothing once the validation is recorded' do
+      Accounting::RuleValidation.create!(validation)
+      get accounting_vat_declarations_path
+      get accounting_vat_declaration_path(declaration)
+      expect(response.body).not_to include('not been validated by an accountant')
+    end
+  end
+
   describe 'GET /accounting/vat_declarations' do
     it 'retourne 200' do
       get accounting_vat_declarations_path
