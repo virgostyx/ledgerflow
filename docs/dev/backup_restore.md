@@ -41,6 +41,7 @@ Planification (`crontab -e`, utilisateur `deploy`) :
 - Restauration essayée sur le serveur le 2026-10-18 dans `ledgerflow_restore_check` : mêmes comptes (lignes d'écriture, utilisateurs, sociétés) que la production ; base de test supprimée ensuite.
 - `~/bin/watch` : `ok`, et courriel d'alerte reçu avec `WATCH_DISK_MAX=1` ; la requête sur `solid_queue_recurring_executions` est validée.
 - `cron` de `deploy` : `30 2 * * *` (sauvegarde puis copie hors serveur, UTC) et `17 * * * *` (`watch`).
+- Clé de signature `lk-20261018-d75052c7` (Ed25519, active, empreinte `dd31f7a2…d69979`) : créée le 2026-10-18, publiée sur `/.well-known/ledgerflow/keys.json` (vérifié le 2026-10-20), drapeau `b03c` coché. Le fichier privé (PEM de 119 octets) est copié **dans une note sécurisée du gestionnaire de mots de passe**, hors serveur, séparé de la base et du bucket OVH (pas d'`age` : inutile pour 119 octets). Lecture : `ssh deploy@… 'cat /var/lib/ledgerflow/signing_keys/<key_id>.pem'`. Après une rotation (`integrity:keys:rotate`), ranger aussi la nouvelle clé et **garder l'ancienne** (les certificats déjà scellés se vérifient avec sa clé publique).
 - L'archive `storage-*.tgz` appartient à `root` (le conteneur `alpine` tourne en root) : sans conséquence, `deploy` la lit et la supprime dans son dossier.
 
 ## Restauration
