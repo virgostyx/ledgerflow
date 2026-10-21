@@ -131,6 +131,21 @@
       </div>
     <% end %>
 
+    <% if Accounting::Settings::BasePolicy.new(current_user, :settings).destroy? %>
+      <%= link_to accounting_settings_rule_validations_path,
+            class: "group flex items-start gap-4 p-5 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all" do %>
+        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-900">Accountant validations</p>
+          <p class="text-sm text-gray-500 mt-0.5">Record that an accountant has checked the VAT and annual accounts rules</p>
+        </div>
+      <% end %>
+    <% end %>
+
     <%= link_to edit_accounting_settings_peppol_settings_path,
           class: "group flex items-start gap-4 p-5 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all" do %>
       <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">

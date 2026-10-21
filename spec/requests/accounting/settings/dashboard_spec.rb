@@ -26,6 +26,15 @@ RSpec.describe "Accounting::Settings::Dashboard", type: :request do
         expect(response.body).not_to include(accounting_settings_bank_rules_path)
       end
 
+      it "links to the accountant validations for an admin only" do
+        get accounting_settings_root_path
+        expect(response.body).to include(accounting_settings_rule_validations_path)
+
+        sign_in accountant
+        get accounting_settings_root_path
+        expect(response.body).not_to include(accounting_settings_rule_validations_path)
+      end
+
       it "returns 200" do
         get accounting_settings_root_path
         expect(response).to have_http_status(:ok)

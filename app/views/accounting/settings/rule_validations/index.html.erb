@@ -1,0 +1,87 @@
+<% content_for :breadcrumb do %>
+  <%= link_to "Settings", accounting_settings_root_path, class: "text-gray-400 hover:text-gray-600" %>
+  <span class="mx-2 text-gray-300">/</span>
+  <span class="text-gray-700 font-medium">Accountant validations</span>
+<% end %>
+
+<div class="max-w-3xl">
+  <%= render Ui::PageHeaderComponent.new(title: "Accountant validations",
+        description: "Record that an accountant has checked a rule set. The warning on the matching screens disappears while a validation is in force.") %>
+
+  <% labels = { "vat_declaration" => "VAT declaration", "annual_accounts" => "Annual accounts" } %>
+  <% in_force = @validations.select { |v| v.revoked_at.nil? }.index_by(&:rule_key) %>
+
+  <div class="mt-6 bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+    <% Accounting::RuleValidation::RULES.each do |rule| %>
+      <% v = in_force[rule] %>
+      <div class="p-4 flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm font-semibold text-gray-900"><%= labels.fetch(rule) %></p>
+          <% if v %>
+            <p class="text-sm text-green-700">Validated by <%= v.validated_by_name %> (<%= v.validated_by_title %>) on <%= v.validated_on %></p>
+            <p class="text-xs text-gray-500">Reference: <%= v.reference %><%= " · #{v.note}" if v.note.present? %></p>
+          <% else %>
+            <p class="text-sm text-amber-700">Not validated</p>
+          <% end %>
+        </div>
+        <% if v %>
+          <%= button_to "Revoke", revoke_accounting_settings_rule_validation_path(v), method: :patch,
+                class: "text-sm text-red-600 hover:underline", form: { data: { turbo_confirm: "Revoke this validation? The warning will show again." } } %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <h2 class="mt-8 text-sm font-semibold text-gray-900">Record a validation</h2>
+  <div class="mt-3 bg-white rounded-lg border border-gray-200 p-6">
+    <%= form_with model: @validation, url: accounting_settings_rule_validations_path, class: "space-y-4" do |f| %>
+      <% if @validation.errors.any? %>
+        <div class="rounded-md bg-danger-50 border border-danger-200 p-4">
+          <ul class="list-disc list-inside text-sm text-danger-700 space-y-1">
+            <% @validation.errors.full_messages.each do |msg| %><li><%= msg %></li><% end %>
+          </ul>
+        </div>
+      <% end %>
+      <% field = "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500" %>
+      <div>
+        <%= f.label :rule_key, "Rule set", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.select :rule_key, labels.map { |k, l| [l, k] }, {}, class: field %>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <%= f.label :validated_by_name, "Accountant's name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :validated_by_name, class: field %>
+        </div>
+        <div>
+          <%= f.label :validated_by_title, "Capacity", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :validated_by_title, class: field, placeholder: "e.g. chartered accountant, IEC" %>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <%= f.label :validated_on, "Validated on", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.date_field :validated_on, max: Date.current, class: field %>
+        </div>
+        <div>
+          <%= f.label :reference, "Reference", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :reference, class: field, placeholder: "Where it is written (letter, e-mail, report)" %>
+        </div>
+      </div>
+      <div>
+        <%= f.label :note, "Note (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.text_field :note, class: field %>
+      </div>
+      <%= f.submit "Record validation", class: "px-4 py-2 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700" %>
+    <% end %>
+  </div>
+
+  <% history = @validations.reject { |v| v.revoked_at.nil? } %>
+  <% if history.any? %>
+    <h2 class="mt-8 text-sm font-semibold text-gray-900">Revoked</h2>
+    <ul class="mt-3 text-sm text-gray-500 space-y-1">
+      <% history.each do |v| %>
+        <li><%= labels.fetch(v.rule_key) %>: <%= v.validated_by_name %>, <%= v.validated_on %> (<%= v.reference %>), revoked <%= v.revoked_at.to_date %></li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

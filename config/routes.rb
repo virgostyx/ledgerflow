@@ -539,6 +539,9 @@ Rails.application.routes.draw do
           resources :analytical_accounts, shallow: true
         end
         resource :vat_settings, only: [ :edit, :update ]
+        resources :rule_validations, only: %i[index create] do
+          patch :revoke, on: :member
+        end
         resource :peppol_mappings, only: [ :edit, :update ]
         resource :peppol_settings, only: [ :edit, :update ] do
           post :simulate_incoming
