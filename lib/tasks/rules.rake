@@ -1,5 +1,5 @@
 namespace :rules do
-  desc "Record an accountant's validation: rules:validate[entity_id,rule_key,name,title,reference] (rule_key: #{Accounting::RuleValidation::RULES.join(', ')}). Dated today."
+  desc "Record an accountant's validation: rules:validate[entity_id,rule_key,name,title,reference] (rule_key: vat_declaration or annual_accounts). Dated today."
   task :validate, %i[entity_id rule_key name title reference] => :environment do |_, args|
     entity = Entity.find(args[:entity_id])
     ActsAsTenant.with_tenant(entity) do
