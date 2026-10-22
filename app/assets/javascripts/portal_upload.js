@@ -142,7 +142,7 @@
   };
   // The page and what it needs are kept for the next time the network is not there (the worker serves them, and renews them when it can).
   const warmShell = async () => {
-    const urls = [ location.href, ...document.querySelectorAll("link[rel=stylesheet],script[src]") ].map((e) => e.href || e.src);
+    const urls = [ location.href, ...[ ...document.querySelectorAll("link[rel=stylesheet],script[src]") ].map((e) => e.href || e.src) ];
     await (await caches.open(outbox.SHELL)).addAll(urls);
   };
 
