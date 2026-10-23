@@ -191,6 +191,8 @@ Renvoie la **révision courante** et l'historique, pour connaître à tout momen
 
 Statuts : `draft`, `posted`, `partially_paid`, `paid`, `cancelled`. Référence inconnue : `404 {"error":"Not found"}`.
 
+Chaque facture (ici et dans la liste) porte aussi `currency`, `exchange_rate` (unités de devise pour 1 EUR), `subtotal_excl_vat`, `vat_amount`, `total_incl_vat` (dans la devise du document) et `total_incl_vat_eur`. C'est ce que compare la réconciliation de BudgetFlow (`ledgerflow:reconcile`).
+
 `GET /api/v1/invoices?status=posted` (scope `invoices:read`) liste toutes les factures de l'entité, y compris celles saisies à l'écran.
 
 ### 4.4 Événements de paiement : `GET /api/v1/invoice_events` (scope `invoices:read`)

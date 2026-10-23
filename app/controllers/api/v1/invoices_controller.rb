@@ -78,7 +78,12 @@ class Api::V1::InvoicesController < Api::V1::BaseController
       invoice_number: invoice.invoice_number,
       status:         invoice.status,
       invoice_date:   invoice.invoice_date,
-      total_incl_vat: invoice.total_incl_vat,
+      currency:       invoice.currency,
+      exchange_rate:  invoice.exchange_rate,
+      subtotal_excl_vat:  invoice.subtotal_excl_vat,
+      vat_amount:         invoice.vat_amount,
+      total_incl_vat:     invoice.total_incl_vat,
+      total_incl_vat_eur: invoice.total_incl_vat_eur,
       partner_id:     invoice.partner_id
     }
   end
