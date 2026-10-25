@@ -160,6 +160,7 @@ Sans risque comptable direct ; ma recommandation est en tête de chaque ligne.
 - [ ] **V11** `rswag` : non ajouté, l'OpenAPI est générée du code et testée (validé le 2026-10-05) ; `/api/v1/entries` comme voie d'écriture de l'API publique ; durées de F13 (7 jours, 1 heure, 24 h, 8 tentatives, 10 échecs).
 - [ ] **V12** Heures calmes des rappels (20 h – 8 h Bruxelles), rétention des messages, quotas du portail : globaux pour l'instant, pas par société.
 - [x] **V13** Bandeau « non validé par un comptable » sur les déclarations TVA et les comptes annuels : **fait** (voir §7.6). Il disparaît quand la validation est enregistrée ; ne l'enregistrer qu'après T1/T2 (TVA) et A1 (comptes annuels).
+- [ ] **V14** Module comptable de **BudgetFlow** (journaux, plan comptable, écran des factures du comptable) : le comptable travaille dans LedgerFlow seulement, donc il ne sert presque plus aux entités en mode LedgerFlow. **Ne pas le supprimer maintenant** : Dolibarr, WinBooks et l'adaptateur nul l'utilisent encore, et il porte la ré-analyse IA, l'annulation d'un doublon et la mise en litige, qui n'existent pas ailleurs. Ordre recommandé : (1) après le test BudgetFlow ↔ LedgerFlow, lister ce qui manquerait au chef de projet et le déplacer vers l'écran du projet ; (2) masquer journaux et plan comptable pour les entités LedgerFlow (seule partie sûre à retirer) ; (3) ne supprimer le module que si Dolibarr et WinBooks sont abandonnés. *(Modification de BudgetFlow : votre accord explicite.)*
 
 ---
 
