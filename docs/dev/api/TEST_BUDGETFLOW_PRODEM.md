@@ -79,3 +79,42 @@ Chaque étape a un résultat attendu écrit avant de la lancer.
 3. Test sur copie locale avec une entité de test en production LedgerFlow, ou tout en local ?
 4. Factures déjà payées : importer d'abord les relevés bancaires de 2026, ou n'envoyer que les factures non payées pour ce premier essai ?
 5. TVA zambienne : en charge (recommandé) ou autre traitement ? À confirmer avec le comptable.
+
+---
+
+## 9. Résultats du test en production (2026-10-25)
+
+Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST BudgetFlow** (LedgerFlow), en production. Elles resteront dans la comptabilité (chaînée par hachage, non supprimable). Données préparées par `rake ledgerflow:test_setup` dans BudgetFlow : projet `ZZTEST`, engagement `ZZ-TEST-CNT` de 50 000 €, fournisseur `ZZ TEST Supplier SRL`.
+
+| # | Étape (§6) | Résultat | Constat |
+|---|---|---|---|
+| 0 | Connexion et scopes | **OK** | « Test connection » de BudgetFlow : connecté à l'entité LedgerFlow. Le fournisseur est arrivé dans LedgerFlow. |
+| 1 | Facture EUR sans TVA | **OK après correction** | Voir A, B et B' ci-dessous. Brouillon visible dans LedgerFlow, contexte projet et ligne budgétaire affichés, ligne sur 499000. |
+| 2 | Facture en devise | **Non fait** | À faire : USD, total en euros = montant ÷ taux (le contrat est couvert par un test automatique côté LedgerFlow). |
+| 3 | Rejeu du même envoi | **Non fait en réel** | Couvert par des tests automatiques (idempotence). |
+| 4 | Corriger avant que le comptable y touche | **Non fait** | Aucune modification possible dans BudgetFlow après validation (voir V15). |
+| 5 | Le comptable comptabilise | **OK** | Événement `posted` reçu, trace d'audit `ledgerflow_posted`. La fiche BudgetFlow ne montrait rien : corrigé (badge, voir C). |
+| 6 | Corriger après comptabilisation | **Impossible depuis l'écran** | BudgetFlow interdit toute modification d'une facture validée. Le `409` n'est atteignable que par l'API. Point V15. |
+| 7 | « Return to project manager » | **OK, avec un manque corrigé** | Écriture extournée, facture en brouillon, export à `pending`, e-mail reçu. Le motif n'était affiché que dans le module comptable : corrigé (voir D). Délai jusqu'à 5 minutes, maintenant 1 minute. |
+| 8 | Paiement | **Non fait** | Demande un relevé bancaire importé dans LedgerFlow. |
+| 9–12 | Paiement défait, cas limites, volume, réconciliation | **Non faits** | À faire : outils prêts (`ledgerflow:export_invoices`, `ledgerflow:reconcile`). |
+| — | Badge LedgerFlow | **OK** | Une troisième facture a montré « Posted » et le numéro LedgerFlow sur la fiche BudgetFlow, sans rafraîchir. |
+
+### Défauts trouvés et corrigés pendant le test
+
+- **A. L'écran de clé API ne montrait pas la clé** (LedgerFlow). La création répondait par une page 200 ; Turbo ignore ce type de réponse à un formulaire. La clé était créée mais perdue. Corrigé : formulaires de création et « Rotate key » sans Turbo (`2f523f0`).
+- **B. L'envoi attendait une analyse IA qui ne venait jamais** (BudgetFlow). L'export exigeait `ai_analysis_completed?`, or l'analyse est désactivée par défaut : aucune facture ne partait, sans message. Corrigé : pour LedgerFlow, l'envoi n'attend pas une analyse que l'entité n'utilise pas (`e7c3aa38`).
+- **B'. Clé API avec un saut de ligne** (BudgetFlow). Un copier-coller avait laissé un retour à la ligne dans la clé enregistrée. `ledgerflow:test_setup` retire maintenant les espaces et sauts de ligne (`d3ada05e`).
+- **C. Aucun statut LedgerFlow sur la fiche** (BudgetFlow). Le chef de projet ne voyait pas que la facture était comptabilisée, et le badge d'export laissait un libellé vide pour plusieurs états. Corrigé : colonnes `ledgerflow_status` et `ledgerflow_number`, badge « LedgerFlow : Posted · numéro », tous les états d'export nommés, rafraîchissement automatique toutes les 15 secondes, synchronisation chaque minute (`041fc1a8`).
+- **D. Motif du retour invisible pour le chef de projet** (BudgetFlow). Corrigé : bandeau sur la fiche de la facture (`a261f726`).
+- **E. Lignes toujours sur 499000** (LedgerFlow). Une ligne sans compte va maintenant sur le compte habituel du fournisseur (celui de sa dernière facture comptabilisée), sinon sur 499000 ; l'empreinte d'idempotence ne dépend pas de ce choix (`0d8c8ec`). **Non vérifié en réel** : le fournisseur de test n'avait pas encore de compte habituel.
+
+### Constats sans correction (décisions à prendre, voir `POINTS_A_VALIDER.md`)
+
+- **V14** : le module comptable de BudgetFlow ne sert presque plus pour une entité LedgerFlow ; ne pas le supprimer tant que Dolibarr et WinBooks sont supportés.
+- **V15** : « Dispute » dans BudgetFlow ne prévient pas LedgerFlow ; une facture peut être en litige d'un côté et comptabilisée de l'autre.
+- Aide au codage par l'IA côté LedgerFlow (compte, TVA, analytique par ligne) : n'existe pas ; écarté pour l'instant (palier B, à décider après un pilote).
+
+### Reste à faire avant PRODEM ZAMBIA
+
+Facture en devise (étape 2) ; ligne arrivant sur le compte habituel (E) ; correction avant comptabilisation (étape 4) ; paiement et paiement défait (8 et 9) ; cas limites, volume et réconciliation (10 à 12) ; décisions sur la TVA zambienne, les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
