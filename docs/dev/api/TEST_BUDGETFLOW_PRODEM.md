@@ -90,7 +90,7 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 |---|---|---|---|
 | 0 | Connexion et scopes | **OK** | « Test connection » de BudgetFlow : connecté à l'entité LedgerFlow. Le fournisseur est arrivé dans LedgerFlow. |
 | 1 | Facture EUR sans TVA | **OK après correction** | Voir A, B et B' ci-dessous. Brouillon visible dans LedgerFlow, contexte projet et ligne budgétaire affichés, ligne sur 499000. |
-| 2 | Facture en devise | **Non fait** | À faire : USD, total en euros = montant ÷ taux (le contrat est couvert par un test automatique côté LedgerFlow). |
+| 2 | Facture en devise | **OK** | Facture en USD : le total en euros du brouillon LedgerFlow correspond au montant ÷ taux. La correction du taux de change est donc vérifiée en réel (en plus du test automatique côté LedgerFlow). |
 | 3 | Rejeu du même envoi | **Non fait en réel** | Couvert par des tests automatiques (idempotence). |
 | 4 | Corriger avant que le comptable y touche | **Non fait** | Aucune modification possible dans BudgetFlow après validation (voir V15). |
 | 5 | Le comptable comptabilise | **OK** | Événement `posted` reçu, trace d'audit `ledgerflow_posted`. La fiche BudgetFlow ne montrait rien : corrigé (badge, voir C). |
@@ -107,7 +107,7 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 - **B'. Clé API avec un saut de ligne** (BudgetFlow). Un copier-coller avait laissé un retour à la ligne dans la clé enregistrée. `ledgerflow:test_setup` retire maintenant les espaces et sauts de ligne (`d3ada05e`).
 - **C. Aucun statut LedgerFlow sur la fiche** (BudgetFlow). Le chef de projet ne voyait pas que la facture était comptabilisée, et le badge d'export laissait un libellé vide pour plusieurs états. Corrigé : colonnes `ledgerflow_status` et `ledgerflow_number`, badge « LedgerFlow : Posted · numéro », tous les états d'export nommés, rafraîchissement automatique toutes les 15 secondes, synchronisation chaque minute (`041fc1a8`).
 - **D. Motif du retour invisible pour le chef de projet** (BudgetFlow). Corrigé : bandeau sur la fiche de la facture (`a261f726`).
-- **E. Lignes toujours sur 499000** (LedgerFlow). Une ligne sans compte va maintenant sur le compte habituel du fournisseur (celui de sa dernière facture comptabilisée), sinon sur 499000 ; l'empreinte d'idempotence ne dépend pas de ce choix (`0d8c8ec`). **Non vérifié en réel** : le fournisseur de test n'avait pas encore de compte habituel.
+- **E. Lignes toujours sur 499000** (LedgerFlow). Une ligne sans compte va maintenant sur le compte habituel du fournisseur (celui de sa dernière facture comptabilisée), sinon sur 499000 ; l'empreinte d'idempotence ne dépend pas de ce choix (`0d8c8ec`). **Vérifié en réel** (après redéploiement de LedgerFlow) : la ligne d'une nouvelle facture du même fournisseur est arrivée sur son compte de charge habituel, et non sur 499000.
 
 ### Constats sans correction (décisions à prendre, voir `POINTS_A_VALIDER.md`)
 
@@ -117,4 +117,4 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 
 ### Reste à faire avant PRODEM ZAMBIA
 
-Facture en devise (étape 2) ; ligne arrivant sur le compte habituel (E) ; correction avant comptabilisation (étape 4) ; paiement et paiement défait (8 et 9) ; cas limites, volume et réconciliation (10 à 12) ; décisions sur la TVA zambienne, les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
+Correction avant comptabilisation (étape 4) ; paiement et paiement défait (8 et 9) ; cas limites, volume et réconciliation (10 à 12) ; décisions sur la TVA zambienne, les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
