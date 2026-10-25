@@ -25,6 +25,12 @@ RSpec.describe "Invoice BudgetFlow context", type: :request do
       expect(response.body).to include("From BudgetFlow").and include("3.2.1")
     end
 
+    it "warns that lines the sender left without an account are on the supplier's usual account or on 499000" do
+      get edit_accounting_invoice_path(invoice)
+
+      expect(response.body).to include("usual account").and include("499000")
+    end
+
     it "shows nothing for an invoice without context" do
       plain = create(:invoice, :draft, invoice_type: :supplier, partner: supplier, fiscal_year: fiscal_year)
 

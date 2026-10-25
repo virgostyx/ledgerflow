@@ -178,7 +178,7 @@ class Accounting::ExternalInvoice
     n[:exchange_rate] = decimal(n[:exchange_rate], :exchange_rate) if n.key?(:exchange_rate)
     n[:partner]     = partner(payload[:partner_external_ref])
     n[:fiscal_year] = fiscal_year(n[:invoice_date])
-    n[:lines_attrs] = lines(payload[:lines])
+    n[:lines_attrs] = lines(payload[:lines], n[:partner])
     n[:external_project_name] = payload[:project_name].to_s.strip.presence
     n[:external_budget_line]  = payload[:budget_line].to_s.strip.presence
     n[:supplier_reference]    = payload[:supplier_reference].to_s.strip.presence
@@ -238,19 +238,25 @@ class Accounting::ExternalInvoice
     found
   end
 
-  def lines(raw)
+  # A line sent without an account goes on the supplier's usual account (the one of its last posted invoice), else on the
+  # suspense account: the accountant checks and codes it before posting either way.
+  def lines(raw, partner)
     list = Array(raw)
     if list.empty?
       @errors[:lines] = [ "at least one line is required" ]
       return []
     end
 
-    codes    = list.map { |l| l[:account_code].to_s.strip.presence || Accounting::AccountCodes::TRANSIT }.uniq
+    usual    = partner && Accounting::SupplierDefault.find_by(partner_id: partner.id)&.account&.code
+    fallback = usual || Accounting::AccountCodes::TRANSIT
+    codes    = list.map { |l| l[:account_code].to_s.strip.presence || fallback }.uniq
     accounts = Accounting::Account.where(code: codes).index_by(&:code)
+    # What the sender asked for, not where the line landed: the fingerprint must not move when the usual account changes.
+    @asked_codes = list.map { |l| l[:account_code].to_s.strip.presence || Accounting::AccountCodes::TRANSIT }
     list.each_with_index.map do |line, i|
       line    = line.to_h.with_indifferent_access
       given   = line[:account_code].to_s.strip.presence
-      account = accounts[given || Accounting::AccountCodes::TRANSIT]
+      account = accounts[given || fallback]
       @errors["lines[#{i}].account_code"] = [ account_error(given) ] unless account
       attrs = { account: account, description: line[:description] }
       LINE_DECIMALS.each { |k| attrs[k.to_sym] = decimal(line[k], "lines[#{i}].#{k}") if line.key?(k) }
@@ -268,7 +274,7 @@ class Accounting::ExternalInvoice
     content = { post: @post, partner_id: n[:partner].id, credited_invoice_id: n[:credited_invoice]&.id,
                 context: n.slice(:external_project_name, :external_budget_line, :supplier_reference),
                 invoice: n.slice(*ATTRIBUTES.map(&:to_sym)),
-                lines: n[:lines_attrs].map { |l| l.merge(account: l[:account].code) } }
+                lines: n[:lines_attrs].each_with_index.map { |l, i| l.merge(account: @asked_codes[i]) } }
     Digest::SHA256.hexdigest(JSON.generate(canonical(content)))
   end
 

@@ -12,6 +12,7 @@
         <dd class="font-mono font-medium"><%= invoice.external_budget_line.presence || "—" %></dd>
       </div>
     </dl>
-    <p class="mt-2 text-xs text-amber-700">Use them to choose the analytical accounts of the lines.</p>
+    <p class="mt-2 text-xs text-amber-700">Use them to choose the analytical accounts of the lines.
+      A line the sender left without an account is on the supplier's usual account when there is one, otherwise on the suspense account 499000: check and code it before posting.</p>
   </div>
 <% end %>

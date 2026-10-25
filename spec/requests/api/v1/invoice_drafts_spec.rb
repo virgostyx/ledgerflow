@@ -71,6 +71,38 @@ RSpec.describe 'Api::V1 invoice drafts', type: :request do
         expect(invoice.lines.first).to have_attributes(description: 'Consulting', subtotal_excl_vat: BigDecimal('100'))
       end
 
+      context "when the supplier has a usual account (the one of its last posted invoice)" do
+        before { Accounting::SupplierDefault.create!(partner: supplier, account: account_604) }
+
+        it 'puts an uncoded line on that account instead of the suspense account' do
+          put_invoice(payload.merge(lines: [ uncoded ]))
+
+          expect(invoice.lines.map { |l| l.account.code }).to eq(%w[604000])
+        end
+
+        it 'keeps the account the sender gave' do
+          put_invoice(payload.merge(lines: [ uncoded.merge(account_code: '499000') ]))
+
+          expect(invoice.lines.map { |l| l.account.code }).to eq(%w[499000])
+        end
+
+        it 'is still idempotent when the usual account changes between two identical requests' do
+          put_invoice(payload.except(:post).merge(lines: [ uncoded ]))
+          Accounting::SupplierDefault.find_by!(partner: supplier).update!(account: account_440)
+          put_invoice(payload.except(:post).merge(lines: [ uncoded ]))
+
+          expect(response).to have_http_status(:ok)
+          expect(Accounting::Invoice.external.where(external_ref: 'BF-I-1').count).to eq(1)
+        end
+
+        it 'does not apply to a supplier without any usual account' do
+          other = create(:partner, :supplier, external_ref: 'BF-P-2')
+          put_invoice(payload.merge(partner_external_ref: other.external_ref, lines: [ uncoded ]))
+
+          expect(invoice.lines.map { |l| l.account.code }).to eq(%w[499000])
+        end
+      end
+
       it 'mixes coded and uncoded lines, and treats a blank code as absent' do
         put_invoice(payload.merge(lines: [ line, uncoded.merge(account_code: ' ') ]))
 
