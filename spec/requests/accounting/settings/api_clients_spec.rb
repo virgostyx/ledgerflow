@@ -25,6 +25,17 @@ RSpec.describe "Accounting::Settings::ApiClients", type: :request do
     end
   end
 
+  # The key is the answer (200) to the POST: Turbo Drive ignores such a response, so these forms must be plain HTML forms.
+  describe "forms that answer with the key" do
+    it "are not submitted through Turbo" do
+      get new_accounting_settings_api_client_path
+      expect(response.body).to match(/<form[^>]*data-turbo="false"[^>]*action="#{accounting_settings_api_clients_path}"/)
+
+      get accounting_settings_api_clients_path
+      expect(response.body).to match(/<form[^>]*data-turbo="false"[^>]*action="#{rotate_accounting_settings_api_client_path(client)}"/)
+    end
+  end
+
   describe "POST /accounting/settings/api_clients" do
     it "creates the client and shows its key once" do
       expect {

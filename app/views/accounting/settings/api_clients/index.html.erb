@@ -44,7 +44,7 @@
             <td class="px-4 py-3 text-right">
               <% if client.active? %>
                 <div class="flex items-center justify-end gap-3">
-                  <%= button_to "Rotate key", rotate_accounting_settings_api_client_path(client), method: :post,
+                  <%= button_to "Rotate key", rotate_accounting_settings_api_client_path(client), method: :post, form: { data: { turbo: false } },
                         data: { turbo_confirm: "Issue a new key? The current one stops working immediately." },
                         class: "text-sm text-primary-600 hover:text-primary-800" %>
                   <%= button_to "Revoke", revoke_accounting_settings_api_client_path(client), method: :patch,
