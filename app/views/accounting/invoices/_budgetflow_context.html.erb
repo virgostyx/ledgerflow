@@ -12,7 +12,7 @@
         <dd class="font-mono font-medium"><%= invoice.external_budget_line.presence || "—" %></dd>
       </div>
     </dl>
-    <p class="mt-2 text-xs text-amber-700">Use them to choose the analytical accounts of the lines.
+    <p class="mt-2 text-xs text-amber-700">The project and budget line analytical accounts are set by BudgetFlow when it knows them, and you cannot change them: return the invoice to the project manager if they are wrong. Use the other axes as usual.
       A line the sender left without an account is on the supplier's usual account when there is one, otherwise on the suspense account 499000: check and code it before posting.</p>
   </div>
 <% end %>

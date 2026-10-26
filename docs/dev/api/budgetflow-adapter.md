@@ -197,3 +197,5 @@ Une facture reçue par Peppol dans LedgerFlow peut concerner un projet BudgetFlo
 4. ~~Qui fait foi pour le statut de paiement~~ : LedgerFlow (2026-09-29). Reste ouvert : garder ou retirer le bouton manuel de BudgetFlow (limite 1 de la section 9).
 5. Source du régime de TVA pour les achats hors Belgique (point 6.6).
 6. R11 : BudgetFlow **pousse** ses budgets vers un endpoint entrant de LedgerFlow (`PUT /api/v1/budgets/{ref}`, même principe) plutôt que LedgerFlow ne les lise.
+   - **Fait côté LedgerFlow (2026-10-26) : la structure.** `PUT /api/v1/projects/{ref}` (droit `analytical:write`) crée les comptes analytiques du projet (axe `PROJ`) et de ses postes (axe `BUDG`) ; `project_ref` et `budget_line_ref` sur la facture annotent chaque ligne, sans que le comptable puisse les changer (il retourne la facture). Voir `inbound-api.md` §3 bis. À faire côté BudgetFlow : l'envoi au verrouillage du budget, à la création et à la clôture du projet, et les deux champs sur la facture.
+   - **Reste (phase 2) : les montants** (budget par poste, virements budgétaires) et le rapport budget contre réel.

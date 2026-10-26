@@ -626,6 +626,8 @@ Rails.application.routes.draw do
       resources :journal_entries, only: [ :index, :show ]
       resources :invoices,        only: [ :index, :show, :update, :destroy ], param: :external_ref, constraints: { external_ref: %r{[^/]+} }
       resources :partners,        only: [ :update ], param: :external_ref, constraints: { external_ref: %r{[^/]+} }
+      # BudgetFlow keeps the analytical accounts of its projects and sub lines (same path as accounting_summary, another verb).
+      resources :analytical_projects, only: [ :update ], path: "projects", param: :external_ref, constraints: { external_ref: %r{[^/]+} }
       resources :projects,        only: [] do
         get :accounting_summary, on: :member
       end

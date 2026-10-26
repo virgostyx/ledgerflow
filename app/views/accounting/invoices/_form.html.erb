@@ -16,6 +16,10 @@
     }
   }.to_json
 
+  # The accounts BudgetFlow set on its invoices (project, budget line) are shown, not offered: the invoice is returned to change them.
+  kept_by_caller = invoice.external_ref.present? ? Accounting::AnalyticalAccount.where.not(external_ref: nil).pluck(:id, :code).to_h : {}
+  kept_axis_ids  = kept_by_caller.empty? ? [] : Accounting::InvoiceLineAnnotation.joins(:invoice_line).where(accounting_invoice_lines: { invoice_id: invoice.id }, analytical_account_id: kept_by_caller.keys).distinct.pluck(:analytical_axis_id)
+
   # Under the VAT franchise a sale charges no VAT (only 0%), and every document is domestic.
   franchise    = ActsAsTenant.current_tenant&.franchise?
   rate_options = franchise && invoice.customer? ? [ [ '0%', '0.00' ] ] : [ [ '0%', '0.00' ], [ '6%', '6.00' ], [ '12%', '12.00' ], [ '21%', '21.00' ] ]
@@ -249,6 +253,12 @@
                  style="grid-template-columns: repeat(<%= axes.size %>, minmax(0, 1fr)) 1fr">
               <% axes.each_with_index do |axis, axis_idx| %>
                 <% annotation = lf.object.analytical_annotations.find { |a| a.analytical_axis_id == axis.id } %>
+                <% if annotation && kept_by_caller.key?(annotation.analytical_account_id) %>
+                  <div class="axis-field" data-axis-code="<%= axis.code %>">
+                    <label class="block text-xs text-gray-400 mb-0.5 axis-label"><%= axis.code %></label>
+                    <p class="text-xs font-mono text-gray-700 py-1" title="Return the invoice to the project manager to change it"><%= kept_by_caller[annotation.analytical_account_id] %> <span class="text-gray-400">(set by BudgetFlow)</span></p>
+                  </div>
+                <% else %>
                 <div class="axis-field" data-axis-code="<%= axis.code %>">
                   <label class="block text-xs text-gray-400 mb-0.5 axis-label">
                     <%= axis.code %>
@@ -267,6 +277,7 @@
                     <%= af.hidden_field :_destroy, value: 0, data: { destroy_field: true } %>
                   <% end %>
                 </div>
+                <% end %>
               <% end %>
               <div></div>
             </div>
@@ -333,6 +344,7 @@
           <div class="analytical-axes-row mt-1 grid gap-2 pl-1"
                style="grid-template-columns: repeat(<%= axes.size %>, minmax(0, 1fr)) 1fr">
             <% axes.each_with_index do |axis, axis_idx| %>
+              <% next if kept_axis_ids.include?(axis.id) # a new line gets the project and budget line of the others, on saving %>
               <div class="axis-field" data-axis-code="<%= axis.code %>">
                 <label class="block text-xs text-gray-400 mb-0.5 axis-label">
                   <%= axis.code %>

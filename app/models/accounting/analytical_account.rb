@@ -10,12 +10,16 @@ class Accounting::AnalyticalAccount < ApplicationRecord
 
   validates :code,     presence: true,
                        uniqueness: { scope: :analytical_axis_id, case_sensitive: false }
+  validates :code,     length: { maximum: 40 }
   validates :label_fr, presence: true
 
   scope :active,   -> { where(active: true) }
   scope :ordered,  -> { order(:code) }
 
+  # Kept by an application (BudgetFlow, through the API): it commands the code, the label and whether the account is active.
+  def managed? = external_ref.present?
+
   def destroyable?
-    analytical_annotations.none?
+    !managed? && analytical_annotations.none?
   end
 end

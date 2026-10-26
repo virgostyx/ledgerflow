@@ -605,13 +605,15 @@ ALTER SEQUENCE public.accounting_allocation_versions_id_seq OWNED BY public.acco
 CREATE TABLE public.accounting_analytical_accounts (
     id bigint NOT NULL,
     analytical_axis_id bigint NOT NULL,
-    code character varying(20) NOT NULL,
+    code character varying(40) NOT NULL,
     label_fr character varying NOT NULL,
     label_nl character varying,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    entity_id bigint NOT NULL
+    entity_id bigint NOT NULL,
+    external_ref character varying,
+    external_group character varying
 );
 
 
@@ -12085,6 +12087,13 @@ CREATE UNIQUE INDEX index_analytical_accounts_on_axis_and_code ON public.account
 
 
 --
+-- Name: index_analytical_accounts_on_entity_and_external_ref; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_analytical_accounts_on_entity_and_external_ref ON public.accounting_analytical_accounts USING btree (entity_id, external_ref) WHERE (external_ref IS NOT NULL);
+
+
+--
 -- Name: index_analytical_annotations_on_line_axis_account; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17237,6 +17246,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261026100000'),
 ('20261020100000'),
 ('20261016250000'),
 ('20261016240000'),

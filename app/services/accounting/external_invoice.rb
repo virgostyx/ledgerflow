@@ -178,7 +178,8 @@ class Accounting::ExternalInvoice
     n[:exchange_rate] = decimal(n[:exchange_rate], :exchange_rate) if n.key?(:exchange_rate)
     n[:partner]     = partner(payload[:partner_external_ref])
     n[:fiscal_year] = fiscal_year(n[:invoice_date])
-    n[:lines_attrs] = lines(payload[:lines], n[:partner])
+    n[:analytical]  = analytical_accounts(payload)
+    n[:lines_attrs] = lines(payload[:lines], n[:partner], n[:analytical])
     n[:external_project_name] = payload[:project_name].to_s.strip.presence
     n[:external_budget_line]  = payload[:budget_line].to_s.strip.presence
     n[:supplier_reference]    = payload[:supplier_reference].to_s.strip.presence
@@ -238,9 +239,26 @@ class Accounting::ExternalInvoice
     found
   end
 
+  # The analytical accounts an invoice is charged to: its project (axis PROJ) and its budget line (axis BUDG), which the caller created
+  # beforehand (PUT /projects/:ref). Every line gets both; the accountant cannot change them, the invoice is returned instead.
+  def analytical_accounts(payload)
+    project = analytical_account(payload[:project_ref], :project_ref, "PROJ", "project")
+    line    = analytical_account(payload[:budget_line_ref], :budget_line_ref, "BUDG", "budget line")
+    @errors[:budget_line_ref] = [ "#{line.external_ref.inspect} belongs to another project" ] if project && line && line.external_group != project.external_ref
+    [ project, line ].compact
+  end
+
+  def analytical_account(ref, key, axis_code, noun)
+    ref = ref.to_s.strip.presence or return
+    account = Accounting::AnalyticalAccount.joins(:analytical_axis).find_by(external_ref: ref, accounting_analytical_axes: { code: axis_code })
+    @errors[key] = [ "unknown #{noun} #{ref.inspect}: not synchronised yet (validate the budget in the calling application first)" ] unless account
+    @errors[key] = [ "#{noun} #{ref.inspect} is not active (closed)" ] if account && !account.active
+    account if account&.active
+  end
+
   # A line sent without an account goes on the supplier's usual account (the one of its last posted invoice), else on the
   # suspense account: the accountant checks and codes it before posting either way.
-  def lines(raw, partner)
+  def lines(raw, partner, analytical)
     list = Array(raw)
     if list.empty?
       @errors[:lines] = [ "at least one line is required" ]
@@ -259,6 +277,7 @@ class Accounting::ExternalInvoice
       account = accounts[given || fallback]
       @errors["lines[#{i}].account_code"] = [ account_error(given) ] unless account
       attrs = { account: account, description: line[:description] }
+      attrs[:analytical_annotations_attributes] = analytical.map { |a| { "analytical_axis_id" => a.analytical_axis_id, "analytical_account_id" => a.id } } if analytical.any?
       LINE_DECIMALS.each { |k| attrs[k.to_sym] = decimal(line[k], "lines[#{i}].#{k}") if line.key?(k) }
       attrs.compact
     end

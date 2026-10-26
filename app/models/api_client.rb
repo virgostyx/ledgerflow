@@ -1,10 +1,11 @@
 class ApiClient < ApplicationRecord
-  # The first three are those of the BudgetFlow integration; the others are those of the public API (F13c).
-  BUDGETFLOW_SCOPES = %w[invoices:read invoices:write partners:write].freeze
+  # The first four are those of the BudgetFlow integration; the others are those of the public API (F13c).
+  BUDGETFLOW_SCOPES = %w[invoices:read invoices:write partners:write analytical:write].freeze
 
   # What each scope lets a key do, as the permission its owner would need to do it by hand (Permissions::MATRIX).
   SCOPE_PERMISSIONS = {
     "invoices:read" => "records.view", "invoices:write" => "records.write", "partners:write" => "records.write",
+    "analytical:write" => "records.write",
     "accounts:read" => "records.view", "partners:read" => "records.view", "journals:read" => "records.view", "entries:read" => "records.view",
     "entries:write" => "records.write", "entries:post" => "entries.post", "entries:reverse" => "entries.reverse", "documents:read" => "documents.view",
     "bank:read" => "records.view", "tasks:read" => "records.view", "periods:read" => "records.view", "reports:read" => "reports.view",

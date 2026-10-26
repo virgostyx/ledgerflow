@@ -54,7 +54,7 @@ class Accounting::InvoicesController < ApplicationController
   def update
     authorize @invoice
 
-    if @invoice.update(invoice_params)
+    if @invoice.update(params_without_managed_analytics(invoice_params))
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.updated")
     else
       @axes     = Accounting::AnalyticalAxis.active.order(:code)
@@ -253,6 +253,39 @@ class Accounting::InvoicesController < ApplicationController
 
   def list_path_for(invoice_type)
     invoice_type.to_s == "customer" ? accounting_sales_path : accounting_purchases_path
+  end
+
+  # The analytical accounts BudgetFlow set (project, budget line) are its to command: the accountant cannot change, remove or replace them,
+  # the invoice goes back to the project manager instead. A line added here gets the same ones. The other axes stay free.
+  def params_without_managed_analytics(attrs)
+    attrs = attrs.to_h
+    return attrs if @invoice.external_ref.blank?
+
+    managed = Accounting::InvoiceLineAnnotation.joins(:invoice_line, :analytical_account).where(accounting_invoice_lines: { invoice_id: @invoice.id })
+                                               .where.not(accounting_analytical_accounts: { external_ref: nil }).to_a
+    return attrs if managed.empty?
+
+    kept_axes = managed.map(&:analytical_axis_id)
+    each_line_attributes(attrs) do |line|
+      given = Array.wrap(line["analytical_annotations_attributes"]).flat_map { |a| a.is_a?(Hash) && !a.key?("analytical_axis_id") && !a.key?("id") ? a.values : [ a ] }
+      free  = given.reject { |a| locked_annotation?(a, managed, kept_axes) }
+      free += managed_annotations(managed) if line["id"].blank?
+      line["analytical_annotations_attributes"] = free.each_with_index.to_h { |a, i| [ i.to_s, a ] }
+    end
+    attrs
+  end
+
+  def each_line_attributes(attrs, &block)
+    lines = attrs["lines_attributes"] or return
+    (lines.is_a?(Hash) ? lines.values : lines).each(&block)
+  end
+
+  def locked_annotation?(annotation, managed, kept_axes)
+    managed.any? { |m| m.id.to_s == annotation["id"].to_s } || kept_axes.include?(annotation["analytical_axis_id"].to_i)
+  end
+
+  def managed_annotations(managed)
+    managed.uniq(&:analytical_axis_id).map { |m| { "analytical_axis_id" => m.analytical_axis_id, "analytical_account_id" => m.analytical_account_id } }
   end
 
   def invoice_params

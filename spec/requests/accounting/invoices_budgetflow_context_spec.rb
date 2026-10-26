@@ -31,6 +31,12 @@ RSpec.describe "Invoice BudgetFlow context", type: :request do
       expect(response.body).to include("usual account").and include("499000")
     end
 
+    it "says the project and budget line accounts are BudgetFlow's: the invoice is returned to change them" do
+      get edit_accounting_invoice_path(invoice)
+
+      expect(response.body).to include("set by BudgetFlow").and include("return the invoice")
+    end
+
     it "shows nothing for an invoice without context" do
       plain = create(:invoice, :draft, invoice_type: :supplier, partner: supplier, fiscal_year: fiscal_year)
 

@@ -91,6 +91,28 @@ Champs : `name` (obligatoire), `partner_type` (`customer` | `supplier` | `both`)
 
 Corps de réponse : `{id, external_ref, name, partner_type, vat_number, country, active}`.
 
+## 3 bis. Projets et postes budgétaires : `PUT /api/v1/projects/:external_ref` (scope `analytical:write`)
+
+L'application tierce (BudgetFlow) tient les comptes analytiques de ses projets : un sur l'axe `PROJ` pour le projet, un sur l'axe `BUDG` pour chaque poste (sous-ligne). Les deux axes existent dans toute entité. Un seul appel par projet, **idempotent**, rejouable à volonté.
+
+```json
+{ "code": "PRODEM", "name": "PRODEM ZAMBIA", "active": true,
+  "budget_lines": [ { "ref": "bf-subline-5", "code": "1.1.1", "label": "1 Staff > 1.1 Salaries > 1.1.1 Coordinator" } ] }
+```
+
+| Champ | Règle |
+|---|---|
+| `external_ref` (chemin) | Clé du projet chez l'appelant, par exemple `bf-project-12`. |
+| `code`, `name` | Obligatoires. Le compte du projet a ce code (axe `PROJ`) et ce nom. |
+| `active` | `true` par défaut. `false` (projet clôturé) désactive le projet **et tous ses postes**. |
+| `budget_lines[]` | `ref` (clé stable du poste, par exemple `bf-subline-5`), `code` (dans le projet), `label`, tous obligatoires. Le compte créé a le code `<code projet>-<code poste>` (axe `BUDG`) ; 40 caractères au plus. Liste vide : seul le compte du projet est créé (budget pas encore validé). |
+
+- **Remplacement complet** : les postes déjà connus et absents de la liste sont **désactivés**, jamais supprimés (ils peuvent porter des annotations). Un poste qui revient est réactivé. Un renommage met à jour le compte (même clé), un changement du code projet met à jour tous les codes de postes.
+- **Comptes tenus par l'appelant** : le code, le libellé et l'état ne se changent plus depuis les réglages de LedgerFlow, et le compte ne peut pas être supprimé.
+- Réponse `201` (projet nouveau) ou `200` : `{ "ref", "code", "active", "budget_lines": [ { "ref", "code", "active" } ] }`.
+- `422` : champ manquant, code trop long, ou l'entité n'a pas l'axe `PROJ` ou `BUDG`. `409` : le code est déjà pris par un compte analytique que l'appelant ne tient pas. Tout ou rien.
+- Un client API créé avant ce droit ne l'a pas : en créer un nouveau avec `analytical:write` (les droits d'un client ne se modifient pas).
+
 ## 4. Factures
 
 ### 4.1 Créer, réviser : `PUT /api/v1/invoices/:external_ref` (scope `invoices:write`)
@@ -119,6 +141,7 @@ Corps de réponse : `{id, external_ref, name, partner_type, vat_number, country,
 | `post` | `true` par défaut : la facture est comptabilisée tout de suite. **`false` : elle reste un brouillon** que le comptable code et comptabilise dans LedgerFlow (mode de BudgetFlow). |
 | `supplier_reference` | Facultatif. Numéro de la facture **chez le fournisseur** (pour BudgetFlow : `invoice_number`). Distinct de `external_ref`, qui est la clé de l'appelant. Fait partie du contenu. |
 | `project_name`, `budget_line` | Facultatifs. Nom du projet et ligne budgétaire `chapitre.ligne.sous-ligne`, affichés au comptable pour choisir les comptes analytiques. Font partie du contenu (les changer est une correction). |
+| `project_ref`, `budget_line_ref` | Facultatifs, à envoyer ensemble. Clés du projet et du poste (mêmes valeurs que `ref` dans `PUT /projects/:external_ref`). **Chaque ligne** de la facture reçoit alors les comptes analytiques `PROJ` et `BUDG` correspondants, et le comptable ne peut pas les changer : s'il y a une erreur, il retourne la facture. Projet ou poste inconnu (budget pas encore validé ou pas encore transmis) : `422` « not synchronised yet », sans rien écrire ; projet clôturé : `422` « not active » ; poste d'un autre projet : `422`. Font partie du contenu (empreinte). Sans ces champs : aucune annotation, comme avant. |
 | `invoice_type` | Obligatoire : `supplier` ou `customer`. |
 | `invoice_date` | Obligatoire, ISO 8601. Doit tomber dans un **exercice ouvert**. |
 | `due_date`, `description`, `notes`, `project_id` | Facultatifs. `project_id` est l'identifiant BudgetFlow, sans clé étrangère. |
@@ -306,7 +329,7 @@ curl -X PUT https://ledgerflow.example/api/v1/invoices/BF-I-1 \
 - **Pas de webhook** : LedgerFlow n'appelle jamais l'application tierce ; elle interroge `GET /api/v1/invoice_events`. Un webhook qui réveillerait l'interrogation reste possible plus tard.
 - **Lots asynchrones** et écritures libres : volontairement absents.
 - **Comptes bancaires à l'étranger** : audités (`docs/dev/audit-foreign-bank-accounts.md`). Mouvement saisi à la main ou importé, paiement manuel d'une facture avec écart de change ; pas de paiement partiel manuel ni de réévaluation de clôture.
-- **Analytique** : le comptable choisit les comptes analytiques à la main à partir de `project_name` et `budget_line` ; aucun pré-remplissage automatique.
+- **Analytique** : avec `project_ref` et `budget_line_ref`, les axes `PROJ` et `BUDG` sont posés automatiquement (voir ci-dessus) ; sans eux, le comptable choisit les comptes à la main à partir de `project_name` et `budget_line`. Les autres axes (activités, financements) restent au comptable.
 - **PDF de la facture** : LedgerFlow ne le conserve pas (la copie d'audit reste dans l'application tierce).
 - `POST /api/v1/journal_entries` a été **supprimé** ; `GET /api/v1/journal_entries` (lecture) reste.
 - Le budget vs réalisé (R11) est un sujet distinct : il suppose que BudgetFlow pousse ses budgets vers LedgerFlow (cf. `budgetflow-adapter.md`), non traité ici.

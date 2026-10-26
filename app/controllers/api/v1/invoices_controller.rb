@@ -52,7 +52,7 @@ class Api::V1::InvoicesController < Api::V1::BaseController
   def posting_requested? = params[:post].nil? || ActiveModel::Type::Boolean.new.cast(params[:post])
 
   def invoice_payload
-    params.permit(:partner_external_ref, :post, :project_name, :budget_line, :supplier_reference, :document_type, :credited_invoice_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,
+    params.permit(:partner_external_ref, :post, :project_name, :budget_line, :project_ref, :budget_line_ref, :supplier_reference, :document_type, :credited_invoice_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,
                   :vat_treatment, :description, :notes, :project_id, lines: LINE_FIELDS)
           .to_h.merge(external_ref: params[:external_ref])
   end
