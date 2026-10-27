@@ -118,7 +118,7 @@ Chemin suivi : relevé bancaire importé en CSV (une ligne de −100,00, référ
 `ledgerflow:reconcile[11]` : 7 factures exportées vérifiées. Totaux concordants : EUR 5 factures, 5122,00 des deux côtés ; USD 1 facture, 100,0 des deux côtés. « Paid here, not paid there yet » : 1 (la facture USD rouverte par le délettrage : normal). « Unknown to BudgetFlow » : 0 ; « Not sent yet » : 0. Deux écarts :
 
 - **Taux de la facture USD** (BudgetFlow 1,0834, LedgerFlow 1,1222 ; 92,30 € contre 89,11 €) : expliqué. Le comptable a modifié le taux du brouillon dans LedgerFlow pour simuler un autre taux de paiement, avant la comptabilisation. La réconciliation l'a bien signalé. Le bon moment pour simuler un taux différent est le paiement (l'écart est alors comptabilisé à part).
-- **`INV-20261025-A6AEE3` marquée exportée dans BudgetFlow, inconnue de LedgerFlow** : **non expliqué**. Hypothèse : son brouillon a été supprimé dans LedgerFlow, ce que BudgetFlow ne peut pas savoir. À vérifier ; si c'est le cas, c'est une lacune : supprimer un brouillon venu de BudgetFlow ne devrait pas le laisser « exporté » de l'autre côté.
+- **`INV-20261025-A6AEE3` marquée exportée dans BudgetFlow, inconnue de LedgerFlow** : **expliqué**. Exportée le 25 octobre (identifiant LedgerFlow 1, jamais comptabilisée ni retournée), puis son brouillon a disparu de LedgerFlow : les identifiants des factures de l'API vont de 2 à 8 (`bf-invoice-374` à `380`), l'identifiant 1 manque, et l'audit n'a aucune trace de sa suppression (le modèle de facture n'enregistre pas ses suppressions). Le comptable avait supprimé le brouillon, et BudgetFlow ne pouvait pas le savoir. Corrigé : voir le défaut H.
 
 
 ### Défauts trouvés et corrigés pendant le test
@@ -131,6 +131,7 @@ Chemin suivi : relevé bancaire importé en CSV (une ligne de −100,00, référ
 - **E. Lignes toujours sur 499000** (LedgerFlow). Une ligne sans compte va maintenant sur le compte habituel du fournisseur (celui de sa dernière facture comptabilisée), sinon sur 499000 ; l'empreinte d'idempotence ne dépend pas de ce choix (`0d8c8ec`). **Vérifié en réel** (après redéploiement de LedgerFlow) : la ligne d'une nouvelle facture du même fournisseur est arrivée sur son compte de charge habituel, et non sur 499000.
 - **F. La page ne se mettait à jour qu'en partie** (BudgetFlow). Après le paiement, le badge LedgerFlow changeait seul mais pas le statut principal : il fallait rafraîchir. Corrigé : la page entière se recharge quand LedgerFlow fait avancer la facture, avec un vrai test en navigateur (`4038d39a`).
 - **G. `budget_line` répétait les codes parents** (BudgetFlow). Les codes de BudgetFlow contiennent déjà leur chemin (chapitre `1`, ligne `1.1`, sous-ligne `1.1.1`) : le texte envoyé donnait `1.1.1.1.1.1`. Corrigé : `1.1.1` (`0d550cb3`).
+- **H. Un brouillon venu de BudgetFlow pouvait être supprimé dans LedgerFlow** (LedgerFlow). BudgetFlow le croyait exporté pour toujours, et seule la réconciliation le révélait. Corrigé : la suppression est refusée pour une entité qui utilise BudgetFlow, avec le message qui indique de le retourner au chef de projet, et le bouton « Delete » n'est plus proposé sur ces brouillons ; le retour annule le brouillon et prévient BudgetFlow (`5588075`). Non reproduit en réel après correction.
 
 ### Constats sans correction (décisions à prendre, voir `POINTS_A_VALIDER.md`)
 
