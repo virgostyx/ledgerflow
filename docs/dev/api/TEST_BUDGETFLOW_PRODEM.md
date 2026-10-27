@@ -96,7 +96,7 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 | 5 | Le comptable comptabilise | **OK** | Événement `posted` reçu, trace d'audit `ledgerflow_posted`. La fiche BudgetFlow ne montrait rien : corrigé (badge, voir C). |
 | 6 | Corriger après comptabilisation | **Impossible depuis l'écran** | BudgetFlow interdit toute modification d'une facture validée. Le `409` n'est atteignable que par l'API. Point V15. |
 | 7 | « Return to project manager » | **OK, avec un manque corrigé** | Écriture extournée, facture en brouillon, export à `pending`, e-mail reçu. Le motif n'était affiché que dans le module comptable : corrigé (voir D). Délai jusqu'à 5 minutes, maintenant 1 minute. |
-| 8 | Paiement | **Non fait** | Demande un relevé bancaire importé dans LedgerFlow. |
+| 8 | Paiement | **OK (lot SEPA)** | Lot créé dans LedgerFlow, fichier généré, « Mark as executed » : la facture est passée à « Paid » dans BudgetFlow (avec le badge « LedgerFlow : Paid »). Le BIC du compte bancaire de l'entité doit être valide, sinon le fichier SEPA est refusé (« Bic is invalid »). Le rapprochement d'un relevé (`payment_confirmed`) reste à tester. |
 | 9–12 | Paiement défait, cas limites, volume, réconciliation | **Non faits** | À faire : outils prêts (`ledgerflow:export_invoices`, `ledgerflow:reconcile`). |
 | — | Badge LedgerFlow | **OK** | Une troisième facture a montré « Posted » et le numéro LedgerFlow sur la fiche BudgetFlow, sans rafraîchir. |
 
@@ -108,6 +108,8 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 - **C. Aucun statut LedgerFlow sur la fiche** (BudgetFlow). Le chef de projet ne voyait pas que la facture était comptabilisée, et le badge d'export laissait un libellé vide pour plusieurs états. Corrigé : colonnes `ledgerflow_status` et `ledgerflow_number`, badge « LedgerFlow : Posted · numéro », tous les états d'export nommés, rafraîchissement automatique toutes les 15 secondes, synchronisation chaque minute (`041fc1a8`).
 - **D. Motif du retour invisible pour le chef de projet** (BudgetFlow). Corrigé : bandeau sur la fiche de la facture (`a261f726`).
 - **E. Lignes toujours sur 499000** (LedgerFlow). Une ligne sans compte va maintenant sur le compte habituel du fournisseur (celui de sa dernière facture comptabilisée), sinon sur 499000 ; l'empreinte d'idempotence ne dépend pas de ce choix (`0d8c8ec`). **Vérifié en réel** (après redéploiement de LedgerFlow) : la ligne d'une nouvelle facture du même fournisseur est arrivée sur son compte de charge habituel, et non sur 499000.
+- **F. La page ne se mettait à jour qu'en partie** (BudgetFlow). Après le paiement, le badge LedgerFlow changeait seul mais pas le statut principal : il fallait rafraîchir. Corrigé : la page entière se recharge quand LedgerFlow fait avancer la facture, avec un vrai test en navigateur (`4038d39a`).
+- **G. `budget_line` répétait les codes parents** (BudgetFlow). Les codes de BudgetFlow contiennent déjà leur chemin (chapitre `1`, ligne `1.1`, sous-ligne `1.1.1`) : le texte envoyé donnait `1.1.1.1.1.1`. Corrigé : `1.1.1` (`0d550cb3`).
 
 ### Constats sans correction (décisions à prendre, voir `POINTS_A_VALIDER.md`)
 
@@ -115,6 +117,29 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 - **V15** : « Dispute » dans BudgetFlow ne prévient pas LedgerFlow ; une facture peut être en litige d'un côté et comptabilisée de l'autre.
 - Aide au codage par l'IA côté LedgerFlow (compte, TVA, analytique par ligne) : n'existe pas ; écarté pour l'instant (palier B, à décider après un pilote).
 
+## 10. Comptes analytiques projet et poste (2026-10-27)
+
+Objectif : que BudgetFlow crée dans LedgerFlow les comptes analytiques de ses projets et de ses postes budgétaires, et que chaque ligne de facture soit annotée automatiquement, pour lire la consommation budgétaire dans la comptabilité.
+
+Décisions : un compte par sous-ligne sur l'axe `BUDG` (hiérarchie dans le code et le libellé), un compte par projet sur `PROJ` ; codes seulement (les montants et le rapport budget contre réel sont une phase 2) ; annotation automatique que **le comptable ne peut pas modifier** (il retourne la facture) ; BudgetFlow commande les comptes, LedgerFlow les protège ; un poste retiré est désactivé, jamais supprimé ; un projet ou un poste inconnu fait refuser la facture (422) ; un projet clôturé désactive ses comptes.
+
+Construit : LedgerFlow `1947cbd` (`PUT /api/v1/projects/:ref`, droit `analytical:write`, `project_ref` et `budget_line_ref` sur la facture, verrou côté serveur et à l'écran), BudgetFlow `0d550cb3` (envoi à la création, au changement de nom, de code ou de statut et au verrouillage du budget ; tâche de rattrapage `ledgerflow:sync_projects`).
+
+| Vérification en production | Résultat |
+|---|---|
+| Nouveau client API avec `analytical:write`, « Test connection » | **OK** |
+| Rattrapage `ledgerflow:sync_projects[11]` (aperçu, puis envoi) | **OK** : 1 projet synchronisé, 0 échec |
+| Compte `PROJ` du projet, marqué « Managed by BudgetFlow » | **OK** |
+| Verrouillage du budget : comptes `BUDG` des postes | **OK** |
+| Facture sur le projet : lignes annotées `PROJ` et `BUDG`, non modifiables par le comptable | **OK** |
+| Poste ajouté, poste retiré (désactivé), projet clôturé | **OK** |
+
+Points à connaître :
+- Les droits d'un client API existant ne se modifient pas : il a fallu créer un nouveau client avec `analytical:write`.
+- Les comptes gérés par BudgetFlow sont entièrement en lecture seule dans les réglages de LedgerFlow (le comptable ne peut pas non plus les désactiver), pour qu'un envoi ne réactive pas ce qu'il aurait désactivé. Écart voulu avec l'énoncé « il peut seulement les désactiver ».
+- Les factures déjà comptabilisées avant cette fonction restent sans analytique tant que le comptable ne les retourne pas.
+- Pas encore fait : les montants budgétaires et le rapport budget contre réel (R11) ; l'obligation d'avoir `PROJ` et `BUDG` sur les charges de classe 6 avant de comptabiliser (décision différée, voir `POINTS_A_VALIDER.md`).
+
 ### Reste à faire avant PRODEM ZAMBIA
 
-Correction avant comptabilisation (étape 4) ; paiement et paiement défait (8 et 9) ; cas limites, volume et réconciliation (10 à 12) ; décisions sur la TVA zambienne, les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
+Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire et paiement défait (8 et 9) ; cas limites, volume et réconciliation (10 à 12) ; décisions sur la TVA zambienne, les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
