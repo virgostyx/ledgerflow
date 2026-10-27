@@ -98,7 +98,7 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 | 7 | « Return to project manager » | **OK, avec un manque corrigé** | Écriture extournée, facture en brouillon, export à `pending`, e-mail reçu. Le motif n'était affiché que dans le module comptable : corrigé (voir D). Délai jusqu'à 5 minutes, maintenant 1 minute. |
 | 8 | Paiement | **OK (lot SEPA)** | Lot créé dans LedgerFlow, fichier généré, « Mark as executed » : la facture est passée à « Paid » dans BudgetFlow (avec le badge « LedgerFlow : Paid »). Le BIC du compte bancaire de l'entité doit être valide, sinon le fichier SEPA est refusé (« Bic is invalid »). Le rapprochement d'un relevé (`payment_confirmed`) reste à tester. |
 | 9 | Paiement défait | **OK** | Voir le détail ci-dessous (2026-10-27). |
-| 10 | Cas limites | **En cours** : A faite | A (TVA qui ne tombe pas rond) : voir « Étape 10 » ci-dessous. B (avoir) et C (kwacha, TVA zambienne, fournisseur sans TVA ni IBAN) à faire. Le cas « IBAN invalide » est sans objet : BudgetFlow contrôle la clé de l'IBAN. |
+| 10 | Cas limites | **En cours** : A et B faits | A (TVA qui ne tombe pas rond) et B (avoir) : voir « Étape 10 » ci-dessous. C (kwacha, TVA zambienne, fournisseur sans TVA ni IBAN) à faire. Le cas « IBAN invalide » est sans objet : BudgetFlow contrôle la clé de l'IBAN. |
 | 11 | Volume | **Non fait** | Outil prêt : `ledgerflow:export_invoices`. |
 | 12 | Réconciliation | **Faite, 2 écarts** | `ledgerflow:reconcile[11]` : voir « Étape 12 » ci-dessous. |
 | — | Badge LedgerFlow | **OK** | Une troisième facture a montré « Posted » et le numéro LedgerFlow sur la fiche BudgetFlow, sans rafraîchir. |
@@ -130,6 +130,8 @@ Chemin suivi : relevé bancaire importé en CSV (une ligne de −100,00, référ
 - la réconciliation le signale (« VAT : BudgetFlow 123.45, LedgerFlow 123.5 ; total en euros : 1123.45 contre 1123.5 ») ; totaux EUR : 6245,45 contre 6245,5.
 
 Conséquences : la TVA déclarable est supérieure de 0,05 € à celle de la facture du fournisseur, et un virement du montant exact laisserait 0,05 € ouverts (LedgerFlow propose un lettrage avec écriture d'arrondi). Rien n'est refusé. Pas un défaut d'envoi : une limite de la reconstitution de la TVA depuis un montant. Voir le point V17 de `POINTS_A_VALIDER.md`.
+
+**Cas B : avoir (note de crédit).** Facture de type « Credit Note (refund) » de 50,00 €, TVA 0, sur `ZZ-TEST-CNT`, sans lien avec une facture d'origine. Résultat conforme au plan, selon l'utilisateur (« tout s'est passé comme prévu ») : brouillon d'avoir dans LedgerFlow, comptabilisation, effet attendu sur la consommation dans BudgetFlow. Le détail de chaque contrôle n'a pas été relevé.
 
 ### Défauts trouvés et corrigés pendant le test
 
