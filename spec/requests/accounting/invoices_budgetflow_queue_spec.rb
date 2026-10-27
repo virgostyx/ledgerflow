@@ -50,6 +50,37 @@ RSpec.describe "Invoices received from BudgetFlow (queue)", type: :request do
     end
   end
 
+  # BudgetFlow believes what it sent: a deleted draft would stay "exported" there for ever. The accountant returns it instead, which tells BudgetFlow.
+  describe "deleting a draft" do
+    it "is refused for a draft BudgetFlow sent, with the way to do it, and the draft stays" do
+      expect { delete accounting_invoice_path(from_budgetflow) }.not_to change(Accounting::Invoice, :count)
+
+      expect(response).to redirect_to(accounting_invoice_path(from_budgetflow))
+      expect(flash[:alert]).to include("BudgetFlow").and include("return")
+    end
+
+    it "offers no Delete button on a draft BudgetFlow sent, but one on a draft typed here" do
+      get accounting_purchases_path
+
+      expect(response.body.scan("Delete this draft invoice?").size).to eq(1)
+    end
+
+    it "still deletes a draft typed in LedgerFlow" do
+      expect { delete accounting_invoice_path(typed) }.to change(Accounting::Invoice, :count).by(-1)
+    end
+
+    it "is allowed for an entity that does not use BudgetFlow (nobody there is waiting for the draft)" do
+      entity.update!(budgetflow_enabled: false)
+
+      expect { delete accounting_invoice_path(from_budgetflow) }.to change(Accounting::Invoice, :count).by(-1)
+    end
+
+    it "leaves returning it to the project manager possible, which cancels the draft and tells BudgetFlow" do
+      expect { post return_invoice_accounting_invoice_path(from_budgetflow), params: { reason: "Wrong project" } }
+        .to change { Accounting::InvoiceEvent.where(event_type: "returned").count }.by(1)
+    end
+  end
+
   context "a Peppol invoice not yet taken over by BudgetFlow" do
     let(:peppol) { create(:partner, :supplier, name: "Peppol Supplier") }
     let!(:received) do

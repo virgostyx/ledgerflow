@@ -7,8 +7,9 @@ class Accounting::InvoicePolicy < ApplicationPolicy
   def create? = super && journal_allowed?
   def update? = super && journal_allowed?
 
+  # A draft BudgetFlow sent is not deleted: BudgetFlow would keep it as exported for ever. It is returned, which tells BudgetFlow.
   def destroy?
-    can?("invoices.issue") && journal_allowed?
+    can?("invoices.issue") && journal_allowed? && !from_budgetflow?
   end
 
   # B01a: whoever can write an invoice can put it to approval.

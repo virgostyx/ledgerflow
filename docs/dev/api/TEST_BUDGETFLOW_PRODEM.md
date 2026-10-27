@@ -97,8 +97,29 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 | 6 | Corriger après comptabilisation | **Impossible depuis l'écran** | BudgetFlow interdit toute modification d'une facture validée. Le `409` n'est atteignable que par l'API. Point V15. |
 | 7 | « Return to project manager » | **OK, avec un manque corrigé** | Écriture extournée, facture en brouillon, export à `pending`, e-mail reçu. Le motif n'était affiché que dans le module comptable : corrigé (voir D). Délai jusqu'à 5 minutes, maintenant 1 minute. |
 | 8 | Paiement | **OK (lot SEPA)** | Lot créé dans LedgerFlow, fichier généré, « Mark as executed » : la facture est passée à « Paid » dans BudgetFlow (avec le badge « LedgerFlow : Paid »). Le BIC du compte bancaire de l'entité doit être valide, sinon le fichier SEPA est refusé (« Bic is invalid »). Le rapprochement d'un relevé (`payment_confirmed`) reste à tester. |
-| 9–12 | Paiement défait, cas limites, volume, réconciliation | **Non faits** | À faire : outils prêts (`ledgerflow:export_invoices`, `ledgerflow:reconcile`). |
+| 9 | Paiement défait | **OK** | Voir le détail ci-dessous (2026-10-27). |
+| 10–11 | Cas limites, volume | **Non faits** | Outil prêt : `ledgerflow:export_invoices`. |
+| 12 | Réconciliation | **Faite, 2 écarts** | `ledgerflow:reconcile[11]` : voir « Étape 12 » ci-dessous. |
 | — | Badge LedgerFlow | **OK** | Une troisième facture a montré « Posted » et le numéro LedgerFlow sur la fiche BudgetFlow, sans rafraîchir. |
+
+### Étape 9 en détail : paiement par relevé, puis paiement défait (2026-10-27)
+
+Chemin suivi : relevé bancaire importé en CSV (une ligne de −100,00, référence `UNDO-TEST-1`), puis « Pay a supplier invoice » dans le rapprochement bancaire. Un lot SEPA ne convient pas : une facture payée par lot n'est pas rouverte par un délettrage.
+
+- **Le paiement est parti sur une autre facture que celle visée.** Deux factures du même fournisseur avaient le même montant (100,0) : la liste déroulante ne les distingue que par le numéro. L'écriture créée s'appelait « Payment ACH2026/0004 », alors que la facture visée était `ACH2026/0007`. Ce n'est pas une erreur de l'application. Le test a continué sur `ACH2026/0004` (`bf-invoice-378`, en USD).
+- **L'écran de lettrage ne montre pas les numéros de facture** : « Recent letterings » liste le code du lettrage, le tiers et la date. Le lettrage a été retrouvé par une commande en lecture seule (code `AB`).
+- **Facture en USD réglée par un virement de 100,00 €** : le lettrage `AB` rassemblait la facture (89,11 € pour 100 USD), le paiement (100,00 €) et une écriture d'écart de change `OD2026/0001` de 10,89 €. C'est la règle du paiement d'une facture entière : l'écart est comptabilisé tout de suite.
+- **Délettrage** (motif obligatoire) : la facture est repassée à « posted » dans LedgerFlow ; le badge de BudgetFlow a suivi et la page s'est mise à jour, conformément au plan (événement `payment_reopened`). Selon l'utilisateur, tout s'est passé « exactement comme prévu », y compris la limite connue : la facture reste « Paid » dans BudgetFlow, qui ne sait pas dé-payer, et les comptables sont prévenus par e-mail.
+- **Non vérifié** : que le délettrage ait aussi annulé l'écriture d'écart `OD2026/0001`.
+- **Montant reçu par BudgetFlow : correct.** Sur la facture USD, `payment_amount_eur` vaut 100,0 (le débit bancaire réel), `payment_method` `ledgerflow`, référence `UNDO-TEST-1` ; `amount_eur` reste 92,3 (taux de saisie 1,0834). L'audit porte `amount_eur` 100,0 et `fx_difference_eur` −10,89 (une perte). La consommation budgétaire d'une facture payée utilise `payment_amount_eur`. L'écart de change n'est visible que dans l'audit, pas sur la fiche de la facture.
+
+### Étape 12 : réconciliation (2026-10-27)
+
+`ledgerflow:reconcile[11]` : 7 factures exportées vérifiées. Totaux concordants : EUR 5 factures, 5122,00 des deux côtés ; USD 1 facture, 100,0 des deux côtés. « Paid here, not paid there yet » : 1 (la facture USD rouverte par le délettrage : normal). « Unknown to BudgetFlow » : 0 ; « Not sent yet » : 0. Deux écarts :
+
+- **Taux de la facture USD** (BudgetFlow 1,0834, LedgerFlow 1,1222 ; 92,30 € contre 89,11 €) : expliqué. Le comptable a modifié le taux du brouillon dans LedgerFlow pour simuler un autre taux de paiement, avant la comptabilisation. La réconciliation l'a bien signalé. Le bon moment pour simuler un taux différent est le paiement (l'écart est alors comptabilisé à part).
+- **`INV-20261025-A6AEE3` marquée exportée dans BudgetFlow, inconnue de LedgerFlow** : **non expliqué**. Hypothèse : son brouillon a été supprimé dans LedgerFlow, ce que BudgetFlow ne peut pas savoir. À vérifier ; si c'est le cas, c'est une lacune : supprimer un brouillon venu de BudgetFlow ne devrait pas le laisser « exporté » de l'autre côté.
+
 
 ### Défauts trouvés et corrigés pendant le test
 
@@ -115,6 +136,7 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 
 - **V14** : le module comptable de BudgetFlow ne sert presque plus pour une entité LedgerFlow ; ne pas le supprimer tant que Dolibarr et WinBooks sont supportés.
 - **V15** : « Dispute » dans BudgetFlow ne prévient pas LedgerFlow ; une facture peut être en litige d'un côté et comptabilisée de l'autre.
+- **Piège de l'interface** : « Pay a supplier invoice » ne distingue pas deux factures du même tiers et du même montant, et l'écran de lettrage n'affiche pas les numéros de facture. À améliorer si les chefs de projet ou les comptables s'en plaignent.
 - Aide au codage par l'IA côté LedgerFlow (compte, TVA, analytique par ligne) : n'existe pas ; écarté pour l'instant (palier B, à décider après un pilote).
 
 ## 10. Comptes analytiques projet et poste (2026-10-27)
@@ -142,4 +164,4 @@ Points à connaître :
 
 ### Reste à faire avant PRODEM ZAMBIA
 
-Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire et paiement défait (8 et 9) ; cas limites, volume et réconciliation (10 à 12) ; décisions sur la TVA zambienne, les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
+Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire après un lot SEPA, événement `payment_confirmed` (8) ; cas limites, volume et réconciliation (10 à 12) ; décisions sur la TVA zambienne, les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.

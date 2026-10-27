@@ -64,6 +64,10 @@ class Accounting::InvoicesController < ApplicationController
   end
 
   def destroy
+    if budgetflow_enabled? && @invoice.external_digest.present?
+      return redirect_to accounting_invoice_path(@invoice), alert: "This draft comes from BudgetFlow: return it to the project manager (with a reason) instead of deleting it, so BudgetFlow knows."
+    end
+
     authorize @invoice
 
     invoice_type = @invoice.invoice_type
