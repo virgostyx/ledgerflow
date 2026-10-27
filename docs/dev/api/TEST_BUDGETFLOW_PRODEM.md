@@ -98,7 +98,8 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 | 7 | « Return to project manager » | **OK, avec un manque corrigé** | Écriture extournée, facture en brouillon, export à `pending`, e-mail reçu. Le motif n'était affiché que dans le module comptable : corrigé (voir D). Délai jusqu'à 5 minutes, maintenant 1 minute. |
 | 8 | Paiement | **OK (lot SEPA)** | Lot créé dans LedgerFlow, fichier généré, « Mark as executed » : la facture est passée à « Paid » dans BudgetFlow (avec le badge « LedgerFlow : Paid »). Le BIC du compte bancaire de l'entité doit être valide, sinon le fichier SEPA est refusé (« Bic is invalid »). Le rapprochement d'un relevé (`payment_confirmed`) reste à tester. |
 | 9 | Paiement défait | **OK** | Voir le détail ci-dessous (2026-10-27). |
-| 10–11 | Cas limites, volume | **Non faits** | Outil prêt : `ledgerflow:export_invoices`. |
+| 10 | Cas limites | **En cours** : A faite | A (TVA qui ne tombe pas rond) : voir « Étape 10 » ci-dessous. B (avoir) et C (kwacha, TVA zambienne, fournisseur sans TVA ni IBAN) à faire. Le cas « IBAN invalide » est sans objet : BudgetFlow contrôle la clé de l'IBAN. |
+| 11 | Volume | **Non fait** | Outil prêt : `ledgerflow:export_invoices`. |
 | 12 | Réconciliation | **Faite, 2 écarts** | `ledgerflow:reconcile[11]` : voir « Étape 12 » ci-dessous. |
 | — | Badge LedgerFlow | **OK** | Une troisième facture a montré « Posted » et le numéro LedgerFlow sur la fiche BudgetFlow, sans rafraîchir. |
 
@@ -120,6 +121,15 @@ Chemin suivi : relevé bancaire importé en CSV (une ligne de −100,00, référ
 - **Taux de la facture USD** (BudgetFlow 1,0834, LedgerFlow 1,1222 ; 92,30 € contre 89,11 €) : expliqué. Le comptable a modifié le taux du brouillon dans LedgerFlow pour simuler un autre taux de paiement, avant la comptabilisation. La réconciliation l'a bien signalé. Le bon moment pour simuler un taux différent est le paiement (l'écart est alors comptabilisé à part).
 - **`INV-20261025-A6AEE3` marquée exportée dans BudgetFlow, inconnue de LedgerFlow** : **expliqué**. Exportée le 25 octobre (identifiant LedgerFlow 1, jamais comptabilisée ni retournée), puis son brouillon a disparu de LedgerFlow : les identifiants des factures de l'API vont de 2 à 8 (`bf-invoice-374` à `380`), l'identifiant 1 manque, et l'audit n'a aucune trace de sa suppression (le modèle de facture n'enregistre pas ses suppressions). Le comptable avait supprimé le brouillon, et BudgetFlow ne pouvait pas le savoir. Corrigé : voir le défaut H.
 
+
+### Étape 10 : cas limites (2026-10-27)
+
+**Cas A : TVA qui ne tombe pas rond, facture sans lignes.** Facture de 1000,00 € hors TVA, TVA de 123,45 €. BudgetFlow ne transmet pas le montant de TVA mais un taux déduit (TVA ÷ montant, arrondi à deux décimales) : 12,35 %. LedgerFlow l'accepte sans erreur et la comptabilise (statut « posted »). Résultat :
+- total 1123,50 € au lieu de 1123,45 € ; TVA 123,50 € au lieu de 123,45 € ;
+- la TVA est regroupée par taux **tronqué à l'entier** : écriture « Recoverable VAT 12% » de 123,50 € ;
+- la réconciliation le signale (« VAT : BudgetFlow 123.45, LedgerFlow 123.5 ; total en euros : 1123.45 contre 1123.5 ») ; totaux EUR : 6245,45 contre 6245,5.
+
+Conséquences : la TVA déclarable est supérieure de 0,05 € à celle de la facture du fournisseur, et un virement du montant exact laisserait 0,05 € ouverts (LedgerFlow propose un lettrage avec écriture d'arrondi). Rien n'est refusé. Pas un défaut d'envoi : une limite de la reconstitution de la TVA depuis un montant. Voir le point V17 de `POINTS_A_VALIDER.md`.
 
 ### Défauts trouvés et corrigés pendant le test
 
