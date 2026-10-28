@@ -24,6 +24,14 @@
   franchise    = ActsAsTenant.current_tenant&.franchise?
   rate_options = franchise && invoice.customer? ? [ [ '0%', '0.00' ] ] : [ [ '0%', '0.00' ], [ '6%', '6.00' ], [ '12%', '12.00' ], [ '21%', '21.00' ] ]
   default_rate = rate_options.last.last
+  # A line can carry a rate the form does not offer (16 % sent by an application): it is added to the choices, selected, or the browser
+  # would pick 0 % and saving the line would wipe the VAT out.
+  rate_choices = lambda do |rate|
+    value = rate && format('%.2f', rate)
+    next rate_options if value.nil? || rate_options.any? { |_, v| v == value }
+
+    (rate_options + [ [ "#{rate.to_d.to_s('F').sub(/\.?0+\z/, '')}%", value ] ]).sort_by { |_, v| v.to_d }
+  end
 %>
 <%= form_with model: invoice, scope: :accounting_invoice,
               url: invoice.persisted? ? accounting_invoice_path(invoice)
@@ -230,7 +238,7 @@
 
             <%# VAT rate select %>
             <%= lf.select :vat_rate,
-                  rate_options,
+                  rate_choices.call(lf.object.vat_rate),
                   { selected: lf.object.vat_rate && format('%.2f', lf.object.vat_rate) }, # options are "21.00", a BigDecimal prints "21.0"
                   class: 'block w-full rounded border border-gray-300 text-sm',
                   data: { line_vat_rate: true, action: 'change->invoice-form#computeLineTotals' } %>
