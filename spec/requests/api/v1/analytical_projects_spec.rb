@@ -92,6 +92,34 @@ RSpec.describe 'Api::V1::AnalyticalProjects', type: :request do
     expect(account('bf-subline-5')).to be_active
   end
 
+  it 'gives a code back to a new sub line when the sub line that held it was removed: the old account keeps its history under another code' do
+    put_project
+    old = account('bf-subline-5')
+    put_project(payload.merge(budget_lines: payload[:budget_lines].reject { |l| l[:ref] == 'bf-subline-5' }))
+    expect(old.reload).not_to be_active
+
+    put_project(payload.merge(budget_lines: payload[:budget_lines].reject { |l| l[:ref] == 'bf-subline-5' } + [ { ref: 'bf-subline-9', code: '1.1.1', label: 'A new one' } ]))
+
+    expect(response).to have_http_status(:ok)
+    expect(account('bf-subline-9')).to have_attributes(code: 'PRODEM-1.1.1', label_fr: 'A new one', active: true)
+    expect(old.reload).to have_attributes(code: "PRODEM-1.1.1~#{old.id}", active: false, external_ref: 'bf-subline-5')
+  end
+
+  it 'does not touch the code of a removed sub line nobody wants' do
+    put_project
+    put_project(payload.merge(budget_lines: payload[:budget_lines].reject { |l| l[:ref] == 'bf-subline-5' }))
+
+    expect(account('bf-subline-5')).to have_attributes(code: 'PRODEM-1.1.1', active: false)
+  end
+
+  it 'still refuses the code of an account that another project of the caller keeps' do
+    put_project
+    put_project({ code: 'PRODEM', name: 'Other', budget_lines: [] }, ref: 'bf-project-2')
+
+    expect(response).to have_http_status(:conflict)
+    expect(json['error']).to include('PRODEM')
+  end
+
   it 'refuses a code already used by an account BudgetFlow does not manage, and writes nothing' do
     create(:analytical_account, analytical_axis: proj_axis, code: 'PRODEM')
 

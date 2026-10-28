@@ -107,10 +107,10 @@ L'application tierce (BudgetFlow) tient les comptes analytiques de ses projets :
 | `active` | `true` par défaut. `false` (projet clôturé) désactive le projet **et tous ses postes**. |
 | `budget_lines[]` | `ref` (clé stable du poste, par exemple `bf-subline-5`), `code` (dans le projet), `label`, tous obligatoires. Le compte créé a le code `<code projet>-<code poste>` (axe `BUDG`) ; 40 caractères au plus. Liste vide : seul le compte du projet est créé (budget pas encore validé). |
 
-- **Remplacement complet** : les postes déjà connus et absents de la liste sont **désactivés**, jamais supprimés (ils peuvent porter des annotations). Un poste qui revient est réactivé. Un renommage met à jour le compte (même clé), un changement du code projet met à jour tous les codes de postes.
+- **Remplacement complet** : les postes déjà connus et absents de la liste sont **désactivés**, jamais supprimés (ils peuvent porter des annotations). Un poste qui revient est réactivé. Un poste **nouveau** qui prend le code d'un poste retiré (cas courant : on supprime un poste puis on en refait un du même code) reçoit ce code : l'ancien compte, inactif, le cède (`code~id`) et garde ses annotations et sa référence. Un renommage met à jour le compte (même clé), un changement du code projet met à jour tous les codes de postes.
 - **Comptes tenus par l'appelant** : le code, le libellé et l'état ne se changent plus depuis les réglages de LedgerFlow, et le compte ne peut pas être supprimé.
 - Réponse `201` (projet nouveau) ou `200` : `{ "ref", "code", "active", "budget_lines": [ { "ref", "code", "active" } ] }`.
-- `422` : champ manquant, code trop long, ou l'entité n'a pas l'axe `PROJ` ou `BUDG`. `409` : le code est déjà pris par un compte analytique que l'appelant ne tient pas. Tout ou rien.
+- `422` : champ manquant, code trop long, ou l'entité n'a pas l'axe `PROJ` ou `BUDG`. `409` : le code est déjà pris par un autre compte analytique, que ce projet ne tient pas (créé à la main, ou tenu pour un autre projet). Tout ou rien.
 - Un client API créé avant ce droit ne l'a pas : en créer un nouveau avec `analytical:write` (les droits d'un client ne se modifient pas).
 
 ## 4. Factures
