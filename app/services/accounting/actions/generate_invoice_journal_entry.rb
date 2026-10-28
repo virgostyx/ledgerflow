@@ -141,9 +141,11 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
   # One journal line per invoice line, on `side`, carrying the VAT grid code.
   def self.build_item_lines(invoice, entry, side, vat_grid)
     invoice.lines.each do |line|
-      journal_line = create_line(entry, side, line.subtotal_excl_vat, invoice: invoice, account: line.account,
+      # Foreign VAT is a cost: the expense (and its analytical accounts) carry it, and no grid of the Belgian return does.
+      amount = invoice.foreign_vat? ? line.total_incl_vat : line.subtotal_excl_vat
+      journal_line = create_line(entry, side, amount, invoice: invoice, account: line.account,
                                  label: line.description, vat_code: vat_grid.call(line),
-                                 vat_amount: Fx::Convert.to_eur(line.subtotal_excl_vat, invoice.exchange_rate))
+                                 vat_amount: (Fx::Convert.to_eur(line.subtotal_excl_vat, invoice.exchange_rate) unless invoice.foreign_vat?))
       propagate_annotations(line, journal_line)
     end
   end

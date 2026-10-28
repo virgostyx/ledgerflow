@@ -24,11 +24,12 @@
   franchise    = ActsAsTenant.current_tenant&.franchise?
   rate_options = franchise && invoice.customer? ? [ [ '0%', '0.00' ] ] : [ [ '0%', '0.00' ], [ '6%', '6.00' ], [ '12%', '12.00' ], [ '21%', '21.00' ] ]
   default_rate = rate_options.last.last
+  treatments = Accounting::Invoice.vat_treatments.keys - (invoice.customer? ? %w[foreign_vat] : []) # foreign VAT is for purchases
   # A line can carry a rate the form does not offer (16 % sent by an application): it is added to the choices, selected, or the browser
   # would pick 0 % and saving the line would wipe the VAT out.
   rate_choices = lambda do |rate|
     value = rate && format('%.2f', rate)
-    next rate_options if value.nil? || rate_options.any? { |_, v| v == value }
+    next rate_options if value.nil? || (franchise && invoice.customer?) || rate_options.any? { |_, v| v == value } # a franchise sale is always at 0 %
 
     (rate_options + [ [ "#{rate.to_d.to_s('F').sub(/\.?0+\z/, '')}%", value ] ]).sort_by { |_, v| v.to_d }
   end
@@ -156,7 +157,7 @@
     <div class="relative col-span-2" data-controller="floating-label">
       <%# Under the VAT franchise every document is domestic (see Accounting::Invoice#apply_franchise_rules). %>
       <%= f.select :vat_treatment,
-            (franchise ? %w[domestic] : Accounting::Invoice.vat_treatments.keys).map { |t| [t.tr('_', ' ').capitalize, t] },
+            (franchise ? %w[domestic] : treatments).map { |t| [t.tr('_', ' ').capitalize, t] },
             { include_blank: false },
             class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
             data: { floating_label_target: 'input', invoice_form_target: 'vatTreatmentSelect',
@@ -167,7 +168,7 @@
         <p class="mt-1 text-xs text-gray-500"><%= t("accounting.invoices.franchise_help.#{invoice.customer? ? 'customer' : 'supplier'}") %></p>
       <% end %>
       <div class="mt-1 text-xs text-gray-500" data-invoice-form-target="treatmentHelp">
-        <% (franchise ? [] : Accounting::Invoice.vat_treatments.keys).each do |treatment| %>
+        <% (franchise ? [] : treatments).each do |treatment| %>
           <p data-treatment="<%= treatment %>" class="<%= 'hidden' unless invoice.vat_treatment == treatment %>"><%= t("accounting.invoices.vat_treatment_help.#{treatment}.#{invoice.customer? ? 'customer' : 'supplier'}") %></p>
         <% end %>
       </div>

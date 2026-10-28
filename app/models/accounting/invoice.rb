@@ -16,8 +16,10 @@ class Accounting::Invoice < ApplicationRecord
   # B01a: where the invoice stands for payment. not_required until a policy says otherwise, so what exists is untouched.
   enum :payment_status, { not_required: 0, to_approve: 1, approved: 2, on_hold: 3, scheduled: 4, paid: 5, disputed: 6 }, prefix: :payment
   enum :peppol_status,  { not_sent: 0, queued: 1, delivered: 2, failed: 3 }
+  # foreign_vat (6): a purchase from a supplier abroad whose invoice carries that country's VAT. Not Belgian VAT: nothing to deduct, nothing in the
+  # Belgian return. The VAT is a cost, owed to the supplier with the rest (see GenerateInvoiceJournalEntry).
   enum :vat_treatment,  { domestic: 0, intracom_goods: 1, intracom_services: 2,
-                          construction_reverse_charge: 3, export: 4, exempt: 5 }
+                          construction_reverse_charge: 3, export: 4, exempt: 5, foreign_vat: 6 }
 
   # Treatments where VAT is not invoiced to the partner: either self-assessed by
   # the buyer (reverse charge) or genuinely not due (export, exempt).
@@ -75,6 +77,7 @@ class Accounting::Invoice < ApplicationRecord
   before_validation :default_due_date, on: :create
   before_validation :apply_franchise_rules
 
+  validate :foreign_vat_only_on_purchases
   validate :journal_matches_invoice_type, if: -> { journal.present? }
   validate :cash_journal_is_cash, if: -> { cash_journal.present? }
   validate :vat_treatment_requires_partner_vat_number, if: -> { REVERSE_CHARGE_TREATMENTS.include?(vat_treatment) }
@@ -151,7 +154,7 @@ class Accounting::Invoice < ApplicationRecord
     self.vat_amount        = lines.sum(&:vat_amount)
     # Non-domestic treatments never charge VAT to the partner (self-assessed,
     # exempt or exported) — only vat_amount is kept, for self-assessment.
-    self.total_incl_vat    = domestic? ? lines.sum(&:total_incl_vat) : subtotal_excl_vat
+    self.total_incl_vat    = domestic? || foreign_vat? ? lines.sum(&:total_incl_vat) : subtotal_excl_vat
   end
 
   # A draft in a foreign currency that still has the default rate takes the official one of its date (F11), when there is one: posting checks the rate
@@ -212,6 +215,10 @@ class Accounting::Invoice < ApplicationRecord
     return if due_date.present? || !invoice? || partner.nil? || invoice_date.nil?
 
     self.due_date = invoice_date + partner.payment_terms_days
+  end
+
+  def foreign_vat_only_on_purchases
+    errors.add(:vat_treatment, "foreign VAT only applies to purchases") if foreign_vat? && customer?
   end
 
   def journal_matches_invoice_type

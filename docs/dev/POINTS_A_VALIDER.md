@@ -43,6 +43,24 @@ Document de synthèse créé le 2026-10-20. Il rassemble en un seul endroit les 
 - [ ] **T9 [P2] Peppol, catégories de TVA des factures reçues.** E (exonéré) et O (hors champ) sont traités comme un achat ordinaire à 0 % ; AE, K et G (autoliquidation, intracom, export) **ne sont pas mappées** : un document qui en porte une attend une décision. Une facture négative est mise en révision, jamais brouillonnée. *Source : `features/QUESTIONS.md` § F06 étape 3.*
 - [ ] **T10 [P2] Avoirs.** Remboursement d'un avoir sur une facture déjà encaissée : flux non conçu (l'avoir reste non imputé). Grilles 48/49 (ventes) et 85 (achats) à confirmer. *Source : `HANDOFF_next_steps.md` #1.*
 - [ ] **T11 [P3] TVA des écritures importées.** Les écritures importées par F13 ou l'API n'ont pas de code TVA lu par la déclaration : seules les factures portent la TVA. À savoir pour toute reprise d'historique.
+- [ ] **T12 [P1] TVA étrangère (fournisseur hors Belgique dont la facture porte la TVA de son pays).** Constaté le 2026-10-28 avec une facture zambienne (16 %) : LedgerFlow la comptabilisait comme **TVA belge déductible** (grille 59), ce qui gonfle la déclaration belge. Règles décrites par le propriétaire du produit :
+  - projet UE en Zambie : la TVA est **exonérée sur demande préalable** ; la facture est encodée **sans TVA** dans BudgetFlow ;
+  - si l'exonération n'est pas possible pour une facture, la facture est encodée **avec** la TVA, qui est une **charge** ;
+  - fournisseur non assujetti (chiffre d'affaires sous un plafond) : facture **sans TVA** ;
+  - autres pays : la TVA est **récupérable ou non** ; récupérable soit par **remboursement** (alors elle doit aller sur un compte **« TVA étrangère à récupérer »**), soit par **exonération préalable** comme en Zambie.
+
+  **Fait (2026-10-28)** : le traitement `foreign_vat` de LedgerFlow (achats seulement) met la TVA **dans la charge de la ligne** (donc dans ses comptes analytiques et ses postes budgétaires), sans ligne de TVA ni grille de la déclaration belge ; le fournisseur est dû pour le total. BudgetFlow l'envoie quand le fournisseur n'est pas belge et que la facture porte de la TVA ; sans TVA, rien n'est envoyé.
+
+  **Pas fait** : TVA récupérable par remboursement (compte de créance), et le choix par pays, par projet ou par facture.
+
+  **Questions pour le comptable** :
+  1. Pour la TVA étrangère récupérable par remboursement : quel compte exactement (sous-compte de la classe 41 ?), et comment solder la créance à l'encaissement du remboursement ?
+  2. La TVA en charge doit-elle rester **dans la charge de la ligne** (choix actuel, pour que l'analytique et le budget la portent) ou être isolée sur le compte **640400** comme pour la franchise (T6), au prix de sortir ce montant de l'analytique ?
+  3. Une facture étrangère **sans TVA** (exonérée ou fournisseur non assujetti) est aujourd'hui traitée comme un achat belge à 0 % : sa base apparaît-elle à tort dans une grille 81–83 de la déclaration belge ? Faut-il lui donner le traitement `export` (aucune grille, aucune TVA auto-liquidée) ?
+  4. Où se décide la récupérabilité : par pays, par projet, ou facture par facture ?
+  5. La TVA non récupérable est-elle une dépense éligible pour les bailleurs concernés ?
+  6. L'entité est-elle assujettie à la TVA en Belgique (entièrement, partiellement, pas du tout) ? Cela change aussi le traitement des factures belges.
+  7. Les fournisseurs de l'UE (hors Belgique) qui facturent leur TVA locale suivent-ils la même règle ?
 
 ### 1.2 Plan comptable (PCMN) et clôture
 

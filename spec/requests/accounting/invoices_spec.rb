@@ -693,7 +693,7 @@ RSpec.describe 'Accounting::Invoices', type: :request do
     it 'explains every treatment for a sale, in customer wording' do
       get accounting_new_sales_path
 
-      TREATMENTS.each { |t| expect(response.body).to include(ERB::Util.html_escape(help(t, 'customer'))) }
+      (TREATMENTS - %w[foreign_vat]).each { |t| expect(response.body).to include(ERB::Util.html_escape(help(t, 'customer'))) } # foreign VAT is for purchases
       expect(response.body).not_to include('translation missing')
     end
 

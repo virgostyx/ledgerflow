@@ -22,7 +22,7 @@ RSpec.describe Accounting::Invoice, type: :model do
   describe 'vat_treatment' do
     it { should define_enum_for(:vat_treatment).with_values(
       domestic: 0, intracom_goods: 1, intracom_services: 2,
-      construction_reverse_charge: 3, export: 4, exempt: 5
+      construction_reverse_charge: 3, export: 4, exempt: 5, foreign_vat: 6
     ) }
 
     it 'vaut domestic par défaut' do

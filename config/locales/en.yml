@@ -304,6 +304,9 @@ en:
         exempt:
           customer: "Exempt operation: no VAT is charged."
           supplier: "Exempt operation: no VAT is charged and none is recoverable."
+        foreign_vat:
+          customer: "Not available on a sale."
+          supplier: "The supplier is abroad and its invoice carries that country's VAT (for example 16 % in Zambia). It is not Belgian VAT: nothing is deducted and nothing goes in the Belgian VAT return. The VAT is a cost, booked with the expense and owed to the supplier with the rest."
       cancelled: "Invoice cancelled and its entry reversed."
       returned: "Invoice returned to the project manager."
       duplicated:   "Invoice duplicated. Adjust the copy, then post it."

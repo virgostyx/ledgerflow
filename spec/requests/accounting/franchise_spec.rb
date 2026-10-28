@@ -58,7 +58,7 @@ RSpec.describe 'The VAT franchise in the interface', type: :request do
     it 'offers all rates, all treatments and the VAT screens' do
       get accounting_new_sales_path
       expect(options_of("select[data-line-vat-rate]")).to eq(%w[0.00 6.00 12.00 21.00])
-      expect(options_of('select#accounting_invoice_vat_treatment').size).to eq(Accounting::Invoice.vat_treatments.size)
+      expect(options_of('select#accounting_invoice_vat_treatment').size).to eq(Accounting::Invoice.vat_treatments.size - 1) # foreign VAT is for purchases
 
       get accounting_root_path
       expect(response.body).to include('VAT Declarations', 'Intracommunity Listings')

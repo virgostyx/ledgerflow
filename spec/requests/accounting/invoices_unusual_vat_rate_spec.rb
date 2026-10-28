@@ -37,4 +37,15 @@ RSpec.describe "VAT rate of an invoice line the form does not know", type: :requ
 
     expect(rate_select.scan("<option").size).to eq(4)
   end
+
+  describe "the VAT treatment select" do
+    it "offers foreign VAT on a purchase and not on a sale" do
+      get edit_accounting_invoice_path(invoice)
+      expect(response.body).to include('value="foreign_vat"')
+
+      sale = create(:invoice, :draft, invoice_type: :customer, partner: create(:partner, :customer), fiscal_year: fiscal_year)
+      get edit_accounting_invoice_path(sale)
+      expect(response.body).not_to include('value="foreign_vat"')
+    end
+  end
 end
