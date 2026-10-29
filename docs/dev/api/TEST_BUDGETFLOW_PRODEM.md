@@ -98,7 +98,7 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 | 7 | « Return to project manager » | **OK, avec un manque corrigé** | Écriture extournée, facture en brouillon, export à `pending`, e-mail reçu. Le motif n'était affiché que dans le module comptable : corrigé (voir D). Délai jusqu'à 5 minutes, maintenant 1 minute. |
 | 8 | Paiement | **OK (lot SEPA)** | Lot créé dans LedgerFlow, fichier généré, « Mark as executed » : la facture est passée à « Paid » dans BudgetFlow (avec le badge « LedgerFlow : Paid »). Le BIC du compte bancaire de l'entité doit être valide, sinon le fichier SEPA est refusé (« Bic is invalid »). Le rapprochement d'un relevé (`payment_confirmed`) reste à tester. |
 | 9 | Paiement défait | **OK** | Voir le détail ci-dessous (2026-10-27). |
-| 10 | Cas limites | **En cours** : A et B faits | A (TVA qui ne tombe pas rond) et B (avoir) : voir « Étape 10 » ci-dessous. C (kwacha, TVA zambienne, fournisseur sans TVA ni IBAN) à faire. Le cas « IBAN invalide » est sans objet : BudgetFlow contrôle la clé de l'IBAN. |
+| 10 | Cas limites | **Faits** : A, B et C | A (TVA qui ne tombe pas rond), B (avoir) et C (kwacha, TVA zambienne, fournisseur sans TVA ni IBAN) : voir « Étape 10 » ci-dessous. Le cas « IBAN invalide » est sans objet : BudgetFlow contrôle la clé de l'IBAN. |
 | 11 | Volume | **Non fait** | Outil prêt : `ledgerflow:export_invoices`. |
 | 12 | Réconciliation | **Faite, 2 écarts** | `ledgerflow:reconcile[11]` : voir « Étape 12 » ci-dessous. |
 | — | Badge LedgerFlow | **OK** | Une troisième facture a montré « Posted » et le numéro LedgerFlow sur la fiche BudgetFlow, sans rafraîchir. |
@@ -133,6 +133,13 @@ Conséquences : la TVA déclarable est supérieure de 0,05 € à celle de la fa
 
 **Cas B : avoir (note de crédit).** Facture de type « Credit Note (refund) » de 50,00 €, TVA 0, sur `ZZ-TEST-CNT`, sans lien avec une facture d'origine. Résultat conforme au plan, selon l'utilisateur (« tout s'est passé comme prévu ») : brouillon d'avoir dans LedgerFlow, comptabilisation, effet attendu sur la consommation dans BudgetFlow. Le détail de chaque contrôle n'a pas été relevé.
 
+**Cas C : facture en kwacha (ZMW), TVA zambienne de 16 %, fournisseur sans numéro de TVA ni IBAN.** Données préparées par `ledgerflow:test_setup_zambia` (fournisseur « ZZ TEST Supplier Zambia Ltd », TPIN, sans IBAN ; sous-ligne 1.1.2 ; engagement `ZZ-TEST-CNT-ZM` de 1 375 000 ZMW, soit 50 000 € à 27,5). Facture de 10 000 ZMW hors TVA, 1 600 ZMW de TVA, taux de saisie 22,6692304 (441,13 € et 70,58 €). Elle a révélé trois défauts, tous corrigés (voir I, J, K) :
+- l'envoi a échoué : la synchronisation du projet était refusée (409), parce que la nouvelle sous-ligne 1.1.2 réutilisait le code d'une sous-ligne supprimée (défaut I) ;
+- une fois le projet synchronisé, le comptable a codé la ligne dans LedgerFlow : la **TVA de 16 % a disparu** (le formulaire n'offrait que 0, 6, 12 et 21 % et remettait 0 en silence, défaut J) ;
+- la TVA zambienne était comptabilisée comme TVA belge déductible (défaut K).
+
+Résultats une fois les trois corrections déployées, conformes au plan selon l'utilisateur : le kwacha est accepté sans taux officiel (le taux envoyé par BudgetFlow est retenu) ; le traitement de TVA est « Foreign vat » ; la ligne porte 16 % ; la comptabilisation donne une seule ligne de charge de 11 600 ZMW (511,71 €), sans ligne de TVA ni grille de la déclaration belge, et la dette fournisseur du même montant ; le fournisseur arrive sans numéro de TVA, avec les comptes analytiques `ZZTEST` et `ZZTEST-1.1.2`.
+
 ### Défauts trouvés et corrigés pendant le test
 
 - **A. L'écran de clé API ne montrait pas la clé** (LedgerFlow). La création répondait par une page 200 ; Turbo ignore ce type de réponse à un formulaire. La clé était créée mais perdue. Corrigé : formulaires de création et « Rotate key » sans Turbo (`2f523f0`).
@@ -144,6 +151,9 @@ Conséquences : la TVA déclarable est supérieure de 0,05 € à celle de la fa
 - **F. La page ne se mettait à jour qu'en partie** (BudgetFlow). Après le paiement, le badge LedgerFlow changeait seul mais pas le statut principal : il fallait rafraîchir. Corrigé : la page entière se recharge quand LedgerFlow fait avancer la facture, avec un vrai test en navigateur (`4038d39a`).
 - **G. `budget_line` répétait les codes parents** (BudgetFlow). Les codes de BudgetFlow contiennent déjà leur chemin (chapitre `1`, ligne `1.1`, sous-ligne `1.1.1`) : le texte envoyé donnait `1.1.1.1.1.1`. Corrigé : `1.1.1` (`0d550cb3`).
 - **H. Un brouillon venu de BudgetFlow pouvait être supprimé dans LedgerFlow** (LedgerFlow). BudgetFlow le croyait exporté pour toujours, et seule la réconciliation le révélait. Corrigé : la suppression est refusée pour une entité qui utilise BudgetFlow, avec le message qui indique de le retourner au chef de projet, et le bouton « Delete » n'est plus proposé sur ces brouillons ; le retour annule le brouillon et prévient BudgetFlow (`5588075`). Non reproduit en réel après correction.
+- **I. Un poste nouveau ne pouvait pas reprendre le code d'un poste supprimé** (LedgerFlow). La synchronisation du projet était refusée (409) : l'ancien compte, désactivé, gardait le code. Corrigé : l'ancien compte cède son code (`code~id`) et garde son historique ; le 409 ne reste que pour un compte réellement étranger, avec un message exact (`ec0f0c5`).
+- **J. La TVA d'une ligne disparaissait quand le comptable la codait** (LedgerFlow). La liste des taux du formulaire n'offrait que 0, 6, 12 et 21 % : un taux de 16 % n'y figurait pas, le navigateur prenait le premier choix et l'enregistrement remettait la TVA à 0. Corrigé : le taux de la ligne est ajouté aux choix et sélectionné (`20280d4`).
+- **K. La TVA étrangère était comptabilisée comme TVA belge déductible** (LedgerFlow et BudgetFlow). Corrigé : nouveau traitement `foreign_vat` (achats seulement) : la TVA va dans la charge de la ligne, sans ligne de TVA ni grille belge ; BudgetFlow l'envoie quand le fournisseur n'est pas belge et que la facture porte de la TVA (`744c882`, `acc6b5ab`). Questions pour le comptable : point T12 de `POINTS_A_VALIDER.md`.
 
 ### Constats sans correction (décisions à prendre, voir `POINTS_A_VALIDER.md`)
 
@@ -177,4 +187,4 @@ Points à connaître :
 
 ### Reste à faire avant PRODEM ZAMBIA
 
-Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire après un lot SEPA, événement `payment_confirmed` (8) ; cas limites, volume et réconciliation (10 à 12) ; décisions sur la TVA zambienne, les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
+Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire après un lot SEPA, événement `payment_confirmed` (8) ; le volume (11) et une réconciliation finale (12) ; décisions sur la TVA zambienne (point T12 : les questions pour le comptable), les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
