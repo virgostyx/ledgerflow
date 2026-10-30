@@ -99,8 +99,8 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 | 8 | Paiement | **OK (lot SEPA)** | Lot créé dans LedgerFlow, fichier généré, « Mark as executed » : la facture est passée à « Paid » dans BudgetFlow (avec le badge « LedgerFlow : Paid »). Le BIC du compte bancaire de l'entité doit être valide, sinon le fichier SEPA est refusé (« Bic is invalid »). Le rapprochement d'un relevé (`payment_confirmed`) reste à tester. |
 | 9 | Paiement défait | **OK** | Voir le détail ci-dessous (2026-10-27). |
 | 10 | Cas limites | **Faits** : A, B et C | A (TVA qui ne tombe pas rond), B (avoir) et C (kwacha, TVA zambienne, fournisseur sans TVA ni IBAN) : voir « Étape 10 » ci-dessous. Le cas « IBAN invalide » est sans objet : BudgetFlow contrôle la clé de l'IBAN. |
-| 11 | Volume | **Non fait** | Outil prêt : `ledgerflow:export_invoices`. |
-| 12 | Réconciliation | **Faite, 2 écarts** | `ledgerflow:reconcile[11]` : voir « Étape 12 » ci-dessous. |
+| 11 | Volume | **Fait** | 240 factures envoyées en deux lots (un au rythme normal, un à pleine vitesse pour atteindre la limite de débit) : voir « Étape 11 » ci-dessous. |
+| 12 | Réconciliation | **Faite, 2 écarts connus** | Après les 240 factures de volume : 250 factures vérifiées, aucun écart nouveau. Voir « Étape 11 » et « Étape 12 » ci-dessous. |
 | — | Badge LedgerFlow | **OK** | Une troisième facture a montré « Posted » et le numéro LedgerFlow sur la fiche BudgetFlow, sans rafraîchir. |
 
 ### Étape 9 en détail : paiement par relevé, puis paiement défait (2026-10-27)
@@ -113,6 +113,28 @@ Chemin suivi : relevé bancaire importé en CSV (une ligne de −100,00, référ
 - **Délettrage** (motif obligatoire) : la facture est repassée à « posted » dans LedgerFlow ; le badge de BudgetFlow a suivi et la page s'est mise à jour, conformément au plan (événement `payment_reopened`). Selon l'utilisateur, tout s'est passé « exactement comme prévu », y compris la limite connue : la facture reste « Paid » dans BudgetFlow, qui ne sait pas dé-payer, et les comptables sont prévenus par e-mail.
 - **Non vérifié** : que le délettrage ait aussi annulé l'écriture d'écart `OD2026/0001`.
 - **Montant reçu par BudgetFlow : correct.** Sur la facture USD, `payment_amount_eur` vaut 100,0 (le débit bancaire réel), `payment_method` `ledgerflow`, référence `UNDO-TEST-1` ; `amount_eur` reste 92,3 (taux de saisie 1,0834). L'audit porte `amount_eur` 100,0 et `fx_difference_eur` −10,89 (une perte). La consommation budgétaire d'une facture payée utilise `payment_amount_eur`. L'écart de change n'est visible que dans l'audit, pas sur la fiche de la facture.
+
+### Étape 11 : volume (2026-10-30)
+
+Données : `ledgerflow:test_volume` crée 120 factures validées par lot dans le projet `ZZTEST` : 12 avoirs en euros, 36 factures en kwacha (24 avec 16 % de TVA, traitées `foreign_vat`), 72 en euros (36 avec 21 % de TVA), du 5 janvier au 25 octobre 2026.
+
+**Lot 1, rythme normal** (une demi-seconde entre deux factures, `ledgerflow:export_invoices[11]` avec `APPLY=1`) : 120 factures envoyées, 0 échec, **99 s, soit 73 factures par minute** (environ 146 appels par minute, la moitié de la limite de 300). Rejeu : plus rien à envoyer. Dans LedgerFlow : 120 brouillons de plus, aucune lenteur de la liste, un avoir retrouvé par la recherche (voir le constat 2). Réconciliation : 130 factures vérifiées, totaux concordants par devise, seul écart nouveau nul (les 0,05 € de TVA arrondie du cas A en euros).
+
+**Lot 2, limite de débit** : 120 nouvelles factures (`BATCH=VOL2`), envoyées par **deux terminaux à la fois, sans pause** (`PAUSE=0`) :
+- terminal 1 : 90 factures éligibles (le second avait déjà pris une trentaine de factures), 54 exportées, 36 échecs ; rythme 211 par minute ;
+- terminal 2 : 120 éligibles, 85 exportées, 35 échecs ; rythme 199 par minute ;
+- les échecs sont lisibles : « LedgerFlow rate limit reached, retry in 10 à 14s » (30 et 31) et « LedgerFlow 409: Concurrent update, retry » (6 et 4) quand les deux envois tentent la même facture au même instant ;
+- **rejeu au rythme normal** : 33 factures envoyées, 33 exportées, **0 échec** ;
+- **aucun doublon** dans LedgerFlow : 252 factures de l'API pour 250 références (les deux écarts sont les deux factures à deux révisions de l'étape 7), soit exactement 120 de plus qu'avant le lot.
+
+**Réconciliation finale** : 250 factures vérifiées ; kwacha 73 factures, 407 254,16 des deux côtés ; euros 175 factures, 22 964,71 contre 22 964,76 (les 0,05 € du cas A) ; USD 1 facture, 100,0 des deux côtés. Écarts : les deux connus (taux de la facture USD, TVA du cas A) ; manquante : `INV-20261025-A6AEE3` (brouillon supprimé, défaut H, corrigé).
+
+Constats :
+1. **Aucune reprise sur la limite de débit.** Quand LedgerFlow refuse (429), BudgetFlow continue d'envoyer les factures suivantes, qui sont toutes refusées jusqu'à la fin de la minute. Au rythme normal la limite n'est jamais atteinte ; à pleine vitesse, c'est le rejeu manuel qui rattrape. **Corrigé** : pendant un envoi en masse, un refus pour limite de débit fait attendre le délai donné (`Retry-After`, plus une seconde) puis réessayer la même facture, trois essais au plus ; un délai de plus de 65 s est rendu comme une réponse, sans attente. Les autres envois (validation d'une facture, synchronisations) restent sans attente.
+2. **Les avoirs ne se distinguent pas dans la liste des achats de LedgerFlow** : pas de pastille, pas de filtre par type de document. Une facture est retrouvée par la recherche sur sa description. **Corrigé** : une pastille « Credit note » sur la ligne et un filtre « Credit notes only » dans la liste des achats et des ventes.
+3. **Deux envois simultanés** peuvent marquer comme « échouée » dans BudgetFlow une facture que LedgerFlow a bien reçue (le refus de l'un écrase l'état exporté de l'autre). Le rejeu la renvoie sans effet côté LedgerFlow et remet l'état juste. Non observé de façon isolée dans ce test.
+
+Données laissées par le test : 240 factures validées dans le projet `ZZTEST` de BudgetFlow (elles pèsent sur les engagements de test) et 240 brouillons dans l'entité de test de LedgerFlow (hors comptabilité).
 
 ### Étape 12 : réconciliation (2026-10-27)
 
@@ -187,4 +209,4 @@ Points à connaître :
 
 ### Reste à faire avant PRODEM ZAMBIA
 
-Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire après un lot SEPA, événement `payment_confirmed` (8) ; le volume (11) et une réconciliation finale (12) ; décisions sur la TVA zambienne (point T12 : les questions pour le comptable), les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
+Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire après un lot SEPA, événement `payment_confirmed` (8) ; décisions sur la TVA zambienne (point T12 : les questions pour le comptable), les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.

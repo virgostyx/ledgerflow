@@ -33,6 +33,7 @@
   { name: :overdue, label: 'Overdue only', type: :checkbox }
 ] %>
 <% filter_fields << { name: :source, label: 'From BudgetFlow only', type: :checkbox } if budgetflow_enabled? && @invoice_type == 'supplier' %>
+<% filter_fields << { name: :credit_notes, label: 'Credit notes only', type: :checkbox } %>
 <%= render 'shared/filters', fields: filter_fields %>
 <% if @invoices.empty? && !filters_active? %>
   <%= render Ui::EmptyStateComponent.new(
@@ -70,6 +71,9 @@
             <td class="px-4 py-3 text-gray-500 text-sm"><%= invoice.journal&.code %></td>
             <td class="px-4 py-3 text-gray-700 font-medium">
               <%= invoice.partner.name %>
+              <% if invoice.credit_note? %>
+                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">Credit note</span>
+              <% end %>
               <%# A Peppol draft nobody took over yet: BudgetFlow may claim it. %>
               <% if budgetflow_enabled? && invoice.draft? && invoice.external_digest.blank? && invoice.ubl_document.attached? %>
                 <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-sky-100 text-sky-800">Peppol</span>

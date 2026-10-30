@@ -50,6 +50,34 @@ RSpec.describe "Invoices received from BudgetFlow (queue)", type: :request do
     end
   end
 
+  # Credit notes mix with invoices in the list: a badge says which they are, and a filter keeps only them.
+  describe "credit notes in the list" do
+    let!(:credit_note) do
+      create(:invoice, :draft, invoice_type: :supplier, partner: create(:partner, :supplier, name: "Refunding Supplier"), fiscal_year: fiscal_year,
+             document_type: :credit_note)
+    end
+
+    it "shows a Credit note badge on a credit note and on nothing else" do
+      get accounting_purchases_path
+
+      expect(response.body.scan("Credit note</span>").size).to eq(1)
+    end
+
+    it "keeps only the credit notes with the filter" do
+      get accounting_purchases_path, params: { q: { credit_notes: "1" } }
+
+      expect(response.body).to include("Refunding Supplier")
+      expect(response.body).not_to include("ACME Zambia Supplies")
+      expect(response.body).not_to include("Local Typed Supplier")
+    end
+
+    it "offers the filter" do
+      get accounting_purchases_path
+
+      expect(response.body).to include("Credit notes only")
+    end
+  end
+
   # BudgetFlow believes what it sent: a deleted draft would stay "exported" there for ever. The accountant returns it instead, which tells BudgetFlow.
   describe "deleting a draft" do
     it "is refused for a draft BudgetFlow sent, with the way to do it, and the draft stays" do

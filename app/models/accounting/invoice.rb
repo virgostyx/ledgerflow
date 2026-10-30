@@ -266,6 +266,7 @@ class Accounting::Invoice < ApplicationRecord
     rel = rel.where(status: %i[posted partially_paid]) if q[:unpaid] == "1"
     rel = rel.where(status: %i[posted partially_paid], due_date: ...Date.current) if q[:overdue] == "1"
     rel = rel.external if q[:source] == "1" # received from BudgetFlow (the controller drops this filter for other entities)
+    rel = rel.credit_note if q[:credit_notes] == "1"
     rel
   end
 end
