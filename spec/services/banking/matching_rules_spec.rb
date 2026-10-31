@@ -199,9 +199,9 @@ RSpec.describe Accounting::MatchBankTransaction, "rules and scores" do
     end
 
     it "ignores a rule that is switched off" do
-      rule(active: false)
+      rule(active: false, condition_value: "assurance") # a neutral word: "frais" alone is a bank fee for the generic rule
 
-      expect(suggest(line(-12.5, description: "FRAIS DE TENUE"))).to be_nil
+      expect(suggest(line(-12.5, description: "ASSURANCE AUTO"))).to be_nil
     end
 
     it "is per entity" do

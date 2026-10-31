@@ -98,6 +98,7 @@
                 <div class="mt-1 flex items-center gap-2 text-xs text-emerald-700">
                   <span>Suggested: <%= case suggestion.kind
                         when :invoice          then "invoice #{suggestion.target.invoice_number}"
+                        when :supplier_invoices then "supplier invoices #{suggestion.target.map { |i| i.supplier_reference.presence || i.invoice_number }.join(', ')}"
                         when :supplier_invoice then "supplier invoice #{suggestion.target.supplier_reference.presence || suggestion.target.invoice_number}"
                         when :expense          then "bank fees (#{suggestion.target.code})"
                         when :rule             then "rule “#{suggestion.target.name}” (#{suggestion.target.account.code})"
@@ -177,6 +178,18 @@
                     <% end %>
                     <%= text_field_tag 'bank_reconciliation[invoice_amount]', nil, placeholder: 'Deposit: amount for this invoice (optional)', class: 'rounded-md border-gray-300 text-xs w-56' %>
                     <%= submit_tag 'Pay', class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700' %>
+                  <% end %>
+                </details>
+              <% end %>
+              <% if tx.debit? && tx.bank_account.currency == 'EUR' && @payable_invoices.size > 1 %>
+                <details class="mt-2">
+                  <summary class="text-xs text-primary-600 cursor-pointer">Pay several invoices</summary>
+                  <%= form_with url: accounting_bank_reconciliation_path, method: :patch, class: 'mt-2 flex gap-2 items-end' do %>
+                    <%= hidden_field_tag 'bank_reconciliation[bank_transaction_id]', tx.id %>
+                    <%= select_tag 'bank_reconciliation[pay_invoice_ids]',
+                          options_for_select(@payable_invoices.map { |i| ["#{i.supplier_reference.presence || i.invoice_number} — #{i.partner.name} (#{i.total_incl_vat} #{i.currency})", i.id] }),
+                          multiple: true, size: 5, class: 'rounded-md border-gray-300 text-xs' %>
+                    <%= submit_tag 'Pay together', class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700' %>
                   <% end %>
                 </details>
               <% end %>

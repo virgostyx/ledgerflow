@@ -160,6 +160,37 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
     end
   end
 
+  context 'grouped supplier payment' do
+    let!(:fiscal_year) { create(:fiscal_year, status: :open) }
+    let(:partner) { create(:partner, :supplier) }
+
+    def supplier_invoice(ref, total, partner: self.partner)
+      create(:invoice, :supplier, :posted, partner: partner, fiscal_year: fiscal_year, supplier_reference: ref).tap { |i| i.update_columns(total_incl_vat: BigDecimal(total)) }
+    end
+
+    let!(:first)  { supplier_invoice('VOL-0005', '100') }
+    let!(:second) { supplier_invoice('VOL-0006', '60.50') }
+
+    def debit(amount, description) = create(:bank_transaction, bank_account: bank_account, amount: -BigDecimal(amount), description: description)
+
+    it 'suggests paying together the invoices of one supplier whose references the transfer names and whose total is the amount' do
+      suggestion = described_class.call(transaction: debit('160.50', 'Transfer VOL-0005 VOL-0006 Supplier'))
+
+      expect(suggestion).to have_attributes(kind: :supplier_invoices, score: 80, rule: 5)
+      expect(suggestion.target).to contain_exactly(first, second)
+    end
+
+    it 'suggests nothing when the total is not the amount' do
+      expect(described_class.call(transaction: debit('160', 'Transfer VOL-0005 VOL-0006'))).to be_nil
+    end
+
+    it 'suggests nothing when the invoices are not of one supplier' do
+      second.update_columns(partner_id: create(:partner, :supplier).id)
+
+      expect(described_class.call(transaction: debit('160.50', 'Transfer VOL-0005 VOL-0006'))).to be_nil
+    end
+  end
+
   context 'bank fees' do
     let!(:fees_account) { create(:account, code: '651100', label_fr: 'Frais bancaires') }
 
@@ -177,6 +208,12 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
 
     it 'also matches the plural, in any case' do
       expect(described_class.call(transaction: debit('card FEES 09/2026'))).to be_present
+    end
+
+    it 'knows the words of the other languages of a statement: frais, kosten, commission' do
+      [ 'Frais de tenue de compte', 'Bankkosten 10/2026', 'Kosten rekening', 'Commission de change' ].each do |text|
+        expect(described_class.call(transaction: debit(text))).to have_attributes(kind: :expense), text
+      end
     end
 
     it 'does not match a word that merely contains fee' do

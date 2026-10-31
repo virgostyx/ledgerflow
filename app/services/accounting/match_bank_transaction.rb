@@ -8,8 +8,8 @@
 #   4 same amount, similar name (pg_trgm >= 0.6) . 75  (a single candidate)
 #   5 grouped payment (open invoices of one partner adding up to the amount, 10 invoices at most) ... 80
 #   6 a bank rule of the entity ................. its own score
-#   fees (a debit that says "fee") .............. 75
-# A receipt is matched to customer invoices; a payment to supplier invoices (single invoice only: the payment service takes one).
+#   fees (a debit that says fee, frais, kosten or commission) .............. 75
+# A receipt is matched to customer invoices; a payment to supplier invoices (several invoices of one supplier only when the transfer names them all).
 # `confidence` stays :high (90 and more) or :medium for the screens that already read it.
 class Accounting::MatchBankTransaction
   # rounding: what the invoice still asked for minus what came in (positive: a few cents short), when within the tolerance.
@@ -49,7 +49,7 @@ class Accounting::MatchBankTransaction
   end
 
   def self.match_payment(tx)
-    match_supplier_reference(tx) || match_invoice_number(tx, :supplier) || match_by_partner(tx, :supplier)
+    match_supplier_reference(tx) || match_invoice_number(tx, :supplier) || match_supplier_group(tx) || match_by_partner(tx, :supplier)
   end
 
   # Rule 1 for a supplier invoice (F06): the structured communication of the payment is the payment reference the supplier gave on the invoice
@@ -112,6 +112,16 @@ class Accounting::MatchBankTransaction
     return unless found.size == 1 && (rounding = rounding_for(found.first, tx.amount.abs, side))
 
     suggestion(side == :customer ? :invoice : :supplier_invoice, found.first, 95, 2, rounding: rounding)
+  end
+
+  # Rule 5 for a payment: a grouped transfer, the references of several posted invoices of one supplier named in the communication, whose totals add up to the amount.
+  def self.match_supplier_group(tx)
+    return if tx.description.blank?
+
+    named = open_invoices_of(:supplier).where(status: :posted).to_a.select { |i| i.supplier_reference.present? && tx.description.match?(/(?<![\w-])#{Regexp.escape(i.supplier_reference)}(?![\w-])/) }
+    return unless named.size > 1 && named.map(&:partner_id).uniq.one? && named.sum(&:total_incl_vat) == tx.amount.abs
+
+    suggestion(:supplier_invoices, named.sort_by(&:id), 80, 5)
   end
 
   # Rules 3 and 4: the same amount, and the partner known by the counterparty's IBAN (90) or by a similar name (75); one candidate.
@@ -182,15 +192,15 @@ class Accounting::MatchBankTransaction
   end
 
   FEES_ACCOUNT_CODE = Accounting::AccountCodes::BANK_FEES
-  FEES_PATTERN      = /\bfees?\b/i
+  FEES_PATTERN      = /\b(fees?|frais|kosten|bankkosten|commissions?)\b/i
 
-  # A debit mentioning a fee goes to bank fees. ponytail: single keyword and account; make them settings if needed.
+  # A debit mentioning a fee (fee, frais, kosten, commission) goes to bank fees. ponytail: single keyword and account; make them settings if needed.
   def self.match_fees(tx)
     return unless tx.debit? && tx.description.to_s.match?(FEES_PATTERN)
 
     account = Accounting::Account.find_by(code: FEES_ACCOUNT_CODE)
     suggestion(:expense, account, 75, nil) if account
   end
-  private_class_method :rounding_for, :draft_payment_lines, :match_payment_batch_debit, :match_payment_return, :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_supplier_reference, :match_invoice_number, :match_by_partner,
+  private_class_method :rounding_for, :draft_payment_lines, :match_payment_batch_debit, :match_payment_return, :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_supplier_reference, :match_supplier_group, :match_invoice_number, :match_by_partner,
                        :match_group, :open_invoices_of, :partners_by_iban, :partners_by_name, :match_rule
 end

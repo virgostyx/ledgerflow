@@ -84,4 +84,24 @@ RSpec.describe "Paying a supplier invoice as a draft" do
     expect(tx.reload).to be_pending
     expect(invoice.reload).to be_posted
   end
+
+  context "a grouped transfer" do
+    let(:other_invoice) do
+      Accounting::ExternalInvoice.upsert(external_ref: "INV-2", partner_external_ref: "S1", invoice_type: "supplier", invoice_date: Date.current.to_s, supplier_reference: "F-2026-0043",
+                                         lines: [ { account_code: "604000", description: "More", quantity: "1", unit_price: "50", vat_rate: "0" } ]).invoice
+    end
+    let(:group_tx) { create(:bank_transaction, bank_account: bank_account, amount: -150, description: "PAYMENT F-2026-0042 F-2026-0043") }
+
+    before { Accounting::PostInvoice.call(invoice: other_invoice) if other_invoice.draft? }
+
+    it "is accepted as a draft, and validating the entry pays every invoice" do
+      expect(Accounting::AcceptBankSuggestion.call(transaction: group_tx, draft: true)).to be_success
+      expect(group_tx.reload).to be_matched
+
+      expect(Accounting::PostJournalEntry.call(entry: group_tx.journal_entry)).to be_success
+
+      expect(group_tx.reload).to be_reconciled
+      expect([ invoice, other_invoice ].map { |i| i.reload.status }).to all(eq("paid"))
+    end
+  end
 end

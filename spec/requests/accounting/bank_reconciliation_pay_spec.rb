@@ -57,4 +57,42 @@ RSpec.describe 'Accounting::BankReconciliation — pay a supplier invoice', type
     get accounting_bank_reconciliation_path
     expect(response.body).to include("Pay a supplier invoice").and include(invoice.invoice_number.to_s)
   end
+
+  describe 'several invoices of one supplier with one debit' do
+    let(:other_invoice) do
+      Accounting::ExternalInvoice.upsert(
+        external_ref: 'INV-2', partner_external_ref: 'S1', invoice_type: 'supplier', invoice_date: Date.current.to_s,
+        lines: [ { account_code: '604000', description: 'More', quantity: '1', unit_price: '50', vat_rate: '0' } ]
+      ).invoice
+    end
+    let(:group_tx) { create(:bank_transaction, bank_account: bank_account, amount: -150, reference: 'GRP-1') }
+
+    def pay_together(ids) = patch(accounting_bank_reconciliation_path, params: { bank_reconciliation: { bank_transaction_id: group_tx.id, pay_invoice_ids: ids } })
+
+    it 'settles them all' do
+      pay_together([ invoice.id, other_invoice.id ])
+
+      expect(flash[:alert]).to be_nil
+      expect(group_tx.reload).to be_reconciled
+      expect([ invoice, other_invoice ].map { |i| i.reload.status }).to all(eq('paid'))
+    end
+
+    it 'alerts when they do not add up' do
+      invoice.update_columns(total_incl_vat: BigDecimal('90'))
+      pay_together([ invoice.id, other_invoice.id ])
+
+      expect(flash[:alert]).to match(/add up/)
+      expect(group_tx.reload).to be_pending
+    end
+
+    it 'offers the choice on a pending debit' do
+      group_tx
+      invoice
+      other_invoice
+
+      get accounting_bank_reconciliation_path
+
+      expect(response.body).to include('Pay several invoices')
+    end
+  end
 end

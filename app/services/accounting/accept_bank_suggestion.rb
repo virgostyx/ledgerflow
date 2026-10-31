@@ -30,6 +30,8 @@ class Accounting::AcceptBankSuggestion
       Accounting::BookInvoiceReceipt.call(transaction: transaction, invoices: suggestion.target, fiscal_year: fiscal_year, draft: draft)
     when :invoice
       Accounting::BookInvoiceReceipt.call(transaction: transaction, invoice: suggestion.target, fiscal_year: fiscal_year, draft: draft, rounding: suggestion.rounding)
+    when :supplier_invoices
+      Accounting::PayInvoicesFromTransaction.call(transaction: transaction, invoices: suggestion.target, fiscal_year: fiscal_year, draft: draft)
     when :supplier_invoice
       Accounting::PayInvoiceFromTransaction.call(transaction: transaction, invoice: suggestion.target, fiscal_year: fiscal_year, draft: draft)
     end

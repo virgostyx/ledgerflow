@@ -38,6 +38,8 @@ class Accounting::BankReconciliationsController < ApplicationController
       handle_manual_entry
     elsif bank_params[:pay_invoice_id].present?
       handle_pay_invoice
+    elsif bank_params[:pay_invoice_ids].present?
+      handle_pay_invoices
     elsif bank_params[:ignore].present?
       handle_ignore
     elsif bank_params[:undo].present?
@@ -103,6 +105,13 @@ class Accounting::BankReconciliationsController < ApplicationController
                                                         invoice_amount: parse_amount(bank_params[:invoice_amount])&.then { |a| a.positive? ? a : nil },
                                                         draft: draft?)
     redirect_for(result)
+  end
+
+  # A grouped transfer: several invoices of one supplier settled by one debit.
+  def handle_pay_invoices
+    transaction = Accounting::BankTransaction.find(bank_params[:bank_transaction_id])
+    invoices    = Accounting::Invoice.supplier.where(id: bank_params[:pay_invoice_ids]).includes(:partner, journal_entry: :lines).order(:id).to_a
+    redirect_for(Accounting::PayInvoicesFromTransaction.call(transaction: transaction, invoices: invoices, fiscal_year: Accounting::FiscalYear.current, draft: draft?))
   end
 
   def handle_reconciliation
