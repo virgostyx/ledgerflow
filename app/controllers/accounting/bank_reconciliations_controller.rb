@@ -1,4 +1,6 @@
 class Accounting::BankReconciliationsController < ApplicationController
+  helper_method :suggested_eur_amount
+
   def show
     authorize :bank_reconciliation, policy_class: Accounting::BankReconciliationsPolicy
     @pagy, @pending_transactions = pagy(Accounting::BankTransaction.pending.filter_by(filter_params)
@@ -59,6 +61,20 @@ class Accounting::BankReconciliationsController < ApplicationController
 
   private
 
+  # A movement on a foreign account has no euro figure from the bank: the EUR amount is its conversion at the rate the entity's policy gives for the
+  # date of the movement (a proposal the person can change). nil when it is in euros, or when no rate is known for that date: never another rate.
+  def suggested_eur_amount(tx)
+    return if tx.currency == "EUR"
+
+    (@suggested_eur ||= {}).fetch(tx.id) do
+      @suggested_eur[tx.id] = begin
+        Fx::Convert.to_eur(tx.amount.abs, Fx::RateFor.call(tx.currency, document_date: tx.transaction_date))
+      rescue Fx::MissingRate
+        nil
+      end
+    end
+  end
+
   def handle_camt_import
     bank_account = Accounting::BankAccount.find(bank_params[:bank_account_id])
     file = bank_params[:camt_file]
@@ -111,7 +127,8 @@ class Accounting::BankReconciliationsController < ApplicationController
   def handle_pay_invoices
     transaction = Accounting::BankTransaction.find(bank_params[:bank_transaction_id])
     invoices    = Accounting::Invoice.supplier.where(id: bank_params[:pay_invoice_ids]).includes(:partner, journal_entry: :lines).order(:id).to_a
-    redirect_for(Accounting::PayInvoicesFromTransaction.call(transaction: transaction, invoices: invoices, fiscal_year: Accounting::FiscalYear.current, draft: draft?))
+    eur_amount  = parse_amount(bank_params[:eur_amount])&.then { |a| a.positive? ? a : nil }
+    redirect_for(Accounting::PayInvoicesFromTransaction.call(transaction: transaction, invoices: invoices, fiscal_year: Accounting::FiscalYear.current, draft: draft?, eur_amount: eur_amount))
   end
 
   def handle_reconciliation

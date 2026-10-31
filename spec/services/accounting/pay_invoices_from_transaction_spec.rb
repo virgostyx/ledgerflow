@@ -67,4 +67,45 @@ RSpec.describe Accounting::PayInvoicesFromTransaction, type: :service do
     expect(tx.reload).to be_matched
     expect(first_invoice.reload).to be_posted
   end
+
+  describe 'on a foreign account (the bank knows no euro: the EUR amount is the conversion the person confirms)' do
+    let!(:misc)     { create(:journal, journal_type: :misc, code: 'OD', label_fr: 'Miscellaneous') }
+    let(:usd_bank)  { create(:bank_account).tap { |b| b.update_columns(currency: 'USD') } }
+
+    # 1000 USD and 500 USD booked at 0.9 = 900 and 450 EUR
+    def usd_invoice(ref, price)
+      Accounting::ExternalInvoice.upsert(
+        external_ref: ref, partner_external_ref: 'S1', invoice_type: 'supplier', invoice_date: Date.current.to_s, currency: 'USD', exchange_rate: '1.11111111',
+        lines: [ { account_code: '604000', description: 'Work', quantity: '1', unit_price: price, vat_rate: '0' } ]
+      ).invoice
+    end
+
+    let(:big)   { usd_invoice('U1', '1000') }
+    let(:small) { usd_invoice('U2', '500') }
+    let(:usd_tx) { create(:bank_transaction, bank_account: usd_bank, amount: BigDecimal('-1500'), currency: 'USD', transaction_date: Date.current, reference: 'USD-GRP') }
+
+    it 'pays them with the EUR amount given, shared between them in proportion, and books the exchange difference' do
+      result = call(usd_tx, [ big, small ], eur_amount: BigDecimal('1425'))
+
+      expect(result).to be_success, result.message
+      expect([ big, small ].map { |i| i.reload.status }).to all(eq('paid'))
+      expect(usd_tx.reload).to be_reconciled
+      lines = usd_tx.journal_entry.lines
+      expect(lines.where(account: account_440).order(:debit).map { |l| [ l.debit, l.currency, l.amount_currency ] })
+        .to eq([ [ BigDecimal('475'), 'USD', BigDecimal('500') ], [ BigDecimal('950'), 'USD', BigDecimal('1000') ] ])
+      expect(lines.sum(:credit)).to eq(BigDecimal('1425'))
+      fx = Accounting::JournalEntryLine.joins(:account).where(accounting_accounts: { code: '651200' })
+      expect(fx.sum(:debit)).to eq(BigDecimal('75')) # 950 - 900 and 475 - 450: paid more than booked
+    end
+
+    it 'needs the EUR amount' do
+      expect(call(usd_tx, [ big, small ])).to be_failure
+    end
+
+    it 'does not take invoices in another currency than the movement' do
+      euro = invoice('E1', '1500')
+
+      expect(call(usd_tx, [ big, euro ], eur_amount: BigDecimal('1425'))).to be_failure
+    end
+  end
 end

@@ -1,0 +1,38 @@
+require "rails_helper"
+
+# A movement on a foreign account (kwacha): the bank knows no euro, the EUR amount is the conversion at the rate the entity's policy gives for the
+# date of the movement. The reconciliation screen proposes it (editable); with no rate for that day it proposes nothing, and says so.
+RSpec.describe "Bank reconciliation: the EUR amount of a foreign movement", type: :request do
+  include_context "with_open_fiscal_year"
+
+  let(:accountant) { create(:user, role: :accountant) }
+  let!(:membership) { create(:user_entity, :accountant, user: accountant, entity: entity) }
+  let!(:bank_gl)      { create(:account, code: "550200", label_fr: "Banque ZMW", account_class: 5, account_type: :asset, normal_balance: :debit) }
+  let!(:bank_journal) { create(:journal, :bank, default_account: bank_gl) }
+  let(:kwacha_account) { create(:bank_account, journal: bank_journal).tap { |b| b.update_columns(currency: "ZMW") } }
+  let(:day) { Date.new(2026, 10, 20) }
+  let!(:supplier_invoice) { create(:invoice, :supplier, :posted, fiscal_year: fiscal_year) }
+
+  before do
+    sign_in accountant
+    create(:bank_transaction, bank_account: kwacha_account, amount: BigDecimal("-2750"), currency: "ZMW", transaction_date: day, reference: "ZMW-1")
+  end
+
+  def eur_fields = Nokogiri::HTML(response.body).css("input[name='bank_reconciliation[eur_amount]']")
+
+  it "fills the EUR amount with the movement converted at the rate of its date, in both forms that ask for it" do
+    Accounting::ExchangeRate.create!(currency: "ZMW", rate_date: day, rate: "27.5", rate_type: :daily, source: "inforeuro")
+
+    get accounting_bank_reconciliation_path
+
+    expect(eur_fields.size).to be >= 2
+    expect(eur_fields.map { |f| f["value"] }.uniq).to eq([ "100.00" ])
+  end
+
+  it "leaves it empty and says there is no rate for that date" do
+    get accounting_bank_reconciliation_path
+
+    expect(eur_fields.map { |f| f["value"] }.compact).to be_empty
+    expect(eur_fields.map { |f| f["placeholder"] }.uniq.join).to include("no ZMW rate")
+  end
+end

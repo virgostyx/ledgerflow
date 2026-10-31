@@ -94,5 +94,45 @@ RSpec.describe 'Accounting::BankReconciliation — pay a supplier invoice', type
 
       expect(response.body).to include('Pay several invoices')
     end
+
+    describe 'on a foreign account' do
+      let(:usd_account) { create(:bank_account).tap { |b| b.update_columns(currency: 'USD') } }
+      let(:usd_invoices) do
+        %w[U1 U2].zip(%w[1000 500]).map do |ref, price|
+          Accounting::ExternalInvoice.upsert(
+            external_ref: ref, partner_external_ref: 'S1', invoice_type: 'supplier', invoice_date: Date.current.to_s, currency: 'USD', exchange_rate: '1.11111111',
+            lines: [ { account_code: '604000', description: 'Work', quantity: '1', unit_price: price, vat_rate: '0' } ]
+          ).invoice
+        end
+      end
+      let(:usd_tx) { create(:bank_transaction, bank_account: usd_account, amount: -1500, currency: 'USD', reference: 'USD-GRP') }
+
+      it 'settles them with the EUR amount given' do
+        patch accounting_bank_reconciliation_path, params: { bank_reconciliation: { bank_transaction_id: usd_tx.id, pay_invoice_ids: usd_invoices.map(&:id), eur_amount: '1425' } }
+
+        expect(flash[:alert]).to be_nil
+        expect(usd_tx.reload).to be_reconciled
+        expect(usd_invoices.map { |i| i.reload.status }).to all(eq('paid'))
+      end
+
+      it 'alerts when the EUR amount is missing' do
+        patch accounting_bank_reconciliation_path, params: { bank_reconciliation: { bank_transaction_id: usd_tx.id, pay_invoice_ids: usd_invoices.map(&:id) } }
+
+        expect(flash[:alert]).to match(/EUR amount/)
+        expect(usd_tx.reload).to be_pending
+      end
+
+      it 'offers the choice among the invoices in the currency of the movement' do
+        usd_tx
+        usd_invoices
+        invoice
+
+        get accounting_bank_reconciliation_path
+
+        expect(response.body).to include('Pay several invoices')
+        select = Nokogiri::HTML(response.body).css("select[name='bank_reconciliation[pay_invoice_ids][]'] option")
+        expect(select.size).to be >= 2
+      end
+    end
   end
 end

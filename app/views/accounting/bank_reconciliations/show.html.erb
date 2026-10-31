@@ -137,7 +137,7 @@
                         prompt: 'Select an account',
                         class: 'rounded-md border-gray-300 text-xs focus:ring-primary-500 focus:border-primary-500' %>
                   <% unless tx.bank_account.currency == 'EUR' %>
-                    <%= text_field_tag 'bank_reconciliation[eur_amount]', nil, required: true, placeholder: "EUR amount (#{tx.currency} movement)", class: 'rounded-md border-gray-300 text-xs w-40' %>
+                    <%= text_field_tag 'bank_reconciliation[eur_amount]', ('%.2f' % suggested_eur_amount(tx) if suggested_eur_amount(tx)), required: true, placeholder: (suggested_eur_amount(tx) ? "EUR amount (#{tx.currency} movement)" : "EUR amount (no #{tx.currency} rate for that date)"), class: 'rounded-md border-gray-300 text-xs w-40' %>
                   <% end %>
                   <%= submit_tag 'Reconcile',
                         class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700 transition-colors' %>
@@ -174,21 +174,25 @@
                           options_for_select(@payable_invoices.map { |i| ["#{i.invoice_number} — #{i.partner.name} (#{i.total_incl_vat} #{i.currency})", i.id] }),
                           class: 'rounded-md border-gray-300 text-xs' %>
                     <% unless tx.bank_account.currency == 'EUR' %>
-                      <%= text_field_tag 'bank_reconciliation[eur_amount]', nil, required: true, placeholder: 'EUR amount debited', class: 'rounded-md border-gray-300 text-xs w-36' %>
+                      <%= text_field_tag 'bank_reconciliation[eur_amount]', ('%.2f' % suggested_eur_amount(tx) if suggested_eur_amount(tx)), required: true, placeholder: (suggested_eur_amount(tx) ? 'EUR amount debited' : "EUR amount (no #{tx.currency} rate for that date)"), class: 'rounded-md border-gray-300 text-xs w-36' %>
                     <% end %>
                     <%= text_field_tag 'bank_reconciliation[invoice_amount]', nil, placeholder: 'Deposit: amount for this invoice (optional)', class: 'rounded-md border-gray-300 text-xs w-56' %>
                     <%= submit_tag 'Pay', class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700' %>
                   <% end %>
                 </details>
               <% end %>
-              <% if tx.debit? && tx.bank_account.currency == 'EUR' && @payable_invoices.size > 1 %>
+              <% same_currency = @payable_invoices.select { |i| i.currency == tx.currency } %>
+              <% if tx.debit? && same_currency.size > 1 %>
                 <details class="mt-2">
                   <summary class="text-xs text-primary-600 cursor-pointer">Pay several invoices</summary>
                   <%= form_with url: accounting_bank_reconciliation_path, method: :patch, class: 'mt-2 flex gap-2 items-end' do %>
                     <%= hidden_field_tag 'bank_reconciliation[bank_transaction_id]', tx.id %>
                     <%= select_tag 'bank_reconciliation[pay_invoice_ids]',
-                          options_for_select(@payable_invoices.map { |i| ["#{i.supplier_reference.presence || i.invoice_number} — #{i.partner.name} (#{i.total_incl_vat} #{i.currency})", i.id] }),
+                          options_for_select(same_currency.map { |i| ["#{i.supplier_reference.presence || i.invoice_number} — #{i.partner.name} (#{i.total_incl_vat} #{i.currency})", i.id] }),
                           multiple: true, size: 5, class: 'rounded-md border-gray-300 text-xs' %>
+                    <% unless tx.currency == 'EUR' %>
+                      <%= text_field_tag 'bank_reconciliation[eur_amount]', ('%.2f' % suggested_eur_amount(tx) if suggested_eur_amount(tx)), required: true, placeholder: (suggested_eur_amount(tx) ? 'EUR amount (whole movement)' : "EUR amount (no #{tx.currency} rate for that date)"), class: 'rounded-md border-gray-300 text-xs w-40' %>
+                    <% end %>
                     <%= submit_tag 'Pay together', class: 'px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-md hover:bg-emerald-700' %>
                   <% end %>
                 </details>
