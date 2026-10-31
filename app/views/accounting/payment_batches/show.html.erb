@@ -53,6 +53,12 @@
       <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total</dt>
       <dd class="mt-1 text-sm font-mono text-gray-900"><%= presenter.formatted_total %></dd>
     </div>
+    <% if @payment_batch.message_id.present? %>
+      <div>
+        <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Message id</dt>
+        <dd class="mt-1 text-sm font-mono text-gray-900"><%= @payment_batch.message_id %></dd>
+      </div>
+    <% end %>
     <% if @payment_batch.journal_entry %>
       <div>
         <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Settlement entry</dt>

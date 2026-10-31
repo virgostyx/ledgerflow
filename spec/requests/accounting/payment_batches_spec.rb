@@ -123,6 +123,20 @@ RSpec.describe 'Accounting::PaymentBatches', type: :request do
       get accounting_payment_batch_path(payment_batch)
       expect(response).to have_http_status(:ok)
     end
+
+    it 'shows the message id of a generated batch: the reference its bank debit carries, to match the statement line' do
+      payment_batch.update_columns(status: Accounting::PaymentBatch.statuses[:generated], message_id: 'MSG-2026-0001')
+
+      get accounting_payment_batch_path(payment_batch)
+
+      expect(response.body).to include('Message id').and include('MSG-2026-0001')
+    end
+
+    it 'shows no message id before the file exists' do
+      get accounting_payment_batch_path(payment_batch)
+
+      expect(response.body).not_to include('Message id')
+    end
   end
 
   describe 'POST /accounting/payment_batches/:id/generate' do
