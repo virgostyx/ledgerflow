@@ -96,7 +96,7 @@ Cadre : entités de test **ZZ TEST LedgerFlow** (BudgetFlow) et **ZZ TEST Budget
 | 5 | Le comptable comptabilise | **OK** | Événement `posted` reçu, trace d'audit `ledgerflow_posted`. La fiche BudgetFlow ne montrait rien : corrigé (badge, voir C). |
 | 6 | Corriger après comptabilisation | **Impossible depuis l'écran** | BudgetFlow interdit toute modification d'une facture validée. Le `409` n'est atteignable que par l'API. Point V15. |
 | 7 | « Return to project manager » | **OK, avec un manque corrigé** | Écriture extournée, facture en brouillon, export à `pending`, e-mail reçu. Le motif n'était affiché que dans le module comptable : corrigé (voir D). Délai jusqu'à 5 minutes, maintenant 1 minute. |
-| 8 | Paiement | **OK (lot SEPA)** | Lot créé dans LedgerFlow, fichier généré, « Mark as executed » : la facture est passée à « Paid » dans BudgetFlow (avec le badge « LedgerFlow : Paid »). Le BIC du compte bancaire de l'entité doit être valide, sinon le fichier SEPA est refusé (« Bic is invalid »). Le rapprochement d'un relevé (`payment_confirmed`) reste à tester. |
+| 8 | Paiement | **OK (lot SEPA)** | Lot créé dans LedgerFlow, fichier généré, « Mark as executed » : la facture est passée à « Paid » dans BudgetFlow (avec le badge « LedgerFlow : Paid »). Le BIC du compte bancaire de l'entité doit être valide, sinon le fichier SEPA est refusé (« Bic is invalid »). Le rapprochement d'un relevé (`payment_confirmed`) : testé à l'étape 14. |
 | 9 | Paiement défait | **OK** | Voir le détail ci-dessous (2026-10-27). |
 | 10 | Cas limites | **Faits** : A, B et C | A (TVA qui ne tombe pas rond), B (avoir) et C (kwacha, TVA zambienne, fournisseur sans TVA ni IBAN) : voir « Étape 10 » ci-dessous. Le cas « IBAN invalide » est sans objet : BudgetFlow contrôle la clé de l'IBAN. |
 | 11 | Volume | **Fait** | 240 factures envoyées en deux lots (un au rythme normal, un à pleine vitesse pour atteindre la limite de débit) : voir « Étape 11 » ci-dessous. |
@@ -180,6 +180,16 @@ Répétition sur l'entité de test : 20 factures « payées » dans BudgetFlow (
 
 Limites : euros seulement ; factures entières ; virement groupé reconnu seulement si le libellé cite les références. Les relevés de PRODEM (kwacha, libellés réels) restent à essayer avec les vrais fichiers.
 
+### Étape 14 : rapprochement du débit d'un lot SEPA, `payment_confirmed` (2026-10-31)
+
+Trois factures en euros de l'entité de test, codées et comptabilisées dans LedgerFlow, payées par un lot SEPA (fichier généré, « Mark as executed » : les trois « Paid » dans BudgetFlow). Puis un relevé CSV d'une seule ligne : le total du lot en négatif, la référence égale à l'identifiant du lot (`message_id`).
+
+- **Rapprochement** : la proposition « payment batch » est apparue avec « Accept » ; un clic, message de réussite. Le débit est lié à l'écriture du lot : rien n'est comptabilisé une seconde fois.
+- **BudgetFlow** : l'audit de chacune des trois factures porte `ledgerflow_payment_confirmed`. `ledgerflow:reconcile[11]` : 290 factures, aucun écart nouveau (mêmes totaux et mêmes trois écarts connus que le rattrapage de l'étape 13).
+- **Non relevé par l'utilisateur** : la date et la référence de paiement affichées sur la fiche d'une facture après l'événement (le code les met à jour pour une facture payée par LedgerFlow) ; le refus d'un second débit sur un lot déjà lié, et d'un montant faux.
+- **O. L'identifiant du lot (`message_id`), nécessaire au rapprochement, n'était affiché nulle part** sur la page d'un lot classique (seulement dans le nom du fichier et la balise `<MsgId>`). Corrigé : « Message id » sur la page d'un lot généré (`ce6e19b`).
+- **Piège de saisie** : dans le CSV, le montant doit avoir un point décimal (`-391.62`) ; avec une virgule la ligne a une colonne de trop.
+
 ### Défauts trouvés et corrigés pendant le test
 
 - **A. L'écran de clé API ne montrait pas la clé** (LedgerFlow). La création répondait par une page 200 ; Turbo ignore ce type de réponse à un formulaire. La clé était créée mais perdue. Corrigé : formulaires de création et « Rotate key » sans Turbo (`2f523f0`).
@@ -227,4 +237,4 @@ Points à connaître :
 
 ### Reste à faire avant PRODEM ZAMBIA
 
-Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire après un lot SEPA, événement `payment_confirmed` (8) ; décisions sur la TVA zambienne (point T12 : les questions pour le comptable), les factures déjà payées en kwacha et avec de vrais relevés (la répétition en euros est faite, étape 13), l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
+Correction avant comptabilisation (étape 4) ; décisions sur la TVA zambienne (point T12 : les questions pour le comptable), les factures déjà payées en kwacha et avec de vrais relevés (la répétition en euros est faite, étape 13), l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
