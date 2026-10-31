@@ -22,7 +22,7 @@ class Accounting::MatchBankTransaction
   # `open_invoices`: optional preloaded open customer invoices, so a caller matching many transactions queries them once.
   def self.call(transaction:, open_invoices: nil)
     return unless transaction.pending?
-    return if transaction.currency != "EUR" # amounts below are EUR: a foreign movement is never matched by amount
+    return match_foreign_payment(transaction) if transaction.currency != "EUR" # amounts below are EUR: a foreign movement is never matched by amount alone
 
     match_payment_batch_debit(transaction) || match_payment_return(transaction) || match_batch(transaction) || (transaction.credit? ? match_receipt(transaction, open_invoices) : match_payment(transaction)) ||
       match_rule(transaction) || match_fees(transaction)
@@ -116,12 +116,31 @@ class Accounting::MatchBankTransaction
 
   # Rule 5 for a payment: a grouped transfer, the references of several posted invoices of one supplier named in the communication, whose totals add up to the amount.
   def self.match_supplier_group(tx)
-    return if tx.description.blank?
-
-    named = open_invoices_of(:supplier).where(status: :posted).to_a.select { |i| i.supplier_reference.present? && tx.description.match?(/(?<![\w-])#{Regexp.escape(i.supplier_reference)}(?![\w-])/) }
+    named = named_supplier_invoices(tx)
     return unless named.size > 1 && named.map(&:partner_id).uniq.one? && named.sum(&:total_incl_vat) == tx.amount.abs
 
     suggestion(:supplier_invoices, named.sort_by(&:id), 80, 5)
+  end
+
+  # Posted supplier invoices, in the currency of the movement, whose supplier reference the communication names.
+  def self.named_supplier_invoices(tx)
+    return [] if tx.description.blank?
+
+    open_invoices_of(:supplier).where(status: :posted, currency: tx.currency).to_a.select do |i|
+      i.supplier_reference.present? && tx.description.match?(/(?<![\w-])#{Regexp.escape(i.supplier_reference)}(?![\w-])/)
+    end
+  end
+
+  # A debit from a foreign account is matched by the supplier reference the transfer names, in the invoice's own currency and for exactly its total
+  # (never by amount alone, nor by IBAN or name): one invoice (95), or the invoices of one supplier a grouped transfer names (80). The euro value is the
+  # person's, or the rate's, to give (Fx::MovementInEur).
+  def self.match_foreign_payment(tx)
+    return unless tx.debit?
+
+    named = named_supplier_invoices(tx)
+    return suggestion(:supplier_invoice, named.first, 95, 2) if named.one? && named.first.total_incl_vat == tx.amount.abs
+
+    match_supplier_group(tx)
   end
 
   # Rules 3 and 4: the same amount, and the partner known by the counterparty's IBAN (90) or by a similar name (75); one candidate.
@@ -201,6 +220,6 @@ class Accounting::MatchBankTransaction
     account = Accounting::Account.find_by(code: FEES_ACCOUNT_CODE)
     suggestion(:expense, account, 75, nil) if account
   end
-  private_class_method :rounding_for, :draft_payment_lines, :match_payment_batch_debit, :match_payment_return, :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_supplier_reference, :match_supplier_group, :match_invoice_number, :match_by_partner,
+  private_class_method :rounding_for, :draft_payment_lines, :match_payment_batch_debit, :match_payment_return, :match_batch, :match_invoice, :match_invoices, :match_fees, :match_receipt, :match_payment, :match_supplier_reference, :match_supplier_group, :named_supplier_invoices, :match_foreign_payment, :match_invoice_number, :match_by_partner,
                        :match_group, :open_invoices_of, :partners_by_iban, :partners_by_name, :match_rule
 end

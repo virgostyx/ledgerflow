@@ -236,4 +236,44 @@ RSpec.describe Accounting::MatchBankTransaction, type: :service do
 
     expect(described_class.call(transaction: tx)).to be_nil
   end
+
+  context 'a payment from a foreign account (the bank knows no euro)' do
+    let!(:fiscal_year) { create(:fiscal_year, status: :open) }
+    let(:partner) { create(:partner, :supplier) }
+    let(:zmw_account) { create(:bank_account).tap { |b| b.update_columns(currency: 'ZMW') } }
+
+    def supplier_invoice(ref, total, currency: 'ZMW')
+      create(:invoice, :supplier, :posted, partner: partner, fiscal_year: fiscal_year, supplier_reference: ref, currency: currency).tap { |i| i.update_columns(total_incl_vat: BigDecimal(total)) }
+    end
+
+    def debit(amount, description, currency: 'ZMW') = create(:bank_transaction, bank_account: zmw_account, amount: -BigDecimal(amount), currency: currency, description: description)
+
+    it 'suggests the invoice whose supplier reference the transfer names, in that currency, for exactly its total' do
+      invoice = supplier_invoice('VOL-ZMW1-0007', '2750')
+
+      expect(described_class.call(transaction: debit('2750', 'Transfer #7 VOL-ZMW1-0007 Supplier'))).to have_attributes(kind: :supplier_invoice, target: invoice, score: 95, rule: 2)
+    end
+
+    it 'suggests nothing for another amount, nor for an invoice in another currency' do
+      supplier_invoice('VOL-ZMW1-0007', '2750')
+      supplier_invoice('VOL-EUR-0007', '2750', currency: 'EUR')
+
+      expect(described_class.call(transaction: debit('2700', 'Transfer VOL-ZMW1-0007'))).to be_nil
+      expect(described_class.call(transaction: debit('2750', 'Transfer VOL-EUR-0007'))).to be_nil
+    end
+
+    it 'suggests paying together the invoices of one supplier a grouped transfer names' do
+      first  = supplier_invoice('VOL-ZMW1-0005', '1000')
+      second = supplier_invoice('VOL-ZMW1-0006', '500')
+
+      expect(described_class.call(transaction: debit('1500', 'Transfer VOL-ZMW1-0005 VOL-ZMW1-0006'))).to have_attributes(kind: :supplier_invoices, target: [ first, second ], score: 80)
+    end
+
+    it 'suggests nothing for a credit, nor from the amount alone' do
+      supplier_invoice('VOL-ZMW1-0007', '2750')
+
+      expect(described_class.call(transaction: create(:bank_transaction, bank_account: zmw_account, amount: 2750, currency: 'ZMW', description: 'VOL-ZMW1-0007'))).to be_nil
+      expect(described_class.call(transaction: debit('2750', 'Transfer'))).to be_nil
+    end
+  end
 end

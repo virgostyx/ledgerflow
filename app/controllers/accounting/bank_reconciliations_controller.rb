@@ -66,13 +66,7 @@ class Accounting::BankReconciliationsController < ApplicationController
   def suggested_eur_amount(tx)
     return if tx.currency == "EUR"
 
-    (@suggested_eur ||= {}).fetch(tx.id) do
-      @suggested_eur[tx.id] = begin
-        Fx::Convert.to_eur(tx.amount.abs, Fx::RateFor.call(tx.currency, document_date: tx.transaction_date))
-      rescue Fx::MissingRate
-        nil
-      end
-    end
+    (@suggested_eur ||= {}).fetch(tx.id) { @suggested_eur[tx.id] = Fx::MovementInEur.call(tx) }
   end
 
   def handle_camt_import

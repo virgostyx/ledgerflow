@@ -35,4 +35,26 @@ RSpec.describe "Bank reconciliation: the EUR amount of a foreign movement", type
     expect(eur_fields.map { |f| f["value"] }.compact).to be_empty
     expect(eur_fields.map { |f| f["placeholder"] }.uniq.join).to include("no ZMW rate")
   end
+
+  describe "the suggestion of a payment that names the supplier's invoice" do
+    before do
+      supplier_invoice.update_columns(supplier_reference: "REF-ZMW-1", currency: "ZMW", total_incl_vat: BigDecimal("2750"))
+      kwacha_account.transactions.destroy_all
+      create(:bank_transaction, bank_account: kwacha_account, amount: BigDecimal("-2750"), currency: "ZMW", transaction_date: day, reference: "ZMW-2", description: "Transfer REF-ZMW-1")
+    end
+
+    it "says the euro value it will book, at the rate of the date" do
+      Accounting::ExchangeRate.create!(currency: "ZMW", rate_date: day, rate: "27.5", rate_type: :daily, source: "inforeuro")
+
+      get accounting_bank_reconciliation_path
+
+      expect(response.body).to include("Suggested: supplier invoice REF-ZMW-1").and include("100.00 EUR at the rate of the date")
+    end
+
+    it "warns when no rate is known for that date" do
+      get accounting_bank_reconciliation_path
+
+      expect(response.body).to include("Suggested: supplier invoice REF-ZMW-1").and include("no ZMW rate for that date: the EUR amount is needed")
+    end
+  end
 end

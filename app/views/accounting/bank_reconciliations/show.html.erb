@@ -94,12 +94,13 @@
             </td>
             <td class="px-4 py-3 text-gray-700">
               <%= tx.description %>
+              <% foreign_note = ->(t) { t.currency == 'EUR' ? '' : (suggested_eur_amount(t) ? " — #{'%.2f' % suggested_eur_amount(t)} EUR at the rate of the date" : " — no #{t.currency} rate for that date: the EUR amount is needed") } %>
               <% if (suggestion = @suggestions[tx]) %>
                 <div class="mt-1 flex items-center gap-2 text-xs text-emerald-700">
                   <span>Suggested: <%= case suggestion.kind
                         when :invoice          then "invoice #{suggestion.target.invoice_number}"
-                        when :supplier_invoices then "supplier invoices #{suggestion.target.map { |i| i.supplier_reference.presence || i.invoice_number }.join(', ')}"
-                        when :supplier_invoice then "supplier invoice #{suggestion.target.supplier_reference.presence || suggestion.target.invoice_number}"
+                        when :supplier_invoices then "supplier invoices #{suggestion.target.map { |i| i.supplier_reference.presence || i.invoice_number }.join(', ')}#{foreign_note.call(tx)}"
+                        when :supplier_invoice then "supplier invoice #{suggestion.target.supplier_reference.presence || suggestion.target.invoice_number}#{foreign_note.call(tx)}"
                         when :expense          then "bank fees (#{suggestion.target.code})"
                         when :rule             then "rule “#{suggestion.target.name}” (#{suggestion.target.account.code})"
                         when :invoices         then "invoices #{suggestion.target.map(&:invoice_number).join(', ')}"
@@ -171,7 +172,7 @@
                   <%= form_with url: accounting_bank_reconciliation_path, method: :patch, class: 'mt-2 flex gap-2 items-center' do %>
                     <%= hidden_field_tag 'bank_reconciliation[bank_transaction_id]', tx.id %>
                     <%= select_tag 'bank_reconciliation[pay_invoice_id]',
-                          options_for_select(@payable_invoices.map { |i| ["#{i.invoice_number} — #{i.partner.name} (#{i.total_incl_vat} #{i.currency})", i.id] }),
+                          options_for_select(@payable_invoices.map { |i| ["#{i.invoice_number}#{" · #{i.supplier_reference}" if i.supplier_reference.present?} — #{i.partner.name} (#{i.total_incl_vat} #{i.currency}) · #{i.invoice_date.iso8601}", i.id] }),
                           class: 'rounded-md border-gray-300 text-xs' %>
                     <% unless tx.bank_account.currency == 'EUR' %>
                       <%= text_field_tag 'bank_reconciliation[eur_amount]', ('%.2f' % suggested_eur_amount(tx) if suggested_eur_amount(tx)), required: true, placeholder: (suggested_eur_amount(tx) ? 'EUR amount debited' : "EUR amount (no #{tx.currency} rate for that date)"), class: 'rounded-md border-gray-300 text-xs w-36' %>

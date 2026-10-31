@@ -34,6 +34,16 @@ RSpec.describe 'Accounting::BankReconciliation — pay a supplier invoice', type
     expect(invoice.reload).to be_paid
   end
 
+  it 'tells the invoices apart in the list: supplier number and date, not only the number of the application' do
+    invoice.update!(supplier_reference: 'VOL-ZMW1-0007') unless invoice.supplier_reference == 'VOL-ZMW1-0007'
+    tx
+
+    get accounting_bank_reconciliation_path
+
+    option = Nokogiri::HTML(response.body).css("select[name='bank_reconciliation[pay_invoice_id]'] option").map(&:text).join
+    expect(option).to include('VOL-ZMW1-0007').and include(invoice.invoice_date.iso8601)
+  end
+
   it 'alerts when the service refuses (EUR amount missing on a foreign account)' do
     tx.update_columns(currency: 'USD')
     bank_account.update_columns(currency: 'USD')
