@@ -63,6 +63,25 @@ RSpec.describe Accounting::Settings::AddBankAccount, type: :service do
       end
     end
 
+    context "with an account in a foreign currency" do
+      it "takes a local account number, which is no IBAN" do
+        result = described_class.call(params: valid_params.merge(iban: "0123456789", currency: "ZMW"), user: user)
+
+        expect(result).to be_success, result.message
+        expect(Accounting::BankAccount.find_by(iban: "0123456789")).to have_attributes(currency: "ZMW")
+      end
+
+      it "still asks for an account number" do
+        expect(described_class.call(params: valid_params.merge(iban: "", currency: "ZMW"), user: user)).to be_failure
+      end
+    end
+
+    context "with no currency given" do
+      it "is a euro account: its IBAN is checked" do
+        expect(described_class.call(params: valid_params.merge(iban: "0123456789", currency: ""), user: user)).to be_failure
+      end
+    end
+
     context "with a non-55xxxx counterpart account" do
       it "fails and creates nothing" do
         params = valid_params.merge(default_account_id: account_440.id)
