@@ -162,6 +162,24 @@ Conséquences : la TVA déclarable est supérieure de 0,05 € à celle de la fa
 
 Résultats une fois les trois corrections déployées, conformes au plan selon l'utilisateur : le kwacha est accepté sans taux officiel (le taux envoyé par BudgetFlow est retenu) ; le traitement de TVA est « Foreign vat » ; la ligne porte 16 % ; la comptabilisation donne une seule ligne de charge de 11 600 ZMW (511,71 €), sans ligne de TVA ni grille de la déclaration belge, et la dette fournisseur du même montant ; le fournisseur arrive sans numéro de TVA, avec les comptes analytiques `ZZTEST` et `ZZTEST-1.1.2`.
 
+### Étape 13 : rattrapage des factures déjà payées, en euros (2026-10-31)
+
+Répétition sur l'entité de test : 20 factures « payées » dans BudgetFlow (lot `PAID1`), un relevé CSV simulé (outil refusant toute entité autre que l'entité de test), envoi à LedgerFlow, comptabilisation, import du relevé, rapprochement.
+
+**Premier essai (lot `PAID1`).** Aucune proposition sur aucune ligne. Les paiements simples ont été réglés à la main par « Pay a supplier invoice ». Causes :
+
+- **L. BudgetFlow n'envoyait pas le numéro de facture du fournisseur** (`supplier_reference`), documenté mais absent de la charge. La règle 2 de LedgerFlow (numéro fournisseur dans le libellé du virement) n'avait rien à chercher.
+- **M. Les frais n'étaient reconnus que par le mot « fee »** : « frais », « kosten », « commission » ne l'étaient pas.
+- **N. Un virement groupé (un débit, plusieurs factures d'un fournisseur) était impossible** : le paiement fournisseur ne prenait qu'une facture (« single invoice only »), et « Pay a supplier invoice » refuse un montant différent. La ligne est restée en attente.
+
+**Corrections** : BudgetFlow envoie `supplier_reference` et le relevé simulé le met dans le libellé (`c5e14db0`). LedgerFlow reconnaît fee, frais, kosten, bankkosten, commission ; propose, avec « Accept », le paiement groupé quand le libellé cite les références de plusieurs factures d'un même fournisseur dont les totaux égalent le montant (score 80, règle 5) ; offre « Pay several invoices » pour choisir les factures à la main (euros, factures entières, même fournisseur, somme égale au débit) (`d7c4766`).
+
+**Second essai (lot `PAID2`, après redéploiement).** Le bouton « Accept » était présent sur chaque ligne : paiements simples, frais bancaires et virement groupé, et chaque proposition était correcte. Le virement groupé resté en attente du premier essai a été réglé avec « Pay several invoices ». Aucun problème signalé.
+
+`ledgerflow:reconcile[11]` après le rapprochement : 290 factures vérifiées. ZMW 73 factures, 407 254,16 des deux côtés ; USD 1 facture, 100,0 des deux côtés ; EUR 215 factures, BudgetFlow 27 112,11, LedgerFlow 27 112,16 (les 0,05 € du cas A, TVA arrondie). Écarts : uniquement les trois connus (taux de la facture USD, TVA du cas A, `INV-20261025-A6AEE3`). « Paid here, not paid there yet » : 1 (la facture USD, normal tant que son relevé n'est pas importé). « Unknown to BudgetFlow » : 0 ; « Not sent yet » : 0.
+
+Limites : euros seulement ; factures entières ; virement groupé reconnu seulement si le libellé cite les références. Les relevés de PRODEM (kwacha, libellés réels) restent à essayer avec les vrais fichiers.
+
 ### Défauts trouvés et corrigés pendant le test
 
 - **A. L'écran de clé API ne montrait pas la clé** (LedgerFlow). La création répondait par une page 200 ; Turbo ignore ce type de réponse à un formulaire. La clé était créée mais perdue. Corrigé : formulaires de création et « Rotate key » sans Turbo (`2f523f0`).
@@ -209,4 +227,4 @@ Points à connaître :
 
 ### Reste à faire avant PRODEM ZAMBIA
 
-Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire après un lot SEPA, événement `payment_confirmed` (8) ; décisions sur la TVA zambienne (point T12 : les questions pour le comptable), les factures déjà payées, l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
+Correction avant comptabilisation (étape 4) ; rapprochement d'un relevé bancaire après un lot SEPA, événement `payment_confirmed` (8) ; décisions sur la TVA zambienne (point T12 : les questions pour le comptable), les factures déjà payées en kwacha et avec de vrais relevés (la répétition en euros est faite, étape 13), l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
