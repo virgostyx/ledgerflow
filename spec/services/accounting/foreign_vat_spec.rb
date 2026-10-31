@@ -51,4 +51,22 @@ RSpec.describe 'Foreign VAT, booked as a cost' do
       expect(lines.sum(&:debit)).to eq(lines.sum(&:credit))
     end
   end
+
+  describe 'a supplier abroad that charged no VAT (exempted, or below the threshold)' do
+    let(:invoice) do
+      create(:invoice, invoice_type: :supplier, fiscal_year: fiscal_year, journal: purchase_journal, vat_treatment: :foreign_vat).tap do |i|
+        create(:invoice_line, invoice: i, account: account_604, quantity: 1, unit_price: '1000.00', vat_rate: '0.00', description: 'Services')
+        i.reload.compute_totals
+        i.save!
+      end
+    end
+
+    it 'is booked at its amount, in no grid of the Belgian VAT return' do
+      Accounting::PostInvoice.call(invoice: invoice)
+      lines = invoice.reload.journal_entry.lines.includes(:account).to_a
+
+      expect(lines.map { |l| [ l.account.code, l.debit, l.credit ] }).to match_array([ [ account_604.code, BigDecimal('1000'), BigDecimal('0') ], [ '440000', BigDecimal('0'), BigDecimal('1000') ] ])
+      expect(lines.map(&:vat_code)).to all(be_nil)
+    end
+  end
 end

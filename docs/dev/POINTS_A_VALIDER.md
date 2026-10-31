@@ -53,6 +53,14 @@ Document de synthèse créé le 2026-10-20. Il rassemble en un seul endroit les 
 
   **Pas fait** : TVA récupérable par remboursement (compte de créance), et le choix par pays, par projet ou par facture.
 
+  **Décisions provisoires (2026-10-31, sans comptable, pour tester PRODEM et faire une démonstration ; à faire valider avant toute mise en production réelle)** :
+  - La TVA étrangère non récupérable reste **dans la charge de la ligne** (coût d'acquisition), pas sur 640400.
+  - La TVA étrangère **récupérable par remboursement** n'est pas codée (pas de créance « TVA étrangère à récupérer ») : pour PRODEM, exonération préalable (facture sans TVA) ou TVA en charge.
+  - La récupérabilité se décide **par projet** (case « VAT is a cost of this project » ; sans TVA encodée = exonérée).
+  - Un fournisseur **hors UE sans TVA** reçoit lui aussi `foreign_vat` : aucune ligne de TVA, aucune grille belge. Un fournisseur d'un autre pays de l'UE sans TVA ne reçoit rien (autoliquidation, traitement à valider).
+  - L'entité de test est supposée **assujettie, TVA belge déductible** (numéro de TVA fictif à sa création). Une ASBL réellement non assujettie ne déduit rien : sa TVA belge serait aussi un coût.
+  - Les bailleurs : la TVA n'est éligible que si elle est définitivement supportée ; à confirmer avec chacun.
+
   **Questions pour le comptable** :
   1. Pour la TVA étrangère récupérable par remboursement : quel compte exactement (sous-compte de la classe 41 ?), et comment solder la créance à l'encaissement du remboursement ?
   2. La TVA en charge doit-elle rester **dans la charge de la ligne** (choix actuel, pour que l'analytique et le budget la portent) ou être isolée sur le compte **640400** comme pour la franchise (T6), au prix de sortir ce montant de l'analytique ?

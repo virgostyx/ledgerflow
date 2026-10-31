@@ -16,8 +16,8 @@ class Accounting::Invoice < ApplicationRecord
   # B01a: where the invoice stands for payment. not_required until a policy says otherwise, so what exists is untouched.
   enum :payment_status, { not_required: 0, to_approve: 1, approved: 2, on_hold: 3, scheduled: 4, paid: 5, disputed: 6 }, prefix: :payment
   enum :peppol_status,  { not_sent: 0, queued: 1, delivered: 2, failed: 3 }
-  # foreign_vat (6): a purchase from a supplier abroad whose invoice carries that country's VAT. Not Belgian VAT: nothing to deduct, nothing in the
-  # Belgian return. The VAT is a cost, owed to the supplier with the rest (see GenerateInvoiceJournalEntry).
+  # foreign_vat (6): a purchase from a supplier abroad whose invoice carries that country's VAT, or none. Not Belgian VAT: nothing to deduct, nothing in the
+  # Belgian return. The VAT, if any, is a cost, owed to the supplier with the rest (see GenerateInvoiceJournalEntry).
   enum :vat_treatment,  { domestic: 0, intracom_goods: 1, intracom_services: 2,
                           construction_reverse_charge: 3, export: 4, exempt: 5, foreign_vat: 6 }
 
