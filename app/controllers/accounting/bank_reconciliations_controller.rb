@@ -1,4 +1,5 @@
 class Accounting::BankReconciliationsController < ApplicationController
+  RECENT_LIMIT = 50 # the lines reconciled or waiting for validation shown under the lines to deal with
   helper_method :suggested_eur_amount
 
   def show
@@ -16,8 +17,9 @@ class Accounting::BankReconciliationsController < ApplicationController
     return unless feature?(:f02)
 
     @indicators = indicators
-    @matched = Accounting::BankTransaction.matched.where.not(journal_entry_id: nil).includes(:journal_entry, :bank_account).order(:transaction_date, :id).limit(50)
-    @recent = Accounting::BankTransaction.reconciled.where.not(journal_entry_id: nil).includes(:journal_entry, :bank_account).order(updated_at: :desc).limit(10)
+    @found_query = params[:rq].to_s.strip
+    @matched = searched(Accounting::BankTransaction.matched).includes(:journal_entry, :bank_account).order(:transaction_date, :id).limit(RECENT_LIMIT)
+    @recent = searched(Accounting::BankTransaction.reconciled).includes(:journal_entry, :bank_account).order(updated_at: :desc).limit(RECENT_LIMIT)
     @rule_accounts = @accounts
   end
 
@@ -60,6 +62,14 @@ class Accounting::BankReconciliationsController < ApplicationController
   end
 
   private
+
+  # The lines already booked (with an entry), narrowed by what they say when a search is given: `rq` never touches the lines still to deal with.
+  def searched(scope)
+    scope = scope.where.not(journal_entry_id: nil)
+    return scope if @found_query.blank?
+
+    scope.where("accounting_bank_transactions.description ILIKE ?", "%#{Accounting::BankTransaction.sanitize_sql_like(@found_query)}%")
+  end
 
   # A movement on a foreign account has no euro figure from the bank: the EUR amount is its conversion at the rate the entity's policy gives for the
   # date of the movement (a proposal the person can change). nil when it is in euros, or when no rate is known for that date: never another rate.

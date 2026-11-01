@@ -234,6 +234,14 @@
 </div>
 
 <% if @indicators %>
+  <%= form_with url: accounting_bank_reconciliation_path, method: :get, class: "mt-6 flex gap-2 items-center" do %>
+    <%= search_field_tag :rq, @found_query, placeholder: "Find a line already booked (what it says)", class: "rounded-md border-gray-300 text-xs w-72" %>
+    <%= submit_tag "Search", name: nil, class: "px-3 py-1.5 border border-gray-300 text-xs text-gray-700 rounded-md hover:bg-gray-50" %>
+    <%= link_to "Clear", accounting_bank_reconciliation_path, class: "text-xs text-gray-500 underline" if @found_query.present? %>
+  <% end %>
+  <% if @found_query.present? && @matched.blank? && @recent.blank? %>
+    <p class="mt-2 text-xs text-gray-500">No booked line says “<%= @found_query %>”.</p>
+  <% end %>
   <% [ [ "Awaiting validation", @matched, "A draft payment entry exists: validate it to settle the line." ], [ "Recently reconciled", @recent, "Undoing a validated payment reverses its entry." ] ].each do |title, transactions, help| %>
     <% next if transactions.blank? %>
     <div class="mt-6 bg-white rounded-lg border border-gray-200 overflow-hidden">
