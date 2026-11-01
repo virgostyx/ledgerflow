@@ -190,6 +190,26 @@ Trois factures en euros de l'entité de test, codées et comptabilisées dans Le
 - **O. L'identifiant du lot (`message_id`), nécessaire au rapprochement, n'était affiché nulle part** sur la page d'un lot classique (seulement dans le nom du fichier et la balise `<MsgId>`). Corrigé : « Message id » sur la page d'un lot généré (`ce6e19b`).
 - **Piège de saisie** : dans le CSV, le montant doit avoir un point décimal (`-391.62`) ; avec une virgule la ligne a une colonne de trop.
 
+### Étape 15 : rattrapage en kwacha, compte en devise étrangère (2026-11-01)
+
+Répétition comme l'étape 13, mais avec 20 factures **en kwacha** déjà payées dans BudgetFlow (lot `ZMW1`, `KWACHA=1`), un relevé simulé **en kwacha** (aucun montant en euros, comme une vraie banque zambienne) importé dans un compte bancaire en `ZMW` de LedgerFlow (compte de contrepartie `550200`). Le taux du test est de 27,5 kwacha pour 1 euro.
+
+**Constats du premier passage**, tous corrigés :
+
+- **P. Impossible de créer le compte bancaire en kwacha** (LedgerFlow) : « IBAN is invalid ». Le modèle accepte un numéro de compte local pour une devise étrangère, mais l'action de création contrôlait l'IBAN pour toute devise. Corrigé : seul un compte en euros a son IBAN contrôlé (`d87a9e8`).
+- **Q. Le montant en euros n'était pas proposé** : l'écran le demande pour un mouvement en devise étrangère mais ne le calculait pas. Corrigé : proposé, converti au taux de la date du mouvement d'après la politique de l'entité ; sans taux pour cette date, le champ reste vide et le dit (« no ZMW rate for that date »), jamais un autre taux (`6c76d8d`). **Il faut un taux ZMW à la date de chaque ligne** (ou la politique « Monthly average » avec un taux par mois).
+- **R. « Pay several invoices » n'existait que pour les euros** : un virement groupé en kwacha n'avait aucune voie (une ligne ne se rapproche qu'une fois). Corrigé : disponible en devise étrangère, avec le montant en euros de tout le virement réparti entre les factures au prorata de leurs totaux (la dernière prend les centimes restants), l'écart de change de chacune comptabilisé par le lettrage (`6c76d8d`).
+- **S. Aucun « Accept » pour une ligne en devise étrangère** (le moteur ne proposait rien pour un mouvement hors euros). Corrigé : un débit qui cite le numéro fournisseur d'une facture comptabilisée dans la même devise et dont le montant est exactement son total est proposé (95), ainsi qu'un virement groupé qui cite plusieurs numéros du même fournisseur (80) ; la proposition indique la valeur en euros qui sera comptabilisée (`005075c`). Jamais de proposition sur le montant seul, l'IBAN ou le nom pour une devise étrangère.
+- **T. Deux factures de même montant indiscernables dans « Pay a supplier invoice »** : la liste ne montrait que le numéro LedgerFlow. L'utilisateur a rapproché trois lignes avec de mauvaises factures (les n° 1, 11 et 13 des lots de volume `VOL1`/`VOL2`, qui ont le même montant, le même fournisseur et la même devise que ceux de `ZMW1` : le montant d'une facture de test ne dépend que de son numéro d'ordre). Corrigé : la liste montre le numéro fournisseur et la date de la facture (`005075c`).
+- **U. Retrouver une ligne rapprochée à tort** : la section « Recently reconciled » n'existe que si la fonction F02 est active, et ne montrait que 10 lignes. Corrigé : 50 lignes et une recherche sur le libellé, qui ne touche pas aux lignes à traiter (`0f88a5e`). Les Undo ont été faits (motif obligatoire), les trois mauvaises factures rouvertes.
+- **V. « Paid here, not paid there yet » ne disait pas lesquelles** (BudgetFlow). Corrigé : la tâche `ledgerflow:reconcile` les liste avec l'état que LedgerFlow en donne (`a0c6d366`).
+
+**Résultat après correction.** Les bonnes factures sont rapprochées. `ledgerflow:reconcile[11]` : 310 factures vérifiées, kwacha 93 factures, 506 789,28 des deux côtés ; EUR 215 factures (27 112,11 contre 27 112,16, les 0,05 € du cas A) ; USD 100,0. Mêmes trois écarts connus. « Paid here, not paid there yet » : 4, dont les trois factures payées à tort (`INV-20261030-9B278B`, `-1E03B3`, `-7B3620`, « posted » dans LedgerFlow, « paid » dans BudgetFlow) et la facture USD.
+
+**Limite connue, sans correction** : BudgetFlow ne sait pas dé-payer. Une facture rapprochée à tort puis annulée dans LedgerFlow (Undo, événement `payment_reopened`) reste « paid » dans BudgetFlow, qui alerte seulement les comptables. L'écart apparaît donc à jamais dans `ledgerflow:reconcile` (V15 et le constat de l'étape 9). Données de test, sans conséquence ici ; en production, ce serait à corriger dans BudgetFlow par une correction de paiement.
+
+**Non mesuré ou non relevé par l'utilisateur** : le temps par ligne, l'écart de change comptabilisé par facture, le comportement des frais de 70 ZMW (« Reconcile manually » en kwacha) et de la facture sans référence.
+
 ### Défauts trouvés et corrigés pendant le test
 
 - **A. L'écran de clé API ne montrait pas la clé** (LedgerFlow). La création répondait par une page 200 ; Turbo ignore ce type de réponse à un formulaire. La clé était créée mais perdue. Corrigé : formulaires de création et « Rotate key » sans Turbo (`2f523f0`).
@@ -237,4 +257,4 @@ Points à connaître :
 
 ### Reste à faire avant PRODEM ZAMBIA
 
-Correction avant comptabilisation (étape 4) ; décisions sur la TVA zambienne (point T12 : les questions pour le comptable), les factures déjà payées en kwacha et avec de vrais relevés (la répétition en euros est faite, étape 13), l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
+Correction avant comptabilisation (étape 4) ; décisions sur la TVA zambienne (point T12 : les questions pour le comptable), les factures déjà payées avec de vrais relevés (répétitions en euros et en kwacha faites, étapes 13 et 15), l'IBAN et le TPIN (§3 et §4). Puis nettoyage : révoquer le client API « BudgetFlow test » (ses clés sont passées dans une conversation) et recréer un client propre pour l'usage réel.
