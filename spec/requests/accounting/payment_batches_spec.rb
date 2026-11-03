@@ -82,6 +82,16 @@ RSpec.describe 'Accounting::PaymentBatches', type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(invoice.invoice_number)
     end
+
+    it 'lists a posted advance, which is paid like an invoice, and puts it in a batch' do
+      advance = create(:invoice, :supplier, :posted, :with_lines, partner: supplier, fiscal_year: fiscal_year, document_type: :advance)
+      get new_accounting_payment_batch_path
+      expect(response.body).to include(advance.invoice_number)
+
+      expect {
+        post accounting_payment_batches_path, params: { accounting_payment_batch: { bank_account_id: bank_account.id, requested_execution_date: Date.current + 1, invoice_ids: [ advance.id ] } }
+      }.to change(Accounting::PaymentBatch, :count).by(1)
+    end
   end
 
   describe 'POST /accounting/payment_batches' do
