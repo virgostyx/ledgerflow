@@ -4,12 +4,12 @@
 class Accounting::AllocateLines
   extend LightService::Organizer
 
-  def self.call(lines:)
+  def self.call(lines:, foreign_currency: false)
     result = nil
     ApplicationRecord.transaction do
       # locked first: two people settling the same line at the same moment cannot both succeed
       locked = Accounting::JournalEntryLine.where(id: Array(lines).map(&:id)).order(:id).lock.includes(:journal_entry, :account, :invoice).to_a
-      result = with(lines: locked).reduce(
+      result = with(lines: locked, foreign_currency: foreign_currency).reduce(
         Accounting::Actions::ValidateAllocation,
         Accounting::Actions::CreateAllocations,
         Accounting::Actions::CloseSettledGroup

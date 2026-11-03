@@ -144,7 +144,8 @@ class Accounting::Actions::GenerateInvoiceJournalEntry
       # Foreign VAT is a cost: the expense (and its analytical accounts) carry it, and no grid of the Belgian return does.
       amount = invoice.foreign_vat? ? line.total_incl_vat : line.subtotal_excl_vat
       journal_line = create_line(entry, side, amount, invoice: invoice, account: line.account,
-                                 label: line.description, vat_code: vat_grid.call(line),
+                                 label: line.description, vat_code: vat_grid.call(line), partner: (invoice.partner if invoice.advance?), # 409000 is a partner account
+
                                  vat_amount: (Fx::Convert.to_eur(line.subtotal_excl_vat, invoice.exchange_rate) unless invoice.foreign_vat?))
       propagate_annotations(line, journal_line)
     end

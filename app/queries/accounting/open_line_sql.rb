@@ -53,6 +53,7 @@ module Accounting::OpenLineSql
       .joins("LEFT JOIN accounting_letterings lt ON lt.id = #{LINES}.lettering_id")
       .where("e.status IN (?) AND e.entry_date <= ?", Accounting::JournalEntry.ledger_status_values, as_of)
       .where("a.code LIKE ? AND a.reconcilable", PREFIX.fetch(kind.to_sym))
+      .where("a.code NOT LIKE ?", "#{Accounting::AccountCodes::ADVANCES[0, 3]}%") # 409: the advances paid to suppliers are not customer receivables
       .where(carried_forward_sql(as_of, known_at: known_at))
     known_at ? known_at.restrict(scope, table: "e") : scope
   end

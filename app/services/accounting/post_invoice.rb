@@ -12,9 +12,11 @@ class Accounting::PostInvoice
         Accounting::Actions::ValidateInvoiceFourEyes,
         Accounting::Actions::ValidateApprovalBeforePosting,
         Accounting::Actions::ValidateCreditNoteAmount,
+        Accounting::Actions::ValidateAdvanceAllocations,
         Accounting::Actions::AssignInvoiceNumber,
         Accounting::Actions::GenerateInvoiceJournalEntry,
         Accounting::Actions::UpdateInvoiceStatus,
+        Accounting::Actions::ApplyAdvances,
         Accounting::Actions::PayFromCash,
         Accounting::Actions::SubmitForApproval
       )

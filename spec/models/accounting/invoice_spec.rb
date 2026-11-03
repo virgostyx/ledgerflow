@@ -57,7 +57,7 @@ RSpec.describe Accounting::Invoice, type: :model do
   end
 
   describe 'credit notes' do
-    it { should define_enum_for(:document_type).with_values(invoice: 0, credit_note: 1) }
+    it { should define_enum_for(:document_type).with_values(invoice: 0, credit_note: 1, advance: 2) }
     it { should belong_to(:credited_invoice).class_name('Accounting::Invoice').optional }
 
     it 'is a regular invoice by default' do

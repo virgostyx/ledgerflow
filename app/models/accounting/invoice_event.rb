@@ -22,7 +22,7 @@ class Accounting::InvoiceEvent < ApplicationRecord
   scope :visible, -> { where(created_at: ..SETTLE_DELAY.ago) }
 
   def self.record!(invoice, event_type, reason: nil)
-    payload = { external_ref: invoice.external_ref, revision: invoice.revision, invoice_number: invoice.invoice_number,
+    payload = { external_ref: invoice.external_ref, revision: invoice.revision, invoice_number: invoice.invoice_number, document_type: invoice.document_type,
                 currency: invoice.currency, total_incl_vat: invoice.total_incl_vat.to_s("F") }
     payload[:reason] = reason if reason
     payload.merge!(Accounting::InvoiceSettlement.call(invoice).to_payload) if SETTLEMENT_EVENTS.include?(event_type)

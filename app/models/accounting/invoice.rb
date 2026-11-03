@@ -11,7 +11,7 @@ class Accounting::Invoice < ApplicationRecord
   include Accounting::FiscalYearScoped
 
   enum :invoice_type,   { customer: 0, supplier: 1 }
-  enum :document_type,  { invoice: 0, credit_note: 1 }
+  enum :document_type,  { invoice: 0, credit_note: 1, advance: 2 }
   enum :status,         { draft: 0, posted: 1, paid: 2, cancelled: 3, partially_paid: 4 }
   # B01a: where the invoice stands for payment. not_required until a policy says otherwise, so what exists is untouched.
   enum :payment_status, { not_required: 0, to_approve: 1, approved: 2, on_hold: 3, scheduled: 4, paid: 5, disputed: 6 }, prefix: :payment
@@ -35,6 +35,11 @@ class Accounting::Invoice < ApplicationRecord
   belongs_to :cash_journal,  class_name: "Accounting::Journal", optional: true
   has_many   :credit_notes,  class_name: "Accounting::Invoice", foreign_key: :credited_invoice_id,
                              inverse_of: :credited_invoice, dependent: :restrict_with_error
+  # The advances this invoice settles / the invoices that settle this advance.
+  has_many   :advance_allocations, class_name: "Accounting::AdvanceAllocation", foreign_key: :invoice_id,
+                                   inverse_of: :invoice, dependent: :destroy
+  has_many   :consumptions, class_name: "Accounting::AdvanceAllocation", foreign_key: :advance_id,
+                            inverse_of: :advance, dependent: :restrict_with_error
   has_many   :payment_reminder_items, class_name: "Accounting::PaymentReminderItem", dependent: :restrict_with_error
   has_many   :payment_reminders, -> { order(created_at: :desc, id: :desc) }, through: :payment_reminder_items
   has_many   :peppol_events, -> { order(occurred_at: :desc) }, class_name: "Accounting::PeppolEvent",
@@ -52,6 +57,7 @@ class Accounting::Invoice < ApplicationRecord
   accepts_nested_attributes_for :lines, allow_destroy: true, reject_if: :all_blank
 
   # Documents managed through the third-party API (keyed by external_ref + revision), as opposed to invoices typed in the UI.
+  scope :payable_documents, -> { where(document_type: %i[invoice advance]) }
   scope :external, -> { where.not(external_digest: nil) }
   # A supplier invoice that arrived through Peppol (it keeps the UBL original), which a third party may take over.
   scope :peppol_received, -> { supplier.invoice.joins(:ubl_document_attachment) }
@@ -138,6 +144,9 @@ class Accounting::Invoice < ApplicationRecord
     end
   end
 
+  # Paid like an invoice: an advance to a supplier is paid, by bank transfer, exactly like the invoice of that supplier.
+  def payable_document? = invoice? || advance?
+
   # Under the VAT franchise a draft is domestic and, when it is a sale, charges no VAT. A supplier invoice keeps the VAT
   # rates the supplier charged (Accounting::Actions::GenerateInvoiceJournalEntry books it as a cost). Posted documents are
   # never touched, so that changing the regime only concerns what is issued afterwards.
@@ -188,8 +197,29 @@ class Accounting::Invoice < ApplicationRecord
     credit_notes.select(&:issued?).sum(&:total_incl_vat_eur) # in memory: preload :credit_notes in batch callers
   end
 
+  # Advances already applied to this invoice (the entry that settles them with the supplier account is posted).
+  def advanced_amount
+    advance_allocations.select(&:journal_entry_id).sum(&:amount_eur)
+  end
+
   def remaining_amount
-    [ total_incl_vat_eur - paid_amount - credited_amount, 0 ].max
+    [ total_incl_vat_eur - paid_amount - credited_amount - advanced_amount, 0 ].max
+  end
+
+  # Partly or wholly paid, but only by the advances it settles (no bank movement): it can still be cancelled, the advances go back.
+  def settled_by_advances_only?
+    return false unless partially_paid? || paid?
+
+    applied = advance_allocations.filter_map(&:journal_entry_id)
+    applied.any? && !Accounting::JournalEntryLine.where(invoice_id: id).where("debit > 0").where.not(journal_entry_id: applied).exists?
+  end
+
+  # What is left to settle of an advance, in its currency; the allocations of a cancelled invoice are free again.
+  def advance_remaining = advance_remaining_excluding(nil)
+
+  def advance_remaining_excluding(allocation)
+    taken = consumptions.live.where.not(id: allocation&.id).sum(:amount)
+    total_incl_vat - taken
   end
 
   def overpaid_amount
@@ -212,7 +242,7 @@ class Accounting::Invoice < ApplicationRecord
 
   # No due date typed: the invoice date plus the payment terms of the partner (not for credit notes).
   def default_due_date
-    return if due_date.present? || !invoice? || partner.nil? || invoice_date.nil?
+    return if due_date.present? || credit_note? || partner.nil? || invoice_date.nil?
 
     self.due_date = invoice_date + partner.payment_terms_days
   end

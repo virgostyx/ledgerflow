@@ -62,7 +62,7 @@ class Accounting::MatchBankTransaction
     suggestion(:supplier_invoice, found.first, 100, 1, rounding: rounding)
   end
 
-  def self.open_customer_invoices = Accounting::Invoice.customer.invoice.posted.where.not(invoice_number: nil).includes(:credit_notes, :journal, :cash_journal, :credited_invoice, :entity, partner: :entity)
+  def self.open_customer_invoices = Accounting::Invoice.customer.invoice.posted.where.not(invoice_number: nil).includes(:credit_notes, :advance_allocations, :journal, :cash_journal, :credited_invoice, :entity, partner: :entity)
 
   # Rule 0 (B01c): a debit that is the debit of a payment batch of the supplier payments (Payments::RecognizeDebit). Only ever proposed.
   def self.match_payment_batch_debit(tx)
@@ -166,11 +166,11 @@ class Accounting::MatchBankTransaction
   end
 
   def self.open_invoices_of(side)
-    scope = Accounting::Invoice.invoice.where(status: OPEN)
-    return scope.customer.where.not(invoice_number: nil).includes(:credit_notes) if side == :customer
+    scope = Accounting::Invoice.payable_documents.where(status: OPEN) # (an advance is a supplier document: the customer side never sees one)
+    return scope.customer.where.not(invoice_number: nil).includes(:credit_notes, :advance_allocations) if side == :customer
 
     # a supplier invoice whose payment waits as a draft is not offered again (a draft receipt already lowers the customer balance)
-    scope.supplier.includes(:credit_notes).where.not(id: draft_payment_lines.select(:invoice_id))
+    scope.supplier.includes(:credit_notes, :advance_allocations).where.not(id: draft_payment_lines.select(:invoice_id))
   end
 
   def self.draft_payment_lines

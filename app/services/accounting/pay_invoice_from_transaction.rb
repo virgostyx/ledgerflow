@@ -41,7 +41,7 @@ class Accounting::PayInvoiceFromTransaction
   def self.guard(tx, invoice, eur_amount, invoice_amount, remaining, partial)
     expected = partial ? invoice_amount : invoice.total_incl_vat
     if !(tx.pending? && tx.debit?)                                                  then "not_pending_debit"
-    elsif !(invoice.supplier? && invoice.invoice? && (invoice.posted? || invoice.partially_paid?)) then "not_open_supplier_invoice"
+    elsif !(invoice.supplier? && invoice.payable_document? && (invoice.posted? || invoice.partially_paid?)) then "not_open_supplier_invoice"
     elsif eur_amount.nil? || eur_amount <= 0                                        then "eur_amount_required"
     elsif partial && (invoice_amount <= 0 || invoice_amount > remaining)            then "invoice_amount_out_of_range"
     elsif tx.currency == invoice.currency && tx.amount.abs != expected              then "amount_mismatch"

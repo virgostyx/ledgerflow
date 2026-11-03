@@ -53,7 +53,7 @@ class Api::V1::InvoicesController < Api::V1::BaseController
 
   def invoice_payload
     params.permit(:partner_external_ref, :post, :project_name, :budget_line, :project_ref, :budget_line_ref, :supplier_reference, :document_type, :credited_invoice_external_ref, :invoice_type, :invoice_date, :due_date, :currency, :exchange_rate,
-                  :vat_treatment, :description, :notes, :project_id, lines: LINE_FIELDS)
+                                    :vat_treatment, :description, :notes, :project_id, lines: LINE_FIELDS, advance_refs: %i[invoice_ref amount])
           .to_h.merge(external_ref: params[:external_ref])
   end
 
@@ -66,7 +66,8 @@ class Api::V1::InvoicesController < Api::V1::BaseController
   def serialize_detail(invoice)
     serialize_invoice(invoice).merge(credited_invoice_external_ref: invoice.credited_invoice&.external_ref,
                                      project_name: invoice.external_project_name, budget_line: invoice.external_budget_line,
-                                     supplier_reference: invoice.supplier_reference)
+                                     supplier_reference: invoice.supplier_reference,
+                                     advance_refs: invoice.advance_allocations.includes(:advance).map { |a| { invoice_ref: a.advance.external_ref, amount: a.amount.to_s("F") } })
   end
 
   def serialize_invoice(invoice)

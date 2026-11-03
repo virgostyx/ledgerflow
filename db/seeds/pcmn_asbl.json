@@ -67,6 +67,7 @@
   {"code":"400200","label_fr":"Clients — membres cotisants","account_class":4,"account_type":"asset","normal_balance":"debit","is_leaf":true,"reconcilable":true},
   {"code":"400300","label_fr":"Clients — dons et legs à recevoir","account_class":4,"account_type":"asset","normal_balance":"debit","is_leaf":true,"reconcilable":true},
   {"code":"400900","label_fr":"Réductions de valeur sur créances commerciales (-)","account_class":4,"account_type":"asset","normal_balance":"credit","is_leaf":true,"reconcilable":false},
+  {"code":"409000","label_fr":"Fournisseurs débiteurs : avances et acomptes versés","account_class":4,"account_type":"asset","normal_balance":"debit","is_leaf":true,"reconcilable":true},
   {"code":"410000","label_fr":"Créances fiscales et autres créances","account_class":4,"account_type":"asset","normal_balance":"debit","is_leaf":false,"reconcilable":true},
   {"code":"410100","label_fr":"TVA à récupérer","account_class":4,"account_type":"asset","normal_balance":"debit","is_leaf":true,"reconcilable":true},
   {"code":"410200","label_fr":"Précompte professionnel à récupérer","account_class":4,"account_type":"asset","normal_balance":"debit","is_leaf":true,"reconcilable":true},

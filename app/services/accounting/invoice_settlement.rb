@@ -50,9 +50,12 @@ class Accounting::InvoiceSettlement
     Accounting::JournalEntryLine.where(invoice_id: @invoice.id).where.not(id: @trade.id).where("#{payment_side} > 0")
                                 .includes(:journal_entry).map do |line|
       @seen << line.id
-      from_entry(line.journal_entry, line.public_send(payment_side))
+      from_entry(line.journal_entry, line.public_send(payment_side)).tap { |item| item.source = "advance" if advance_entry_ids.include?(line.journal_entry_id) }
     end
   end
+
+  # The entries that move what an advance already paid to the supplier: not a bank movement, but money paid all the same.
+  def advance_entry_ids = @advance_entry_ids ||= @invoice.advance_allocations.filter_map(&:journal_entry_id)
 
   def from_allocations
     return [] unless @trade

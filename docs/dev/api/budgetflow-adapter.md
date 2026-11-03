@@ -56,7 +56,8 @@ Le rapprochement par numéro de TVA reprend un tiers LedgerFlow déjà saisi à 
 
 | BudgetFlow (`Invoice`) | LedgerFlow | Remarque |
 |---|---|---|
-| — | `document_type` | `invoice` ou `credit_note` selon `invoice_type` |
+| — | `document_type` | `invoice`, `credit_note` ou `advance` selon `invoice_type` (une avance se comptabilise sur `409000`, cf. `inbound-api.md` 4.5 bis) |
+| `AdvanceRegularisation` (avances apurées par la facture) | `advance_refs` | `[{ invoice_ref: "bf-invoice-{avance.id}", amount }]`, montant dans la devise des deux ; facture ordinaire seulement |
 | — | `post` | toujours `false` : la facture arrive en **brouillon**, le comptable la code et la comptabilise dans LedgerFlow |
 | `effective_supplier` | `partner_external_ref` | `bf-supplier-{id}` |
 | — | `invoice_type` | toujours `supplier` |

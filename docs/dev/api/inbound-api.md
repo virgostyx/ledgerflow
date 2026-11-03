@@ -136,7 +136,8 @@ L'application tierce (BudgetFlow) tient les comptes analytiques de ses projets :
 | Champ | Règle |
 |---|---|
 | `partner_external_ref` | Obligatoire. Doit avoir été envoyé via `PUT /partners` (sinon `422`, aucune création implicite). |
-| `document_type` | `invoice` (défaut) ou `credit_note` (cf. 4.5). |
+| `document_type` | `invoice` (défaut), `credit_note` (cf. 4.5) ou `advance` (cf. 4.5 bis). |
+| `advance_refs` | Facture seulement : avances fournisseur que cette facture apure, `[{ "invoice_ref": "BF-A-1", "amount": "100.00" }]` (cf. 4.5 bis). Fait partie du contenu (empreinte). |
 | `credited_invoice_external_ref` | Avoir seulement : référence de la facture créditée (facultatif). |
 | `post` | `true` par défaut : la facture est comptabilisée tout de suite. **`false` : elle reste un brouillon** que le comptable code et comptabilise dans LedgerFlow (mode de BudgetFlow). |
 | `supplier_reference` | Facultatif. Numéro de la facture **chez le fournisseur** (pour BudgetFlow : `invoice_number`). Distinct de `external_ref`, qui est la clé de l'appelant. Fait partie du contenu. |
@@ -276,6 +277,23 @@ Un avoir est envoyé sur le **même endpoint**, avec `document_type: "credit_not
 - **Ordre des corrections** : une facture qui porte un avoir comptabilisé ne peut être ni révisée ni annulée (`409`). Annuler d'abord l'avoir (`DELETE`), corriger la facture, puis renvoyer l'avoir.
 - `GET` et les réponses d'écriture ajoutent `document_type` et, pour un avoir lié, `credited_invoice_external_ref`.
 
+### 4.5 bis Avances fournisseur et apurement
+
+Une avance (acompte versé à un fournisseur) est envoyée sur le **même endpoint**, avec `document_type: "advance"`. Elle hérite de l'idempotence, des révisions par extourne, de `DELETE` avec motif et de `GET`. Elle se paie comme une facture (rapprochement bancaire, lot SEPA).
+
+```json
+{ "document_type": "advance", "partner_external_ref": "BF-P-1", "invoice_type": "supplier", "invoice_date": "2026-09-30",
+  "lines": [ { "description": "Avance sur commande", "quantity": "1", "unit_price": "100.00", "vat_rate": "0" } ] }
+```
+
+- **Comptabilisation** : D `409000` (« Fournisseurs débiteurs : avances et acomptes versés ») / C `440000`, sans TVA. Le compte est imposé : une ligne sans `account_code` est mise sur `409000`, un autre code donne `422`, un taux de TVA non nul aussi. Si `409000` n'existe pas dans le plan de l'entité : `422`, rien n'est écrit (à créer dans le plan comptable ; il est livré avec les nouveaux plans).
+- **Apurement** : une facture ordinaire du même fournisseur et **dans la même devise** déclare ce qu'elle apure avec `advance_refs`, montants dans la devise des deux. À la comptabilisation de la facture : D `440000` / C `409000` du montant, imputé sur la ligne fournisseur de la facture comme un paiement partiel ; entièrement couverte, la facture est payée (lettrée), sinon partiellement payée, et le solde se règle par la banque. L'avance dont le solde est épuisé voit ses lignes `409000` lettrées (l'écart de change éventuel est comptabilisé par le lettrage).
+- **Brouillon** (`post: false`) : l'apurement est mémorisé et revendique déjà sa part de l'avance ; il s'écrit quand le comptable comptabilise la facture.
+- **Plafonds** (`422`, `errors.advance_refs`, rien n'est écrit) : référence inconnue, annulée ou qui n'est pas une avance ; avance non comptabilisée, d'un autre fournisseur ou dans une autre devise ; même avance nommée deux fois ; montant supérieur à ce qui reste de l'avance ; total apuré supérieur au total de la facture ; `advance_refs` sur autre chose qu'une facture.
+- **Corrections** : changer `advance_refs` est une correction (nouvelle révision). Annuler une facture qui a apuré une avance, ou la retourner, extourne l'apurement et rend l'avance disponible. Une avance dont des factures vivantes ont pris une part ne peut pas être annulée (`409`) : annuler d'abord ces factures.
+- **Événements** (4.4) : le `payload` de chaque événement porte `document_type`. Pour une facture, la part payée par une avance figure dans `settlements` avec `source: "advance"` (pas un mouvement bancaire, mais de l'argent déjà versé). Une pièce comptabilisée dans la requête même qui la crée ne lève pas d'événement de paiement, comme pour toute pièce (le mode brouillon de BudgetFlow n'est pas concerné).
+- `GET` et les réponses d'écriture ajoutent `advance_refs` pour une facture.
+
 ### 4.6 Erreurs de validation
 
 `422` avec le détail par champ ; les lignes sont nommées par leur rang :
@@ -325,6 +343,7 @@ curl -X PUT https://ledgerflow.example/api/v1/invoices/BF-I-1 \
 
 - **Limitation de débit** : compteurs en mémoire du processus (Rack::Attack). Suffisant tant que le déploiement reste mono-processus (`WEB_CONCURRENCY: 1`) ; avec plusieurs processus, passer le magasin de `config/initializers/rack_attack.rb` sur un cache partagé (Solid Cache).
 - **Pas de choix du journal** via l'API : le journal suit le type de facture. Pas de lettrage automatique d'un avoir.
+- **Avances** : seulement via l'API (pas de saisie dans l'interface) ; apurement dans la devise de l'avance uniquement ; l'avance dont des factures n'ont pris qu'une part garde ses lignes `409000` non lettrées (l'écart de change éventuel n'est comptabilisé qu'au lettrage, quand elle est épuisée) ; `409000` est absent des balances âgées (clients comme fournisseurs) : son solde par tiers se lit au grand livre.
 - **Pas de suppression de tiers** par l'API (désactiver via `active: false`).
 - **Pas de webhook** : LedgerFlow n'appelle jamais l'application tierce ; elle interroge `GET /api/v1/invoice_events`. Un webhook qui réveillerait l'interrogation reste possible plus tard.
 - **Lots asynchrones** et écritures libres : volontairement absents.

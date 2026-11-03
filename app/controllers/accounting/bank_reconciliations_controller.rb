@@ -13,7 +13,7 @@ class Accounting::BankReconciliationsController < ApplicationController
     end
     @bank_accounts = Accounting::BankAccount.where(active: true).order(:label_fr)
     @accounts      = Accounting::Account.where(is_leaf: true).order(:code)
-    @payable_invoices = Accounting::Invoice.supplier.where(status: %i[posted partially_paid], document_type: :invoice).includes(:partner).order(:due_date, :id)
+    @payable_invoices = Accounting::Invoice.supplier.where(status: %i[posted partially_paid]).payable_documents.includes(:partner).order(:due_date, :id)
     return unless feature?(:f02)
 
     @indicators = indicators
@@ -30,7 +30,7 @@ class Accounting::BankReconciliationsController < ApplicationController
       return redirect_to accounting_bank_reconciliation_path, alert: t("accounting.bank_reconciliation.not_allocatable")
     end
 
-    @invoices = Accounting::Invoice.customer.posted.includes(:partner, :credit_notes).order(:partner_id, :due_date, :id)
+    @invoices = Accounting::Invoice.customer.posted.includes(:partner, :credit_notes, :advance_allocations).order(:partner_id, :due_date, :id)
   end
 
   def update
@@ -198,7 +198,7 @@ class Accounting::BankReconciliationsController < ApplicationController
     return if raw.values.any? { |amount| amount.nil? || !amount.finite? }
 
     invoices = Accounting::Invoice.customer.posted
-                                   .includes(:credit_notes, :journal, :cash_journal, :credited_invoice, :entity, partner: :entity)
+                                   .includes(:credit_notes, :advance_allocations, :journal, :cash_journal, :credited_invoice, :entity, partner: :entity)
                                    .where(id: raw.keys).index_by { |i| i.id.to_s }
     raw.reject { |_, amount| amount.zero? }.map { |id, amount| [ invoices[id], amount ] }
   end

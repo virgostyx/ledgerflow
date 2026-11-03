@@ -26,7 +26,7 @@ class Accounting::PayInvoicesFromTransaction
   def self.guard(tx, invoices, eur_amount, draft)
     if !(tx.pending? && tx.debit?)                                                             then "group_not_pending_debit"
     elsif invoices.size < 2 || invoices.uniq.size != invoices.size                             then "group_needs_invoices"
-    elsif invoices.any? { |i| !(i.supplier? && i.invoice? && i.posted?) }                      then "not_open_supplier_invoice"
+    elsif invoices.any? { |i| !(i.supplier? && i.payable_document? && i.posted?) }                      then "not_open_supplier_invoice"
     elsif invoices.any? { |i| i.currency != tx.currency }                                      then "group_currency_mismatch"
     elsif invoices.map(&:partner_id).uniq.size > 1                                             then "group_same_supplier"
     elsif invoices.sum(&:total_incl_vat) != tx.amount.abs                                      then "group_amount_mismatch"

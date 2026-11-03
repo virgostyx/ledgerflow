@@ -24,7 +24,7 @@ class Accounting::OverdueReminders
     Accounting::Invoice
       .where(invoice_type: :customer, document_type: :invoice, status: %i[posted partially_paid])
       .where("due_date < ?", @as_of)
-      .includes(:partner, :credit_notes)
+      .includes(:partner, :credit_notes, :advance_allocations)
       .select { |invoice| invoice.remaining_amount.positive? }
   end
 

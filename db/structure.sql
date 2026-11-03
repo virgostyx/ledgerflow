@@ -563,6 +563,42 @@ ALTER SEQUENCE public.accounting_accruals_id_seq OWNED BY public.accounting_accr
 
 
 --
+-- Name: accounting_advance_allocations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_advance_allocations (
+    id bigint NOT NULL,
+    entity_id bigint NOT NULL,
+    invoice_id bigint NOT NULL,
+    advance_id bigint NOT NULL,
+    journal_entry_id bigint,
+    amount numeric(15,2) NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_advance_allocation_amount_positive CHECK ((amount > (0)::numeric))
+);
+
+
+--
+-- Name: accounting_advance_allocations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.accounting_advance_allocations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: accounting_advance_allocations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.accounting_advance_allocations_id_seq OWNED BY public.accounting_advance_allocations.id;
+
+
+--
 -- Name: accounting_allocation_versions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7235,6 +7271,13 @@ ALTER TABLE ONLY public.accounting_accruals ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: accounting_advance_allocations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_advance_allocations ALTER COLUMN id SET DEFAULT nextval('public.accounting_advance_allocations_id_seq'::regclass);
+
+
+--
 -- Name: accounting_allocation_versions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8403,6 +8446,14 @@ ALTER TABLE ONLY public.accounting_accounts
 
 ALTER TABLE ONLY public.accounting_accruals
     ADD CONSTRAINT accounting_accruals_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_advance_allocations accounting_advance_allocations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_advance_allocations
+    ADD CONSTRAINT accounting_advance_allocations_pkey PRIMARY KEY (id);
 
 
 --
@@ -10036,6 +10087,13 @@ CREATE INDEX idx_on_entity_id_user_id_updated_at_9a2540cceb ON public.agent_conv
 
 
 --
+-- Name: idx_on_invoice_id_advance_id_ba4ad2c4e0; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_invoice_id_advance_id_ba4ad2c4e0 ON public.accounting_advance_allocations USING btree (invoice_id, advance_id);
+
+
+--
 -- Name: idx_on_journal_entry_line_id_307850d4ba; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10145,6 +10203,34 @@ CREATE INDEX index_accounting_accruals_on_entity_id ON public.accounting_accrual
 --
 
 CREATE INDEX index_accounting_accruals_on_fiscal_year_id ON public.accounting_accruals USING btree (fiscal_year_id);
+
+
+--
+-- Name: index_accounting_advance_allocations_on_advance_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_advance_allocations_on_advance_id ON public.accounting_advance_allocations USING btree (advance_id);
+
+
+--
+-- Name: index_accounting_advance_allocations_on_entity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_advance_allocations_on_entity_id ON public.accounting_advance_allocations USING btree (entity_id);
+
+
+--
+-- Name: index_accounting_advance_allocations_on_invoice_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_advance_allocations_on_invoice_id ON public.accounting_advance_allocations USING btree (invoice_id);
+
+
+--
+-- Name: index_accounting_advance_allocations_on_journal_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounting_advance_allocations_on_journal_entry_id ON public.accounting_advance_allocations USING btree (journal_entry_id);
 
 
 --
@@ -14976,6 +15062,14 @@ ALTER TABLE ONLY public.agent_proposals
 
 
 --
+-- Name: accounting_advance_allocations fk_rails_492b5d8ec9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_advance_allocations
+    ADD CONSTRAINT fk_rails_492b5d8ec9 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
 -- Name: consolidation_runs fk_rails_49f7b530b1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15229,6 +15323,14 @@ ALTER TABLE ONLY public.accounting_documents
 
 ALTER TABLE ONLY public.accounting_history_starts
     ADD CONSTRAINT fk_rails_60081a3a03 FOREIGN KEY (entity_id) REFERENCES public.entities(id);
+
+
+--
+-- Name: accounting_advance_allocations fk_rails_60b9deca58; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_advance_allocations
+    ADD CONSTRAINT fk_rails_60b9deca58 FOREIGN KEY (journal_entry_id) REFERENCES public.accounting_journal_entries(id);
 
 
 --
@@ -16896,6 +16998,14 @@ ALTER TABLE ONLY public.accounting_bank_statements
 
 
 --
+-- Name: accounting_advance_allocations fk_rails_ea44381f54; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_advance_allocations
+    ADD CONSTRAINT fk_rails_ea44381f54 FOREIGN KEY (invoice_id) REFERENCES public.accounting_invoices(id);
+
+
+--
 -- Name: accounting_journal_entries fk_rails_eab1fe3205; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16941,6 +17051,14 @@ ALTER TABLE ONLY public.accounting_intracom_listing_lines
 
 ALTER TABLE ONLY public.accounting_payment_reminder_items
     ADD CONSTRAINT fk_rails_ebe2fc3d8a FOREIGN KEY (payment_reminder_id) REFERENCES public.accounting_payment_reminders(id);
+
+
+--
+-- Name: accounting_advance_allocations fk_rails_ecfcd4f5cf; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_advance_allocations
+    ADD CONSTRAINT fk_rails_ecfcd4f5cf FOREIGN KEY (advance_id) REFERENCES public.accounting_invoices(id);
 
 
 --
@@ -17246,6 +17364,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261102100000'),
 ('20261026100000'),
 ('20261020100000'),
 ('20261016250000'),

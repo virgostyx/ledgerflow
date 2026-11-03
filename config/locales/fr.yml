@@ -67,6 +67,9 @@ fr:
         vat_period_filed: "Cette facture tombe dans une période de TVA déjà déclarée. Comptabilisez-la dans une période ouverte ou régularisez la déclaration."
         no_journal:     "Aucun journal actif de type %{type} trouvé."
         cancel_not_posted: "Seule une facture comptabilisée peut être annulée."
+        advances_exceed_invoice: "Les avances imputées ne peuvent pas dépasser le total de la facture."
+        advance_not_posted: "Une avance imputée par cette facture n'est plus comptabilisée."
+        cancel_advance_consumed: "Des factures ont imputé cette avance, annulez-les d'abord."
         cancel_paid:       "Cette facture a des paiements ou figure dans un lot de paiement, annulez-les d'abord."
 
     settings:

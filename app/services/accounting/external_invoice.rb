@@ -63,7 +63,8 @@ class Accounting::ExternalInvoice
         l.analytical_annotations.map { |a| [ a.analytical_axis_id, a.analytical_account_id ] }.sort ]
     end
     header = invoice.slice(*ATTRIBUTES, :partner_id, :credited_invoice_id, :external_project_name, :external_budget_line, :supplier_reference)
-    Digest::SHA256.hexdigest(JSON.generate(canonical(header: header, lines: lines)))
+    advances = invoice.advance_allocations.map { |a| [ a.advance_id, a.amount ] }.sort
+    Digest::SHA256.hexdigest(JSON.generate(canonical(header: header, lines: lines, advances: advances)))
   end
 
   private
@@ -104,9 +105,10 @@ class Accounting::ExternalInvoice
     invoice = Accounting::Invoice.new(invoice_attributes(normalized, digest).merge(
       external_ref: @external_ref, revision: (current&.revision || 0) + 1))
     normalized[:lines_attrs].each_with_index { |line, i| invoice.lines.build(line.merge(position: i + 1)) }
+    normalized[:advance_refs].each { |ref| invoice.advance_allocations.build(ref) }
     return failure(:unprocessable, invoice.errors.to_hash) unless invoice.save
 
-    settle(invoice)
+    advance_total_failure(invoice) || settle(invoice)
   end
 
   def invoice_attributes(normalized, digest)
@@ -146,8 +148,10 @@ class Accounting::ExternalInvoice
       current.lines.destroy_all
       reset_omitted_attributes(current, normalized)
       current.assign_attributes(invoice_attributes(normalized, digest))
+      current.advance_allocations.destroy_all
       normalized[:lines_attrs].each_with_index { |line, i| current.lines.build(line.merge(position: i + 1)) }
-      result = current.save ? settle(current) : failure(:unprocessable, current.errors.to_hash)
+      normalized[:advance_refs].each { |ref| current.advance_allocations.build(ref) }
+      result = current.save ? (advance_total_failure(current) || settle(current)) : failure(:unprocessable, current.errors.to_hash)
       raise ActiveRecord::Rollback unless result.status == :created
     end
     result.status = :ok if result.status == :created
@@ -179,12 +183,62 @@ class Accounting::ExternalInvoice
     n[:partner]     = partner(payload[:partner_external_ref])
     n[:fiscal_year] = fiscal_year(n[:invoice_date])
     n[:analytical]  = analytical_accounts(payload)
-    n[:lines_attrs] = lines(payload[:lines], n[:partner], n[:analytical])
+    n[:lines_attrs] = lines(payload[:lines], n[:partner], n[:analytical], n[:document_type])
     n[:external_project_name] = payload[:project_name].to_s.strip.presence
     n[:external_budget_line]  = payload[:budget_line].to_s.strip.presence
     n[:supplier_reference]    = payload[:supplier_reference].to_s.strip.presence
     n[:credited_invoice] = credited_invoice(payload[:credited_invoice_external_ref], n[:document_type])
+    n[:advance_refs] = advance_refs(payload[:advance_refs], n)
     n
+  end
+
+  # The advances an invoice settles, each with the amount (in the currency of both): only an invoice settles an advance, of its own supplier and
+  # currency, and never more than what is left of it (the previous revision of this very document does not count: it is cancelled by the new one).
+  def advance_refs(raw, n)
+    list = Array(raw)
+    return [] if list.empty?
+
+    unless n[:document_type] == "invoice"
+      @errors[:advance_refs] = [ "is only allowed on an invoice" ]
+      return []
+    end
+    refs = list.map { |r| r.to_h.with_indifferent_access }
+    if refs.map { |r| r[:invoice_ref] }.uniq.size < refs.size
+      @errors[:advance_refs] = [ "names the same advance twice" ]
+      return []
+    end
+    refs.filter_map { |ref| advance_ref(ref, n) }
+  end
+
+  def advance_ref(ref, n)
+    amount  = decimal(ref[:amount], :advance_refs)
+    advance = Accounting::Invoice.external.where(external_ref: ref[:invoice_ref].to_s).order(:revision).last
+    problem = if amount.nil? || amount <= 0                          then "amount must be a positive number"
+    elsif advance.nil? || advance.cancelled?                         then "unknown or cancelled advance #{ref[:invoice_ref].to_s.inspect}"
+    elsif !advance.advance?                                          then "#{ref[:invoice_ref].inspect} is not an advance"
+    elsif !advance.issued?                                           then "advance #{ref[:invoice_ref].inspect} is not posted yet"
+    elsif advance.partner_id != n[:partner]&.id                      then "advance #{ref[:invoice_ref].inspect} must be of the same supplier"
+    elsif advance.currency != (n[:currency] || Accounting::Invoice.column_defaults["currency"]) then "advance #{ref[:invoice_ref].inspect} must be in the same currency"
+    elsif amount > left_of(advance)                                  then "amount exceeds what is left of advance #{ref[:invoice_ref].inspect} (#{left_of(advance).to_s('F')})"
+    end
+    return (@errors[:advance_refs] = [ *@errors[:advance_refs], problem ]; nil) if problem
+
+    { advance: advance, amount: amount }
+  end
+
+  def left_of(advance)
+    taken = advance.consumptions.live.where.not(invoice_id: latest&.id).sum(:amount)
+    advance.total_incl_vat - taken
+  end
+
+  # The settlements of an invoice add up to no more than its total (known once its lines are saved).
+  def advance_total_failure(invoice)
+    return if invoice.advance_allocations.empty?
+
+    invoice.compute_totals
+    return if invoice.advance_allocations.sum(&:amount) <= invoice.total_incl_vat
+
+    failure(:unprocessable, advance_refs: [ "settle more than the invoice (#{invoice.total_incl_vat.to_s('F')})" ])
   end
 
   def enum_value(n, key, allowed)
@@ -258,7 +312,9 @@ class Accounting::ExternalInvoice
 
   # A line sent without an account goes on the supplier's usual account (the one of its last posted invoice), else on the
   # suspense account: the accountant checks and codes it before posting either way.
-  def lines(raw, partner, analytical)
+  def lines(raw, partner, analytical, document_type = "invoice")
+    return advance_lines(raw, analytical) if document_type == "advance"
+
     list = Array(raw)
     if list.empty?
       @errors[:lines] = [ "at least one line is required" ]
@@ -283,6 +339,28 @@ class Accounting::ExternalInvoice
     end
   end
 
+  # An advance is booked on 409000 whatever the caller says, and carries no VAT: the invoice that settles it is the one that does.
+  def advance_lines(raw, analytical)
+    list    = Array(raw)
+    account = Accounting::Account.find_by(code: Accounting::AccountCodes::ADVANCES)
+    @asked_codes = list.map { Accounting::AccountCodes::ADVANCES }
+    if list.empty?
+      @errors[:lines] = [ "at least one line is required" ]
+      return []
+    end
+    @errors[:base] = [ "The advances account #{Accounting::AccountCodes::ADVANCES} is missing from the chart of accounts of this entity" ] unless account
+    list.each_with_index.map do |line, i|
+      line = line.to_h.with_indifferent_access
+      given = line[:account_code].to_s.strip.presence
+      @errors["lines[#{i}].account_code"] = [ "an advance is booked on #{Accounting::AccountCodes::ADVANCES}" ] if given && given != Accounting::AccountCodes::ADVANCES
+      @errors["lines[#{i}].vat_rate"] = [ "an advance carries no VAT: the invoice that settles it does" ] if line[:vat_rate].present? && BigDecimal(line[:vat_rate].to_s, exception: false).to_d.nonzero?
+      attrs = { account: account, description: line[:description] }
+      attrs[:analytical_annotations_attributes] = analytical.map { |a| { "analytical_axis_id" => a.analytical_axis_id, "analytical_account_id" => a.id } } if analytical.any?
+      LINE_DECIMALS.each { |k| attrs[k.to_sym] = decimal(line[k], "lines[#{i}].#{k}") if line.key?(k) }
+      attrs.compact
+    end
+  end
+
   # A line sent without an account goes on the suspense account; the accountant codes it before posting.
   def account_error(given)
     given ? "unknown account #{given.inspect}" : "no account code, and the suspense account #{Accounting::AccountCodes::TRANSIT} is missing from the chart"
@@ -293,6 +371,7 @@ class Accounting::ExternalInvoice
     content = { post: @post, partner_id: n[:partner].id, credited_invoice_id: n[:credited_invoice]&.id,
                 context: n.slice(:external_project_name, :external_budget_line, :supplier_reference),
                 invoice: n.slice(*ATTRIBUTES.map(&:to_sym)),
+                advances: n[:advance_refs].map { |r| [ r[:advance].id, r[:amount] ] }.sort,
                 lines: n[:lines_attrs].each_with_index.map { |l, i| l.merge(account: @asked_codes[i]) } }
     Digest::SHA256.hexdigest(JSON.generate(canonical(content)))
   end
