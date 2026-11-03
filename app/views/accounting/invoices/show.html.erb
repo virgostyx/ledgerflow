@@ -11,7 +11,7 @@
 <% end %>
 
 <%= render Ui::PageHeaderComponent.new(
-      title: (@invoice.credit_note? ? 'Credit note ' : '') + presenter.invoice_number_or_draft,
+      title: (@invoice.credit_note? ? 'Credit note ' : @invoice.advance? ? 'Advance ' : '') + presenter.invoice_number_or_draft,
       back_path: section_path,
       back_text: section_label
     ) do |header| %>
@@ -88,6 +88,7 @@
   </div>
 <% end %>
 <%= render 'budgetflow_context', invoice: @invoice %>
+<%= render 'advances', invoice: @invoice %>
 <%= render 'peppol_document', invoice: @invoice %>
 
 <% if policy(@invoice).return_to_sender? %>

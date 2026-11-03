@@ -35,7 +35,7 @@ class ApplicationController < ActionController::Base
     Current.request_id = request.request_id
   end
 
-  FILTER_KEYS = %i[q status journal_id fiscal_year_id partner_type country from to overdue unpaid
+  FILTER_KEYS = %i[q status journal_id fiscal_year_id partner_type country from to overdue unpaid advances
                    inactive period_type bank_account_id direction source to_validate credit_notes].freeze
 
   # List filters, submitted as q[...] by shared/_filters.

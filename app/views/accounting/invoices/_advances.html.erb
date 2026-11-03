@@ -1,0 +1,17 @@
+<%# An advance: what is left and the invoices that settled it. An invoice: the advances it settles. %>
+<% allocations = invoice.advance? ? invoice.consumptions.live.includes(:invoice) : invoice.advance_allocations.includes(:advance) %>
+<% if allocations.any? %>
+  <div class="mb-4 max-w-2xl rounded-md bg-teal-50 border border-teal-200 px-4 py-3" data-section="advances">
+    <p class="text-xs font-semibold text-teal-800 uppercase tracking-wider"><%= invoice.advance? ? 'Settled by' : 'Advances settled' %></p>
+    <% if invoice.advance? %>
+      <p class="mt-1 text-sm text-teal-900">Left to settle: <span class="font-medium"><%= number_to_currency(invoice.advance_remaining, unit: invoice.currency + ' ') %></span></p>
+    <% end %>
+    <ul class="mt-2 text-sm text-teal-900">
+      <% allocations.each do |a| %>
+        <% other = invoice.advance? ? a.invoice : a.advance %>
+        <li><%= link_to(other.invoice_number.presence || "##{other.id}", accounting_invoice_path(other), class: 'underline') %>
+          — <%= number_to_currency(a.amount, unit: invoice.currency + ' ') %><%= ' (draft)' unless a.journal_entry_id %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

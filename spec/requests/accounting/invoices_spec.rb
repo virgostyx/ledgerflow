@@ -1007,4 +1007,37 @@ RSpec.describe 'Accounting::Invoices', type: :request do
       expect(invoice.reload.cash_journal).to eq(cash_journal)
     end
   end
+
+  describe 'advances' do
+    include_context 'with_pcmn_accounts'
+
+    let!(:account_409) { create(:account, code: '409000', label_fr: 'Avances versées', reconcilable: true) }
+    let!(:purchase)    { create(:journal, :purchase, default_account: account_440) }
+    let!(:supplier)    { create(:partner, :supplier, external_ref: 'S1') }
+
+    def upsert(ref, type: 'invoice', refs: nil)
+      line = { description: 'Work', quantity: '1', unit_price: '100', vat_rate: '0' }
+      line[:account_code] = '604000' if type == 'invoice'
+      Accounting::ExternalInvoice.upsert(external_ref: ref, document_type: type, partner_external_ref: 'S1', invoice_type: 'supplier',
+                                         invoice_date: Date.current.to_s, lines: [ line ], advance_refs: refs).invoice
+    end
+
+    it 'badges an advance in the list, filters on it, and shows what settled it' do
+      advance = upsert('A1', type: 'advance')
+      invoice = upsert('I1', refs: [ { invoice_ref: 'A1', amount: '40' } ])
+
+      get accounting_purchases_path
+      expect(response.body).to include('>Advance<')
+
+      get accounting_purchases_path(q: { advances: '1' })
+      expect(response.body).to include(advance.invoice_number)
+      expect(response.body).not_to include(invoice.invoice_number)
+
+      get accounting_invoice_path(advance)
+      expect(response.body).to include('data-section="advances"', 'Left to settle', invoice.invoice_number)
+
+      get accounting_invoice_path(invoice)
+      expect(response.body).to include('Advances settled', advance.invoice_number)
+    end
+  end
 end
