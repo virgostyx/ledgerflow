@@ -313,7 +313,25 @@ Constaté avec une facture zambienne à 16 % : LedgerFlow la comptabilisait comm
 
 ## 6. Mentions légales de la facture (T7)
 
-Les mentions sont **génériques, sans article du Code TVA** (domestique, intracom, autoliquidation, export, franchise). Les factures PDF types par régime ne sont **pas encore jointes** à ce dossier ; elles seront ajoutées dans un second temps.
+Huit factures types sont dans `docs/dev/validation/factures_types/` (PDF, facture de 1 000,00 HT, émetteur fictif). Les mentions sont **génériques, en anglais, sans article du Code TVA** ; la facture PDF n'existe qu'en anglais.
+
+| Fichier | Régime | Mention imprimée | Votre avis |
+|---|---|---|---|
+| T7-01 | Domestique 21 % | aucune (TVA 21 % et totaux) | ☐ conforme ☐ à corriger |
+| T7-02 | Intracom, livraison de biens | « Intra-community supply, VAT exempt » | ☐ conforme ☐ à corriger |
+| T7-03 | Intracom, services B2B | « VAT reverse charge: VAT to be accounted for by the customer » | ☐ conforme ☐ à corriger |
+| T7-04 | Autoliquidation construction | même mention que T7-03 | ☐ conforme ☐ à corriger |
+| T7-05 | Export hors UE | « Export, VAT exempt » | ☐ conforme ☐ à corriger |
+| T7-06 | Exonéré | « VAT exempt » | ☐ conforme ☐ à corriger |
+| T7-07 | Franchise (petite entreprise) | « VAT exemption for small businesses » | ☐ conforme ☐ à corriger |
+| T7-08 | Note de crédit domestique | « Credits invoice … », TVA de l'avoir | ☐ conforme ☐ à corriger |
+
+Questions :
+1. Faut-il citer l'article du Code TVA (ou de la directive) pour chaque mention ? Lequel ?
+2. Le numéro de TVA du client est-il obligatoire sur les factures intracom et autoliquidées ? Il est imprimé dans le bloc « Bill to », pas dans la mention.
+3. Les mentions doivent-elles être dans la langue du client (fr, nl) ?
+4. La franchise : le texte « VAT exemption for small businesses » convient-il, ou faut-il la référence à l'article 56bis ?
+5. Les mentions d'une exonération de l'ASBL (p. ex. article 44) sont-elles à prévoir ? Aucune n'est codée.
 
 ## 7. Résultat de la validation
 
