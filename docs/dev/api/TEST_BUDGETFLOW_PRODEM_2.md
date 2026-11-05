@@ -18,7 +18,7 @@ Plan : `~/.claude/plans/rosy-dazzling-locket.md`. Suite du test `TEST_BUDGETFLOW
 ## Journal des étapes (attendu écrit AVANT l'étape, constat après)
 | # | Étape | Attendu | Constat | OK |
 |---|---|---|---|---|
-| A1 | Créer l'entité « ECES test » (ASBL) | exercice 2026 ouvert, journaux, axes PROJ/ACT/FIN/BUDG | | |
+| A1 | Créer l'entité « ECES test » (ASBL) | exercice 2026 ouvert, journaux, axes PROJ/ACT/FIN/BUDG | 2026-11-05 : entité id 4 créée en production par `eces_test:create` ; 254 comptes PCMN, 6 journaux, 4 axes ; exercice 2026 non confirmé dans la sortie (à vérifier à l'écran) | ✔ (exercice à vérifier) |
 | A2 | Paramètres : TVA, `iban_cooling_hours=0`, politique taux ZMW, drapeaux | enregistrés | | |
 | A3 | Caisse ZMW + banque EUR + banque ZMW | comptes créés, BIC valide | | |
 | A4 | Utilisateurs de test, isolation vs ECES réelle | aucune donnée ECES visible | | |

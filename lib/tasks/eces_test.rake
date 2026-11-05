@@ -1,7 +1,7 @@
 # Creates the test company "ECES test" (PRODEM ZAMBIA is a PROJ analytical account pushed by BudgetFlow, not a company).
 # Preview (changes nothing):  bin/rails "eces_test:create[owner@example.com]"
 # Create:                     APPLY=1 bin/rails "eces_test:create[owner@example.com]"
-# Production: bin/kamal app exec --interactive "APPLY=1 bin/rails 'eces_test:create[owner@example.com]'"
+# Production: bin/kamal app exec --interactive "env APPLY=1 bin/rails 'eces_test:create[owner@example.com]'"
 # Bank accounts, the ZMW cash journal and the BudgetFlow API client are made in the screens afterwards (see
 # docs/dev/api/TEST_BUDGETFLOW_PRODEM_2.md).
 namespace :eces_test do
