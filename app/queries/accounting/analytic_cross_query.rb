@@ -1,6 +1,15 @@
 class Accounting::AnalyticCrossQuery
   Result = Struct.new(:row_account, :col_account, :charges, :produits, :solde, keyword_init: true)
 
+  Matrix = Struct.new(:row_accounts, :col_accounts, :cells, keyword_init: true)
+
+  # The results laid out as a grid: distinct rows and columns sorted by code, cells indexed by [row account id, column account id].
+  def self.matrix(results)
+    Matrix.new(row_accounts: results.map(&:row_account).uniq.sort_by(&:code),
+               col_accounts: results.map(&:col_account).uniq.sort_by(&:code),
+               cells: results.index_by { |r| [ r.row_account.id, r.col_account.id ] })
+  end
+
   EXPENSE_TYPE = Accounting::Account.account_types[:expense]
   REVENUE_TYPE = Accounting::Account.account_types[:revenue]
 

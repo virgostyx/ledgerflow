@@ -13,7 +13,17 @@ class Accounting::BankReconciliationQuery
   # books carry in EUR and `fx_difference` the exchange difference to report apart: the balance valued at the closing rate of `as_of`, less the euros
   # booked (negative = a loss; nil without a closing rate, never guessed). Both are nil for an account in EUR.
   Result = Struct.new(:statement_balance, :accounting_balance, :bn, :sn, :bn_total, :sn_total,
-                      :expected_balance, :gap, :chain_breaks, :to_review, :currency, :booked_eur, :fx_difference, keyword_init: true)
+                      :expected_balance, :gap, :chain_breaks, :to_review, :currency, :booked_eur, :fx_difference, keyword_init: true) do
+    # What "freeze" stores (Accounting::BankReconciliationReport): strings only, so the JSON and its hash never move.
+    def to_snapshot
+      {
+        statement_balance: statement_balance.to_s, accounting_balance: accounting_balance.to_s,
+        bn_total: bn_total.to_s, sn_total: sn_total.to_s, expected_balance: expected_balance.to_s, gap: gap.to_s,
+        bn: bn.map { |i| { date: i.date.to_s, label: i.label, amount: i.amount.to_s } },
+        sn: sn.map { |i| { date: i.date.to_s, label: i.label, amount: i.amount.to_s } }
+      }
+    end
+  end
 
   def initialize(bank_account:, as_of: Date.current)
     @bank_account = bank_account

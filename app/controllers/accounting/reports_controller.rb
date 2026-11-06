@@ -221,13 +221,7 @@ class Accounting::ReportsController < ApplicationController
 
     Accounting::BankReconciliationReport.record!(
       bank_account: bank_account, as_of: as_of, user: current_user,
-      result: {
-        statement_balance: result.statement_balance.to_s, accounting_balance: result.accounting_balance.to_s,
-        bn_total: result.bn_total.to_s, sn_total: result.sn_total.to_s,
-        expected_balance: result.expected_balance.to_s, gap: result.gap.to_s,
-        bn: result.bn.map { |i| { date: i.date.to_s, label: i.label, amount: i.amount.to_s } },
-        sn: result.sn.map { |i| { date: i.date.to_s, label: i.label, amount: i.amount.to_s } }
-      }
+      result: result.to_snapshot
     )
 
     redirect_to accounting_reports_bank_reconciliation_report_path(bank_account_id: bank_account.id, as_of: as_of),
@@ -283,18 +277,13 @@ class Accounting::ReportsController < ApplicationController
     @row_axis = Accounting::AnalyticalAxis.find_by(id: params[:row_axis_id])
     @col_axis = Accounting::AnalyticalAxis.find_by(id: params[:col_axis_id])
 
-    if @row_axis && @col_axis && @row_axis != @col_axis
-      raw_results  = Accounting::AnalyticCrossQuery.new(
-        fiscal_year: @fiscal_year, row_axis: @row_axis, col_axis: @col_axis
-      ).call
-      @row_accounts = raw_results.map(&:row_account).uniq.sort_by(&:code)
-      @col_accounts = raw_results.map(&:col_account).uniq.sort_by(&:code)
-      @matrix       = raw_results.index_by { |r| [ r.row_account.id, r.col_account.id ] }
+    results = if @row_axis && @col_axis && @row_axis != @col_axis
+      Accounting::AnalyticCrossQuery.new(fiscal_year: @fiscal_year, row_axis: @row_axis, col_axis: @col_axis).call
     else
-      @row_accounts = []
-      @col_accounts = []
-      @matrix       = {}
+      []
     end
+    grid = Accounting::AnalyticCrossQuery.matrix(results)
+    @row_accounts, @col_accounts, @matrix = grid.row_accounts, grid.col_accounts, grid.cells
   end
 
   private
