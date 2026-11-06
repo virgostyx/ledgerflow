@@ -112,11 +112,7 @@ class Accounting::ReportsController < ApplicationController
     authorize :report, :aged_balance?, policy_class: Accounting::ReportPolicy
 
     @kind  = params[:kind] == "supplier" ? :supplier : :customer
-    @as_of = begin
-      parse_date(params[:as_of], Date.current)
-    rescue ArgumentError
-      Date.current
-    end
+    @as_of = parse_date_or_today(params[:as_of])
     @rows   = Accounting::AgedBalanceQuery.new(kind: @kind, as_of: @as_of, known_at: known_at).call
     @totals = Accounting::AgedBalanceQuery.totals(@rows)
 
@@ -138,11 +134,7 @@ class Accounting::ReportsController < ApplicationController
     authorize :report, :unlettered_lines?, policy_class: Accounting::ReportPolicy
 
     @kind = %w[customer supplier both].include?(params[:kind]) ? params[:kind].to_sym : :both
-    @as_of = begin
-      parse_date(params[:as_of], Date.current)
-    rescue ArgumentError
-      Date.current
-    end
+    @as_of = parse_date_or_today(params[:as_of])
     @min_age_days = params[:min_age_days].presence&.to_i
 
     query  = Accounting::UnletteredLinesQuery.new(kind: @kind, as_of: @as_of, min_age_days: @min_age_days, known_at: known_at)
@@ -214,11 +206,7 @@ class Accounting::ReportsController < ApplicationController
 
     @bank_accounts = Accounting::BankAccount.where(active: true).order(:label_fr)
     @bank_account  = Accounting::BankAccount.find_by(id: params[:bank_account_id]) || @bank_accounts.first
-    @as_of = begin
-      parse_date(params[:as_of], Date.current)
-    rescue ArgumentError
-      Date.current
-    end
+    @as_of = parse_date_or_today(params[:as_of])
 
     @result = Accounting::BankReconciliationQuery.new(bank_account: @bank_account, as_of: @as_of).call if @bank_account
     @frozen_reports = @bank_account ? @bank_account.bank_reconciliation_reports.order(as_of: :desc) : []
@@ -329,6 +317,13 @@ class Accounting::ReportsController < ApplicationController
   # Raises ArgumentError on an invalid date (rescued by trial_balance).
   def parse_date(value, default)
     value.present? ? Date.parse(value) : default
+  end
+
+  # Same, but an unparsable date falls back to today instead of raising.
+  def parse_date_or_today(value)
+    parse_date(value, Date.current)
+  rescue ArgumentError
+    Date.current
   end
 
   helper_method :trial_balance_view_columns
