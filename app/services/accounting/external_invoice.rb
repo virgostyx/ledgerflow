@@ -69,7 +69,9 @@ class Accounting::ExternalInvoice
 
   private
 
-  def latest = Accounting::Invoice.external.where(external_ref: @external_ref).order(:revision).last
+  def latest = latest_of(@external_ref)
+
+  def latest_of(ref) = Accounting::Invoice.external.where(external_ref: ref).order(:revision).last
 
   def write(current, normalized, digest)
     result  = nil
@@ -169,7 +171,6 @@ class Accounting::ExternalInvoice
     Result.new(status: :ok, invoice: invoice)
   end
 
-
   # Validates and converts the payload; fills @errors. Amounts go through BigDecimal, never Float.
   def normalize(payload)
     @errors = {}
@@ -212,7 +213,7 @@ class Accounting::ExternalInvoice
 
   def advance_ref(ref, n)
     amount  = decimal(ref[:amount], :advance_refs)
-    advance = Accounting::Invoice.external.where(external_ref: ref[:invoice_ref].to_s).order(:revision).last
+    advance = latest_of(ref[:invoice_ref].to_s)
     problem = if amount.nil? || amount <= 0                          then "amount must be a positive number"
     elsif advance.nil? || advance.cancelled?                         then "unknown or cancelled advance #{ref[:invoice_ref].to_s.inspect}"
     elsif !advance.advance?                                          then "#{ref[:invoice_ref].inspect} is not an advance"
@@ -278,7 +279,7 @@ class Accounting::ExternalInvoice
       @errors[:credited_invoice_external_ref] = [ "is only allowed on a credit note" ]
       return
     end
-    found = Accounting::Invoice.external.where(external_ref: ref).order(:revision).last
+    found = latest_of(ref)
     found = nil if found&.cancelled?
     @errors[:credited_invoice_external_ref] = [ "unknown or cancelled document #{ref.inspect}" ] unless found
     found
@@ -332,11 +333,15 @@ class Accounting::ExternalInvoice
       given   = line[:account_code].to_s.strip.presence
       account = accounts[given || fallback]
       @errors["lines[#{i}].account_code"] = [ account_error(given) ] unless account
-      attrs = { account: account, description: line[:description] }
-      attrs[:analytical_annotations_attributes] = analytical.map { |a| { "analytical_axis_id" => a.analytical_axis_id, "analytical_account_id" => a.id } } if analytical.any?
-      LINE_DECIMALS.each { |k| attrs[k.to_sym] = decimal(line[k], "lines[#{i}].#{k}") if line.key?(k) }
-      attrs.compact
+      line_attributes(line, i, account, analytical)
     end
+  end
+
+  def line_attributes(line, index, account, analytical)
+    attrs = { account: account, description: line[:description] }
+    attrs[:analytical_annotations_attributes] = analytical.map { |a| { "analytical_axis_id" => a.analytical_axis_id, "analytical_account_id" => a.id } } if analytical.any?
+    LINE_DECIMALS.each { |k| attrs[k.to_sym] = decimal(line[k], "lines[#{index}].#{k}") if line.key?(k) }
+    attrs.compact
   end
 
   # An advance is booked on 409000 whatever the caller says, and carries no VAT: the invoice that settles it is the one that does.
@@ -354,10 +359,7 @@ class Accounting::ExternalInvoice
       given = line[:account_code].to_s.strip.presence
       @errors["lines[#{i}].account_code"] = [ "an advance is booked on #{Accounting::AccountCodes::ADVANCES}" ] if given && given != Accounting::AccountCodes::ADVANCES
       @errors["lines[#{i}].vat_rate"] = [ "an advance carries no VAT: the invoice that settles it does" ] if line[:vat_rate].present? && BigDecimal(line[:vat_rate].to_s, exception: false).to_d.nonzero?
-      attrs = { account: account, description: line[:description] }
-      attrs[:analytical_annotations_attributes] = analytical.map { |a| { "analytical_axis_id" => a.analytical_axis_id, "analytical_account_id" => a.id } } if analytical.any?
-      LINE_DECIMALS.each { |k| attrs[k.to_sym] = decimal(line[k], "lines[#{i}].#{k}") if line.key?(k) }
-      attrs.compact
+      line_attributes(line, i, account, analytical)
     end
   end
 
