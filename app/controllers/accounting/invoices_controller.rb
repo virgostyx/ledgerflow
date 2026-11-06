@@ -79,33 +79,21 @@ class Accounting::InvoicesController < ApplicationController
   def submit_for_approval
     authorize @invoice
     result = Approvals::Submit.call(invoice: @invoice, user: current_user)
-    if result.success?
-      redirect_to accounting_invoice_path(@invoice), notice: t(result[:request] ? "approvals.submitted" : "approvals.not_required")
-    else
-      redirect_to accounting_invoice_path(@invoice), alert: result.message
-    end
+    redirect_by(result) { t(result[:request] ? "approvals.submitted" : "approvals.not_required") }
   end
 
   # B01b: a person registers the IBAN the invoice carries as a bank account of the supplier (unverified, observed, to be verified by someone else).
   def register_iban
     authorize @invoice, :show?
     result = Payments::RegisterBankAccount.call(partner: @invoice.partner, iban: @invoice.iban, holder_name: @invoice.partner.name, user: current_user, source: :invoice)
-    if result.success?
-      redirect_to accounting_invoice_path(@invoice), notice: t("payments.bank_accounts.registered")
-    else
-      redirect_to accounting_invoice_path(@invoice), alert: result.message
-    end
+    redirect_by(result) { t("payments.bank_accounts.registered") }
   end
 
   def cancel_invoice
     authorize @invoice, :cancel?
 
     result = Accounting::CancelInvoice.call(invoice: @invoice)
-    if result.success?
-      redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.cancelled")
-    else
-      redirect_to accounting_invoice_path(@invoice), alert: result.message
-    end
+    redirect_by(result) { t("accounting.invoices.cancelled") }
   end
 
   def return_invoice
@@ -114,11 +102,7 @@ class Accounting::InvoicesController < ApplicationController
     authorize @invoice, :return_to_sender?
 
     result = Accounting::ReturnInvoice.call(invoice: @invoice, reason: params[:reason])
-    if result.success?
-      redirect_to accounting_purchases_path, notice: t("accounting.invoices.returned")
-    else
-      redirect_to accounting_invoice_path(@invoice), alert: result.message
-    end
+    redirect_by(result, to: accounting_purchases_path) { t("accounting.invoices.returned") }
   end
 
   def validate_invoice
@@ -153,33 +137,21 @@ class Accounting::InvoicesController < ApplicationController
     authorize @invoice
 
     result = Accounting::ApplyCreditNote.call(credit_note: @invoice)
-    if result.success?
-      redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.credit_note_applied")
-    else
-      redirect_to accounting_invoice_path(@invoice), alert: result.message
-    end
+    redirect_by(result) { t("accounting.invoices.credit_note_applied") }
   end
 
   def duplicate
     authorize @invoice
 
     result = Accounting::DuplicateInvoice.call(invoice: @invoice, created_by: current_user)
-    if result.success?
-      redirect_to edit_accounting_invoice_path(result[:invoice]), notice: t("accounting.invoices.duplicated")
-    else
-      redirect_to accounting_invoice_path(@invoice), alert: result.message
-    end
+    redirect_by(result, to: -> { edit_accounting_invoice_path(result[:invoice]) }) { t("accounting.invoices.duplicated") }
   end
 
   def send_email
     authorize @invoice
 
     result = Accounting::SendInvoiceEmail.call(invoice: @invoice, recipient: params[:recipient], user: current_user)
-    if result.success?
-      redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.email_queued", recipient: result[:email].recipient)
-    else
-      redirect_to accounting_invoice_path(@invoice), alert: result.message
-    end
+    redirect_by(result) { t("accounting.invoices.email_queued", recipient: result[:email].recipient) }
   end
 
   # The documents kept from a Peppol invoice: the original UBL XML (download) and the PDF the supplier embedded (in the browser).
@@ -211,11 +183,7 @@ class Accounting::InvoicesController < ApplicationController
     result = Peppol::SendInvoice.call(invoice: @invoice)
     Accounting::AuditLog.record!(auditable: @invoice, action: "peppol_sent", user: current_user, payload: { success: result.success?, error: (result.message unless result.success?) })
 
-    if result.success?
-      redirect_to accounting_invoice_path(@invoice), notice: t(result[:retrying] ? "peppol.invoices.retrying" : "peppol.invoices.sent")
-    else
-      redirect_to accounting_invoice_path(@invoice), alert: result.message
-    end
+    redirect_by(result) { t(result[:retrying] ? "peppol.invoices.retrying" : "peppol.invoices.sent") }
   end
 
   # The buyer is not reachable through Peppol (not registered, no identifier): the PDF goes to its e-mail address instead, and the audit trail says
@@ -227,17 +195,21 @@ class Accounting::InvoicesController < ApplicationController
 
     result = Accounting::SendInvoiceEmail.call(invoice: @invoice, recipient: recipient, user: current_user)
     Accounting::AuditLog.record!(auditable: @invoice, action: "peppol_fallback_email", user: current_user, payload: { recipient: recipient, success: result.success? })
-    if result.success?
-      redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.email_queued", recipient: recipient)
-    else
-      redirect_to accounting_invoice_path(@invoice), alert: result.message
-    end
+    redirect_by(result) { t("accounting.invoices.email_queued", recipient: recipient) }
   end
 
   private
 
   def set_invoice
     @invoice = Accounting::Invoice.find(params[:id])
+  end
+
+  # A service result back to the user: the block (the notice) runs on success only, a failure goes to the invoice with the service's message.
+  # `to` is a path, or a lambda when it needs the result.
+  def redirect_by(result, to: nil)
+    return redirect_to(accounting_invoice_path(@invoice), alert: result.message) unless result.success?
+
+    redirect_to(to.respond_to?(:call) ? to.call : (to || accounting_invoice_path(@invoice)), notice: yield)
   end
 
   def load_form_options
