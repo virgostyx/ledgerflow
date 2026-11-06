@@ -123,7 +123,7 @@ class Accounting::ReportsController < ApplicationController
 
     respond_to do |format|
       format.html
-      format.csv { send_data aged_balance_csv, filename: "aged_balance_#{@kind}_#{@as_of}#{historical_suffix}.csv",
+      format.csv { send_data Reports::Exporters::AgedBalanceCsv.call(rows: @rows, totals: @totals), filename: "aged_balance_#{@kind}_#{@as_of}#{historical_suffix}.csv",
                               type: "text/csv; charset=utf-8" }
     end
   end
@@ -160,7 +160,7 @@ class Accounting::ReportsController < ApplicationController
 
     respond_to do |format|
       format.html
-      format.xlsx { send_data cash_flow_xlsx(@statement), filename: "cash_flow_#{@fiscal_year.year}.xlsx",
+      format.xlsx { send_data Reports::Exporters::CashFlowXlsx.call(@statement), filename: "cash_flow_#{@fiscal_year.year}.xlsx",
                               type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
     end
   end
@@ -368,36 +368,6 @@ class Accounting::ReportsController < ApplicationController
       { key: :comparative_closing, label: "Closing N-1" },
       { key: :variation_amount, label: "Variation" }
     ]
-  end
-
-  AGED_BALANCE_CSV_COLUMNS = (Accounting::AgedBalanceQuery::BUCKETS + %i[unallocated total overdue]).freeze
-
-  def cash_flow_xlsx(statement)
-    package = Axlsx::Package.new
-    { "Indirect" => statement.indirect, "Direct" => statement.direct }.each do |name, sheet_data|
-      package.workbook.add_worksheet(name: name) do |sheet|
-        sheet.add_row([ "Section", "Line", "Amount" ])
-        sheet_data.lines.each { |l| sheet.add_row([ l.section.to_s.humanize, l.label, l.amount.to_f ], types: [ :string, :string, :float ]) }
-        sheet.add_row([ "Net change in cash", "", sheet_data.total.to_f ], types: [ :string, :string, :float ])
-      end
-    end
-    package.to_stream.read
-  end
-
-  def aged_balance_csv
-    require "csv"
-    t = ->(key) { I18n.t("accounting.reports.aged_balance.#{key}") }
-    "\uFEFF" + CSV.generate(headers: true) do |csv|
-      csv << [ t.(:partner), *AGED_BALANCE_CSV_COLUMNS.map { |b| t.(b) }, t.(:overdue_pct) ]
-      @rows.each do |row|
-        csv << [ row.partner_name || t.(:no_partner),
-                *AGED_BALANCE_CSV_COLUMNS.map { |col| format("%.2f", row.public_send(col)) },
-                row.overdue_pct.nil? ? "" : format("%.1f", row.overdue_pct) ]
-      end
-      csv << [ I18n.t("accounting.reports.totals"),
-              *AGED_BALANCE_CSV_COLUMNS.map { |col| format("%.2f", @totals.public_send(col)) },
-              @totals.overdue_pct.nil? ? "" : format("%.1f", @totals.overdue_pct) ]
-    end
   end
 
   def general_ledger_result
