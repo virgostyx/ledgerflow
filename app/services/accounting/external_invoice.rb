@@ -106,11 +106,15 @@ class Accounting::ExternalInvoice
   def create_and_post(current, normalized, digest)
     invoice = Accounting::Invoice.new(invoice_attributes(normalized, digest).merge(
       external_ref: @external_ref, revision: (current&.revision || 0) + 1))
-    normalized[:lines_attrs].each_with_index { |line, i| invoice.lines.build(line.merge(position: i + 1)) }
-    normalized[:advance_refs].each { |ref| invoice.advance_allocations.build(ref) }
+    build_children(invoice, normalized)
     return failure(:unprocessable, invoice.errors.to_hash) unless invoice.save
 
     advance_total_failure(invoice) || settle(invoice)
+  end
+
+  def build_children(invoice, normalized)
+    normalized[:lines_attrs].each_with_index { |line, i| invoice.lines.build(line.merge(position: i + 1)) }
+    normalized[:advance_refs].each { |ref| invoice.advance_allocations.build(ref) }
   end
 
   def invoice_attributes(normalized, digest)
@@ -151,8 +155,7 @@ class Accounting::ExternalInvoice
       reset_omitted_attributes(current, normalized)
       current.assign_attributes(invoice_attributes(normalized, digest))
       current.advance_allocations.destroy_all
-      normalized[:lines_attrs].each_with_index { |line, i| current.lines.build(line.merge(position: i + 1)) }
-      normalized[:advance_refs].each { |ref| current.advance_allocations.build(ref) }
+      build_children(current, normalized)
       result = current.save ? (advance_total_failure(current) || settle(current)) : failure(:unprocessable, current.errors.to_hash)
       raise ActiveRecord::Rollback unless result.status == :created
     end
