@@ -27,8 +27,7 @@ class Accounting::InvoicesController < ApplicationController
     end
     @invoice.lines.build
     @next_entry_number = preview_next_sequence(@invoice.journal)
-    @axes     = Accounting::AnalyticalAxis.active.order(:code)
-    @accounts = Accounting::Account.active.where(is_leaf: true).order(:code)
+    load_form_options
     authorize @invoice
   end
 
@@ -39,15 +38,13 @@ class Accounting::InvoicesController < ApplicationController
     if @invoice.save
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.created")
     else
-      @axes     = Accounting::AnalyticalAxis.active.order(:code)
-      @accounts = Accounting::Account.active.where(is_leaf: true).order(:code)
+      load_form_options
       render :new, status: :unprocessable_content
     end
   end
 
   def edit
-    @axes     = Accounting::AnalyticalAxis.active.order(:code)
-    @accounts = Accounting::Account.active.where(is_leaf: true).order(:code)
+    load_form_options
     authorize @invoice
   end
 
@@ -57,8 +54,7 @@ class Accounting::InvoicesController < ApplicationController
     if @invoice.update(params_without_managed_analytics(invoice_params))
       redirect_to accounting_invoice_path(@invoice), notice: t("accounting.invoices.updated")
     else
-      @axes     = Accounting::AnalyticalAxis.active.order(:code)
-      @accounts = Accounting::Account.active.where(is_leaf: true).order(:code)
+      load_form_options
       render :edit, status: :unprocessable_content
     end
   end
@@ -242,6 +238,11 @@ class Accounting::InvoicesController < ApplicationController
 
   def set_invoice
     @invoice = Accounting::Invoice.find(params[:id])
+  end
+
+  def load_form_options
+    @axes     = Accounting::AnalyticalAxis.active.order(:code)
+    @accounts = Accounting::Account.active.where(is_leaf: true).order(:code)
   end
 
   def set_invoice_type_context
