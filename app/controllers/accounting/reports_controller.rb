@@ -405,25 +405,6 @@ class Accounting::ReportsController < ApplicationController
     end
   end
 
-  def trial_balance_csv
-    require "csv"
-    CSV.generate(headers: true) do |csv|
-      csv << [
-        I18n.t("accounting.reports.csv.code"),
-        I18n.t("accounting.reports.csv.label"),
-        I18n.t("accounting.reports.csv.debit"),
-        I18n.t("accounting.reports.csv.credit"),
-        I18n.t("accounting.reports.csv.balance")
-      ]
-      @rows.each do |row|
-        csv << [ row.code, row.label_fr,
-                format("%.2f", row.total_debit),
-                format("%.2f", row.total_credit),
-                format("%.2f", row.balance) ]
-      end
-    end
-  end
-
   def general_ledger_result
     Reports::Result.new(rows: @rows, currency: "EUR")
   end
