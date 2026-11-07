@@ -33,6 +33,9 @@ class Accounting::Journal < ApplicationRecord
   validates :sequence_prefix, presence: true
   validates :default_account_id, presence: true, if: :requires_counterpart_account?
 
+  validates :currency, inclusion: { in: Accounting::MoneyPresenter::SUPPORTED_CURRENCIES }
+  validate :foreign_currency_only_on_cash
+  validate :currency_immutable_after_entries, on: :update
   validate :counterpart_account_matches_journal_type
   validate :code_immutable_after_entries, on: :update
 
@@ -72,6 +75,14 @@ class Accounting::Journal < ApplicationRecord
     return if default_account.code.start_with?(expected_prefix)
     errors.add(:default_account_id,
                "must be a #{expected_prefix}xxxx account for a #{journal_type} journal")
+  end
+
+  def foreign_currency_only_on_cash
+    errors.add(:currency, "can only differ from EUR on a cash journal (a bank account holds its own currency)") if currency != "EUR" && !cash?
+  end
+
+  def currency_immutable_after_entries
+    errors.add(:currency, "cannot be changed after journal entries have been recorded") if currency_changed? && journal_entries.exists?
   end
 
   def code_immutable_after_entries

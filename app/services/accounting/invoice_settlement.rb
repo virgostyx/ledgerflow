@@ -50,7 +50,7 @@ class Accounting::InvoiceSettlement
     Accounting::JournalEntryLine.where(invoice_id: @invoice.id).where.not(id: @trade.id).where("#{payment_side} > 0")
                                 .includes(:journal_entry).map do |line|
       @seen << line.id
-      from_entry(line.journal_entry, line.public_send(payment_side)).tap { |item| item.source = "advance" if advance_entry_ids.include?(line.journal_entry_id) }
+      from_entry(line.journal_entry, line.public_send(payment_side), nil, line).tap { |item| item.source = "advance" if advance_entry_ids.include?(line.journal_entry_id) }
     end
   end
 
@@ -109,20 +109,22 @@ class Accounting::InvoiceSettlement
     build(amount_eur: @trade ? @trade.debit + @trade.credit : @invoice.total_incl_vat_eur, tx: nil, reference: nil, source: "transition", date: Date.current)
   end
 
-  def from_entry(entry, amount_eur, date = nil)
+  # `line`: the payment line, whose own currency tells what was really paid when there is no bank movement (a foreign-currency cash payment).
+  def from_entry(entry, amount_eur, date = nil, line = nil)
     build(amount_eur: amount_eur, tx: transaction_of(entry.id), reference: entry.reference, source: "journal_entry",
-          date: date || entry.entry_date, description: entry.description)
+          date: date || entry.entry_date, description: entry.description,
+          paid: (line.currency != "EUR" && line.amount_currency ? [ line.amount_currency.abs, line.currency ] : nil if line))
   end
 
   def transaction_of(journal_entry_id)
     Accounting::BankTransaction.find_by(journal_entry_id: journal_entry_id) if journal_entry_id
   end
 
-  def build(amount_eur:, tx:, reference:, source:, date:, description: nil)
+  def build(amount_eur:, tx:, reference:, source:, date:, description: nil, paid: nil)
     Item.new(
       value_date: tx&.value_date || tx&.transaction_date || date, transaction_date: tx&.transaction_date || date,
       reference: tx&.reference.presence || reference, description: tx&.description.presence || description,
-      amount: tx ? tx.amount.abs : amount_eur, currency: tx ? tx.currency : "EUR", amount_eur: amount_eur,
+      amount: tx ? tx.amount.abs : (paid&.first || amount_eur), currency: tx ? tx.currency : (paid&.last || "EUR"), amount_eur: amount_eur,
       shared: tx.present? && tx.currency == "EUR" && tx.amount.abs != amount_eur, source: tx ? "bank_transaction" : source
     )
   end

@@ -259,6 +259,7 @@ class Accounting::Invoice < ApplicationRecord
 
   def cash_journal_is_cash
     errors.add(:cash_journal, "must be a cash journal") unless cash_journal.cash?
+    errors.add(:cash_journal, "is in #{cash_journal.currency}: the invoice is in #{currency}") if cash_journal.currency != currency
   end
 
   # Only API-managed invoices (external_digest): the third party reads these events to learn about payments.

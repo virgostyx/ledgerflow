@@ -64,6 +64,14 @@
     </p>
   </div>
 
+  <div>
+    <%= f.label :currency, "Currency (cash journal)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.select :currency, Accounting::MoneyPresenter::SUPPORTED_CURRENCIES,
+          {}, disabled: journal.persisted? && !journal.destroyable?,
+          class: "block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-50 disabled:text-gray-400" %>
+    <p class="mt-1 text-xs text-gray-400">EUR unless this is a cash box in a foreign currency. A bank account holds its own currency. Cannot be changed after entries have been recorded.</p>
+  </div>
+
   <div class="flex items-center gap-3">
     <%= f.check_box :active, class: "h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" %>
     <%= f.label :active, "Active", class: "text-sm font-medium text-gray-700" %>

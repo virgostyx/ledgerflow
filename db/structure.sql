@@ -2125,7 +2125,8 @@ CREATE TABLE public.accounting_journals (
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    entity_id bigint NOT NULL
+    entity_id bigint NOT NULL,
+    currency character varying(3) DEFAULT 'EUR'::character varying NOT NULL
 );
 
 
@@ -17364,6 +17365,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261107100000'),
 ('20261102100000'),
 ('20261026100000'),
 ('20261020100000'),

@@ -65,7 +65,7 @@ class Accounting::Settings::JournalsController < Accounting::Settings::BaseContr
 
   def journal_params
     params.require(:accounting_journal).permit(
-      :code, :label_fr, :journal_type, :sequence_prefix, :default_account_id, :active
+      :code, :label_fr, :journal_type, :sequence_prefix, :default_account_id, :currency, :active
     )
   end
 end
