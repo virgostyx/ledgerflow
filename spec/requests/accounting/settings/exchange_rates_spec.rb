@@ -103,6 +103,14 @@ RSpec.describe "Exchange rates, rules and imports (F11)", type: :request do
         expect(response.body).to include("USD", "ZMW")
       end
 
+      it "offers every currency in the checklist, the last one alphabetically included (there are more than 100)" do
+        (Accounting::MoneyPresenter::SUPPORTED_CURRENCIES - %w[EUR USD ZMW]).each do |code|
+          Accounting::ExchangeRate.create!(currency: code, rate_date: Date.new(2026, 5, 1), rate: "2", rate_type: :monthly_average, source: "inforeuro")
+        end
+        get accounting_column_values_path("exchange_rates", "currency")
+        expect(response.body).to include('value="ZMW"', 'value="AED"', 'value="USD"')
+      end
+
       it "pages the list instead of cutting it at 200 rates" do
         201.times { |i| Accounting::ExchangeRate.create!(currency: "AUD", rate_date: Date.new(2020, 1, 1) + i, rate: "1.5", rate_type: :daily, source: "ecb") }
         get accounting_settings_exchange_rates_path, params: { f: { currency: %w[AUD] }, page: 2 }

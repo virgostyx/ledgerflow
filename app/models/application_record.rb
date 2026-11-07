@@ -25,7 +25,7 @@ class ApplicationRecord < ActiveRecord::Base
   # types: :string (list of values), :enum (keys of the enum named like the column),
   #        :boolean (Active/Inactive),
   #        :date and :decimal (ranges). `filter: false` makes a sort-only column.
-  AUTOFILTER_VALUES_LIMIT = 100
+  AUTOFILTER_VALUES_LIMIT = 500
 
   class_attribute :autofilter_columns, default: {}
 
