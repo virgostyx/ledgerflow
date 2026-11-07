@@ -10,7 +10,8 @@ class Accounting::ColumnValuesController < ApplicationController
     "fiscal_years"    => [ "Accounting::FiscalYear",    :policy ],
     "accounts"        => [ "Accounting::Account",       :settings ],
     "journals"        => [ "Accounting::Journal",       :settings ],
-    "bank_accounts"   => [ "Accounting::BankAccount",   :settings ]
+    "bank_accounts"   => [ "Accounting::BankAccount",   :settings ],
+    "exchange_rates"  => [ "Accounting::ExchangeRate",  :settings ]
   }.freeze
 
   def show

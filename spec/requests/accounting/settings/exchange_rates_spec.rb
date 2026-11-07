@@ -70,6 +70,46 @@ RSpec.describe "Exchange rates, rules and imports (F11)", type: :request do
       expect(response.body).to include("1.12345678").and not_include("22.2")
     end
 
+    context "with the column filters (spreadsheet-style)" do
+      before do
+        Accounting::ExchangeRate.create!(currency: "USD", rate_date: Date.new(2026, 3, 2), rate: "1.11111111", rate_type: :daily, source: "ecb")
+        Accounting::ExchangeRate.create!(currency: "ZMW", rate_date: Date.new(2026, 3, 1), rate: "22.22222222", rate_type: :monthly_average, source: "inforeuro")
+        Accounting::ExchangeRate.create!(currency: "ZMW", rate_date: Date.new(2026, 4, 1), rate: "33.33333333", rate_type: :monthly_average, source: "inforeuro")
+      end
+
+      it "puts a filter dropdown on the headers of date, currency, rate, kind and source" do
+        get accounting_settings_exchange_rates_path
+        expect(response.body).to include("accounting/column_values/exchange_rates/currency")
+      end
+
+      it "filters on currency, kind, source, date range and rate" do
+        get accounting_settings_exchange_rates_path, params: { f: { currency: %w[ZMW] } }
+        expect(response.body).to include("22.22222222", "33.33333333").and not_include("1.11111111")
+        get accounting_settings_exchange_rates_path, params: { f: { rate_type: %w[daily] } }
+        expect(response.body).to include("1.11111111").and not_include("22.22222222")
+        get accounting_settings_exchange_rates_path, params: { f: { source: %w[inforeuro] } }
+        expect(response.body).to include("33.33333333").and not_include("1.11111111")
+        get accounting_settings_exchange_rates_path, params: { f: { rate_date: { from: "2026-04-01" } } }
+        expect(response.body).to include("33.33333333").and not_include("22.22222222")
+      end
+
+      it "sorts by rate" do
+        get accounting_settings_exchange_rates_path, params: { sort: "rate", dir: "desc" }
+        expect(response.body.index("33.33333333")).to be < response.body.index("1.11111111")
+      end
+
+      it "serves the currencies to pick from, to those who may set up the entity" do
+        get accounting_column_values_path("exchange_rates", "currency")
+        expect(response.body).to include("USD", "ZMW")
+      end
+
+      it "pages the list instead of cutting it at 200 rates" do
+        201.times { |i| Accounting::ExchangeRate.create!(currency: "AUD", rate_date: Date.new(2020, 1, 1) + i, rate: "1.5", rate_type: :daily, source: "ecb") }
+        get accounting_settings_exchange_rates_path, params: { f: { currency: %w[AUD] }, page: 2 }
+        expect(response.body.scan("<tr class=\"hover:bg-gray-50\">").size).to be >= 1
+      end
+    end
+
     it "says in units of currency for 1 EUR" do
       get accounting_settings_exchange_rates_path
       expect(response.body).to include("for 1 EUR")

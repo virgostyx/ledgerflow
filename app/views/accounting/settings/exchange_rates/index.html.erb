@@ -98,19 +98,19 @@
   <% end %>
 
   <div>
-    <%= form_with url: accounting_settings_exchange_rates_path, method: :get, class: "flex gap-3 items-end mb-3 text-sm" do %>
-      <%= text_field_tag :currency, params[:currency], placeholder: "Currency", maxlength: 3, class: "#{input} uppercase w-24", "aria-label": "Currency" %>
-      <%= select_tag :rate_type, options_for_select([ [ "All kinds", "" ], [ "Daily", "daily" ], [ "Monthly average", "monthly_average" ], [ "Closing", "closing" ], [ "Typed (manual)", "manual" ] ], params[:rate_type]), class: input, "aria-label": "Kind" %>
-      <%= submit_tag "Filter", name: nil, class: outline %>
-    <% end %>
+    <%= render 'shared/clear_column_filters' %>
 
     <div class="bg-white rounded-lg border border-gray-200 overflow-x-clip">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
-            <% %w[Date Currency Rate Kind Source Imported].each do |h| %>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><%= h %></th>
-            <% end %>
+            <% th = "px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider" %>
+            <th class="<%= th %>"><%= column_header(Accounting::ExchangeRate, :rate_date, 'Date', resource: 'exchange_rates') %></th>
+            <th class="<%= th %>"><%= column_header(Accounting::ExchangeRate, :currency, 'Currency', resource: 'exchange_rates') %></th>
+            <th class="<%= th %>"><%= column_header(Accounting::ExchangeRate, :rate, 'Rate', resource: 'exchange_rates') %></th>
+            <th class="<%= th %>"><%= column_header(Accounting::ExchangeRate, :rate_type, 'Kind', resource: 'exchange_rates') %></th>
+            <th class="<%= th %>"><%= column_header(Accounting::ExchangeRate, :source, 'Source', resource: 'exchange_rates') %></th>
+            <th class="<%= th %>">Imported</th>
             <th class="px-4 py-3"></th>
           </tr>
         </thead>
@@ -137,5 +137,6 @@
         </tbody>
       </table>
     </div>
+    <%= render 'shared/pagination', pagy: @pagy %>
   </div>
 </div>

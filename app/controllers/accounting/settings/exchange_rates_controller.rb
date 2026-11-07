@@ -11,7 +11,7 @@ class Accounting::Settings::ExchangeRatesController < Accounting::Settings::Base
     scope  = Accounting::ExchangeRate.all
     scope  = scope.where(currency: params[:currency].to_s.upcase) if params[:currency].present?
     scope  = scope.where(rate_type: params[:rate_type]) if Accounting::ExchangeRate.rate_types.key?(params[:rate_type].to_s)
-    @rates = scope.order(rate_date: :desc, currency: :asc, id: :desc).limit(200)
+    @pagy, @rates = pagy(scope.order(rate_date: :desc, currency: :asc, id: :desc).autofilter(**autofilter_params))
     @missing = Fx::MissingRates.call
     @entity = ActsAsTenant.current_tenant
   end
