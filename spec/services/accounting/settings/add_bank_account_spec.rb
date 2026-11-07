@@ -48,6 +48,24 @@ RSpec.describe Accounting::Settings::AddBankAccount, type: :service do
       end
     end
 
+    context "without an IBAN (euro account of a bank outside SEPA)" do
+      let(:no_iban_params) { valid_params.merge(iban: "0012-3456 78", bic: "zanazmlu", no_iban: "1") }
+
+      it "creates the account with the local number as typed (spaces removed) and the flag" do
+        result = described_class.call(params: no_iban_params, user: user)
+        expect(result).to be_success
+        expect(result[:bank_account]).to have_attributes(iban: "0012-345678", bic: "ZANAZMLU", no_iban: true, currency: "EUR")
+      end
+
+      it "fails without a BIC/SWIFT and creates nothing" do
+        expect { described_class.call(params: no_iban_params.merge(bic: ""), user: user) }.not_to change(Accounting::BankAccount, :count)
+      end
+
+      it "ignores the flag when it is not set: the IBAN is checked as before" do
+        expect(described_class.call(params: valid_params.merge(iban: "0012345678"), user: user)).to be_failure
+      end
+    end
+
     context "with an invalid IBAN" do
       it "fails and creates nothing" do
         params = valid_params.merge(iban: "BE00000000000000")

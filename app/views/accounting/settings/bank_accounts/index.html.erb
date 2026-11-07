@@ -43,7 +43,7 @@
             </td>
             <td class="px-4 py-3 text-sm text-gray-700"><%= account.label_fr %></td>
             <td class="px-4 py-3 text-sm font-mono text-gray-600">
-              <%= account.iban.gsub(/(.{4})/, '\1 ').strip %>
+              <%= (account.no_iban? ? account.iban : account.iban.gsub(/(.{4})/, '\1 ').strip) %>
             </td>
             <td class="px-4 py-3 text-sm font-mono text-gray-500"><%= account.bic %></td>
             <td class="px-4 py-3 text-sm text-right font-mono text-gray-700">

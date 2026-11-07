@@ -81,6 +81,14 @@
     </div>
   </div>
 
+  <div class="flex items-start gap-3">
+    <%= f.check_box :no_iban, class: "mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" %>
+    <div>
+      <%= f.label :no_iban, "Euro account with no IBAN (bank outside SEPA)", class: "text-sm font-medium text-gray-700" %>
+      <p class="text-xs text-gray-400">Type the local account number above and the BIC/SWIFT (required). Statements and payments by reconciliation work as usual; the account cannot pay a SEPA batch.</p>
+    </div>
+  </div>
+
   <div class="relative" data-controller="floating-label">
     <%= f.text_area :notes, rows: 2,
           placeholder: " ",

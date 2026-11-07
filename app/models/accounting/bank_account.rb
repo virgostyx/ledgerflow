@@ -21,6 +21,7 @@ class Accounting::BankAccount < ApplicationRecord
   validates :currency,   presence: true, format: { with: /\A[A-Z]{3}\z/ }
   validates :journal_id, uniqueness: true, allow_nil: true
 
+  validates :bic, presence: true, format: { with: /\A[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?\z/ }, if: :no_iban? # a bank outside SEPA is identified by its SWIFT code
   validate :iban_format
   validate :journal_must_be_bank_type
 
@@ -37,7 +38,7 @@ class Accounting::BankAccount < ApplicationRecord
   private
 
   def iban_format
-    return if iban.blank? || currency != "EUR" # foreign accounts hold a local account number in `iban`
+    return if iban.blank? || currency != "EUR" || no_iban? # foreign accounts, and flagged euro accounts, hold a local account number in `iban`
     errors.add(:iban, :invalid) unless IBANTools::IBAN.valid?(iban)
   end
 

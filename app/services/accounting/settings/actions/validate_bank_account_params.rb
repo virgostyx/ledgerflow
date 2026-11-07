@@ -16,7 +16,7 @@ class Accounting::Settings::Actions::ValidateBankAccountParams
       next ctx
     end
 
-    euro = (p[:currency].presence || "EUR").upcase == "EUR" # a foreign account holds a local account number, which is no IBAN (as BankAccount allows)
+    euro = (p[:currency].presence || "EUR").upcase == "EUR" && !ActiveModel::Type::Boolean.new.cast(p[:no_iban]) # a euro account flagged "no IBAN" and a foreign account holds a local account number, which is no IBAN (as BankAccount allows)
     unless p[:iban].present? && (!euro || IBANTools::IBAN.valid?(p[:iban]))
       ctx.fail!("IBAN is invalid")
       next ctx

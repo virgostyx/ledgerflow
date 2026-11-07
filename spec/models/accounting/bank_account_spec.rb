@@ -33,6 +33,30 @@ RSpec.describe Accounting::BankAccount, type: :model do
       expect(build(:bank_account, journal: bank_journal, currency: "EUR", iban: "0012345678")).not_to be_valid
     end
 
+    context "without an IBAN (a bank outside SEPA, in euros)" do
+      it "accepts a local account number when the account is flagged no_iban and has a BIC" do
+        expect(build(:bank_account, journal: bank_journal, currency: "EUR", iban: "0012345678", bic: "ZANAZMLU", no_iban: true)).to be_valid
+      end
+
+      it "requires the BIC/SWIFT" do
+        account = build(:bank_account, journal: bank_journal, currency: "EUR", iban: "0012345678", bic: nil, no_iban: true)
+        expect(account).not_to be_valid
+        expect(account.errors[:bic]).to be_present
+      end
+
+      it "refuses a BIC that is neither 8 nor 11 characters" do
+        expect(build(:bank_account, journal: bank_journal, currency: "EUR", iban: "0012345678", bic: "ZANA", no_iban: true)).not_to be_valid
+      end
+
+      it "still refuses a local number on an unflagged euro account" do
+        expect(build(:bank_account, journal: bank_journal, currency: "EUR", iban: "0012345678", bic: "ZANAZMLU")).not_to be_valid
+      end
+
+      it "is not flagged by default" do
+        expect(build(:bank_account, journal: bank_journal).no_iban).to be(false)
+      end
+    end
+
     it "rejects a currency that is not a 3-letter ISO code" do
       expect(build(:bank_account, journal: bank_journal, currency: "dollar")).not_to be_valid
     end

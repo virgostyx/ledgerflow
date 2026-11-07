@@ -67,7 +67,7 @@ class Accounting::Settings::BankAccountsController < Accounting::Settings::BaseC
   def bank_account_create_params
     params.require(:bank_account_form).permit(
       :label_fr, :label_nl, :journal_code, :iban, :bic,
-      :default_account_id, :currency, :notes
+      :default_account_id, :currency, :no_iban, :notes
     ).to_h.symbolize_keys
   end
 

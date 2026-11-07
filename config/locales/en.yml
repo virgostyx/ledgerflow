@@ -1015,6 +1015,7 @@ en:
       invoice_not_eligible: "Invoice %{number} is not eligible for payment (must be a posted supplier invoice)."
       foreign_currency:     "Invoice %{number} is in %{currency}: SEPA batches only pay in EUR. Record the payment manually."
       foreign_account:      "Bank account %{label} is not in EUR: it cannot be used for a SEPA batch."
+      no_iban_account:      "Bank account %{label} has no IBAN: it cannot be used for a SEPA batch (pay by international transfer)."
       missing_iban:         "Supplier %{name} has no valid IBAN on file."
       already_in_batch:     "Invoice %{number} is already included in another active payment batch."
       not_approved:

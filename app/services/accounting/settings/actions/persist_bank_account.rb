@@ -12,6 +12,7 @@ class Accounting::Settings::Actions::PersistBankAccount
       iban:     p[:iban]&.upcase&.gsub(/\s+/, ""),
       bic:      p[:bic]&.upcase,
       currency: p[:currency].presence&.upcase || "EUR",
+      no_iban:  ActiveModel::Type::Boolean.new.cast(p[:no_iban]) || false,
       notes:    p[:notes],
       active:   true
     )

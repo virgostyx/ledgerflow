@@ -809,7 +809,8 @@ CREATE TABLE public.accounting_bank_accounts (
     updated_at timestamp(6) without time zone NOT NULL,
     label_nl character varying,
     notes text,
-    entity_id bigint NOT NULL
+    entity_id bigint NOT NULL,
+    no_iban boolean DEFAULT false NOT NULL
 );
 
 
@@ -17365,6 +17366,7 @@ ALTER TABLE ONLY public.accounting_journal_entries
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261107110000'),
 ('20261107100000'),
 ('20261102100000'),
 ('20261026100000'),
