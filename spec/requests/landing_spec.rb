@@ -23,6 +23,14 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'live double-entry demo' do
+    it 'renders the interactive demo with balanced accounts' do
+      get root_path
+      expect(response.body).to include('data-controller="ledger-demo"')
+      expect(response.body).to include('400000', '440000', '451000', '700000')
+    end
+  end
+
   describe 'Redirection des utilisateurs connectés' do
     include_context 'with entity'
 

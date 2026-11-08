@@ -89,3 +89,6 @@ application.register("agent-explain", AgentExplainController)
 
 import DrawerController from "controllers/drawer_controller"
 application.register("drawer", DrawerController)
+
+import LedgerDemoController from "controllers/ledger_demo_controller"
+application.register("ledger-demo", LedgerDemoController)
