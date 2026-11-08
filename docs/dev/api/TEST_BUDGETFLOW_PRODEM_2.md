@@ -22,8 +22,8 @@ Plan : `~/.claude/plans/rosy-dazzling-locket.md`. Suite du test `TEST_BUDGETFLOW
 | A2 | Paramètres : TVA, `iban_cooling_hours=0`, politique taux ZMW, drapeaux | enregistrés | | |
 | A3 | Caisse ZMW + banque EUR + banque ZMW | comptes créés, BIC valide | | |
 | A4 | Utilisateurs de test, isolation vs ECES réelle | aucune donnée ECES visible | | |
-| A5 | Client API + `EntitySetting` BudgetFlow + Test connection | 200, 4 scopes | | |
-| A6 | `ledgerflow:sync_projects` (aperçu puis envoi) | compte PROJ-2026-001 + BUDG | | |
+| A5 | Client API + `EntitySetting` BudgetFlow + Test connection | 200, 4 scopes | 2026-11-08 : client « BudgetFlow ECES » créé (4 scopes), adaptateur `ledgerflow` sur l'entité ECES (BudgetFlow id 9), Test connection OK. Note : le lien « API Clients » du menu dépend du rôle global `users.role`, pas du rôle dans l'entité (page accessible par URL) | ✔ |
+| A6 | `ledgerflow:sync_projects` (aperçu puis envoi) | compte PROJ-2026-001 + BUDG | 2026-11-08 : aperçu = 1 projet (id 10, budget validated) ; envoi `APPLY=1` ; compte PROJ-2026-001 présent dans LedgerFlow. Sous-lignes BUDG non vérifiées | ✔ |
 | B1 | Facture EUR sans TVA | brouillon, contexte projet/ligne | | |
 | B2 | Facture ZMW, TVA 16 % en charge | `foreign_vat`, total EUR = ZMW ÷ taux, pas de ligne TVA | | |
 | B3 | USD, avoir, facture sans lignes | écarts connus seulement | | |
