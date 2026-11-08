@@ -32,10 +32,11 @@ RSpec.describe 'Landing', type: :request do
   end
 
   describe 'demo purchase scenario and call to action' do
-    it 'offers a purchase entry and a sign-in call to action after the demo' do
+    it 'offers a purchase entry and a sign-up call to action after the demo' do
       get root_path
       expect(response.body).to include('604000', '411000', 'data-ledger-demo-target="purchase"')
-      expect(response.body).to match(/ledger-demo.*Sign in to start/m)
+      expect(response.body).to match(/ledger-demo.*Create your free account.*Already have an account\?/m)
+      expect(response.body).to include(new_user_registration_path)
     end
   end
 
