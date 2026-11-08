@@ -75,6 +75,22 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'sign-up call to action when signup is closed' do
+    around do |example|
+      saved = Rails.configuration.x.open_signup
+      Rails.configuration.x.open_signup = false
+      example.run
+      Rails.configuration.x.open_signup = saved
+    end
+
+    it 'does not advertise account creation' do
+      get root_path
+      expect(response.body).not_to include(new_user_registration_path)
+      expect(response.body).not_to include('Create your free account')
+      expect(response.body).to include('Sign in to your books')
+    end
+  end
+
   describe 'Redirection des utilisateurs connectés' do
     include_context 'with entity'
 
