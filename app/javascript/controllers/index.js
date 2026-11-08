@@ -92,3 +92,6 @@ application.register("drawer", DrawerController)
 
 import LedgerDemoController from "controllers/ledger_demo_controller"
 application.register("ledger-demo", LedgerDemoController)
+
+import PasswordRevealController from "controllers/password_reveal_controller"
+application.register("password-reveal", PasswordRevealController)
