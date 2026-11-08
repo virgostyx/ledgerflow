@@ -3,9 +3,11 @@ import { Controller } from "@hotwired/stimulus"
 // Landing-page demo: an invoice (sale or purchase) becomes a balanced PCMN journal entry, live.
 // Integer cents only (no float money); VAT rounded half-up.
 export default class extends Controller {
-  static targets = ["net", "sale", "purchase", "netCell", "vatCell", "grossCell", "status", "label"]
+  static targets = ["net", "sale", "purchase", "netCell", "vatCell", "grossCell", "status", "label", "breakBtn"]
 
-  connect() { this.update() }
+  connect() { this.broken = false; this.update() }
+
+  toggleBreak() { this.broken = !this.broken; this.update() }
 
   update() {
     const checked = (n) => this.element.querySelector(`input[name=${n}]:checked`).value
@@ -21,6 +23,13 @@ export default class extends Controller {
     this.netCellTargets.forEach((e) => (e.textContent = fmt(net)))
     this.vatCellTargets.forEach((e) => (e.textContent = fmt(vat)))
     this.grossCellTargets.forEach((e) => (e.textContent = fmt(gross)))
-    this.statusTarget.textContent = `Debit ${fmt(gross)} = Credit ${fmt(gross)} ✓ balanced`
+    // Broken: credit side short by 1 €, as a typo would leave it.
+    const credit = this.broken ? Math.max(0, gross - 100) : gross
+    const ok = credit === gross
+    this.breakBtnTarget.textContent = this.broken ? "Fix it" : "Try to break it"
+    this.statusTarget.className = `mt-4 text-sm font-medium ${ok ? "text-green-700" : "text-red-700"}`
+    this.statusTarget.textContent = ok
+      ? `Debit ${fmt(gross)} = Credit ${fmt(credit)} ✓ balanced`
+      : `✗ Rejected by PostgreSQL: debit ${fmt(gross)} ≠ credit ${fmt(credit)}. Nothing was saved.`
   }
 }

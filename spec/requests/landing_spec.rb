@@ -39,6 +39,13 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'demo break button and hero link' do
+    it 'offers a break-it button and a hero link to the demo anchor' do
+      get root_path
+      expect(response.body).to include('ledger-demo#toggleBreak', 'id="demo"', 'href="#demo"')
+    end
+  end
+
   describe 'Redirection des utilisateurs connectés' do
     include_context 'with entity'
 
