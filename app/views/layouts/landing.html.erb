@@ -6,6 +6,15 @@
     <meta name="description" content="Free, open-source Belgian accounting: PCMN chart of accounts, VAT returns and Peppol e-invoicing, with double entry enforced by the database.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="LedgerFlow — Free Belgian accounting">
+    <script type="application/ld+json"><%= raw({
+      "@context" => "https://schema.org",
+      "@type" => "SoftwareApplication",
+      "name" => "LedgerFlow",
+      "applicationCategory" => "FinanceApplication",
+      "operatingSystem" => "Web",
+      "description" => "Free, open-source Belgian accounting: PCMN chart of accounts, VAT returns and Peppol e-invoicing.",
+      "offers" => { "@type" => "Offer", "price" => "0", "priceCurrency" => "EUR" }
+    }.to_json.gsub("<", "\\u003c")) %></script>
     <meta property="og:description" content="Free, open-source Belgian accounting: PCMN chart of accounts, VAT returns and Peppol e-invoicing, with double entry enforced by the database.">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>

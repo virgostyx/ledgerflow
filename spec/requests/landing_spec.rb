@@ -75,6 +75,16 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'structured data' do
+    it 'embeds valid SoftwareApplication JSON-LD describing a free app' do
+      get root_path
+      json = Nokogiri::HTML(response.body).at_css('script[type="application/ld+json"]').text
+      data = JSON.parse(json)
+      expect(data).to include('@type' => 'SoftwareApplication', 'name' => 'LedgerFlow', 'applicationCategory' => 'FinanceApplication')
+      expect(data['offers']).to include('price' => '0', 'priceCurrency' => 'EUR')
+    end
+  end
+
   describe 'hero call to action' do
     it 'leads with Get started free when signup is open' do
       get root_path
