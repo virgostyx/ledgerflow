@@ -112,6 +112,15 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'keyboard access' do
+    it 'starts with a skip link to the main content' do
+      get root_path
+      html = Nokogiri::HTML(response.body)
+      expect(html.at_css('body > a:first-child')['href']).to eq('#main')
+      expect(html.at_css('main#main')).to be_present
+    end
+  end
+
   describe 'structured data' do
     it 'embeds valid SoftwareApplication JSON-LD describing a free app' do
       get root_path
