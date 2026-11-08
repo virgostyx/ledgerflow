@@ -78,7 +78,10 @@ RSpec.describe 'Landing', type: :request do
   describe 'hero call to action' do
     it 'leads with Get started free when signup is open' do
       get root_path
-      expect(response.body).to match(/<h1.*Get started free/m)
+      hero = Nokogiri::HTML(response.body).at_css('main section')
+      cta = hero.at_css('a.bg-primary-600')
+      expect(cta.text.strip).to eq('Get started free')
+      expect(cta['href']).to eq(new_user_registration_path)
     end
   end
 
