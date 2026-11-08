@@ -4,7 +4,10 @@
     <title>LedgerFlow — Belgian Accounting</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="description" content="Free, open-source Belgian accounting: PCMN chart of accounts, VAT returns and Peppol e-invoicing, with double entry enforced by the database.">
+    <link rel="canonical" href="https://app.ledgerflowmanagment.com/">
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://app.ledgerflowmanagment.com/">
+    <meta property="og:image" content="https://app.ledgerflowmanagment.com/logo.png">
     <meta property="og:title" content="LedgerFlow — Free Belgian accounting">
     <script type="application/ld+json"><%= raw({
       "@context" => "https://schema.org",
@@ -42,7 +45,8 @@
     </main>
 
     <footer class="border-t border-gray-100 px-6 py-4 text-center text-xs text-gray-500">
-      © <%= Date.current.year %> LedgerFlow v<%= LedgerflowVersion::VERSION rescue '0.1.0' %> — Free to use
+      © <%= Date.current.year %> LedgerFlow v<%= LedgerflowVersion::VERSION rescue '0.1.0' %> — Free to use ·
+      <a href="https://github.com/virgostyx/ledgerflow" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-700">Source on GitHub</a>
     </footer>
 
     <%# ── Cookie consent banner ──────────────────────────────────────────────── %>

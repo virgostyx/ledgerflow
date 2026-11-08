@@ -91,6 +91,24 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'open source link and canonical metadata' do
+    let(:html) { Nokogiri::HTML(response.body) }
+
+    before { get root_path }
+
+    it 'links the open-source claim to the GitHub repository' do
+      links = html.css('a[href="https://github.com/virgostyx/ledgerflow"]')
+      expect(links.size).to be >= 2 # the feature card and the footer
+      expect(links.map { |a| a['rel'] }).to all(include('noopener'))
+    end
+
+    it 'declares the canonical URL and a shareable image on the public host' do
+      expect(html.at_css('link[rel="canonical"]')['href']).to eq('https://app.ledgerflowmanagment.com/')
+      expect(html.at_css('meta[property="og:url"]')['content']).to eq('https://app.ledgerflowmanagment.com/')
+      expect(html.at_css('meta[property="og:image"]')['content']).to eq('https://app.ledgerflowmanagment.com/logo.png')
+    end
+  end
+
   describe 'structured data' do
     it 'embeds valid SoftwareApplication JSON-LD describing a free app' do
       get root_path
