@@ -19,6 +19,9 @@
 </section>
 
 <%# Live demo %>
+<% ogm_base = 2_026_001 # invoice 2026-001
+   ogm_check = (ogm_base % 97).then { |c| c.zero? ? 97 : c }
+   ogm = format('%010d%02d', ogm_base, ogm_check).then { |d| "+++#{d[0, 3]}/#{d[3, 4]}/#{d[7, 5]}+++" } %>
 <section id="demo" class="max-w-3xl mx-auto px-6 pb-16 scroll-mt-4" data-controller="ledger-demo">
   <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
     <h2 class="text-xl font-bold text-gray-900 mb-1">Try it: one invoice, one balanced entry</h2>
@@ -46,6 +49,7 @@
         <tr><td class="py-2">400000 Customers</td><td class="text-right" data-ledger-demo-target="grossCell"></td><td></td></tr>
         <tr><td class="py-2">700000 Sales</td><td></td><td class="text-right" data-ledger-demo-target="netCell"></td></tr>
         <tr><td class="py-2">451000 VAT payable</td><td></td><td class="text-right" data-ledger-demo-target="vatCell"></td></tr>
+        <tr><td colspan="3" class="pt-2 text-xs text-gray-400">Invoice 2026-001 · payment reference <span class="font-mono text-gray-600"><%= ogm %></span></td></tr>
       </tbody>
       <tbody class="tabular-nums" data-ledger-demo-target="purchase" hidden>
         <tr><td class="py-2">604000 Purchases of goods</td><td class="text-right" data-ledger-demo-target="netCell"></td><td></td></tr>

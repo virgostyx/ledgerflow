@@ -46,6 +46,13 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'demo structured payment reference' do
+    it 'shows a valid +++OGM+++ for invoice 2026001 (2026001 mod 97 = 59)' do
+      get root_path
+      expect(response.body).to include('+++000/2026/00159+++')
+    end
+  end
+
   describe 'Redirection des utilisateurs connectés' do
     include_context 'with entity'
 
