@@ -20,9 +20,9 @@ export default class extends Controller {
     this.saleTarget.hidden = purchase
     this.purchaseTarget.hidden = !purchase
     this.labelTarget.textContent = purchase ? "Purchase excl. VAT (€)" : "Sale excl. VAT (€)"
-    this.netCellTargets.forEach((e) => (e.textContent = fmt(net)))
-    this.vatCellTargets.forEach((e) => (e.textContent = fmt(vat)))
-    this.grossCellTargets.forEach((e) => (e.textContent = fmt(gross)))
+    this.netCellTargets.forEach((e) => this.set(e, fmt(net)))
+    this.vatCellTargets.forEach((e) => this.set(e, fmt(vat)))
+    this.grossCellTargets.forEach((e) => this.set(e, fmt(gross)))
     // Broken: credit side short by 1 €, as a typo would leave it.
     const credit = this.broken ? Math.max(0, gross - 100) : gross
     const ok = credit === gross
@@ -31,5 +31,14 @@ export default class extends Controller {
     this.statusTarget.textContent = ok
       ? `Debit ${fmt(gross)} = Credit ${fmt(credit)} ✓ balanced`
       : `✗ Rejected by PostgreSQL: debit ${fmt(gross)} ≠ credit ${fmt(credit)}. Nothing was saved.`
+  }
+
+  // Set text; flash the cell only if its value changed (skipped for reduced motion).
+  set(el, text) {
+    if (el.textContent === text) return
+    const first = el.textContent === ""
+    el.textContent = text
+    if (first || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    el.animate([{ backgroundColor: "#fed7aa" }, { backgroundColor: "transparent" }], { duration: 700 })
   }
 }
