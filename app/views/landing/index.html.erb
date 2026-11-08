@@ -23,7 +23,12 @@
     <h2 class="text-xl font-bold text-gray-900 mb-1">Try it: one invoice, one balanced entry</h2>
     <p class="text-sm text-gray-500 mb-5">Type an amount. LedgerFlow posts it the Belgian way — PCMN accounts, VAT split, debits = credits.</p>
     <div class="flex flex-wrap items-center gap-4 mb-5">
-      <label class="text-sm font-medium text-gray-700">Sale excl. VAT (€)
+      <% { 'sale' => 'Sale', 'purchase' => 'Purchase' }.each do |k, l| %>
+        <label class="text-sm font-medium text-gray-700 inline-flex items-center gap-1">
+          <input type="radio" name="kind" value="<%= k %>" <%= 'checked' if k == 'sale' %> data-action="change->ledger-demo#update"> <%= l %>
+        </label>
+      <% end %>
+      <label class="text-sm font-medium text-gray-700"><span data-ledger-demo-target="label">Sale excl. VAT (€)</span>
         <input type="number" min="0" step="0.01" value="1000" inputmode="decimal"
                data-ledger-demo-target="net" data-action="input->ledger-demo#update"
                class="ml-2 w-36 border border-gray-300 rounded-lg px-3 py-2 text-right">
@@ -36,15 +41,23 @@
     </div>
     <table class="w-full text-sm">
       <thead><tr class="text-left text-gray-400 border-b"><th class="py-2">Account</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead>
-      <tbody class="tabular-nums">
-        <tr><td class="py-2">400000 Customers</td><td class="text-right" data-ledger-demo-target="debit"></td><td></td></tr>
-        <tr><td class="py-2">700000 Sales</td><td></td><td class="text-right" data-ledger-demo-target="credit"></td></tr>
-        <tr><td class="py-2">451000 VAT payable</td><td></td><td class="text-right" data-ledger-demo-target="vat"></td></tr>
+      <tbody class="tabular-nums" data-ledger-demo-target="sale">
+        <tr><td class="py-2">400000 Customers</td><td class="text-right" data-ledger-demo-target="grossCell"></td><td></td></tr>
+        <tr><td class="py-2">700000 Sales</td><td></td><td class="text-right" data-ledger-demo-target="netCell"></td></tr>
+        <tr><td class="py-2">451000 VAT payable</td><td></td><td class="text-right" data-ledger-demo-target="vatCell"></td></tr>
       </tbody>
-      <tfoot><tr class="border-t font-semibold"><td class="py-2">Total</td><td class="text-right" data-ledger-demo-target="total"></td><td></td></tr></tfoot>
+      <tbody class="tabular-nums" data-ledger-demo-target="purchase" hidden>
+        <tr><td class="py-2">604000 Purchases of goods</td><td class="text-right" data-ledger-demo-target="netCell"></td><td></td></tr>
+        <tr><td class="py-2">411000 VAT recoverable</td><td class="text-right" data-ledger-demo-target="vatCell"></td><td></td></tr>
+        <tr><td class="py-2">440000 Suppliers</td><td></td><td class="text-right" data-ledger-demo-target="grossCell"></td></tr>
+      </tbody>
     </table>
     <p class="mt-4 text-sm font-medium text-green-700" data-ledger-demo-target="status" aria-live="polite"></p>
-    <p class="mt-1 text-xs text-gray-400">440000 Suppliers and 400000 Customers work the same way — the database refuses unbalanced entries.</p>
+    <p class="mt-1 text-xs text-gray-400">The database refuses unbalanced entries — by trigger, not by good intentions.</p>
+    <div class="mt-6 text-center">
+      <%= link_to 'Sign in to start your books', new_user_session_path,
+            class: 'inline-block bg-primary-600 hover:bg-primary-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors' %>
+    </div>
   </div>
 </section>
 

@@ -1,23 +1,26 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Landing-page demo: a sales invoice becomes a balanced PCMN journal entry, live.
+// Landing-page demo: an invoice (sale or purchase) becomes a balanced PCMN journal entry, live.
 // Integer cents only (no float money); VAT rounded half-up.
 export default class extends Controller {
-  static targets = ["net", "debit", "credit", "vat", "total", "status"]
+  static targets = ["net", "sale", "purchase", "netCell", "vatCell", "grossCell", "status", "label"]
 
   connect() { this.update() }
 
   update() {
+    const checked = (n) => this.element.querySelector(`input[name=${n}]:checked`).value
+    const purchase = checked("kind") === "purchase"
     const net = Math.max(0, Math.round((parseFloat(this.netTarget.value) || 0) * 100))
-    const rate = parseInt(this.element.querySelector("input[name=rate]:checked").value, 10)
-    const vat = Math.round((net * rate) / 100)
-    const total = net + vat
+    const vat = Math.round((net * parseInt(checked("rate"), 10)) / 100)
+    const gross = net + vat
     const fmt = (c) => (c / 100).toLocaleString("fr-BE", { style: "currency", currency: "EUR" })
 
-    this.debitTarget.textContent = fmt(total)
-    this.totalTarget.textContent = fmt(total)
-    this.creditTarget.textContent = fmt(net)
-    this.vatTarget.textContent = fmt(vat)
-    this.statusTarget.textContent = `Debit ${fmt(total)} = Credit ${fmt(net + vat)} ✓ balanced`
+    this.saleTarget.hidden = purchase
+    this.purchaseTarget.hidden = !purchase
+    this.labelTarget.textContent = purchase ? "Purchase excl. VAT (€)" : "Sale excl. VAT (€)"
+    this.netCellTargets.forEach((e) => (e.textContent = fmt(net)))
+    this.vatCellTargets.forEach((e) => (e.textContent = fmt(vat)))
+    this.grossCellTargets.forEach((e) => (e.textContent = fmt(gross)))
+    this.statusTarget.textContent = `Debit ${fmt(gross)} = Credit ${fmt(gross)} ✓ balanced`
   }
 }
