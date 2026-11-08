@@ -41,3 +41,6 @@ docs/dev/features/standard-coda-fr_-2025.pdf
 /docs/cloudflare credentials
 /docs/dev/email credentials
 /docs/dev/*password*.txt
+
+# API keys pasted for local tests, never committed
+docs/dev/api/budgetflow_api_key
