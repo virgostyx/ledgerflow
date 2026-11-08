@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 const MAX_CENTS = 99_999_999_999 // 999,999,999.99 €, well inside exact integer range
 
 export default class extends Controller {
-  static targets = ["net", "sale", "purchase", "netCell", "vatCell", "grossCell", "status", "label", "breakBtn"]
+  static targets = ["net", "sale", "purchase", "payment", "netCell", "vatCell", "grossCell", "status", "label", "breakBtn"]
 
   connect() { this.broken = false; this.update() }
 
@@ -13,15 +13,17 @@ export default class extends Controller {
 
   update() {
     const checked = (n) => this.element.querySelector(`input[name=${n}]:checked`).value
-    const purchase = checked("kind") === "purchase"
+    const kind = checked("kind")
+    const purchase = kind === "purchase"
     const net = Math.min(MAX_CENTS, Math.max(0, Math.round((parseFloat(this.netTarget.value) || 0) * 100)))
     const vat = Math.round((net * parseInt(checked("rate"), 10)) / 100)
     const gross = net + vat
     const fmt = (c) => (c / 100).toLocaleString("fr-BE", { style: "currency", currency: "EUR" })
 
-    this.saleTarget.hidden = purchase
+    this.saleTarget.hidden = kind !== "sale"
     this.purchaseTarget.hidden = !purchase
-    this.labelTarget.textContent = purchase ? "Purchase excl. VAT (€)" : "Sale excl. VAT (€)"
+    this.paymentTarget.hidden = kind !== "payment"
+    this.labelTarget.textContent = purchase ? "Purchase excl. VAT (€)" : kind === "payment" ? "Invoice excl. VAT (€)" : "Sale excl. VAT (€)"
     this.netCellTargets.forEach((e) => this.set(e, fmt(net)))
     this.vatCellTargets.forEach((e) => this.set(e, fmt(vat)))
     this.grossCellTargets.forEach((e) => this.set(e, fmt(gross)))

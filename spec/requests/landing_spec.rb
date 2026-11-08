@@ -67,6 +67,13 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'demo payment scenario' do
+    it 'offers the customer payment entry (550000 Bank / 400000 Customers)' do
+      get root_path
+      expect(response.body).to include('data-ledger-demo-target="payment"', '550000 Bank', 'value="payment"')
+    end
+  end
+
   describe 'Redirection des utilisateurs connectés' do
     include_context 'with entity'
 
