@@ -35,7 +35,7 @@ export default class extends Controller {
 
   // Set text; flash the cell only if its value changed (skipped for reduced motion).
   set(el, text) {
-    if (el.textContent === text) return
+    if (el.textContent.replace(/\s/g, " ") === text.replace(/\s/g, " ")) return  // server-rendered default
     const first = el.textContent === ""
     el.textContent = text
     if (first || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return

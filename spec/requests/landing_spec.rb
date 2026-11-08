@@ -60,6 +60,13 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'demo without JavaScript' do
+    it 'server-renders the default 1 000 € at 21 % figures' do
+      get root_path
+      expect(response.body).to include('1 000,00 €', '210,00 €', '1 210,00 €')
+    end
+  end
+
   describe 'Redirection des utilisateurs connectés' do
     include_context 'with entity'
 
