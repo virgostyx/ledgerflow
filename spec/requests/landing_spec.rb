@@ -53,6 +53,13 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'search and sharing metadata' do
+    it 'has a meta description and Open Graph title/description' do
+      get root_path
+      expect(response.body).to include('<meta name="description"', 'property="og:title"', 'property="og:description"')
+    end
+  end
+
   describe 'Redirection des utilisateurs connectés' do
     include_context 'with entity'
 
