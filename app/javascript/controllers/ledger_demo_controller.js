@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 const MAX_CENTS = 99_999_999_999 // 999,999,999.99 €, well inside exact integer range
 
 export default class extends Controller {
-  static targets = ["net", "sale", "purchase", "payment", "netCell", "vatCell", "grossCell", "status", "label", "breakBtn"]
+  static targets = ["net", "sale", "purchase", "payment", "netCell", "vatCell", "grossCell", "status", "breakBtn"]
 
   connect() { this.broken = false; this.update() }
 
@@ -23,7 +23,6 @@ export default class extends Controller {
     this.saleTarget.hidden = kind !== "sale"
     this.purchaseTarget.hidden = !purchase
     this.paymentTarget.hidden = kind !== "payment"
-    this.labelTarget.textContent = purchase ? "Purchase excl. VAT (€)" : kind === "payment" ? "Invoice excl. VAT (€)" : "Sale excl. VAT (€)"
     this.netCellTargets.forEach((e) => this.set(e, fmt(net)))
     this.vatCellTargets.forEach((e) => this.set(e, fmt(vat)))
     this.grossCellTargets.forEach((e) => this.set(e, fmt(gross)))

@@ -39,7 +39,7 @@
           </label>
         <% end %>
       </div>
-      <label class="text-sm font-medium text-gray-700"><span data-ledger-demo-target="label">Sale excl. VAT (€)</span>
+      <label class="text-sm font-medium text-gray-700">Amount excl. VAT (€)
         <input type="number" min="0" max="999999999.99" step="0.01" value="1000" inputmode="decimal"
                data-ledger-demo-target="net" data-action="input->ledger-demo#update"
                class="ml-2 w-36 border border-gray-300 rounded-lg px-3 py-2 text-right">
@@ -52,25 +52,27 @@
         <% end %>
       </div>
     </div>
-    <table class="w-full text-sm">
-      <thead><tr class="text-left text-gray-500 border-b"><th class="py-2">Account</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead>
-      <tbody class="tabular-nums" data-ledger-demo-target="sale">
-        <tr><td class="py-2">400000 Customers</td><td class="text-right" data-ledger-demo-target="grossCell">1 210,00 €</td><td></td></tr>
-        <tr><td class="py-2">700000 Sales</td><td></td><td class="text-right" data-ledger-demo-target="netCell">1 000,00 €</td></tr>
-        <tr><td class="py-2">451000 VAT payable</td><td></td><td class="text-right" data-ledger-demo-target="vatCell">210,00 €</td></tr>
-        <tr><td colspan="3" class="pt-2 text-xs text-gray-500">Invoice 2026-001 · payment reference <span class="font-mono text-gray-600"><%= ogm %></span></td></tr>
-      </tbody>
-      <tbody class="tabular-nums" data-ledger-demo-target="purchase" hidden>
-        <tr><td class="py-2">604000 Purchases of goods</td><td class="text-right" data-ledger-demo-target="netCell">1 000,00 €</td><td></td></tr>
-        <tr><td class="py-2">411000 VAT recoverable</td><td class="text-right" data-ledger-demo-target="vatCell">210,00 €</td><td></td></tr>
-        <tr><td class="py-2">440000 Suppliers</td><td></td><td class="text-right" data-ledger-demo-target="grossCell">1 210,00 €</td></tr>
-      </tbody>
-      <tbody class="tabular-nums" data-ledger-demo-target="payment" hidden>
-        <tr><td class="py-2">550000 Bank</td><td class="text-right" data-ledger-demo-target="grossCell">1 210,00 €</td><td></td></tr>
-        <tr><td class="py-2">400000 Customers</td><td></td><td class="text-right" data-ledger-demo-target="grossCell">1 210,00 €</td></tr>
-        <tr><td colspan="3" class="pt-2 text-xs text-gray-500">Customer pays invoice 2026-001 in full — the open item is lettered and closed.</td></tr>
-      </tbody>
-    </table>
+    <div class="min-h-44"><%# keeps the card height steady when switching scenarios %>
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-gray-500 border-b"><th class="py-2">Account</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead>
+        <tbody class="tabular-nums" data-ledger-demo-target="sale">
+          <tr><td class="py-2">400000 Customers</td><td class="text-right" data-ledger-demo-target="grossCell">1 210,00 €</td><td></td></tr>
+          <tr><td class="py-2">700000 Sales</td><td></td><td class="text-right" data-ledger-demo-target="netCell">1 000,00 €</td></tr>
+          <tr><td class="py-2">451000 VAT payable</td><td></td><td class="text-right" data-ledger-demo-target="vatCell">210,00 €</td></tr>
+          <tr><td colspan="3" class="pt-2 text-xs text-gray-500">Invoice 2026-001 · payment reference <span class="font-mono text-gray-600"><%= ogm %></span></td></tr>
+        </tbody>
+        <tbody class="tabular-nums" data-ledger-demo-target="purchase" hidden>
+          <tr><td class="py-2">604000 Purchases of goods</td><td class="text-right" data-ledger-demo-target="netCell">1 000,00 €</td><td></td></tr>
+          <tr><td class="py-2">411000 VAT recoverable</td><td class="text-right" data-ledger-demo-target="vatCell">210,00 €</td><td></td></tr>
+          <tr><td class="py-2">440000 Suppliers</td><td></td><td class="text-right" data-ledger-demo-target="grossCell">1 210,00 €</td></tr>
+        </tbody>
+        <tbody class="tabular-nums" data-ledger-demo-target="payment" hidden>
+          <tr><td class="py-2">550000 Bank</td><td class="text-right" data-ledger-demo-target="grossCell">1 210,00 €</td><td></td></tr>
+          <tr><td class="py-2">400000 Customers</td><td></td><td class="text-right" data-ledger-demo-target="grossCell">1 210,00 €</td></tr>
+          <tr><td colspan="3" class="pt-2 text-xs text-gray-500">Customer pays invoice 2026-001 in full — the open item is lettered and closed.</td></tr>
+        </tbody>
+      </table>
+    </div>
     <p class="mt-4 text-sm font-medium text-green-700" data-ledger-demo-target="status" aria-live="polite">Debit 1 210,00 € = Credit 1 210,00 € ✓ balanced</p>
     <button type="button" data-action="ledger-demo#toggleBreak" data-ledger-demo-target="breakBtn"
             class="mt-3 text-sm font-medium text-primary-700 border border-primary-300 rounded-lg px-3 py-1 hover:bg-primary-50">Try to break it</button>
