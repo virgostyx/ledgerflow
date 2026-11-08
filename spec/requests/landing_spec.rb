@@ -75,6 +75,13 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'hero call to action' do
+    it 'leads with Get started free when signup is open' do
+      get root_path
+      expect(response.body).to match(/<h1.*Get started free/m)
+    end
+  end
+
   describe 'sign-up call to action when signup is closed' do
     around do |example|
       saved = Rails.configuration.x.open_signup
@@ -88,6 +95,7 @@ RSpec.describe 'Landing', type: :request do
       expect(response.body).not_to include(new_user_registration_path)
       expect(response.body).not_to include('Create your free account')
       expect(response.body).to include('Sign in to your books')
+      expect(response.body).not_to include('Get started free')
     end
   end
 
