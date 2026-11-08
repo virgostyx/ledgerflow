@@ -1,3 +1,4 @@
+<% content_for :title, "Set up two-factor authentication — LedgerFlow" %>
 <h2 class="text-xl font-semibold text-gray-900 mb-2">Set up two-factor authentication</h2>
 <p class="text-sm text-gray-500 mb-6">
   <% if current_user.second_factor_required? %>Your role can validate, unlock or administer, so a second factor is required.<% else %>Add a code from an authenticator app to your sign-in.<% end %>

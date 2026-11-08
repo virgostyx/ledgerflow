@@ -13,9 +13,23 @@ RSpec.describe 'Titles of the pages a visitor lands on', type: :request do
     expect(title).to eq('Create your account — LedgerFlow')
   end
 
-  it 'keeps a plain title on the other account pages' do
+  it 'names the forgotten-password page' do
     get new_user_password_path
-    expect(title).to eq('LedgerFlow')
+    expect(title).to eq('Forgot your password? — LedgerFlow')
+  end
+
+  it 'names the recovery-code page' do
+    get new_recovery_code_session_path
+    expect(title).to eq('Use a recovery code — LedgerFlow')
+  end
+
+  # Pages behind a sign-in cannot be fetched here: their view files must still carry the title of their heading.
+  Dir[Rails.root.join('app/views/users/{passwords,recovery_code_sessions,two_factor}/*.html.erb')].each do |file|
+    it "titles #{Pathname(file).relative_path_from(Rails.root)} after its heading" do
+      source = File.read(file)
+      heading = source[%r{<h2[^>]*>(.*?)</h2>}, 1]
+      expect(source).to include("content_for :title, \"#{heading} — LedgerFlow\"")
+    end
   end
 end
 
