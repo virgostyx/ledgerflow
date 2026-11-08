@@ -75,6 +75,22 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'CSP nonce for a first-time visitor (no session yet)' do
+    it 'sends a non-empty nonce that the inline importmap script carries' do
+      get root_path
+      nonce = response.headers['Content-Security-Policy'][/'nonce-([^']*)'/, 1]
+      expect(nonce).to be_present
+      expect(response.body).to include(%(nonce="#{nonce}"))
+    end
+
+    it 'keeps the same nonce for the same visitor across requests (Turbo navigation)' do
+      get root_path
+      first = response.headers['Content-Security-Policy'][/'nonce-([^']*)'/, 1]
+      get root_path
+      expect(response.headers['Content-Security-Policy'][/'nonce-([^']*)'/, 1]).to eq(first)
+    end
+  end
+
   describe 'structured data' do
     it 'embeds valid SoftwareApplication JSON-LD describing a free app' do
       get root_path

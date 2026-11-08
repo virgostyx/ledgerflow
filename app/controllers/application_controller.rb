@@ -3,6 +3,7 @@ class ApplicationController < ActionController::Base
   stale_when_importmap_changes
   set_current_tenant_through_filter
 
+  before_action :ensure_session!
   before_action :authenticate_user!
   before_action :require_second_factor!
   before_action :set_audit_context
@@ -19,6 +20,11 @@ class ApplicationController < ActionController::Base
   helper_method :filter_params, :filters_active?, :autofilter_params, :budgetflow_enabled?, :feature?
 
   private
+
+  # The CSP nonce is the session id (config/initializers/content_security_policy.rb). A visitor's very first page has no session yet,
+  # so the nonce was empty and the browser blocked the inline importmap: no JavaScript at all on a first visit. Touching the session
+  # gives it an id before the page renders. (The client portal does not inherit from here: it stays session-free.)
+  def ensure_session! = session[:started] ||= true
 
   # B03a: while an instant is given, nothing is written, whatever the screen.
   def refuse_changes_in_historical_view!
