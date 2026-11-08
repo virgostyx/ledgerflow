@@ -105,7 +105,10 @@ RSpec.describe 'Landing', type: :request do
     it 'declares the canonical URL and a shareable image on the public host' do
       expect(html.at_css('link[rel="canonical"]')['href']).to eq('https://app.ledgerflowmanagment.com/')
       expect(html.at_css('meta[property="og:url"]')['content']).to eq('https://app.ledgerflowmanagment.com/')
-      expect(html.at_css('meta[property="og:image"]')['content']).to eq('https://app.ledgerflowmanagment.com/logo.png')
+      expect(html.at_css('meta[property="og:image"]')['content']).to eq('https://app.ledgerflowmanagment.com/og-image.png')
+      expect(html.at_css('meta[property="og:image:width"]')['content']).to eq('1200')
+      expect(html.at_css('meta[name="twitter:card"]')['content']).to eq('summary_large_image')
+      expect(Rails.public_path.join('og-image.png')).to exist
     end
   end
 
