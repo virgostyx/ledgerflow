@@ -27,13 +27,15 @@
     <h2 class="text-xl font-bold text-gray-900 mb-1">Try it: one invoice, one balanced entry</h2>
     <p class="text-sm text-gray-500 mb-5">Type an amount. LedgerFlow posts it the Belgian way — PCMN accounts, VAT split, debits = credits.</p>
     <div class="flex flex-wrap items-center gap-4 mb-5">
-      <% { 'sale' => 'Sale', 'purchase' => 'Purchase' }.each do |k, l| %>
-        <label class="text-sm font-medium text-gray-700 inline-flex items-center gap-1">
-          <input type="radio" name="kind" value="<%= k %>" <%= 'checked' if k == 'sale' %> data-action="change->ledger-demo#update"> <%= l %>
-        </label>
-      <% end %>
+      <div class="flex gap-3" role="radiogroup" aria-label="Invoice type">
+        <% { 'sale' => 'Sale', 'purchase' => 'Purchase' }.each do |k, l| %>
+          <label class="text-sm font-medium text-gray-700 inline-flex items-center gap-1">
+            <input type="radio" name="kind" value="<%= k %>" <%= 'checked' if k == 'sale' %> data-action="change->ledger-demo#update"> <%= l %>
+          </label>
+        <% end %>
+      </div>
       <label class="text-sm font-medium text-gray-700"><span data-ledger-demo-target="label">Sale excl. VAT (€)</span>
-        <input type="number" min="0" step="0.01" value="1000" inputmode="decimal"
+        <input type="number" min="0" max="999999999.99" step="0.01" value="1000" inputmode="decimal"
                data-ledger-demo-target="net" data-action="input->ledger-demo#update"
                class="ml-2 w-36 border border-gray-300 rounded-lg px-3 py-2 text-right">
       </label>

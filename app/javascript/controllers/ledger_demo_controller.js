@@ -2,6 +2,8 @@ import { Controller } from "@hotwired/stimulus"
 
 // Landing-page demo: an invoice (sale or purchase) becomes a balanced PCMN journal entry, live.
 // Integer cents only (no float money); VAT rounded half-up.
+const MAX_CENTS = 99_999_999_999 // 999,999,999.99 €, well inside exact integer range
+
 export default class extends Controller {
   static targets = ["net", "sale", "purchase", "netCell", "vatCell", "grossCell", "status", "label", "breakBtn"]
 
@@ -12,7 +14,7 @@ export default class extends Controller {
   update() {
     const checked = (n) => this.element.querySelector(`input[name=${n}]:checked`).value
     const purchase = checked("kind") === "purchase"
-    const net = Math.max(0, Math.round((parseFloat(this.netTarget.value) || 0) * 100))
+    const net = Math.min(MAX_CENTS, Math.max(0, Math.round((parseFloat(this.netTarget.value) || 0) * 100)))
     const vat = Math.round((net * parseInt(checked("rate"), 10)) / 100)
     const gross = net + vat
     const fmt = (c) => (c / 100).toLocaleString("fr-BE", { style: "currency", currency: "EUR" })
