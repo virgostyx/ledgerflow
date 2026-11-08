@@ -121,6 +121,17 @@ RSpec.describe 'Landing', type: :request do
     end
   end
 
+  describe 'phone browser chrome' do
+    [ :root_path, :new_user_session_path ].each do |route|
+      it "colours the browser bar and gives a home-screen icon on #{route}" do
+        get public_send(route)
+        html = Nokogiri::HTML(response.body)
+        expect(html.at_css('meta[name="theme-color"]')['content']).to eq('#ea580c')
+        expect(html.at_css('link[rel="apple-touch-icon"]')['href']).to eq('/icon.png')
+      end
+    end
+  end
+
   describe 'structured data' do
     it 'embeds valid SoftwareApplication JSON-LD describing a free app' do
       get root_path
