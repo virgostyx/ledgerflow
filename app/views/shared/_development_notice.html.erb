@@ -1,6 +1,6 @@
 <%# Shown on every public page: the product is not finished and the visitor should know before relying on it. %>
 <div data-testid="development-notice" role="note"
      class="bg-amber-100 border-b border-amber-300 text-amber-900 text-sm text-center px-4 py-2">
-  <strong class="font-semibold">Work in progress.</strong>
-  LedgerFlow is still under development and testing: features may change and rough edges are to be expected.
+  <strong class="font-semibold"><%= t("development_notice.title") %></strong>
+  <%= t("development_notice.body") %>
 </div>

@@ -16,7 +16,7 @@
 </head>
 <body>
   <div class="notice" data-testid="development-notice" role="note">
-    <strong>Work in progress.</strong> LedgerFlow is still under development and testing: features may change and rough edges are to be expected.
+    <strong><%= t("development_notice.title") %></strong> <%= t("development_notice.body") %>
   </div>
   <a class="back" href="/">&larr; LedgerFlow</a>
   <h1><%= @document.dig("info", "title") %> <small>v<%= @document.dig("info", "version") %></small></h1>

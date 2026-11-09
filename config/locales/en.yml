@@ -1130,3 +1130,6 @@ en:
         amount: "\"%{amount}\" is not an amount."
     submitted: "The invoice was put to approval."
     not_required: "No approval policy applies to this invoice: it needs none."
+  development_notice:
+    title: "Work in progress."
+    body: "LedgerFlow is still under development and testing: features may change and rough edges are to be expected."
