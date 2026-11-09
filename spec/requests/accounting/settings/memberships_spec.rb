@@ -88,6 +88,15 @@ RSpec.describe "Accounting::Settings::Memberships", type: :request do
       expect(response.body).to include("Ventes SPECIAL")
     end
 
+    it "refuses to invite someone with a role that does not exist" do
+      expect {
+        post accounting_settings_memberships_path, params: { membership: { email: "fresh@example.com", full_name: "Fresh Face", role: "emperor" } }
+      }.not_to change(UserEntity, :count)
+
+      expect(response).to redirect_to(accounting_settings_memberships_path)
+      expect(flash[:alert]).to eq("Unknown role.")
+    end
+
     it "refuses a role that does not exist instead of failing with a server error" do
       patch accounting_settings_membership_path(accountant_membership), params: { membership: { role: "emperor" } }
 
