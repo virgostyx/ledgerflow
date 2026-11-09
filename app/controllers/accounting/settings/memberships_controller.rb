@@ -55,7 +55,7 @@ class Accounting::Settings::MembershipsController < Accounting::Settings::BaseCo
   # The role select carries a system role ("accountant") or a custom role ("custom:12"). A custom role sits on top of the
   # least-privileged system role: the system role is then only a fallback, never what grants rights.
   def role_attributes(value)
-    return { role: value, custom_role_id: nil } unless value.to_s.start_with?("custom:")
+    return (UserEntity.roles.key?(value.to_s) ? { role: value, custom_role_id: nil } : nil) unless value.to_s.start_with?("custom:") # an unknown name would raise in the enum
 
     custom = CustomRole.find_by(id: value.to_s.delete_prefix("custom:"))
     custom && { role: "manager", custom_role_id: custom.id }
