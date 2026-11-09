@@ -22,4 +22,26 @@ RSpec.describe 'Development notice on the public pages', type: :request do
     expect(body.element_children.map { |e| e['data-testid'] }).to include('development-notice')
     expect(body.element_children.first['href']).to eq('#main') # skip link stays first for keyboard users
   end
+
+  describe 'inside the application, once signed in' do
+    include_context 'with entity'
+
+    let!(:user) { create(:user, :accountant) }
+    let!(:membership) { create(:user_entity, :accountant, user: user, entity: entity) }
+
+    before { sign_in user }
+
+    {
+      'main layout (dashboard)' => -> { accounting_root_path },
+      'settings layout' => -> { accounting_settings_root_path }
+    }.each do |name, path|
+      it "is shown on the #{name}, above the header bar" do
+        get instance_exec(&path)
+        expect(response).to have_http_status(:ok)
+        column = notice.parent
+        expect(column.element_children.first['data-testid']).to eq('development-notice')
+        expect(column.element_children.map(&:name)).to include('header')
+      end
+    end
+  end
 end
