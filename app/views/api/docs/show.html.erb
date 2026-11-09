@@ -9,10 +9,16 @@
     h1 { margin-bottom: .25rem } code { background: #f3f4f6; padding: .1rem .3rem; border-radius: .25rem }
     .op { border: 1px solid #e5e7eb; border-radius: .5rem; margin: .75rem 0; padding: .75rem 1rem } .method { font-weight: 700; text-transform: uppercase; margin-right: .5rem }
     .get { color: #047857 } .post { color: #1d4ed8 } .patch { color: #b45309 } .scope { float: right; font-size: .85rem; color: #6b7280 }
+    .notice { background: #fef3c7; border-bottom: 1px solid #fcd34d; color: #78350f; font-size: .9rem; text-align: center; padding: .5rem 1rem; margin: -2rem -1rem 1.25rem }
+    .back { display: inline-block; margin-bottom: 1rem; color: #c2410c; font-weight: 600; text-decoration: none }
     table { border-collapse: collapse; margin-top: .5rem; font-size: .9rem } td, th { padding: .15rem .75rem .15rem 0; text-align: left; vertical-align: top }
   </style>
 </head>
 <body>
+  <div class="notice" data-testid="development-notice" role="note">
+    <strong>Work in progress.</strong> LedgerFlow is still under development and testing: features may change and rough edges are to be expected.
+  </div>
+  <a class="back" href="/">&larr; LedgerFlow</a>
   <h1><%= @document.dig("info", "title") %> <small>v<%= @document.dig("info", "version") %></small></h1>
   <p><%= @document.dig("info", "description") %></p>
   <p>The machine-readable document: <a href="/api/v1/openapi.json">/api/v1/openapi.json</a> (OpenAPI 3.1). Base URL: <code>/api/v1</code>.</p>

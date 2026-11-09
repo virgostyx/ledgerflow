@@ -16,6 +16,13 @@ RSpec.describe 'Development notice on the public pages', type: :request do
     end
   end
 
+  it 'is shown on the public API documentation, with a way back to LedgerFlow' do
+    get '/api/docs'
+    html = Nokogiri::HTML(response.body)
+    expect(html.at_css('[data-testid=development-notice]').text).to match(/under development and testing/i)
+    expect(html.at_css('a[href="/"]').text).to include('LedgerFlow')
+  end
+
   it 'comes before the rest of the page so it is the first thing read' do
     get root_path
     body = Nokogiri::HTML(response.body).at_css('body')
