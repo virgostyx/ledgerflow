@@ -24,5 +24,12 @@ fi
 # Object lock refuses to delete a file inside its retention: a warning, not a failure (the next run tries again).
 rclone delete "${REMOTE}daily" --min-age "${KEEP_DAYS}d" || echo "warning: could not prune ${REMOTE}daily (object lock?)" >&2
 
+# The documents live in the Cloudflare R2 bucket: DOCUMENTS_REMOTE is an rclone remote on it (e.g. "r2:<bucket>", read-only key is enough).
+# Optional: unset, nothing is done. Copy only, never a delete or a sync: an object removed from R2 stays in the copy. Keys of R2 objects never change.
+if [ -n "${DOCUMENTS_REMOTE:-}" ]; then
+  rclone copy "$DOCUMENTS_REMOTE" "${REMOTE}documents" --immutable
+  rclone check "$DOCUMENTS_REMOTE" "${REMOTE}documents" --one-way
+fi
+
 touch "$HOME/.offsite_last_success"
 echo "Offsite copy done to ${REMOTE} ($TODAY)"

@@ -7,7 +7,8 @@ Production : Kamal, un PostgreSQL 16 en accessoire (`ledgerflow-db`, serveur dé
 | Élément | Où | Pourquoi |
 |---|---|---|
 | `ledgerflow_production` | conteneur `ledgerflow-db` | toute la comptabilité |
-| volume `ledgerflow_storage` | `/rails/storage` | fichiers téléversés |
+| bucket Cloudflare R2 (documents) | Cloudflare, juridiction par défaut | fichiers téléversés (Active Storage `cloudflare`) ; copie par `bin/backup-offsite` si `DOCUMENTS_REMOTE` est défini |
+| volume `ledgerflow_storage` | `/rails/storage` | n'est plus le stockage des documents (reste monté) |
 | **clés privées de signature** | `/var/lib/ledgerflow/signing_keys` | sans elles on ne peut plus sceller de certificat. Copie chiffrée, **séparée** des sauvegardes de la base (jamais dans le même lieu), par exemple `tar czf - -C /var/lib/ledgerflow signing_keys \| age -r <clé publique> > signing_keys.tgz.age` puis stockage hors ligne |
 | `RAILS_MASTER_KEY`, `config/credentials`, clés de chiffrement Active Record | hors serveur (gestionnaire de mots de passe) | sans elles, les données chiffrées (identifiants Peppol) sont illisibles après restauration |
 
@@ -20,6 +21,8 @@ Les bases `cache`, `queue` et `cable` se reconstruisent : inutile de les sauvega
 Les scripts sont copiés sur le serveur (le dépôt n'y est pas) : voir `server_preparation.md` §7.
 
 **Copie hors serveur (`bin/backup-offsite`)** : `rclone copy` vers un bucket OVH Object Storage (S3) **chiffré** (remote `crypt` d'rclone), sans jamais réécrire un objet (`--immutable`), puis `rclone check` (taille). Garde 30 jours de copies quotidiennes et, le 1er de chaque mois, une copie `monthly/` qui n'est jamais supprimée. Le verrouillage d'objet du bucket empêche d'effacer une copie pendant sa période : le nettoyage affiche alors un avertissement et réessaie le lendemain.
+
+**Documents sur R2** : sur le serveur, ajouter un remote rclone `r2` (type S3, fournisseur `Cloudflare`, endpoint `https://<account_id>.r2.cloudflarestorage.com`, clé en **lecture seule** sur le bucket), puis exporter `DOCUMENTS_REMOTE=r2:<bucket>` pour `bin/backup-offsite` (cron). La copie ne fait que `copy --immutable` + `check --one-way` vers `documents/` : un objet supprimé de R2 reste dans la copie, jamais d'élagage.
 
 Configuration rclone, **à faire sur le serveur, jamais dans le dépôt ni dans le chat** (`rclone config`, fichier `~/.config/rclone/rclone.conf` en mode 600) :
 1. remote S3 `ovh` : fournisseur `Other` (ou `OVHcloud` si proposé), `endpoint` de la région du bucket (`s3.gra.io.cloud.ovh.net` pour Gravelines, `s3.sbg.io.cloud.ovh.net` pour Strasbourg : à confirmer dans la console OVH), clé d'accès et secret de l'utilisateur S3 dédié ;

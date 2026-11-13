@@ -15,6 +15,7 @@ RSpec.describe 'bin/backup-offsite' do
       #!/usr/bin/env bash
       echo "$@" >> "#{log}"
       case " $FAIL_ON " in *" $1 "*) echo "rclone: forced failure" >&2; exit 1;; esac
+      if [ -n "${FAIL_MATCH:-}" ]; then case "$*" in *"$FAIL_MATCH"*) echo "rclone: forced failure" >&2; exit 1;; esac; fi
     SH
     FileUtils.chmod(0o755, File.join(home, 'fakebin/rclone'))
   end
@@ -75,6 +76,36 @@ RSpec.describe 'bin/backup-offsite' do
     expect(calls.grep(/delete.*monthly/)).to be_empty
     run_script('OFFSITE_TODAY' => '2026-11-02')
     expect(calls.grep(/bucket:monthly/).size).to eq(1)
+  end
+
+  # The documents live in the R2 bucket, not in the storage volume: DOCUMENTS_REMOTE (an rclone remote on R2) is copied to the encrypted bucket too.
+  describe 'with DOCUMENTS_REMOTE set' do
+    let(:docs) { { 'DOCUMENTS_REMOTE' => 'r2:documents-bucket' } }
+
+    it 'copies the R2 bucket to documents/, never overwriting an object, then checks it' do
+      _out, _err, status = run_script(docs)
+      expect(status).to be_success
+      copy = calls.find { |call| call.start_with?('copy r2:documents-bucket') }
+      expect(copy).to include('bucket:documents', '--immutable')
+      expect(calls).to include(a_string_starting_with('check r2:documents-bucket bucket:documents --one-way'))
+    end
+
+    it 'never prunes the documents: a file deleted from R2 stays in the copy' do
+      run_script(docs)
+      expect(calls.grep(/delete.*documents/)).to be_empty
+    end
+
+    it 'writes no heartbeat when the documents copy fails' do
+      _out, err, status = run_script(docs.merge('FAIL_MATCH' => 'r2:documents-bucket'))
+      expect(status).not_to be_success
+      expect(err).to include('forced failure')
+      expect(File.exist?(heartbeat)).to be(false)
+    end
+  end
+
+  it 'does not touch the documents when DOCUMENTS_REMOTE is not set' do
+    run_script
+    expect(calls.grep(/documents/)).to be_empty
   end
 
   it 'refuses to run with nothing to copy' do
