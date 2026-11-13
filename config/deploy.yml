@@ -37,6 +37,7 @@ env:
     - RAILS_MASTER_KEY
     - LEDGERFLOW_DATABASE_PASSWORD
     - SMTP_PASSWORD
+    - SMTP_USERNAME
   clear:
     RAILS_ENV: production
 
@@ -51,7 +52,6 @@ env:
     SMTP_ADDRESS: smtp.hostinger.com
     SMTP_PORT: 465
     SMTP_DOMAIN: ledgerflowmanagment.com
-    SMTP_USERNAME: no-reply@ledgerflowmanagment.com
 
     # Private keys of the certificates of integrity: a host directory, outside the storage volume.
     LEDGER_SIGNING_KEY_DIR: /rails/signing_keys
