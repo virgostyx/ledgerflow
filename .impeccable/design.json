@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-12T00:00:00Z",
+  "title": "Design System: LedgerFlow",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Ledger Orange", "canonical": "#ea580c", "tonalRamp": ["#431407", "#7c2d12", "#9a3412", "#c2410c", "#ea580c", "#fb923c", "#fed7aa", "#fff7ed"] },
+      "canvas": { "role": "neutral", "displayName": "Pale Canvas", "canonical": "#f9fafb", "tonalRamp": ["#111827", "#374151", "#6b7280", "#9ca3af", "#d1d5db", "#e5e7eb", "#f3f4f6", "#f9fafb"] },
+      "positive": { "role": "semantic", "displayName": "Ledger Green", "canonical": "#047857", "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#34d399", "#a7f3d0", "#d1fae5", "#ecfdf5"] },
+      "caution": { "role": "semantic", "displayName": "Draft Amber", "canonical": "#b45309", "tonalRamp": ["#78350f", "#92400e", "#b45309", "#d97706", "#fbbf24", "#fde68a", "#fef3c7", "#fffbeb"] },
+      "negative": { "role": "semantic", "displayName": "Alert Red", "canonical": "#b91c1c", "tonalRamp": ["#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#f87171", "#fca5a5", "#fee2e2", "#fef2f2"] },
+      "info": { "role": "semantic", "displayName": "Reference Blue", "canonical": "#1d4ed8", "tonalRamp": ["#1e3a8a", "#1e40af", "#1d4ed8", "#2563eb", "#60a5fa", "#93c5fd", "#dbeafe", "#eff6ff"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Page title in PageHeader." },
+      "title": { "displayName": "Title", "purpose": "Card titles, in Deep Orange." },
+      "body": { "displayName": "Body", "purpose": "Tables, data and most text." },
+      "label": { "displayName": "Label", "purpose": "Uppercase table headers and nav section headings." },
+      "figure": { "displayName": "Figure", "purpose": "Every amount: monospace, tabular, right-aligned." }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "Resting shadow under cards (shadow-sm)." },
+      { "name": "card-hover", "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)", "purpose": "KPI card lift on hover (shadow-md)." },
+      { "name": "overlay", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", "purpose": "Modals, drawers and floating panels (shadow-lg and up)." }
+    ],
+    "motion": [
+      { "name": "color-transition", "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Hover colour changes on buttons and nav items (transition-colors)." },
+      { "name": "drawer-slide", "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Sidebar drawer translate below md (transition-transform)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main action on a screen; one per view where possible.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Post entry</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:8px;padding:8px 16px;font:500 14px/20px Inter,system-ui,sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s}.ds-btn:focus-visible{outline:none;box-shadow:0 0 0 2px #fff,0 0 0 4px #f97316}.ds-btn-primary{background:#ea580c;color:#fff}.ds-btn-primary:hover{background:#c2410c}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Alternative or cancelling action next to a primary.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:8px;padding:8px 16px;font:500 14px/20px Inter,system-ui,sans-serif;cursor:pointer;transition:background-color .15s}.ds-btn:focus-visible{outline:none;box-shadow:0 0 0 2px #fff,0 0 0 4px #f97316}.ds-btn-secondary{background:#fff;color:#374151;border-color:#d1d5db}.ds-btn-secondary:hover{background:#f9fafb}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Low-emphasis action on a card or toolbar.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\">Export</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:8px;padding:8px 16px;font:500 14px/20px Inter,system-ui,sans-serif;cursor:pointer;transition:background-color .15s}.ds-btn:focus-visible{outline:none;box-shadow:0 0 0 2px #fff,0 0 0 4px #f97316}.ds-btn-ghost{background:transparent;color:#ea580c;border-color:#fdba74}.ds-btn-ghost:hover{background:#fff7ed}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Single-line input with a label; focus shows an orange ring.",
+      "html": "<div class=\"ds-field\"><label for=\"ds-ref\">Reference</label><input id=\"ds-ref\" class=\"ds-input\" value=\"INV-2026-0142\"></div>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:4px;font:400 14px Inter,system-ui,sans-serif}.ds-field label{font-size:12px;color:#6b7280}.ds-input{border:1px solid #d1d5db;border-radius:8px;padding:12px;font:inherit;color:#111827;background:transparent}.ds-input:focus{outline:none;box-shadow:0 0 0 2px #f97316;border-color:transparent}"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Pill showing the state of an entry or document.",
+      "html": "<span class=\"ds-badge ds-badge-ok\">Validated</span> <span class=\"ds-badge ds-badge-draft\">Draft</span> <span class=\"ds-badge ds-badge-err\">Rejected</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font:500 12px/16px Inter,system-ui,sans-serif}.ds-badge-ok{background:#d1fae5;color:#047857}.ds-badge-draft{background:#fef3c7;color:#b45309}.ds-badge-err{background:#fee2e2;color:#b91c1c}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White container with a hairline border and a Deep Orange title.",
+      "html": "<div class=\"ds-card\"><h3>Open invoices</h3><p>12 documents awaiting payment.</p></div>",
+      "css": ".ds-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;box-shadow:0 1px 2px 0 rgb(0 0 0/.05);font-family:Inter,system-ui,sans-serif}.ds-card h3{margin:0 0 4px;font:600 18px/28px Inter,system-ui,sans-serif;color:#c2410c}.ds-card p{margin:0;font-size:14px;color:#6b7280}"
+    },
+    {
+      "name": "Navigation Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Sidebar row; the active one gets an Orange Tint background.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-active\" href=\"#\">Journal Entries</a><a class=\"ds-nav-item\" href=\"#\">Sales</a></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:2px;width:220px;font-family:Inter,system-ui,sans-serif}.ds-nav-item{padding:8px 12px;border-radius:6px;font:500 14px/20px Inter,system-ui,sans-serif;color:#4b5563;text-decoration:none;transition:background-color .15s}.ds-nav-item:hover{background:#f3f4f6;color:#111827}.ds-nav-item.ds-active{background:#ffedd5;color:#c2410c}"
+    },
+    {
+      "name": "Data Table",
+      "kind": "custom",
+      "refersTo": "figure",
+      "description": "Signature pattern: uppercase header, mono right-aligned amounts, a 2px totals rule.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Account</th><th class=\"r\">Debit</th><th class=\"r\">Credit</th></tr></thead><tbody><tr><td>400000 Customers</td><td class=\"r\">1 210,00</td><td class=\"r\"></td></tr><tr><td>700000 Sales</td><td class=\"r\"></td><td class=\"r\">1 000,00</td></tr></tbody><tfoot><tr><td>Total</td><td class=\"r\">1 210,00</td><td class=\"r\">1 210,00</td></tr></tfoot></table>",
+      "css": ".ds-table{width:100%;border-collapse:collapse;font:400 14px Inter,system-ui,sans-serif;color:#111827}.ds-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:#6b7280;text-transform:uppercase}.ds-table td{padding:8px 16px;border-bottom:1px solid #f3f4f6}.ds-table .r{text-align:right;font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}.ds-table tfoot td{border-top:2px solid #d1d5db;background:#f9fafb;font-weight:600}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Audit Trail",
+    "overview": "LedgerFlow looks like a set of books that can be checked. Every screen is built so that a figure can be read, compared and traced back: tabular numerals, right-aligned amounts, an unambiguous sign, and a surface quiet enough that nothing competes with the numbers. It is a working tool for long sessions, so it favours density and consistency over expression. Brand shows up in precise details, not in decoration.",
+    "keyCharacteristics": [
+      "Dense but scannable; text-sm is the working size.",
+      "Flat by default; structure comes from borders, not shadows.",
+      "One accent (orange); semantic colours only for status and sign.",
+      "Amounts are always monospace, tabular and right-aligned.",
+      "Everything user-visible is in English."
+    ],
+    "rules": [
+      { "name": "The Single Accent Rule", "body": "Orange is for the next action and the current place. It is never used for decoration, and never to signal a status; status has its own semantic hues.", "section": "colors" },
+      { "name": "The Sign Rule", "body": "Colour never carries a sign alone. A negative amount is red and shows its minus sign.", "section": "colors" },
+      { "name": "The Aligned Figures Rule", "body": "Amounts are monospace, tabular and right-aligned. No exception, including KPI cards and totals.", "section": "typography" },
+      { "name": "The Border-First Rule", "body": "Separate with a border before reaching for a shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do right-align amounts and set them in monospace with tabular numerals.",
+      "Do use the primary-* scale (orange) for the primary action, active navigation and links.",
+      "Do separate surfaces with a 1px Hairline border before adding a shadow.",
+      "Do write all user-visible text in English.",
+      "Do keep a visible 2px orange focus ring and meet WCAG AA contrast.",
+      "Do build with the existing Ui:: ViewComponents rather than ad hoc markup."
+    ],
+    "donts": [
+      "Don't use indigo or violet; the brand colour replaced them (migration still in progress).",
+      "Don't signal status with orange, or a sign with colour alone.",
+      "Don't add decorative gradients, glows or heavy shadows to working screens.",
+      "Don't use Float representations or unformatted numbers in the UI; amounts are always formatted decimals.",
+      "Don't introduce a second accent colour or a different font family."
+    ]
+  }
+}
