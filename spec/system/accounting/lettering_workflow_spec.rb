@@ -53,7 +53,7 @@ RSpec.describe 'Lettering workflow', type: :system, js: true do
       fill_in 'Credit', with: format('%.2f', amount)
     end
 
-    click_button 'Save'
+    click_button 'Post entry'
     expect(page).to have_css('.bg-emerald-100', text: 'Posted')
     Accounting::JournalEntryLine.where(account: account_440, partner: supplier).where('debit > 0').first!
   end

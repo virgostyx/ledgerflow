@@ -24,8 +24,13 @@ RSpec.describe "Entry in a foreign currency", type: :system, js: true do
     execute_script("document.querySelectorAll('.entry-lines')[#{index}].querySelector('[name*=\"account_id\"]').value = '#{account.id}'")
   end
 
+  def open_extras(index)
+    find_all(".entry-lines")[index].find("summary", text: "Currency & analytics").click
+  end
+
   it "shows the rate, turns the amount into euros, and posts an entry balanced in EUR" do
     set_account(0, account_604)
+    open_extras(0)
     within(all(".entry-lines")[0]) do
       select "USD", from: "Currency"
       fill_in "Amount in currency", with: "1000"
@@ -36,6 +41,7 @@ RSpec.describe "Entry in a foreign currency", type: :system, js: true do
     click_button "Add a line"
     expect(page).to have_css(".entry-lines", count: 2)
     set_account(1, account_440)
+    open_extras(1)
     within(all(".entry-lines")[1]) do
       select "USD", from: "Currency"
       select "Credit", from: "Side of the amount in currency"
@@ -44,7 +50,7 @@ RSpec.describe "Entry in a foreign currency", type: :system, js: true do
     end
 
     expect(page).to have_css(".balance-indicator .bg-emerald-100", text: "Balanced")
-    click_button "Save"
+    click_button "Post entry"
 
     expect(page).to have_css(".bg-emerald-100", text: "Posted")
     entry = Accounting::JournalEntry.last
@@ -52,10 +58,31 @@ RSpec.describe "Entry in a foreign currency", type: :system, js: true do
   end
 
   it "says which rate is missing, naming the currency and the date" do
+    open_extras(0)
     within(all(".entry-lines")[0]) do
       select "GBP", from: "Currency"
       fill_in "Amount in currency", with: "100"
       expect(page).to have_content("No exchange rate for GBP")
+    end
+  end
+
+  it "tells the person when the rate cannot be fetched, instead of failing silently" do
+    execute_script("window.fetch = () => Promise.reject(new Error('offline'))")
+    open_extras(0)
+    within(all(".entry-lines")[0]) do
+      select "USD", from: "Currency"
+      fill_in "Amount in currency", with: "100"
+      expect(page).to have_content("Could not fetch the exchange rate")
+    end
+  end
+
+  it "shows a successful conversion in a neutral tone, and keeps the warning colour for failures" do
+    set_account(0, account_604)
+    open_extras(0)
+    within(all(".entry-lines")[0]) do
+      select "USD", from: "Currency"
+      fill_in "Amount in currency", with: "1000"
+      expect(page).to have_css("[data-journal-entry-form-target=foreignNotice].text-gray-600", text: "800.00 EUR at 1.25")
     end
   end
 end

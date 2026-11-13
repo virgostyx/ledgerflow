@@ -1,0 +1,101 @@
+<div class="entry-lines border-b border-gray-200 py-2" data-journal-entry-form-target="line">
+  <div class="grid grid-cols-2 gap-x-2 gap-y-3 lg:grid-cols-12 lg:gap-y-0 lg:items-center">
+    <div class="col-span-2 lg:col-span-3 relative" data-controller="account-search"
+         data-account-search-source-id-value="journal-entry-accounts"
+         data-action="account-search:selected->journal-entry-form#onAccountSelected account-search:cleared->journal-entry-form#computeBalance">
+      <label class="mb-0.5 block text-xs text-gray-600 lg:sr-only" for="<%= form.field_id(:account_search) %>">Account</label>
+      <input type="text" id="<%= form.field_id(:account_search) %>" placeholder="Account"
+             value="<%= line.account ? "#{line.account.code} — #{line.account.label_fr}" : '' %>"
+             class="<%= FIELD %>"
+             data-account-search-target="input"
+             data-action="focus->account-search#filter input->account-search#filter keydown->account-search#keydown blur->account-search#hideDelayed">
+      <p id="<%= form.field_id(:account_error) %>" class="mt-1 hidden text-xs text-red-700" data-account-search-target="error">Choose an account from the list.</p>
+      <%= form.hidden_field :account_id, data: { account_search_target: 'accountId' } %>
+      <div data-account-search-target="suggestions"
+           class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
+    </div>
+    <div class="col-span-1 lg:col-span-2">
+      <%= form.label :label, 'Label', class: 'mb-0.5 block text-xs text-gray-600 lg:sr-only' %>
+      <%= form.text_field :label, placeholder: 'Label', class: FIELD %>
+    </div>
+    <div class="col-span-1 lg:col-span-2">
+      <%= form.label :partner_id, 'Partner', class: 'mb-0.5 block text-xs text-gray-600 lg:sr-only' %>
+      <%= form.collection_select :partner_id, partners, :id, :name, { include_blank: '—' }, class: FIELD %>
+    </div>
+    <div class="col-span-1 lg:col-span-2">
+      <%= form.label :debit, 'Debit', class: 'mb-0.5 block text-xs text-gray-600 lg:sr-only' %>
+      <%= form.number_field :debit, value: format('%.2f', line.debit.to_d), step: '0.01', min: 0, placeholder: '0.00',
+            class: "#{FIELD} text-right font-mono tabular-nums",
+            data: { journal_entry_form_target: 'debitInput',
+                    action: 'input->journal-entry-form#onAmountInput focus->journal-entry-form#selectAll' } %>
+    </div>
+    <div class="col-span-1 lg:col-span-2">
+      <%= form.label :credit, 'Credit', class: 'mb-0.5 block text-xs text-gray-600 lg:sr-only' %>
+      <%= form.number_field :credit, value: format('%.2f', line.credit.to_d), step: '0.01', min: 0, placeholder: '0.00',
+            class: "#{FIELD} text-right font-mono tabular-nums",
+            data: { journal_entry_form_target: 'creditInput',
+                    action: 'input->journal-entry-form#onAmountInput focus->journal-entry-form#selectAll' } %>
+    </div>
+    <div class="col-span-2 flex justify-end lg:col-span-1 lg:block lg:text-center">
+      <button type="button" aria-label="Remove line"
+              class="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-gray-600 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-primary-500 lg:min-h-8 lg:min-w-8 lg:px-2 lg:text-lg lg:leading-none"
+              data-action="click->journal-entry-form#removeLine"><span aria-hidden="true" class="lg:hidden">Remove</span><span aria-hidden="true" class="hidden lg:inline">×</span></button>
+    </div>
+  </div>
+
+  <details class="line-extras group mt-1" <%= "open" if extras_open? %>>
+    <summary class="inline-flex cursor-pointer select-none list-none items-center gap-1 rounded-md py-0.5 text-xs font-medium text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 [&::-webkit-details-marker]:hidden">
+      <svg class="h-3.5 w-3.5 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+      Currency &amp; analytics
+      <span class="hidden font-medium text-red-700" data-line-extras-required>· analytic account required</span>
+    </summary>
+
+    <div class="foreign-row mt-2 grid grid-cols-2 gap-2 items-center text-xs text-gray-600 lg:grid-cols-12">
+      <div class="col-span-1 lg:col-span-2">
+        <%= form.select :currency, currency_options, { selected: line.currency.presence || "EUR" },
+              'aria-label': 'Currency', class: FIELD_SMALL,
+              data: { action: 'change->journal-entry-form#onForeignChanged' } %>
+      </div>
+      <div class="col-span-1 lg:col-span-2">
+        <%= form.number_field :amount_currency, value: line.amount_currency&.abs, step: 'any', min: 0, placeholder: 'Amount', 'aria-label': 'Amount in currency',
+              class: "#{FIELD_SMALL} text-right font-mono",
+              data: { action: 'input->journal-entry-form#onForeignChanged' } %>
+      </div>
+      <div class="col-span-1 lg:col-span-2">
+        <%= form.text_field :exchange_rate, value: line.exchange_rate&.to_s("F"), readonly: true, placeholder: 'Rate per 1 EUR', 'aria-label': 'Rate per 1 EUR',
+              class: "block w-full rounded-md border border-gray-200 bg-gray-50 text-xs text-right font-mono" %>
+      </div>
+      <div class="col-span-1 lg:col-span-2">
+        <%= select_tag "#{form.object_name}[side]", options_for_select([ [ "Debit", "debit" ], [ "Credit", "credit" ] ], (line.credit.to_d.positive? ? "credit" : "debit")),
+              'aria-label': 'Side of the amount in currency', class: FIELD_SMALL,
+              data: { action: 'change->journal-entry-form#onForeignChanged' } %>
+      </div>
+      <p class="col-span-2 text-gray-600 lg:col-span-4" role="status" data-journal-entry-form-target="foreignNotice"></p>
+    </div>
+
+    <% if axes.any? %>
+      <div class="analytical-axes-row mt-2 grid grid-cols-1 gap-2 lg:grid-cols-[repeat(var(--axes),minmax(0,1fr))_1fr]"
+           style="--axes: <%= axes.size %>">
+        <% axes.each_with_index do |axis, axis_idx| %>
+          <div class="axis-field" data-axis-code="<%= axis.code %>">
+            <label class="block text-xs text-gray-600 mb-0.5 axis-label" data-axis-id="<%= axis.id %>">
+              <%= axis.code %>
+              <span class="required-marker hidden text-red-700 text-xs">* required</span>
+            </label>
+            <%= form.fields_for :analytical_annotations, annotation_for(axis), index: axis_idx do |af| %>
+              <%= af.hidden_field :analytical_axis_id %>
+              <%= af.hidden_field :id %>
+              <%= af.select :analytical_account_id,
+                    axis.analytical_accounts.active.ordered.map { |aa| [ aa.label_fr, aa.id ] },
+                    { include_blank: "—" },
+                    class: "#{FIELD_SMALL} py-1",
+                    data: { axis_id: axis.id,
+                            action: "change->journal-entry-form#onAxisAccountChanged" } %>
+              <%= af.hidden_field :_destroy, value: 0, data: { destroy_field: true } %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </details>
+</div>

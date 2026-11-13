@@ -1,48 +1,60 @@
 <%= form_with model: @entry, scope: :accounting_journal_entry, url: form_url,
               data: { controller: "journal-entry-form",
+                      action: "keydown->journal-entry-form#shortcut input->journal-entry-form#markDirty change->journal-entry-form#markDirty",
                       journal_entry_form_axes_value: axes_json,
                       journal_entry_form_rate_lookup_url_value: helpers.accounting_exchange_rate_lookup_path } do |f| %>
 
   <%= f.hidden_field :fiscal_year_id %>
+  <%# The chart of accounts, once for every line (see account-search). %>
+  <script type="application/json" id="journal-entry-accounts"><%= ERB::Util.json_escape(accounts_json).html_safe %></script>
+  <% if @entry.errors.any? %>
+    <div data-entry-errors role="alert" tabindex="-1" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+      <p class="font-semibold">This entry could not be saved:</p>
+      <ul class="mt-1 list-disc pl-5">
+        <% @entry.errors.full_messages.each do |message| %><li><%= message %></li><% end %>
+      </ul>
+    </div>
+  <% end %>
   <% if @agent_proposal %>
     <%= hidden_field_tag "accounting_journal_entry[agent_proposal_id]", @agent_proposal.id %>
-    <p role="status" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">Prepared by the assistant from your request. Check every line: what you save here is your entry, not the proposal.</p>
+    <div role="status" class="mb-4">
+      <%= render Ui::AlertComponent.new(variant: :info, message: "Prepared by the assistant from your request. Check every line: what you save here is your entry, not the proposal.") %>
+    </div>
   <% end %>
 
-  <%# Header fields %>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    <div class="relative" data-controller="floating-label">
+  <%# Header: one field style for the whole form (the same as the lines); the description is the field read most often later, so it has two columns. %>
+  <div class="grid grid-cols-2 gap-4 mb-3 lg:grid-cols-4">
+    <div>
+      <%= f.label :journal_id, 'Journal', class: header_label_class %>
       <%= f.collection_select :journal_id, @journals, :id,
             ->(j) { "#{j.code} — #{j.label_fr}" },
             { include_blank: false },
-            { class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-              data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } } %>
-      <%= f.label :journal_id, 'Journal', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+            { class: field_class } %>
     </div>
-    <div class="relative" data-controller="floating-label">
-      <%= f.date_field :entry_date,
-            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
-      <%= f.label :entry_date, 'Date', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    <div>
+      <%= f.label :entry_date, 'Date', class: header_label_class %>
+      <%= f.date_field :entry_date, class: field_class %>
     </div>
-    <div class="relative" data-controller="floating-label">
-      <%= f.text_field :description,
-            placeholder: ' ',
-            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
-      <%= f.label :description, 'Description', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
-    </div>
-    <div class="relative" data-controller="floating-label">
-      <%= f.date_field :auto_reverse_on,
-            title: 'Optional: a draft reversal of this entry is prepared on that date',
-            class: 'block w-full rounded-lg border border-gray-300 px-3 py-3 text-sm text-gray-900 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500',
-            data: { floating_label_target: 'input', action: 'focus->floating-label#focus blur->floating-label#blur' } %>
-      <%= f.label :auto_reverse_on, 'Reverse on (optional)', class: 'lf-floating-label', data: { floating_label_target: 'label' } %>
+    <div class="col-span-2">
+      <%= f.label :description, 'Description', class: header_label_class %>
+      <%= f.text_field :description, class: field_class %>
     </div>
   </div>
 
+  <details class="header-more group mb-6" <%= "open" if @entry.auto_reverse_on.present? %>>
+    <summary class="inline-flex cursor-pointer select-none list-none items-center gap-1 rounded-md py-0.5 text-xs font-medium text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 [&::-webkit-details-marker]:hidden">
+      <svg class="h-3.5 w-3.5 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+      More options
+    </summary>
+    <div class="mt-2 max-w-xs">
+      <%= f.label :auto_reverse_on, 'Reverse on (optional)', class: header_label_class %>
+      <%= f.date_field :auto_reverse_on, class: field_class, 'aria-describedby': 'reverse-hint' %>
+      <p id="reverse-hint" class="mt-1 text-xs text-gray-600">A draft reversal of this entry is prepared on that date.</p>
+    </div>
+  </details>
+
   <%# Column headers %>
-  <div class="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 mb-2 px-1">
+  <div class="entry-columns hidden lg:grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
     <div class="col-span-3">Account</div>
     <div class="col-span-2">Label</div>
     <div class="col-span-2">Partner</div>
@@ -54,238 +66,65 @@
   <%# Lines container %>
   <div data-journal-entry-form-target="linesContainer">
     <%= f.fields_for :lines, (@entry.lines.any? ? @entry.lines : [ @entry.lines.build ]) do |lf| %>
-      <div class="entry-lines mb-2 border border-primary-200 odd:bg-primary-50 rounded-md py-1 px-1 -mx-1" data-journal-entry-form-target="line">
-        <div class="grid grid-cols-12 gap-2 items-center">
-          <div class="col-span-3 relative" data-controller="account-search"
-               data-account-search-accounts-value="<%= accounts_json %>"
-               data-action="account-search:selected->journal-entry-form#onAccountSelected">
-            <label class="sr-only">Account</label>
-            <input type="text" placeholder="Account"
-                   value="<%= lf.object.account&.code %>"
-                   class="block w-full rounded border border-gray-300 bg-white text-sm"
-                   data-account-search-target="input"
-                   data-action="focus->account-search#filter input->account-search#filter blur->account-search#hideDelayed">
-            <%= lf.hidden_field :account_id, data: { account_search_target: 'accountId' } %>
-            <div data-account-search-target="suggestions"
-                 class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
-          </div>
-          <div class="col-span-2">
-            <label class="sr-only">Label</label>
-            <%= lf.text_field :label, placeholder: 'Label', class: 'block w-full rounded border border-gray-300 bg-white text-sm' %>
-          </div>
-          <div class="col-span-2">
-            <label class="sr-only">Partner</label>
-            <%= lf.collection_select :partner_id, partners, :id, :name, { include_blank: '—' },
-                  class: 'block w-full rounded border border-gray-300 bg-white text-sm' %>
-          </div>
-          <div class="col-span-2">
-            <label class="sr-only">Debit</label>
-            <%= lf.number_field :debit, step: '0.01', min: 0, placeholder: '0.00',
-                  'aria-label': 'Debit',
-                  class: 'block w-full rounded border border-gray-300 bg-white text-sm text-right font-mono',
-                  data: { journal_entry_form_target: 'debitInput',
-                          action: 'input->journal-entry-form#computeBalance' } %>
-          </div>
-          <div class="col-span-2">
-            <label class="sr-only">Credit</label>
-            <%= lf.number_field :credit, step: '0.01', min: 0, placeholder: '0.00',
-                  'aria-label': 'Credit',
-                  class: 'block w-full rounded border border-gray-300 bg-white text-sm text-right font-mono',
-                  data: { journal_entry_form_target: 'creditInput',
-                          action: 'input->journal-entry-form#computeBalance' } %>
-          </div>
-          <div class="col-span-1 text-center">
-            <button type="button" class="text-gray-400 hover:text-red-600 text-lg"
-                    data-action="click->journal-entry-form#removeLine">×</button>
-          </div>
-        </div>
-
-        <div class="foreign-row mt-1 grid grid-cols-12 gap-2 pl-1 items-center text-xs text-gray-500">
-          <div class="col-span-2">
-            <%= lf.select :currency, currency_options, { selected: lf.object.currency.presence || "EUR" },
-                  'aria-label': 'Currency', class: 'block w-full rounded border border-gray-300 bg-white text-xs',
-                  data: { action: 'change->journal-entry-form#onForeignChanged' } %>
-          </div>
-          <div class="col-span-2">
-            <%= lf.number_field :amount_currency, value: lf.object.amount_currency&.abs, step: 'any', min: 0, placeholder: 'Amount in currency', 'aria-label': 'Amount in currency',
-                  class: 'block w-full rounded border border-gray-300 bg-white text-xs text-right font-mono',
-                  data: { action: 'input->journal-entry-form#onForeignChanged' } %>
-          </div>
-          <div class="col-span-2">
-            <%= lf.text_field :exchange_rate, value: lf.object.exchange_rate&.to_s("F"), readonly: true, placeholder: 'Rate per 1 EUR', 'aria-label': 'Rate per 1 EUR',
-                  class: 'block w-full rounded border border-gray-200 bg-gray-50 text-xs text-right font-mono' %>
-          </div>
-          <div class="col-span-2">
-            <%= select_tag "#{lf.object_name}[side]", options_for_select([ [ "Debit", "debit" ], [ "Credit", "credit" ] ], (lf.object.credit.to_d.positive? ? "credit" : "debit")),
-                  'aria-label': 'Side of the amount in currency', class: 'block w-full rounded border border-gray-300 bg-white text-xs',
-                  data: { action: 'change->journal-entry-form#onForeignChanged' } %>
-          </div>
-          <p class="col-span-4 text-amber-700" data-journal-entry-form-target="foreignNotice"></p>
-        </div>
-
-        <%# Analytical axis selects — one per axis %>
-        <% if axes.any? %>
-          <div class="analytical-axes-row mt-1.5 grid gap-2 pl-1"
-               style="grid-template-columns: repeat(<%= axes.size %>, minmax(0, 1fr)) 1fr">
-            <% axes.each_with_index do |axis, axis_idx| %>
-              <% annotation = lf.object.analytical_annotations.find { |a| a.analytical_axis_id == axis.id } %>
-              <div class="axis-field" data-axis-code="<%= axis.code %>">
-                <label class="block text-xs text-gray-400 mb-0.5 axis-label" data-axis-id="<%= axis.id %>">
-                  <%= axis.code %>
-                  <span class="required-marker hidden text-red-500 text-xs">*</span>
-                </label>
-                <%= lf.fields_for :analytical_annotations, annotation || Accounting::AnalyticalAnnotation.new(analytical_axis: axis),
-                      index: axis_idx do |af| %>
-                  <%= af.hidden_field :analytical_axis_id %>
-                  <%= af.hidden_field :id %>
-                  <%= af.select :analytical_account_id,
-                        axis.analytical_accounts.active.ordered.map { |aa| [ aa.label_fr, aa.id ] },
-                        { include_blank: "—" },
-                        class: "block w-full rounded border border-gray-300 bg-white text-xs py-1",
-                        data: { axis_id: axis.id,
-                                action: "change->journal-entry-form#onAxisAccountChanged" } %>
-                  <%= af.hidden_field :_destroy, value: 0, data: { destroy_field: true } %>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
+      <%= render Layouts::JournalEntryLineComponent.new(form: lf, axes: axes, partners: partners, currency_options: currency_options) %>
     <% end %>
   </div>
 
-  <%# New line template (hidden, cloned by Stimulus) %>
+  <%# New line template (hidden, cloned by Stimulus): the same component as the saved lines %>
   <template data-journal-entry-form-target="lineTemplate">
-    <div class="entry-lines mb-2 border border-primary-200 odd:bg-primary-50 rounded-md py-1 px-1 -mx-1" data-journal-entry-form-target="line">
-      <div class="grid grid-cols-12 gap-2 items-center">
-        <div class="col-span-3 relative" data-controller="account-search"
-             data-account-search-accounts-value="<%= accounts_json %>"
-             data-action="account-search:selected->journal-entry-form#onAccountSelected">
-          <label class="sr-only">Account</label>
-          <input type="text" placeholder="Account"
-                 class="block w-full rounded border border-gray-300 bg-white text-sm"
-                 data-account-search-target="input"
-                 data-action="focus->account-search#filter input->account-search#filter blur->account-search#hideDelayed">
-          <input type="hidden" name="accounting_journal_entry[lines_attributes][NEW_INDEX][account_id]"
-                 data-account-search-target="accountId">
-          <div data-account-search-target="suggestions"
-               class="hidden absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
-        </div>
-        <div class="col-span-2">
-          <label class="sr-only">Label</label>
-          <input type="text" placeholder="Label"
-                 name="accounting_journal_entry[lines_attributes][NEW_INDEX][label]"
-                 class="block w-full rounded border border-gray-300 bg-white text-sm">
-        </div>
-        <div class="col-span-2">
-          <label class="sr-only">Partner</label>
-          <select name="accounting_journal_entry[lines_attributes][NEW_INDEX][partner_id]"
-                  class="block w-full rounded border border-gray-300 bg-white text-sm">
-            <option value="">—</option>
-            <% partners.each do |partner| %>
-              <option value="<%= partner.id %>"><%= partner.name %></option>
-            <% end %>
-          </select>
-        </div>
-        <div class="col-span-2">
-          <label class="sr-only">Debit</label>
-          <input type="number" step="0.01" min="0" placeholder="0.00"
-                 aria-label="Debit" value="0"
-                 name="accounting_journal_entry[lines_attributes][NEW_INDEX][debit]"
-                 class="block w-full rounded border border-gray-300 bg-white text-sm text-right font-mono"
-                 data-journal-entry-form-target="debitInput"
-                 data-action="input->journal-entry-form#computeBalance">
-        </div>
-        <div class="col-span-2">
-          <label class="sr-only">Credit</label>
-          <input type="number" step="0.01" min="0" placeholder="0.00"
-                 aria-label="Credit" value="0"
-                 name="accounting_journal_entry[lines_attributes][NEW_INDEX][credit]"
-                 class="block w-full rounded border border-gray-300 bg-white text-sm text-right font-mono"
-                 data-journal-entry-form-target="creditInput"
-                 data-action="input->journal-entry-form#computeBalance">
-        </div>
-        <div class="col-span-1 text-center">
-          <button type="button" class="text-gray-400 hover:text-red-600 text-lg"
-                  data-action="click->journal-entry-form#removeLine">×</button>
-        </div>
-      </div>
-
-      <div class="foreign-row mt-1 grid grid-cols-12 gap-2 pl-1 items-center text-xs text-gray-500">
-        <div class="col-span-2">
-          <select name="accounting_journal_entry[lines_attributes][NEW_INDEX][currency]" aria-label="Currency" class="block w-full rounded border border-gray-300 bg-white text-xs"
-                  data-action="change->journal-entry-form#onForeignChanged">
-            <% currency_options.each do |code| %><option value="<%= code %>"><%= code %></option><% end %>
-          </select>
-        </div>
-        <div class="col-span-2">
-          <input type="number" step="any" min="0" placeholder="Amount in currency" aria-label="Amount in currency"
-                 name="accounting_journal_entry[lines_attributes][NEW_INDEX][amount_currency]"
-                 class="block w-full rounded border border-gray-300 bg-white text-xs text-right font-mono" data-action="input->journal-entry-form#onForeignChanged">
-        </div>
-        <div class="col-span-2">
-          <input type="text" readonly placeholder="Rate per 1 EUR" aria-label="Rate per 1 EUR" name="accounting_journal_entry[lines_attributes][NEW_INDEX][exchange_rate]"
-                 class="block w-full rounded border border-gray-200 bg-gray-50 text-xs text-right font-mono">
-        </div>
-        <div class="col-span-2">
-          <select name="accounting_journal_entry[lines_attributes][NEW_INDEX][side]" aria-label="Side of the amount in currency"
-                  class="block w-full rounded border border-gray-300 bg-white text-xs" data-action="change->journal-entry-form#onForeignChanged">
-            <option value="debit">Debit</option><option value="credit">Credit</option>
-          </select>
-        </div>
-        <p class="col-span-4 text-amber-700" data-journal-entry-form-target="foreignNotice"></p>
-      </div>
-
-      <%# Analytical axis selects in template %>
-      <% if axes.any? %>
-        <div class="analytical-axes-row mt-1.5 grid gap-2 pl-1"
-             style="grid-template-columns: repeat(<%= axes.size %>, minmax(0, 1fr)) 1fr">
-          <% axes.each_with_index do |axis, axis_idx| %>
-            <div class="axis-field" data-axis-code="<%= axis.code %>">
-              <label class="block text-xs text-gray-400 mb-0.5 axis-label" data-axis-id="<%= axis.id %>">
-                <%= axis.code %>
-                <span class="required-marker hidden text-red-500 text-xs">*</span>
-              </label>
-              <input type="hidden"
-                     name="accounting_journal_entry[lines_attributes][NEW_INDEX][analytical_annotations_attributes][<%= axis_idx %>][analytical_axis_id]"
-                     value="<%= axis.id %>">
-              <select name="accounting_journal_entry[lines_attributes][NEW_INDEX][analytical_annotations_attributes][<%= axis_idx %>][analytical_account_id]"
-                      class="block w-full rounded border border-gray-300 bg-white text-xs py-1"
-                      data-axis-id="<%= axis.id %>"
-                      data-action="change->journal-entry-form#onAxisAccountChanged">
-                <option value="">—</option>
-                <% axis.analytical_accounts.active.ordered.each do |aa| %>
-                  <option value="<%= aa.id %>"><%= aa.label_fr %></option>
-                <% end %>
-              </select>
-            </div>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
+    <%= f.fields_for :lines, Accounting::JournalEntryLine.new, child_index: "NEW_INDEX" do |lf| %>
+      <%= render Layouts::JournalEntryLineComponent.new(form: lf, axes: axes, partners: partners, currency_options: currency_options) %>
+    <% end %>
   </template>
+
+  <%# Undo notice for a removed line %>
+  <div class="mb-2 text-sm text-gray-700" role="status" aria-live="polite" data-journal-entry-form-target="undoNotice" hidden>
+    <span>Line removed.</span>
+    <button type="button" class="rounded-md font-medium text-primary-700 underline hover:text-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500" data-action="journal-entry-form#undoRemove">Undo</button>
+  </div>
 
   <%# Add line button %>
   <button type="button"
-          class="text-sm text-primary-600 hover:text-primary-800 font-medium mb-6"
+          class="text-sm text-primary-600 hover:text-primary-800 font-medium mb-1 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          aria-keyshortcuts="Control+Enter"
           data-action="click->journal-entry-form#addLine">
     + Add a line
   </button>
+  <p class="text-xs text-gray-600 mb-6">Ctrl+Enter adds a line and fills in the amount still missing.</p>
 
-  <%# Balance indicator %>
-  <div class="flex items-center justify-between mb-4">
-    <div class="balance-indicator" data-journal-entry-form-target="balanceIndicator">
-      <span class="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">Pending</span>
+  <%# Totals bar: stays in view under the lines. Totals sit under the Debit and Credit columns (same 12-column grid as the lines), with the balance state and Save next to them. %>
+  <div class="entry-totals-bar sticky bottom-0 z-10 -mx-1 border-t border-gray-300 bg-white px-1 pt-2 pb-2 lg:pt-3 lg:pb-3">
+    <div class="grid grid-cols-2 gap-2 items-baseline text-sm lg:grid-cols-12">
+      <div class="hidden text-xs font-medium text-gray-500 uppercase tracking-wider lg:col-span-7 lg:block">Totals</div>
+      <div class="lg:col-span-2 lg:text-right">
+        <span class="mr-1 text-xs text-gray-600 lg:sr-only">Total debit</span>
+        <span class="font-mono tabular-nums font-semibold text-gray-900" data-journal-entry-form-target="totalDebit">0.00</span>
+      </div>
+      <div class="text-right lg:col-span-2">
+        <span class="mr-1 text-xs text-gray-600 lg:sr-only">Total credit</span>
+        <span class="font-mono tabular-nums font-semibold text-gray-900" data-journal-entry-form-target="totalCredit">0.00</span>
+      </div>
+      <div class="hidden lg:col-span-1 lg:block"></div>
     </div>
-  </div>
 
-  <%# Submit %>
-  <div class="flex gap-3">
-    <%= f.submit 'Save', name: 'commit', value: 'Save',
-          class: 'px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed',
-          disabled: true,
-          data: { journal_entry_form_target: 'submitButton' } %>
-    <%= link_to 'Cancel', accounting_journal_entries_path,
-          class: 'px-4 py-2 text-sm text-gray-600 hover:text-gray-800' %>
+    <div class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-journal-entry-form-target="balanceAnnouncer"></div>
+
+    <div class="mt-2 flex flex-wrap items-center justify-between gap-2 lg:mt-3 lg:gap-3">
+      <div id="entry-balance-status" class="balance-indicator flex flex-1 items-center gap-2 text-xs text-gray-700 lg:text-sm" data-journal-entry-form-target="balanceIndicator">
+        <span class="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">Pending</span>
+        <span>Enter debit and credit amounts.</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <%= link_to 'Cancel', accounting_journal_entries_path,
+              class: 'inline-flex min-h-11 items-center rounded-md px-4 py-2 text-sm text-gray-600 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 lg:min-h-0',
+              data: { journal_entry_form_target: 'cancelLink', discard_label: discard_label, action: 'click->journal-entry-form#cancel' } %>
+        <%= f.submit submit_label, name: 'commit', value: submit_label,
+              class: 'min-h-11 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed lg:min-h-0',
+              disabled: true,
+              'aria-describedby': 'entry-balance-status entry-save-consequence',
+              data: { journal_entry_form_target: 'submitButton' } %>
+      </div>
+    </div>
+    <p id="entry-save-consequence" class="mt-1 sr-only text-xs text-gray-600 lg:not-sr-only lg:text-right"><%= save_consequence %></p>
   </div>
 <% end %>

@@ -1,5 +1,8 @@
 class Layouts::JournalEntryFormComponent < ViewComponent::Base
-  def initialize(entry:, journals:, accounts:, axes: [], agent_proposal: nil)
+  # posting: whether saving a new entry posts it at once (the person may post, and it is not an agent proposal). The label says what
+  # will happen: a posted entry is permanent, a draft can still be edited.
+  def initialize(entry:, journals:, accounts:, axes: [], agent_proposal: nil, posting: false)
+    @posting = posting
     @agent_proposal = agent_proposal
     @entry    = entry
     @journals = journals
@@ -24,6 +27,22 @@ class Layouts::JournalEntryFormComponent < ViewComponent::Base
       }
     end.to_json
   end
+
+  def field_class = Layouts::JournalEntryLineComponent::FIELD
+
+  def header_label_class = "mb-0.5 block text-xs text-gray-600"
+
+  def submit_label = @posting ? "Post entry" : "Save as draft"
+
+  def save_consequence
+    if @posting
+      "Posting records the entry permanently; it can only be reversed. If another person must validate it, it is saved as a draft instead."
+    else
+      "A draft can be edited until it is validated."
+    end
+  end
+
+  def discard_label = @entry.persisted? ? "Discard these changes?" : "Discard this entry?"
 
   def form_url
     @entry.persisted? ? accounting_journal_entry_path(@entry) : accounting_journal_entries_path
