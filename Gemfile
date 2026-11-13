@@ -107,3 +107,5 @@ gem "rubyzip" # DOCX files of the knowledge base (A06); already in the bundle th
 gem "anthropic", "~> 1.76"
 
 gem "commonmarker", "~> 2.10"
+
+gem "aws-sdk-s3", "~> 1.242", require: false

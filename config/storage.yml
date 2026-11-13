@@ -6,6 +6,18 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
+# Production: private Cloudflare R2 bucket (S3 API), default jurisdiction. The LEDGERFLOW_R2_* variables come from the shell of the
+# workstation through .kamal/secrets. R2 refuses the SDK's default checksums, hence "when_required".
+cloudflare:
+  service: S3
+  access_key_id: <%= ENV["LEDGERFLOW_R2_ACCESS_KEY_ID"] %>
+  secret_access_key: <%= ENV["LEDGERFLOW_R2_SECRET_ACCESS_KEY"] %>
+  bucket: <%= ENV["LEDGERFLOW_R2_BUCKET"] %>
+  endpoint: <%= ENV["LEDGERFLOW_R2_ENDPOINT"] %>
+  region: auto
+  request_checksum_calculation: when_required
+  response_checksum_validation: when_required
+
 # Use bin/rails credentials:edit to set the AWS secrets (as aws:access_key_id|secret_access_key)
 # amazon:
 #   service: S3
